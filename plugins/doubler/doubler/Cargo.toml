@@ -1,0 +1,16 @@
+[package]
+name = "doubler"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Multi-voice doubler"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+doubler-core = { workspace = true }
+nxe-ui = { workspace = true }
+nih_plug = { workspace = true }
+nih_plug_vizia = { workspace = true }

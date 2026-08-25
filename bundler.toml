@@ -1,0 +1,4 @@
+# Display names for `cargo xtask bundle`. The bundler reads this from the
+# workspace root, keyed by package name.
+[doubler]
+name = "Doubler"
