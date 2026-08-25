@@ -44,6 +44,9 @@ struct Demo {
     spans: Vec<Span>,
     grips: Vec<Grip>,
     last_gesture: String,
+    /// Mirrors the Doubler's Detail disclosure, so the show/hide of a tall
+    /// table can be exercised without a host.
+    detail_open: bool,
 }
 
 enum DemoEvent {
@@ -59,6 +62,7 @@ enum DemoEvent {
     ResetPoint(usize),
     SetTone(usize, f32),
     Gesture(&'static str),
+    ToggleDetail,
 }
 
 impl Demo {
@@ -112,6 +116,7 @@ impl Model for Demo {
             }
             DemoEvent::SetSource(index) => self.source = *index,
             DemoEvent::Gesture(name) => self.last_gesture = (*name).to_owned(),
+            DemoEvent::ToggleDetail => self.detail_open = !self.detail_open,
         });
     }
 }
@@ -177,6 +182,7 @@ fn main() {
             spans: Vec::new(),
             grips: Vec::new(),
             last_gesture: "—".to_owned(),
+            detail_open: false,
         };
         demo.refresh();
         demo.build(cx);
@@ -194,6 +200,7 @@ fn main() {
                 segments(cx);
                 field(cx);
                 curves(cx);
+                detail(cx);
                 icons(cx);
                 shapes(cx);
                 spacing(cx);
@@ -548,6 +555,74 @@ fn curves(cx: &mut Context) {
             "drag a handle vertically · the shaded bands are Tone Spread",
         )
         .class("subtle");
+    });
+}
+
+/// The Doubler's Detail table, in the shape that broke in a host: eight rows of
+/// bars behind a disclosure, with per-row opacity and background bound to
+/// lenses.
+fn detail(cx: &mut Context) {
+    const ROW_HEIGHT: f32 = 22.0;
+
+    panel(cx, "DETAIL (disclosure)", |cx| {
+        HStack::new(cx, |cx| {
+            icon::label(
+                cx,
+                Demo::detail_open.map(|open| {
+                    if *open {
+                        icon::CHEVRON_UP
+                    } else {
+                        icon::CHEVRON_DOWN
+                    }
+                }),
+            );
+            Label::new(cx, "DETAIL").class("label");
+        })
+        .class("hoverable")
+        .width(Pixels(96.0))
+        .height(Pixels(22.0))
+        .col_between(Pixels(theme::SPACE_1))
+        .on_press(|cx| cx.emit(DemoEvent::ToggleDetail));
+
+        VStack::new(cx, |cx| {
+            for row in 0..8 {
+                HStack::new(cx, |cx| {
+                    font::value(cx, &format!("{}", row + 1))
+                        .class("subtle")
+                        .width(Pixels(18.0));
+                    for column in 0..4 {
+                        let index = (row * 4 + column) % 12;
+                        HStack::new(cx, |cx| {
+                            Bar::new(cx, Demo::rows.index(index), move |cx, gesture| {
+                                if let Gesture::Change(value) = gesture {
+                                    cx.emit(DemoEvent::SetRow(index, value));
+                                }
+                            })
+                            .height(Pixels(10.0))
+                            .width(Stretch(1.0));
+                            font::value(cx, Demo::rows.index(index).map(|v| format!("{v:.2}")))
+                                .width(Pixels(48.0));
+                        })
+                        .width(Stretch(1.0))
+                        .height(Stretch(1.0))
+                        .col_between(Pixels(theme::SPACE_2));
+                    }
+                })
+                .class("row")
+                .height(Pixels(ROW_HEIGHT))
+                .opacity(Demo::voices.map(move |voices| {
+                    if row < [2usize, 4, 8][*voices] {
+                        1.0
+                    } else {
+                        0.42
+                    }
+                }))
+                .background_color(Demo::last_gesture.map(move |_| theme::CARD.vizia()));
+            }
+        })
+        .height(Auto)
+        .row_between(Pixels(theme::SPACE_2))
+        .display(Demo::detail_open);
     });
 }
 
