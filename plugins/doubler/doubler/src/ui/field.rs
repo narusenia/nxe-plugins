@@ -12,7 +12,7 @@
 //! **The radius is the shape value directly.** The outer arc *is* the `Delay`
 //! macro, so a voice at `Delay_i` = 1 sits on it whatever the macro says.
 
-use super::Ui;
+use super::{Ui, UiEvent};
 use crate::params::DoublerParams;
 use doubler_core::{MAX_VOICES, Source, pan_for, pan_shape_for};
 use nih_plug::prelude::Param;
@@ -101,9 +101,10 @@ pub fn view(cx: &mut Context) {
             | FieldGesture::End(index)
             | FieldGesture::Reset(index)
             | FieldGesture::Change { index, .. } => index,
-            // Cross-highlighting the Detail table arrives with the table
-            // itself (`DBL-11`).
-            FieldGesture::Hover(_) => return,
+            FieldGesture::Hover(over) => {
+                cx.emit(UiEvent::Hover(over));
+                return;
+            }
         };
         let Some(voice) = handles.get(index) else {
             return;
