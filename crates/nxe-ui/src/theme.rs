@@ -226,6 +226,40 @@ label {{
     border-radius: {RADIUS_CONTROL}px;
 }}
 
+/* A row of choices. The container holds the groove; the segments sit inside it
+   so the selected one reads as raised out of the track. */
+.segmented {{
+    layout-type: row;
+    background-color: {elevated};
+    border-width: 1px;
+    border-color: {border};
+    border-radius: {RADIUS_CONTROL}px;
+    child-space: 2px;
+    col-between: 2px;
+    height: auto;
+    width: auto;
+}}
+
+.segment {{
+    color: {muted};
+    font-size: {FONT_LABEL}px;
+    child-space: 1s;
+    child-left: {SPACE_2}px;
+    child-right: {SPACE_2}px;
+    height: 22px;
+    border-radius: {RADIUS_CONTROL}px;
+    transition: background-color {TRANSITION_MS}ms, color {TRANSITION_MS}ms;
+}}
+
+.segment:hover {{
+    color: {foreground};
+}}
+
+.segment:checked {{
+    color: {background};
+    background-color: {accent};
+}}
+
 .hoverable {{
     color: {foreground};
     background-color: {elevated};
@@ -325,6 +359,8 @@ mod tests {
             ".subtle",
             ".disabled",
             ".icon",
+            ".segmented",
+            ".segment",
             ".track",
             ".accent",
             ".hoverable",
