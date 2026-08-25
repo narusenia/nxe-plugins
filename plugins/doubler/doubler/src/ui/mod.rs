@@ -8,6 +8,7 @@
 
 mod field;
 mod param_bind;
+mod tone;
 
 use crate::params::DoublerParams;
 use nih_plug::prelude::Editor;
@@ -47,7 +48,7 @@ pub fn create(params: Arc<DoublerParams>, state: Arc<ViziaState>) -> Option<Box<
             header(cx);
             field::view(cx);
             macros(cx);
-            tone(cx);
+            tone::view(cx);
             footer(cx);
         })
         .class("root")
@@ -73,7 +74,7 @@ fn header(cx: &mut Context) {
 }
 /// One labelled knob with its value underneath, which is the shape every macro
 /// control takes.
-fn macro_knob<P, F>(cx: &mut Context, label: &'static str, to_param: F, size: f32)
+pub(crate) fn macro_knob<P, F>(cx: &mut Context, label: &'static str, to_param: F, size: f32)
 where
     P: nih_plug::prelude::Param + 'static,
     F: Fn(&Arc<DoublerParams>) -> &P + Copy + 'static,
@@ -108,20 +109,6 @@ fn macros(cx: &mut Context) {
     .class("row")
     .height(Auto);
 }
-
-/// `DBL-14` replaces these three knobs with the Filter View, where the two
-/// shelves are handles on the curve.
-fn tone(cx: &mut Context) {
-    HStack::new(cx, |cx| {
-        Label::new(cx, "TONE").class("label").width(Pixels(48.0));
-        macro_knob(cx, "LO", |params| &params.tone_lo, 34.0);
-        macro_knob(cx, "HI", |params| &params.tone_hi, 34.0);
-        macro_knob(cx, "SPREAD", |params| &params.tone_spread, 34.0);
-    })
-    .class("row")
-    .height(Auto);
-}
-
 fn footer(cx: &mut Context) {
     HStack::new(cx, |cx| {
         // `DBL-11` turns this into the Detail disclosure.
