@@ -9,6 +9,8 @@
 
 mod delay;
 mod shifter;
+mod voice;
 
 pub use delay::DelayLine;
 pub use shifter::PitchShifter;
+pub use voice::{DEFAULT_SHAPE, MAX_VOICES, Macros, VoiceEngine, VoiceShape, Voices};
