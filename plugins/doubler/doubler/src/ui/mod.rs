@@ -6,6 +6,7 @@
 //! (`DBL-11`) land in their own units; their space is left framed but empty so
 //! the proportions are already right.
 
+mod field;
 mod param_bind;
 
 use crate::params::DoublerParams;
@@ -25,7 +26,7 @@ pub fn default_state() -> Arc<ViziaState> {
 }
 
 #[derive(Lens)]
-struct Ui {
+pub(crate) struct Ui {
     params: Arc<DoublerParams>,
 }
 
@@ -44,7 +45,7 @@ pub fn create(params: Arc<DoublerParams>, state: Arc<ViziaState>) -> Option<Box<
 
         VStack::new(cx, |cx| {
             header(cx);
-            voice_field_placeholder(cx);
+            field::view(cx);
             macros(cx);
             tone(cx);
             footer(cx);
@@ -70,18 +71,6 @@ fn header(cx: &mut Context) {
     .class("row")
     .height(Auto);
 }
-
-/// `DBL-10` fills this. Framed and empty rather than absent, so the layout does
-/// not shift when it arrives.
-fn voice_field_placeholder(cx: &mut Context) {
-    VStack::new(cx, |cx| {
-        Label::new(cx, "VOICE FIELD").class("subtle");
-    })
-    .class("panel")
-    .height(Pixels(170.0))
-    .child_space(Stretch(1.0));
-}
-
 /// One labelled knob with its value underneath, which is the shape every macro
 /// control takes.
 fn macro_knob<P, F>(cx: &mut Context, label: &'static str, to_param: F, size: f32)
