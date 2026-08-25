@@ -4,6 +4,7 @@
 //! callback; binding them to plugin parameters is each plugin's job. See
 //! `docs/specifications/architecture.md` for why that boundary exists.
 //!
-//! The widgets themselves land in `UI-1` through `UI-9`
-//! (`docs/implementation/nxe-ui-plan.md`). Right now this crate exists so the
-//! workspace and the standalone gallery are wired up.
+//! The widgets land in `UI-4` onward
+//! (`docs/implementation/nxe-ui-plan.md`); the theme is here.
+
+pub mod theme;
