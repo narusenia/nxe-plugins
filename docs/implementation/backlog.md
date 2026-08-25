@@ -28,7 +28,6 @@
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| DBL-6 | Source モード（Mono Sum / True Stereo） | `doubler-plan.md` |
 | DBL-7 | Tone と Tone Spread | `doubler-plan.md` |
 | UI-1 | テーマトークンと gallery の中身 | `nxe-ui-plan.md` |
 | INFRA-2 | プルリクエストの CI | `infra-plan.md` |
@@ -73,7 +72,7 @@
 | DBL-3 | ボイスエンジン（形状表・実効値・パン則・ゲイン補償） | ✅ `3aec7af` |
 | DBL-4 | nih-plug ラッパと配線（**ここで音が出る**。UI 無し） | ✅ `556c5a0` |
 | DBL-5 | Humanize | ✅ |
-| DBL-6 | Source モード（Mono Sum / True Stereo） | 🟡 |
+| DBL-6 | Source モード（Mono Sum / True Stereo） | ✅ |
 | DBL-7 | Tone と Tone Spread | 🟡 |
 | DBL-8 | スムージングとサンプルレート／ブロックサイズ非依存の詰め | ⬜ DBL-5, DBL-6, DBL-7 |
 | DBL-9 | UI マクロ層（ノブとセグメント） | ⬜ DBL-4, UI-4, UI-6, UI-2 |
