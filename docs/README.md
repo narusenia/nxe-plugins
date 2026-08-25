@@ -17,7 +17,9 @@
 | **共通 UI コンポーネントの計画** | [implementation/nxe-ui-plan.md](implementation/nxe-ui-plan.md) |
 | **ワークスペース骨格と CI の計画** | [implementation/infra-plan.md](implementation/infra-plan.md) |
 | **どの順でやるか、なぜその順か** | [implementation/roadmap.md](implementation/roadmap.md) |
+| **共通ウィジェットの使い方**（契約・トークン・アイコン） | [`../crates/nxe-ui/README.md`](../crates/nxe-ui/README.md) |
 | **守るべき規約**（Rust / UI / 文書） | [`../.agents/rules/`](../.agents/rules/) |
+| **踏んだ罠**（vizia の挙動、検証の抜け） | [`../.agents/rules/vizia.md`](../.agents/rules/vizia.md) / [`../.agents/rules/rust.md`](../.agents/rules/rust.md) |
 | **プラグイン固有の要件・仕様・計画** | `plugins/<name>/docs/` |
 
 同じ内容を 2 箇所に書かない。実装と食い違うときは**実装が正**で、気づいた

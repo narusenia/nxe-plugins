@@ -21,7 +21,8 @@ with the code, and fix the document in the same change.
   icon font. **Depends on Vizia only, never on nih-plug** — widgets take a
   value plus a callback, and each plugin owns the thin adapter that binds them
   to its own parameters. `examples/gallery.rs` runs every widget as a plain
-  desktop app, which is how UI work is iterated without launching a DAW
+  desktop app, which is how UI work is iterated without launching a DAW.
+  Its `README.md` is the guide for building an interface with it
 - `plugins/doubler/doubler-core`: the Doubler DSP. Host-agnostic, allocation-free
   on the audio path
 - `plugins/doubler/doubler`: the Doubler nih-plug wrapper — parameter

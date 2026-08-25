@@ -29,11 +29,17 @@ Requires Rust 1.95 or newer. [mise](https://mise.jdx.dev/) manages the
 toolchain and tasks.
 
 ```bash
+mise trust                  # once, after cloning
 mise run check              # fmt + clippy + tests
 mise run bundle doubler     # build the CLAP and VST3 bundles
 mise run install doubler    # bundle, then install into the user plugin folders
 mise run gallery            # run the shared UI widget gallery as a desktop app
 ```
+
+Working on this repository? Start with [`AGENTS.md`](AGENTS.md) for the layout
+and the rules, [`docs/README.md`](docs/README.md) for which document plays which
+role, and [`crates/nxe-ui/README.md`](crates/nxe-ui/README.md) if you are
+touching the interface.
 
 ## Installing a release build
 
