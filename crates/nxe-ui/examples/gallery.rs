@@ -9,6 +9,7 @@
 //!
 //! Run it with `mise run gallery`.
 
+use nxe_ui::bar::Bar;
 use nxe_ui::input::Gesture;
 use nxe_ui::knob::Knob;
 use nxe_ui::{icon, theme};
@@ -22,11 +23,15 @@ struct Demo {
     detune: f32,
     delay: f32,
     mix: f32,
+    /// Four values per row, laid out like the Doubler's Detail table:
+    /// delay, detune, pan, gain.
+    rows: Vec<f32>,
     last_gesture: String,
 }
 
 enum DemoEvent {
     Set(usize, f32),
+    SetRow(usize, f32),
     Gesture(&'static str),
 }
 
@@ -36,6 +41,7 @@ impl Model for Demo {
             DemoEvent::Set(0, value) => self.detune = *value,
             DemoEvent::Set(1, value) => self.delay = *value,
             DemoEvent::Set(_, value) => self.mix = *value,
+            DemoEvent::SetRow(index, value) => self.rows[*index] = *value,
             DemoEvent::Gesture(name) => self.last_gesture = (*name).to_owned(),
         });
     }
@@ -59,6 +65,11 @@ fn main() {
             detune: 0.24,
             delay: 0.62,
             mix: 0.4,
+            rows: vec![
+                1.00, 0.00, 0.00, 0.65, //
+                0.62, 1.00, 1.00, 0.65, //
+                0.84, 0.30, 0.28, 0.50,
+            ],
             last_gesture: "—".to_owned(),
         }
         .build(cx);
@@ -72,6 +83,7 @@ fn main() {
 
                 colours(cx);
                 knobs(cx);
+                bars(cx);
                 icons(cx);
                 shapes(cx);
                 spacing(cx);
@@ -188,6 +200,59 @@ fn knobs(cx: &mut Context) {
         })
         .class("row")
         .height(Auto);
+    });
+}
+
+fn bars(cx: &mut Context) {
+    // Column headings, then one row of bars per voice — the shape the Doubler's
+    // Detail table takes.
+    const COLUMNS: [(&str, bool); 4] = [
+        ("DELAY", false),
+        ("DETUNE", true),
+        ("PAN", true),
+        ("GAIN", false),
+    ];
+
+    panel(cx, "BARS", |cx| {
+        HStack::new(cx, |cx| {
+            Label::new(cx, "").class("subtle").width(Pixels(20.0));
+            for (name, _) in COLUMNS {
+                Label::new(cx, name).class("label").width(Stretch(1.0));
+            }
+        })
+        .class("row")
+        .height(Auto);
+
+        for row in 0..3 {
+            HStack::new(cx, |cx| {
+                Label::new(cx, &format!("{}", row + 1))
+                    .class("subtle")
+                    .width(Pixels(20.0));
+
+                for (column, (_, centred)) in COLUMNS.iter().enumerate() {
+                    let index = row * COLUMNS.len() + column;
+                    let lens = Demo::rows.index(index);
+                    let gesture = move |cx: &mut EventContext, gesture: Gesture| {
+                        if let Gesture::Change(value) = gesture {
+                            cx.emit(DemoEvent::SetRow(index, value));
+                        }
+                        cx.emit(DemoEvent::Gesture(name_of(gesture)));
+                    };
+
+                    if *centred {
+                        Bar::bipolar(cx, lens, gesture)
+                    } else {
+                        Bar::new(cx, lens, gesture)
+                    }
+                    .height(Pixels(10.0))
+                    .width(Stretch(1.0));
+                }
+            })
+            .class("row")
+            .height(Auto);
+        }
+
+        Label::new(cx, "same gesture as a knob, including the vertical drag").class("subtle");
     });
 }
 
