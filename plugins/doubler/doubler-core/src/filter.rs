@@ -122,6 +122,30 @@ impl Biquad {
         self.y2 = 0.0;
     }
 
+    /// The filter's gain at `hz`, in dB.
+    ///
+    /// The editor draws the Tone curve with this, so the picture comes from the
+    /// same coefficients the audio goes through rather than from a second
+    /// formula that approximates them.
+    pub fn magnitude_db(&self, hz: f32, sample_rate: f32) -> f32 {
+        let omega = TAU * hz / sample_rate;
+        let (sin1, cos1) = omega.sin_cos();
+        let (sin2, cos2) = (2.0 * omega).sin_cos();
+
+        // H(e^{-jw}) with the coefficients already normalized by a0.
+        let numerator_real = self.b0 + self.b1 * cos1 + self.b2 * cos2;
+        let numerator_imag = -(self.b1 * sin1 + self.b2 * sin2);
+        let denominator_real = 1.0 + self.a1 * cos1 + self.a2 * cos2;
+        let denominator_imag = -(self.a1 * sin1 + self.a2 * sin2);
+
+        let numerator = numerator_real.hypot(numerator_imag);
+        let denominator = denominator_real.hypot(denominator_imag);
+        if denominator <= f32::MIN_POSITIVE {
+            return 0.0;
+        }
+        20.0 * (numerator / denominator).log10()
+    }
+
     pub fn process(&mut self, input: f32) -> f32 {
         let output = self.b0 * input + self.b1 * self.x1 + self.b2 * self.x2
             - self.a1 * self.y1
@@ -144,19 +168,29 @@ mod tests {
 
     /// Steady-state gain at a frequency, measured rather than derived, so a
     /// wrong coefficient shows up as a wrong number.
+    ///
+    /// The ratio of **RMS** values, not of peaks: a few samples per cycle miss
+    /// the true peak, so a peak measurement reads low at high frequencies —
+    /// by a whole dB at 8 kHz. Taking the input's own RMS over the same window
+    /// cancels that out whatever the frequency.
     fn gain_at(filter: &mut Biquad, hz: f32) -> f32 {
         let cycles = 200;
         let samples = (SR / hz * cycles as f32) as usize;
-        let mut peak = 0.0f32;
+        let settle = samples / 4;
+        let mut input_energy = 0.0f64;
+        let mut output_energy = 0.0f64;
 
         for i in 0..samples {
-            let out = filter.process((i as f32 * TAU * hz / SR).sin());
+            let input = (i as f32 * TAU * hz / SR).sin();
+            let output = filter.process(input);
             // Skip the first few cycles: the filter has to settle first.
-            if i > samples / 4 {
-                peak = peak.max(out.abs());
+            if i > settle {
+                input_energy += (input * input) as f64;
+                output_energy += (output * output) as f64;
             }
         }
-        peak
+
+        (output_energy / input_energy).sqrt() as f32
     }
 
     fn db(gain: f32) -> f32 {
@@ -232,6 +266,30 @@ mod tests {
                 low.abs() < 0.5,
                 "{gain_db} dB shelf gave {low:.2} dB at 100 Hz"
             );
+        }
+    }
+
+    /// The analytic magnitude has to agree with what the filter actually does
+    /// to a sine. This is the check that keeps the drawn curve honest: if the
+    /// two ever disagree, the picture is lying about the sound.
+    #[test]
+    fn the_magnitude_matches_what_the_filter_does() {
+        for shelf in [Shelf::Low, Shelf::High] {
+            for gain_db in [-12.0f32, -6.0, 0.0, 6.0, 12.0] {
+                let mut filter = Biquad::default();
+                filter.set_shelf(shelf, SR, 500.0, gain_db);
+
+                for hz in [30.0f32, 100.0, 500.0, 2_000.0, 8_000.0] {
+                    let analytic = filter.magnitude_db(hz, SR);
+                    filter.reset();
+                    let measured = db(gain_at(&mut filter, hz));
+                    assert!(
+                        (analytic - measured).abs() < 0.3,
+                        "{shelf:?} {gain_db} dB at {hz} Hz: analytic {analytic:.2}, \
+                         measured {measured:.2}"
+                    );
+                }
+            }
         }
     }
 

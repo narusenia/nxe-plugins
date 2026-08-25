@@ -456,6 +456,35 @@ impl VoiceEngine {
     }
 }
 
+/// The wet bus's Tone response at `hz`, in dB.
+///
+/// Built from the same coefficients the audio goes through, so the curve the
+/// editor draws cannot drift from what is heard (`REQ-DBL-005`).
+pub fn tone_response_db(tone_lo: f32, tone_hi: f32, hz: f32, sample_rate: f32) -> f32 {
+    let mut low = Biquad::default();
+    low.set_shelf(Shelf::Low, sample_rate, SHELF_LOW_HZ, tone_lo);
+    let mut high = Biquad::default();
+    high.set_shelf(Shelf::High, sample_rate, SHELF_HIGH_HZ, tone_hi);
+
+    low.magnitude_db(hz, sample_rate) + high.magnitude_db(hz, sample_rate)
+}
+
+/// The band Tone Spread leaves voice `index` with, as `(highpass, lowpass)` in
+/// Hz. `None` at zero depth, where the filters are bypassed outright and the
+/// editor should draw nothing rather than draw the full range.
+pub fn spread_band(index: usize, tone_spread: f32) -> Option<(f32, f32)> {
+    let spread = tone_spread.clamp(0.0, 1.0);
+    if spread <= 0.0 {
+        return None;
+    }
+
+    let (high, low) = SPREAD_OFFSETS[index % MAX_VOICES];
+    Some((
+        SPREAD_HIGHPASS_HZ * (high * spread * SPREAD_HIGHPASS_OCTAVES).exp2(),
+        SPREAD_LOWPASS_HZ / (low.abs() * spread * SPREAD_LOWPASS_OCTAVES).exp2(),
+    ))
+}
+
 /// Where voice `index` sits, in the same `-1..=1` the pan law takes.
 ///
 /// **The editor draws its dots with this, so there is one formula rather than
@@ -1240,6 +1269,53 @@ mod tests {
         let high = excursion(96_000.0);
         let db = 20.0 * (high / low).log10();
         assert!(db.abs() < 1.0, "the wobble changed level by {db:.2} dB");
+    }
+
+    /// `REQ-DBL-005`: the shelves are flat at zero, and the drawn curve has to
+    /// say so — otherwise the display invents a colour the audio does not have.
+    #[test]
+    fn the_tone_response_is_flat_at_zero() {
+        for hz in [20.0f32, 200.0, 1_000.0, 4_000.0, 18_000.0] {
+            let db = tone_response_db(0.0, 0.0, hz, SR);
+            assert!(db.abs() < 0.01, "{hz} Hz: {db} dB");
+        }
+    }
+
+    /// Each shelf reaches its setting at its own end and leaves the other alone.
+    #[test]
+    fn the_tone_response_separates_the_two_ends() {
+        let low_only = tone_response_db(6.0, 0.0, 25.0, SR);
+        assert!((low_only - 6.0).abs() < 0.5, "low end: {low_only}");
+        assert!(tone_response_db(6.0, 0.0, 18_000.0, SR).abs() < 0.5);
+
+        let high_only = tone_response_db(0.0, -6.0, 18_000.0, SR);
+        assert!((high_only + 6.0).abs() < 0.5, "high end: {high_only}");
+        assert!(tone_response_db(0.0, -6.0, 25.0, SR).abs() < 0.5);
+    }
+
+    /// `REQ-DBL-005`: at zero depth the filters are bypassed, so there is no
+    /// band to draw.
+    #[test]
+    fn there_is_no_spread_band_at_zero() {
+        assert_eq!(spread_band(0, 0.0), None);
+        assert!(spread_band(0, 0.5).is_some());
+    }
+
+    /// The bands have to be inside the audible range and the right way round,
+    /// or the editor would draw them inverted.
+    #[test]
+    fn a_spread_band_is_ordered_and_audible() {
+        for index in 0..MAX_VOICES {
+            for spread in [0.1f32, 0.5, 1.0] {
+                let (highpass, lowpass) = spread_band(index, spread).unwrap();
+                assert!(highpass < lowpass, "voice {index} at {spread}: inverted");
+                assert!(highpass > 1.0, "voice {index} at {spread}: {highpass} Hz");
+                assert!(
+                    lowpass < 25_000.0,
+                    "voice {index} at {spread}: {lowpass} Hz"
+                );
+            }
+        }
     }
 
     /// The editor converts a dragged position back into a shape value, so the
