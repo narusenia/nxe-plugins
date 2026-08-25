@@ -8,5 +8,7 @@
 //! (`plugins/doubler/docs/implementation/doubler-plan.md`).
 
 mod delay;
+mod shifter;
 
 pub use delay::DelayLine;
+pub use shifter::PitchShifter;
