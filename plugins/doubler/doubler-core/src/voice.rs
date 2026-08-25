@@ -1101,13 +1101,21 @@ mod tests {
     #[test]
     fn a_voice_count_settles_to_the_static_result() {
         let input = noise(96_000);
-        let settled = Macros { voices: Voices::Two, humanize: 0.0, ..Macros::default() };
+        let settled = Macros {
+            voices: Voices::Two,
+            humanize: 0.0,
+            ..Macros::default()
+        };
 
         let mut engine = VoiceEngine::new(SR);
         let mut faded = Vec::with_capacity(input.len());
         for (i, &sample) in input.iter().enumerate() {
             // Start on eight voices, drop to two a third of the way in.
-            let voices = if i < 32_000 { Voices::Eight } else { Voices::Two };
+            let voices = if i < 32_000 {
+                Voices::Eight
+            } else {
+                Voices::Two
+            };
             let macros = Macros { voices, ..settled };
             let (l, _) = engine.process(sample, sample, &macros, &DEFAULT_SHAPE);
             faded.push(l);
@@ -1162,7 +1170,10 @@ mod tests {
     /// the sample rate.
     #[test]
     fn the_wobble_speed_does_not_depend_on_the_sample_rate() {
-        let macros = Macros { humanize: 1.0, ..Macros::default() };
+        let macros = Macros {
+            humanize: 1.0,
+            ..Macros::default()
+        };
 
         let excursion = |sample_rate: f32| {
             let seconds = 4.0;
