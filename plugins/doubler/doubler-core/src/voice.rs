@@ -31,6 +31,11 @@ const HUMANIZE_DELAY_MS: f32 = 3.0;
 /// short enough to feel like a switch.
 const SOURCE_FADE_SECONDS: f32 = 0.020;
 
+/// How long a voice takes to fade in or out when `Voices` changes. `Voices` is
+/// a discrete parameter, so nothing smooths it for us and the level has to be
+/// ramped here or the change is a click (`REQ-DBL-001`).
+const VOICE_FADE_SECONDS: f32 = 0.020;
+
 /// In `TrueStereo`, how far a voice's own channel sits from the centre, and how
 /// much `Pan_i` moves it from there. The two add to exactly 1 at full spread,
 /// so the pan never has to be clamped. Ear-tuned (`dsp.md`).
@@ -230,6 +235,14 @@ pub struct VoiceEngine {
     /// it for us.
     source_blend: f32,
     source_step: f32,
+    /// Each voice's fade level, 1 for live and 0 for silent.
+    voice_level: [f32; MAX_VOICES],
+    voice_step: f32,
+    /// The first block after a reset snaps the ramped values to their targets
+    /// instead of fading toward them. Without it a plugin that starts in
+    /// `TrueStereo` with eight voices would spend its first 20 ms crossfading
+    /// from a state it was never in.
+    snap: bool,
     /// The wet-bus shelves, one pair per output channel.
     shelf_low: [Biquad; 2],
     shelf_high: [Biquad; 2],
@@ -257,6 +270,9 @@ impl VoiceEngine {
             }),
             source_blend: 1.0,
             source_step: (SOURCE_FADE_SECONDS * sample_rate).recip(),
+            voice_level: [1.0; MAX_VOICES],
+            voice_step: (VOICE_FADE_SECONDS * sample_rate).recip(),
+            snap: true,
             shelf_low: [Biquad::default(); 2],
             shelf_high: [Biquad::default(); 2],
             voice_highpass: [OnePole::default(); MAX_VOICES],
@@ -268,6 +284,7 @@ impl VoiceEngine {
     }
 
     pub fn reset(&mut self) {
+        self.snap = true;
         self.line_left.reset();
         self.line_right.reset();
         for shifter in &mut self.shifters {
@@ -333,11 +350,21 @@ impl VoiceEngine {
         self.line_left.write(left_in);
         self.line_right.write(right_in);
 
-        let target = match macros.source {
+        let source_target = match macros.source {
             Source::MonoSum => 1.0,
             Source::TrueStereo => 0.0,
         };
-        self.source_blend = approach(self.source_blend, target, self.source_step);
+        let live = macros.voices.count();
+
+        if self.snap {
+            self.snap = false;
+            self.source_blend = source_target;
+            for (index, level) in self.voice_level.iter_mut().enumerate() {
+                *level = if index < live { 1.0 } else { 0.0 };
+            }
+        }
+
+        self.source_blend = approach(self.source_blend, source_target, self.source_step);
         let blend = self.source_blend;
 
         let tone_spread = macros.tone_spread.clamp(0.0, 1.0);
@@ -346,7 +373,6 @@ impl VoiceEngine {
         let ms_to_samples = self.sample_rate / 1000.0;
         let humanize = macros.humanize.clamp(0.0, 1.0);
         let spread = macros.spread.clamp(0.0, 1.0);
-        let live = macros.voices.count();
         let mut left = 0.0;
         let mut right = 0.0;
         let mut energy = 0.0;
@@ -357,12 +383,22 @@ impl VoiceEngine {
             // moment ago.
             let detune_wobble = self.detune_wobble[voice_index].next();
             let delay_wobble = self.delay_wobble[voice_index].next();
-            if voice_index >= live {
+
+            // A voice being switched off keeps being processed until its level
+            // reaches zero, so it fades rather than stops.
+            let target = if voice_index < live { 1.0 } else { 0.0 };
+            self.voice_level[voice_index] =
+                approach(self.voice_level[voice_index], target, self.voice_step);
+            let level = self.voice_level[voice_index];
+            if level <= 0.0 {
                 continue;
             }
 
             let shape = &shape[voice_index];
-            let gain = db_to_gain(shape.gain_db);
+            // The fade level goes into the energy sum too, so the compensation
+            // tracks the fade and the wet level does not dip or jump partway
+            // through a `Voices` change.
+            let gain = db_to_gain(shape.gain_db) * level;
             energy += gain * gain;
 
             let cents =
@@ -470,7 +506,16 @@ mod tests {
     }
 
     fn run_stereo(macros: &Macros, left_in: &[f32], right_in: &[f32]) -> (Vec<f32>, Vec<f32>) {
-        let mut engine = VoiceEngine::new(SR);
+        run_at(SR, macros, left_in, right_in)
+    }
+
+    fn run_at(
+        sample_rate: f32,
+        macros: &Macros,
+        left_in: &[f32],
+        right_in: &[f32],
+    ) -> (Vec<f32>, Vec<f32>) {
+        let mut engine = VoiceEngine::new(sample_rate);
         let mut left = Vec::with_capacity(left_in.len());
         let mut right = Vec::with_capacity(left_in.len());
 
@@ -1020,6 +1065,122 @@ mod tests {
             tone(0.0, -6.0, low).abs() < 0.6,
             "high shelf reached the bottom"
         );
+    }
+
+    /// `REQ-DBL-001`: switching `Voices` must not click. The level ramp is what
+    /// makes that true, since the parameter itself jumps.
+    #[test]
+    fn changing_voices_does_not_click() {
+        let input: Vec<f32> = (0..192_000)
+            .map(|i| (i as f32 * std::f32::consts::TAU * 220.0 / SR).sin())
+            .collect();
+        let mut engine = VoiceEngine::new(SR);
+        let mut out = Vec::with_capacity(input.len());
+
+        let counts = [Voices::Two, Voices::Eight, Voices::Four, Voices::Eight];
+        for (i, &sample) in input.iter().enumerate() {
+            let macros = Macros {
+                voices: counts[(i / 24_000) % counts.len()],
+                humanize: 0.0,
+                ..Macros::default()
+            };
+            let (l, _) = engine.process(sample, sample, &macros, &DEFAULT_SHAPE);
+            out.push(l);
+        }
+
+        let input_step = max_step(&input);
+        let out_step = max_step(&out[8_000..]);
+        assert!(
+            out_step < input_step * 1.5,
+            "output steps by {out_step} where the input steps by at most {input_step}"
+        );
+    }
+
+    /// And once the ramp has finished, the result has to be the same as if that
+    /// voice count had been set all along — the fade must not leave a residue.
+    #[test]
+    fn a_voice_count_settles_to_the_static_result() {
+        let input = noise(96_000);
+        let settled = Macros { voices: Voices::Two, humanize: 0.0, ..Macros::default() };
+
+        let mut engine = VoiceEngine::new(SR);
+        let mut faded = Vec::with_capacity(input.len());
+        for (i, &sample) in input.iter().enumerate() {
+            // Start on eight voices, drop to two a third of the way in.
+            let voices = if i < 32_000 { Voices::Eight } else { Voices::Two };
+            let macros = Macros { voices, ..settled };
+            let (l, _) = engine.process(sample, sample, &macros, &DEFAULT_SHAPE);
+            faded.push(l);
+        }
+
+        let (static_left, _) = run(&settled, &input);
+        // Well past the 20 ms ramp, the two have to agree.
+        let tail = 48_000;
+        for i in tail..input.len() {
+            assert!(
+                (faded[i] - static_left[i]).abs() < 1e-4,
+                "sample {i}: faded {} vs static {}",
+                faded[i],
+                static_left[i]
+            );
+        }
+    }
+
+    /// `REQ-DBL-012`: everything is defined in seconds, so the same setting has
+    /// to put a voice at the same *time* whatever the sample rate.
+    #[test]
+    fn the_delays_are_the_same_time_at_every_sample_rate() {
+        let macros = Macros {
+            voices: Voices::Four,
+            detune: 0.0,
+            delay: 22.0,
+            spread: 0.0,
+            humanize: 0.0,
+            ..Macros::default()
+        };
+
+        for sample_rate in [44_100.0f32, 48_000.0, 96_000.0, 192_000.0] {
+            let mut impulse = vec![0.0; (sample_rate * 0.2) as usize];
+            impulse[0] = 1.0;
+            let (left, _) = run_at(sample_rate, &macros, &impulse, &impulse);
+
+            for shape in &DEFAULT_SHAPE[..4] {
+                let ms = 22.0 * shape.delay;
+                let centre = (ms * sample_rate / 1000.0) as usize;
+                let peak = left[centre - 3..centre + 4]
+                    .iter()
+                    .fold(0.0f32, |acc, s| acc.max(s.abs()));
+                assert!(
+                    peak > 0.1,
+                    "{sample_rate} Hz: nothing at {ms} ms (sample {centre})"
+                );
+            }
+        }
+    }
+
+    /// The wobble is defined in seconds too, so its speed must not scale with
+    /// the sample rate.
+    #[test]
+    fn the_wobble_speed_does_not_depend_on_the_sample_rate() {
+        let macros = Macros { humanize: 1.0, ..Macros::default() };
+
+        let excursion = |sample_rate: f32| {
+            let seconds = 4.0;
+            let len = (sample_rate * seconds) as usize;
+            let input: Vec<f32> = (0..len)
+                .map(|i| (i as f32 * std::f32::consts::TAU * 220.0 / sample_rate).sin())
+                .collect();
+            let (left, _) = run_at(sample_rate, &macros, &input, &input);
+            // How far the wobble drags the signal away from a fixed reference,
+            // averaged over the same wall-clock stretch.
+            let skip = (sample_rate * 1.0) as usize;
+            rms(&left[skip..])
+        };
+
+        let low = excursion(48_000.0);
+        let high = excursion(96_000.0);
+        let db = 20.0 * (high / low).log10();
+        assert!(db.abs() < 1.0, "the wobble changed level by {db:.2} dB");
     }
 
     #[test]

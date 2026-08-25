@@ -28,7 +28,6 @@
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| DBL-8 | スムージングとサンプルレート／ブロックサイズ非依存の詰め | `doubler-plan.md` |
 | UI-1 | テーマトークンと gallery の中身 | `nxe-ui-plan.md` |
 | INFRA-2 | プルリクエストの CI | `infra-plan.md` |
 
@@ -75,7 +74,7 @@
 | DBL-5 | Humanize | ✅ |
 | DBL-6 | Source モード（Mono Sum / True Stereo） | ✅ |
 | DBL-7 | Tone と Tone Spread | ✅ |
-| DBL-8 | スムージングとサンプルレート／ブロックサイズ非依存の詰め | 🟡 |
+| DBL-8 | スムージングとサンプルレート／ブロックサイズ非依存の詰め | ✅ |
 | DBL-9 | UI マクロ層（ノブとセグメント） | ⬜ DBL-4, UI-4, UI-6, UI-2 |
 | DBL-10 | UI Voice Field | ⬜ DBL-9, DBL-5, DBL-6, UI-7 |
 | DBL-11 | UI Detail 層（ボイス表） | ⬜ DBL-10, UI-5 |

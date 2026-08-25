@@ -24,6 +24,16 @@ paths:
   territory (add a tiny DC offset or flush) rather than relying on the host to
   have set the CPU flag.
 
+## Block size
+
+**Do not use nih-plug's block-based APIs** (`iter_blocks`, `Smoother::next_block`,
+or reading a parameter once per buffer) without revisiting `REQ-DBL-012` first.
+The plugins guarantee that the output does not depend on the host's block size,
+and today that holds for a structural reason rather than a tested one: `process`
+is a plain per-sample loop, every smoother is polled exactly once per sample,
+and the DSP holds no per-block state. A block-based read would break the
+guarantee quietly, in a way only a host with an unusual buffer size would show.
+
 ## Crate boundaries
 
 - A `<plugin>-core` crate **must not depend on nih-plug, Vizia, or any host
