@@ -5,7 +5,9 @@
 ## クレート構成
 
 ```
-Cargo.toml                        ワークスペース
+Cargo.toml                        ワークスペース（依存のピンはここに一元化）
+bundler.toml                      バンドルの表示名（パッケージ名でセクション分け）
+.cargo/config.toml                `cargo xtask` のエイリアス
 crates/
   nxe-ui/                         共通 Vizia ウィジェット・テーマ・Lucide アイコン
     examples/gallery.rs           ウィジェット一覧を単体アプリとして起動
@@ -13,10 +15,12 @@ plugins/
   doubler/
     doubler-core/                 DSP のみ（ホスト非依存）
     doubler/                      nih-plug ラッパ（パラメータ + UI）
-    bundler.toml                  バンドルの表示名
     docs/                         このプラグインの要件・仕様・計画
 xtask/                            nih_plug_xtask のバンドラ
 ```
+
+`bundler.toml` は**ワークスペースの直下に 1 つ**。バンドラがそこを読むので、
+プラグインごとに置くことはできない。
 
 `nxe-*` は共通クレートの接頭辞。プラグイン側のクレートは接頭辞を付けず
 プラグイン名そのもの（`doubler`、`doubler-core`）とする。共通か固有かが
@@ -41,6 +45,48 @@ doubler ──→ doubler-core      （DSP。nih-plug も Vizia も知らない�
 あると `examples/gallery` が nih-plug を一切リンクせず単体で起動できるので、
 DAW を立ち上げずに UI を反復できる。`nih_plug_vizia` のパラメータ binding は
 便利だが、それを `nxe-ui` に入れると gallery が成立しなくなる。
+
+## 依存のピン
+
+nih-plug は crates.io に無く git 依存。`nih_plug` / `nih_plug_vizia` /
+`nih_plug_xtask` は同一リポジトリなので、**3 つを同じ revision に揃える**。
+後者 2 つは `nih_plug` を path で参照しているため、revision がずれると
+`nih_plug` がツリーに 2 つ入る。
+
+**vizia は `nih_plug_vizia` が使っているものと完全に同一でなければならない。**
+
+```toml
+vizia = { git = "https://github.com/robbert-vdh/vizia.git", tag = "patched-2024-05-06" }
+```
+
+Robbert のフォークの固定タグで、上流の vizia ではない。Cargo は git ソースや
+revision が違えば**別のクレート**として扱うので、`nxe-ui` が別の vizia を
+引くと、そこで作ったビューが `nih_plug_vizia` が受け取る型と一致せず何も
+コンパイルできない。ワークスペースの `[workspace.dependencies]` に 1 箇所だけ
+書き、各クレートは `workspace = true` で参照する。
+
+この制約には副作用が 2 つある。
+
+**上流 vizia の新機能は来ない。** ピンは 2024-05-06 のタグで、それ以降に
+上流へ入ったものは使えない。SVG ビューのような後発の機能を前提に設計しない
+（アイコンをフォントで解決しているのはこれが理由 —
+`plugins/doubler/docs/specifications/ui.md`）。
+
+**`winit` を有効にしてはいけない。** vizia の 2 つのバックエンドは
+**相互排他**で、`Application` の re-export が
+`cfg(all(not(feature = "winit"), feature = "baseview"))` とその鏡像で守られて
+いる。両方を有効にすると**どちらも** re-export されず、`Application` を使う
+コードが 1 つもコンパイルできない（`nih_plug_vizia` 自身も含む）。
+
+Cargo の feature はグラフ全体で加算的で、クレート単位で無効化できない。
+dev-dependency に隔離する手も効かない — resolver v2 は dev ターゲットを
+ビルドする時点で dev-dependency の feature を通常グラフに統合するので、
+`cargo check --workspace --all-targets` で衝突が復活する。
+
+したがって答えは 1 つだけ。**ワークスペース全体が `baseview` を使い、`winit`
+はどこでも有効にしない。** `nxe-ui` の gallery は baseview の単体ウィンドウを
+開く（`Application::run`）。副作用として、gallery が**プラグインと同じ
+バックエンド**で動くことになる — UI の挙動を DAW の外で見る意味が強くなる。
 
 ## 共通 DSP クレートを今は作らない
 
@@ -81,7 +127,7 @@ Windows・Linux でバンドルし、プラットフォームごとの zip を G
 
 1. `plugins/<name>/` に `<name>-core` と `<name>` の 2 クレートを作り、
    ワークスペースの `members` に追加する
-2. `plugins/<name>/bundler.toml` に表示名を書く
+2. ワークスペース直下の `bundler.toml` に `[<パッケージ名>] name = "表示名"` を足す
 3. `plugins/<name>/docs/requirements/REQ-<PREFIX>.md` を書く。ID は
    `REQ-<PREFIX>-<番号>`（Doubler は `DBL`）。要件が無い実装は始めない
 4. DSP と UI の仕様を `plugins/<name>/docs/specifications/` に書く
