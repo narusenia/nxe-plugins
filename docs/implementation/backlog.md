@@ -28,7 +28,9 @@
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| DBL-4 | nih-plug ラッパと配線（**ここで音が出る**） | `doubler-plan.md` |
+| DBL-5 | Humanize | `doubler-plan.md` |
+| DBL-6 | Source モード（Mono Sum / True Stereo） | `doubler-plan.md` |
+| DBL-7 | Tone と Tone Spread | `doubler-plan.md` |
 | UI-1 | テーマトークンと gallery の中身 | `nxe-ui-plan.md` |
 | INFRA-2 | プルリクエストの CI | `infra-plan.md` |
 
@@ -68,9 +70,9 @@
 | ID | 単位 | 状態 |
 |---|---|---|
 | DBL-1 | リングバッファ遅延線と Hermite 補間 | ✅ `a84779d` |
-| DBL-2 | 回転タップピッチシフタ（**ゲート**の耳確認は `DBL-4` 待ち） | ✅ `f2501d6` ❓ |
+| DBL-2 | 回転タップピッチシフタ（**ゲート通過**） | ✅ `f2501d6` |
 | DBL-3 | ボイスエンジン（形状表・実効値・パン則・ゲイン補償） | ✅ `3aec7af` |
-| DBL-4 | nih-plug ラッパと配線（**ここで音が出る**。UI 無し） | 🟡 |
+| DBL-4 | nih-plug ラッパと配線（**ここで音が出る**。UI 無し） | ✅ `556c5a0` |
 | DBL-5 | Humanize | 🟡 |
 | DBL-6 | Source モード（Mono Sum / True Stereo） | 🟡 |
 | DBL-7 | Tone と Tone Spread | 🟡 |
