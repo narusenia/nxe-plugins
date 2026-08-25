@@ -5,5 +5,8 @@
 //!
 //! The algorithm is specified in `plugins/doubler/docs/specifications/dsp.md`
 //! and built in units `DBL-1` onward
-//! (`plugins/doubler/docs/implementation/doubler-plan.md`). Nothing is
-//! implemented yet.
+//! (`plugins/doubler/docs/implementation/doubler-plan.md`).
+
+mod delay;
+
+pub use delay::DelayLine;
