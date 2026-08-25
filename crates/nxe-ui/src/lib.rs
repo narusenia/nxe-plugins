@@ -7,6 +7,7 @@
 //! The widgets land in `UI-4` onward
 //! (`docs/implementation/nxe-ui-plan.md`); the theme is here.
 
+pub mod bar;
 pub mod icon;
 pub mod input;
 pub mod knob;
