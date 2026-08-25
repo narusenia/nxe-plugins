@@ -80,5 +80,6 @@
 | DBL-10 | UI Voice Field | ⬜ DBL-9, DBL-5, DBL-6, UI-7 |
 | DBL-11 | UI Detail 層（ボイス表） | ⬜ DBL-10, UI-5 |
 | DBL-14 | UI Filter View | ⬜ DBL-9, UI-10 |
+| DBL-15 | UI ミラー編集（`REQ-DBL-014`） | ⬜ DBL-10, DBL-11 |
 | DBL-12 | CPU 予算の確認（criterion） | ⬜ DBL-8 |
 | DBL-13 | 既定値の詰めと実機確認 | ⬜ DBL-12, DBL-11 |
