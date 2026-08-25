@@ -106,7 +106,7 @@ fn icons(cx: &mut Context) {
                 (icon::ROTATE_CCW, "rotate-ccw"),
             ] {
                 VStack::new(cx, |cx| {
-                    Label::new(cx, glyph).class("icon").font_size(24.0);
+                    icon::label(cx, glyph).font_size(24.0);
                     Label::new(cx, name).class("subtle");
                 })
                 .width(Auto)
@@ -122,10 +122,9 @@ fn icons(cx: &mut Context) {
         // Size and colour are `font-size` and `color`, like any other text.
         HStack::new(cx, |cx| {
             for size in [12.0, 16.0, 20.0, 28.0] {
-                Label::new(cx, icon::WAVES).class("icon").font_size(size);
+                icon::label(cx, icon::WAVES).font_size(size);
             }
-            Label::new(cx, icon::WAVES)
-                .class("icon")
+            icon::label(cx, icon::WAVES)
                 .font_size(28.0)
                 .color(theme::ACCENT.vizia());
         })

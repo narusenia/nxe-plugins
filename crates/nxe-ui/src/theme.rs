@@ -137,7 +137,6 @@ pub fn stylesheet() -> String {
     let subtle = SUBTLE.css();
     let accent = ACCENT.css();
     let accent_dim = ACCENT_DIM.css();
-    let icon_family = icon::FAMILY;
 
     format!(
         "
@@ -205,10 +204,9 @@ label {{
     font-size: {FONT_LABEL}px;
 }}
 
-/* An icon is a glyph in the Lucide family. Colour and size are `color` and
-   `font-size` like any other text. */
+/* Colour only. The family is set by `icon::label`, because `font-family` in a
+   stylesheet does not select the embedded font on this vizia revision. */
 .icon {{
-    font-family: {icon_family};
     color: {muted};
 }}
 

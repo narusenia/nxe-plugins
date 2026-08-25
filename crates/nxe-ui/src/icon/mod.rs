@@ -10,11 +10,20 @@
 //! drawn as a path in `View::draw`. That is a documented exception, not the
 //! default (`.agents/rules/vizia.md`).
 //!
-//! Reference an icon through its constant, never as a raw escape:
+//! Reference an icon through its constant and build it with [`label`], never
+//! as a raw escape and never by setting the family in CSS:
 //!
 //! ```ignore
-//! Label::new(cx, nxe_ui::icon::CHEVRON_DOWN).class("icon");
+//! icon::label(cx, icon::CHEVRON_DOWN).font_size(20.0);
 //! ```
+//!
+//! **`font-family` in a stylesheet does not select this font** on the vizia
+//! revision `nih_plug_vizia` pins. The declaration parses and the conversion to
+//! cosmic-text's family list looks correct on inspection, but the glyphs come
+//! out of a fallback face — which for private use codepoints means whatever CJK
+//! font the system reaches for, so the failure looks like garbage rather than
+//! like a missing font. Setting the family through the modifier works, so
+//! [`label`] does that and the `.icon` class carries only the colour.
 
 use vizia::prelude::*;
 
@@ -38,6 +47,17 @@ pub const FAMILY: &str = "lucide";
 /// already does.
 pub fn install(cx: &mut Context) {
     cx.add_font_mem(FONT);
+}
+
+/// A label in the icon font.
+///
+/// Size and colour are still `font-size` and `color` — only the family has to
+/// come from here (see the module docs). The `.icon` class gives the default
+/// muted colour; override it per call where an icon should be brighter.
+pub fn label<'a>(cx: &'a mut Context, glyph: &str) -> Handle<'a, Label> {
+    Label::new(cx, glyph)
+        .font_family(vec![FamilyOwned::Name(FAMILY.to_owned())])
+        .class("icon")
 }
 
 #[cfg(test)]
@@ -67,6 +87,24 @@ mod tests {
                 "{name} is {character:?}, outside the private use area"
             );
         }
+    }
+
+    /// The `.icon` class must not try to set the family: that path silently
+    /// renders fallback glyphs, and `label` is the reason it does not have to.
+    #[test]
+    fn the_icon_class_does_not_claim_to_set_the_family() {
+        let css = crate::theme::stylesheet();
+        let rule = css
+            .split_once(".icon {")
+            .expect("no .icon rule")
+            .1
+            .split_once('}')
+            .expect("unterminated .icon rule")
+            .0;
+        assert!(
+            !rule.contains("font-family"),
+            "the .icon rule sets font-family, which does not work here"
+        );
     }
 
     #[test]

@@ -33,6 +33,12 @@ paths:
 - Icons are Lucide glyphs from the embedded `lucide.ttf`, referenced through
   the generated constants (`nxe_ui::icon::CHEVRON_DOWN`), never as a raw escape
   in a view.
+- **Build them with `icon::label`, and never set `font-family` in CSS.** On the
+  vizia revision `nih_plug_vizia` pins, a stylesheet's `font-family` does not
+  select an embedded font; the glyphs come from a fallback face instead. Because
+  the codepoints are in the private use area, that failure renders as unrelated
+  CJK glyphs rather than as a blank or a missing-glyph box, so it is easy to
+  mistake for a broken font file. The family has to come from the modifier.
 - The generated constant module is generated, not edited. Regenerate it from
   Lucide's `font/info.json` when the font is updated.
 - Stroke width is not adjustable in the font. An icon that needs a variable
