@@ -1,0 +1,67 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/nxe-ui",
+    "plugins/doubler/doubler-core",
+    "plugins/doubler/doubler",
+    "xtask",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-only"
+repository = "https://github.com/narusenia/nxe-plugins"
+
+[workspace.dependencies]
+nxe-ui = { path = "crates/nxe-ui" }
+doubler-core = { path = "plugins/doubler/doubler-core" }
+
+# nih-plug is not on crates.io. All three crates come from one repository, so
+# they must stay on the same revision — `nih_plug_vizia` and `nih_plug_xtask`
+# depend on `nih_plug` by path, and a mismatch would put two copies of it in
+# the tree.
+#
+# `nih_plug`'s default features include `assert_process_allocs`, which panics
+# on a heap allocation inside `process()` in debug builds. That is exactly the
+# rule `.agents/rules/rust.md` states, enforced by the compiler rather than by
+# review — do not turn it off.
+nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git", rev = "f36931f7af4646065488a9845d8f8c2f95252c23" }
+nih_plug_vizia = { git = "https://github.com/robbert-vdh/nih-plug.git", rev = "f36931f7af4646065488a9845d8f8c2f95252c23" }
+nih_plug_xtask = { git = "https://github.com/robbert-vdh/nih-plug.git", rev = "f36931f7af4646065488a9845d8f8c2f95252c23" }
+
+# This MUST stay byte-identical to what `nih_plug_vizia` depends on
+# (Robbert's fork, tag `patched-2024-05-06`). Cargo treats a different git
+# source or revision as a *different crate*, so `nxe-ui`'s views would not be
+# the same type as the ones `nih_plug_vizia` accepts, and nothing would
+# compile. See `docs/specifications/architecture.md`.
+#
+# `winit` and `baseview` are MUTUALLY EXCLUSIVE. vizia re-exports
+# `Application` under `cfg(all(not(feature = "winit"), feature = "baseview"))`
+# and the mirror image for winit, so enabling both exports NEITHER and nothing
+# that uses `Application` compiles — including `nih_plug_vizia` itself.
+#
+# Cargo features are additive across the whole graph and cannot be turned off
+# per crate, and resolver v2 does not isolate a dev-dependency once a dev
+# target is being built. So there is exactly one workable answer:
+# **the whole workspace uses `baseview`, and `winit` is never enabled
+# anywhere.** `nxe-ui`'s gallery opens a standalone baseview window
+# (`Application::run`), which also means the gallery exercises the same
+# backend the plugin runs on.
+vizia = { git = "https://github.com/robbert-vdh/vizia.git", tag = "patched-2024-05-06", default-features = false, features = [
+    "baseview",
+    "clipboard",
+    "x11",
+] }
+
+[profile.release]
+lto = "thin"
+
+# An audio plugin built at opt-level 0 cannot keep up with a real-time thread,
+# so a debug build is useless in a DAW unless the DSP itself is optimized.
+# Scope the cost to the crates that do per-sample work.
+[profile.dev.package.doubler-core]
+opt-level = 2
+
+[profile.dev.package.doubler]
+opt-level = 2
