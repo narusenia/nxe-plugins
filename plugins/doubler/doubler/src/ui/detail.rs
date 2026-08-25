@@ -155,5 +155,5 @@ pub fn view(cx: &mut Context) {
     })
     .class("panel")
     .height(Auto)
-    .display(Ui::detail_open);
+    .display(Ui::tab.map(|tab| *tab == super::TAB_DETAIL));
 }

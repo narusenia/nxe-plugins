@@ -76,12 +76,12 @@ pub struct DoublerParams {
     #[persist = "editor-state"]
     pub editor_state: Arc<ViziaState>,
 
-    /// Whether the Detail table is open. Not a parameter: it does not affect
-    /// the sound and automating it would be meaningless (`REQ-DBL-008`). The
-    /// editor's model is what the display binds to; this is the copy that
-    /// survives closing the project.
-    #[persist = "detail-open"]
-    pub detail_open: Arc<AtomicBool>,
+    /// Whether the Detail tab is the one showing. Not a parameter: it does not
+    /// affect the sound and automating it would be meaningless
+    /// (`REQ-DBL-008`). The editor's model is what the display binds to; this
+    /// is the copy that survives closing the project.
+    #[persist = "detail-tab"]
+    pub detail_tab: Arc<AtomicBool>,
 
     #[id = "voices"]
     pub voices: EnumParam<VoicesParam>,
@@ -131,11 +131,9 @@ impl Default for DoublerParams {
     fn default() -> Self {
         let defaults = Macros::default();
 
-        let detail_open = Arc::new(AtomicBool::new(false));
-
         Self {
-            editor_state: crate::ui::default_state(detail_open.clone()),
-            detail_open,
+            editor_state: crate::ui::default_state(),
+            detail_tab: Arc::new(AtomicBool::new(false)),
 
             voices: EnumParam::new("Voices", VoicesParam::Four),
             source: EnumParam::new("Source", SourceParam::MonoSum),

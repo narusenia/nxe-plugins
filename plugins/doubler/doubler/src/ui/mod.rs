@@ -1,10 +1,13 @@
 //! The Doubler's editor.
 //!
-//! Layout follows `plugins/doubler/docs/specifications/ui.md`. This is the macro
-//! layer (`DBL-9`): the header, the four big knobs, tone, and the footer. The
-//! Voice Field (`DBL-10`), the Filter View (`DBL-14`) and the Detail table
-//! (`DBL-11`) land in their own units; their space is left framed but empty so
-//! the proportions are already right.
+//! Layout follows `plugins/doubler/docs/specifications/ui.md`.
+//!
+//! **The window never resizes.** Asking the host to resize on a disclosure
+//! toggle left the editor wedged in Ableton — the same layout works when the
+//! window is opened at either size, and the gallery, which has no host and no
+//! resize, is fine. So the sections are tabs inside one fixed window instead.
+//! That also removes a whole class of question: no host has to agree to
+//! anything for a control to become reachable.
 
 mod detail;
 mod field;
@@ -14,40 +17,35 @@ mod tone;
 use crate::params::DoublerParams;
 use nih_plug::prelude::Editor;
 use nih_plug_vizia::vizia::prelude::*;
-use nih_plug_vizia::widgets::GuiContextEvent;
 use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
-use nxe_ui::{font, icon, theme};
+use nxe_ui::segmented::SegmentedControl;
+use nxe_ui::{font, theme};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::Ordering;
 
-/// The two heights, closed and with the Detail table open.
-///
-/// Measured against the built layout rather than estimated: the numbers the
-/// specification started with were too small and cut the footer off. If a
-/// section changes height, these move with it — a window smaller than its
-/// contents makes controls unreachable, not just untidy.
+/// One size, tall enough for whichever tab needs the most room. Measured
+/// against the built layout rather than estimated.
 const WIDTH: u32 = 620;
-const HEIGHT_CLOSED: u32 = 584;
-const HEIGHT_OPEN: u32 = 930;
+const HEIGHT: u32 = 584;
 
-/// The size is a function of the plugin's own state, so reopening a project
-/// restores the height the Detail toggle left behind.
-pub fn default_state(detail_open: Arc<AtomicBool>) -> Arc<ViziaState> {
-    ViziaState::new(move || {
-        if detail_open.load(Ordering::Relaxed) {
-            (WIDTH, HEIGHT_OPEN)
-        } else {
-            (WIDTH, HEIGHT_CLOSED)
-        }
-    })
+/// How tall the swapped region is. Fixed, so the two tabs do not move the
+/// footer under the pointer when you switch.
+const TAB_HEIGHT: f32 = 386.0;
+
+pub fn default_state() -> Arc<ViziaState> {
+    ViziaState::new(|| (WIDTH, HEIGHT))
 }
+
+const TAB_MAIN: usize = 0;
+const TAB_DETAIL: usize = 1;
 
 #[derive(Lens)]
 pub(crate) struct Ui {
     params: Arc<DoublerParams>,
-    /// The reactive copy of `params.detail_open`. An `AtomicBool` cannot be
-    /// observed by a lens, so the display binds to this and the atomic follows.
-    detail_open: bool,
+    /// Which tab is showing. The reactive copy of `params.detail_tab`: an
+    /// `AtomicBool` cannot be observed by a lens, so the display binds to this
+    /// and the atomic follows it for persistence.
+    tab: usize,
     /// Which voice the pointer is over in the Voice Field, so the matching row
     /// can be highlighted. This is what stands in for numbering the dots
     /// (`plugins/doubler/docs/specifications/ui.md`).
@@ -55,20 +53,18 @@ pub(crate) struct Ui {
 }
 
 pub(crate) enum UiEvent {
-    ToggleDetail,
+    SelectTab(usize),
     Hover(Option<usize>),
 }
 
 impl Model for Ui {
-    fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
+    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
         event.map(|ui_event: &UiEvent, _| match ui_event {
-            UiEvent::ToggleDetail => {
-                self.detail_open = !self.detail_open;
+            UiEvent::SelectTab(tab) => {
+                self.tab = *tab;
                 self.params
-                    .detail_open
-                    .store(self.detail_open, Ordering::Relaxed);
-                // Re-asks the size function, which now answers differently.
-                cx.emit(GuiContextEvent::Resize);
+                    .detail_tab
+                    .store(*tab == TAB_DETAIL, Ordering::Relaxed);
             }
             UiEvent::Hover(index) => self.hovered = *index,
         });
@@ -82,7 +78,11 @@ pub fn create(params: Arc<DoublerParams>, state: Arc<ViziaState>) -> Option<Box<
         theme::install(cx);
 
         Ui {
-            detail_open: params.detail_open.load(Ordering::Relaxed),
+            tab: if params.detail_tab.load(Ordering::Relaxed) {
+                TAB_DETAIL
+            } else {
+                TAB_MAIN
+            },
             hovered: None,
             params: params.clone(),
         }
@@ -90,11 +90,18 @@ pub fn create(params: Arc<DoublerParams>, state: Arc<ViziaState>) -> Option<Box<
 
         VStack::new(cx, |cx| {
             header(cx);
-            field::view(cx);
-            macros(cx);
-            tone::view(cx);
+
+            // Both tabs are built and one is hidden. Rebuilding on every switch
+            // would drop the widgets' own state — a drag in progress, a hover —
+            // for nothing.
+            VStack::new(cx, |cx| {
+                main_tab(cx);
+                detail::view(cx);
+            })
+            .height(Pixels(TAB_HEIGHT))
+            .width(Stretch(1.0));
+
             footer(cx);
-            detail::view(cx);
         })
         .class("root")
         .child_space(Pixels(theme::SPACE_3))
@@ -103,20 +110,47 @@ pub fn create(params: Arc<DoublerParams>, state: Arc<ViziaState>) -> Option<Box<
 }
 
 fn header(cx: &mut Context) {
-    HStack::new(cx, |cx| {
-        Label::new(cx, "DOUBLER").class("value");
-        Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
-        param_bind::segmented(cx, Ui::params, |params| &params.voices, &["2", "4", "8"]);
-        param_bind::segmented(
-            cx,
-            Ui::params,
-            |params| &params.source,
-            &["Mono Sum", "True Stereo"],
-        );
+    VStack::new(cx, |cx| {
+        HStack::new(cx, |cx| {
+            Label::new(cx, "DOUBLER").class("value");
+            Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
+            param_bind::segmented(cx, Ui::params, |params| &params.voices, &["2", "4", "8"]);
+            param_bind::segmented(
+                cx,
+                Ui::params,
+                |params| &params.source,
+                &["Mono Sum", "True Stereo"],
+            );
+        })
+        .class("row")
+        .height(Auto);
+
+        // The tab strip is a segmented control: exactly the same "one of these"
+        // choice as `Voices`, so it is the same widget rather than a new one.
+        HStack::new(cx, |cx| {
+            SegmentedControl::new(cx, Ui::tab, &["MAIN", "DETAIL"], |cx, tab| {
+                cx.emit(UiEvent::SelectTab(tab));
+            });
+        })
+        .class("row")
+        .height(Auto);
     })
-    .class("row")
-    .height(Auto);
+    .height(Auto)
+    .row_between(Pixels(theme::SPACE_2));
 }
+
+fn main_tab(cx: &mut Context) {
+    VStack::new(cx, |cx| {
+        field::view(cx);
+        macros(cx);
+        tone::view(cx);
+    })
+    .height(Auto)
+    .width(Stretch(1.0))
+    .row_between(Pixels(theme::SPACE_3))
+    .display(Ui::tab.map(|tab| *tab == TAB_MAIN));
+}
+
 /// One labelled knob with its value underneath, which is the shape every macro
 /// control takes.
 pub(crate) fn macro_knob<P, F>(cx: &mut Context, label: &'static str, to_param: F, size: f32)
@@ -153,30 +187,12 @@ fn macros(cx: &mut Context) {
     .class("row")
     .height(Auto);
 }
+
+/// `Mix` and `Output` apply to everything, so they stay put rather than hiding
+/// behind a tab.
 fn footer(cx: &mut Context) {
     HStack::new(cx, |cx| {
-        HStack::new(cx, |cx| {
-            // A mapped lens rather than `Handle::bind` with an imperative
-            // `text()` call: the glyph is a function of the state, so it should
-            // be expressed as one.
-            icon::label(
-                cx,
-                Ui::detail_open.map(|open| {
-                    if *open {
-                        icon::CHEVRON_UP
-                    } else {
-                        icon::CHEVRON_DOWN
-                    }
-                }),
-            )
-            .class("decoration");
-            Label::new(cx, "DETAIL").class("label").class("decoration");
-        })
-        .class("hoverable")
-        .width(Pixels(96.0))
-        .height(Pixels(22.0))
-        .col_between(Pixels(theme::SPACE_1))
-        .on_press(|cx| cx.emit(UiEvent::ToggleDetail));
+        Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
         macro_knob(cx, "MIX", |params| &params.mix, 34.0);
         macro_knob(cx, "OUTPUT", |params| &params.output, 34.0);
     })
