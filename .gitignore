@@ -1,0 +1,7 @@
+/target
+/target-claude
+**/*.rs.bk
+.DS_Store
+
+# `cargo xtask bundle` output
+/bundled
