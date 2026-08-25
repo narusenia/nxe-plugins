@@ -9,7 +9,7 @@
 //!
 //! Run it with `mise run gallery`.
 
-use nxe_ui::theme;
+use nxe_ui::{icon, theme};
 use vizia::prelude::*;
 
 fn main() {
@@ -24,6 +24,7 @@ fn main() {
                 Label::new(cx, "tokens and widgets").class("subtle");
 
                 colours(cx);
+                icons(cx);
                 shapes(cx);
                 spacing(cx);
                 text(cx);
@@ -90,6 +91,48 @@ fn colours(cx: &mut Context) {
         })
         .class("row")
         .height(Auto);
+    });
+}
+
+fn icons(cx: &mut Context) {
+    panel(cx, "ICONS", |cx| {
+        // The ones the Doubler UI actually uses. Anything added to a plugin
+        // gets a row here in the same change (`.agents/rules/vizia.md`).
+        HStack::new(cx, |cx| {
+            for (glyph, name) in [
+                (icon::CHEVRON_DOWN, "chevron-down"),
+                (icon::CHEVRON_UP, "chevron-up"),
+                (icon::SLIDERS_HORIZONTAL, "sliders-horizontal"),
+                (icon::ROTATE_CCW, "rotate-ccw"),
+            ] {
+                VStack::new(cx, |cx| {
+                    Label::new(cx, glyph).class("icon").font_size(24.0);
+                    Label::new(cx, name).class("subtle");
+                })
+                .width(Auto)
+                .height(Auto)
+                .row_between(Pixels(theme::SPACE_1));
+            }
+        })
+        .class("row")
+        .height(Auto);
+
+        Element::new(cx).class("divider");
+
+        // Size and colour are `font-size` and `color`, like any other text.
+        HStack::new(cx, |cx| {
+            for size in [12.0, 16.0, 20.0, 28.0] {
+                Label::new(cx, icon::WAVES).class("icon").font_size(size);
+            }
+            Label::new(cx, icon::WAVES)
+                .class("icon")
+                .font_size(28.0)
+                .color(theme::ACCENT.vizia());
+        })
+        .class("row")
+        .height(Auto);
+
+        Label::new(cx, "2035 icons; stroke width is fixed by the font").class("subtle");
     });
 }
 

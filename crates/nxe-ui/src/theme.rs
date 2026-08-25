@@ -10,6 +10,7 @@
 //! `plugins/doubler/docs/specifications/ui.md`: neutral surfaces in a few
 //! steps, one accent, one-pixel borders, no shadows, depth from contrast.
 
+use crate::icon;
 use vizia::prelude::*;
 use vizia::vg;
 
@@ -136,6 +137,7 @@ pub fn stylesheet() -> String {
     let subtle = SUBTLE.css();
     let accent = ACCENT.css();
     let accent_dim = ACCENT_DIM.css();
+    let icon_family = icon::FAMILY;
 
     format!(
         "
@@ -203,6 +205,13 @@ label {{
     font-size: {FONT_LABEL}px;
 }}
 
+/* An icon is a glyph in the Lucide family. Colour and size are `color` and
+   `font-size` like any other text. */
+.icon {{
+    font-family: {icon_family};
+    color: {muted};
+}}
+
 /* Disabled controls lose contrast rather than colour: the accent stays the
    only hue in the window. */
 .disabled {{
@@ -237,8 +246,10 @@ label {{
     )
 }
 
-/// Installs the stylesheet. Call once when the window is built.
+/// Installs the stylesheet and the icon font. Call once when the window is
+/// built.
 pub fn install(cx: &mut Context) {
+    icon::install(cx);
     cx.add_stylesheet(CSS::String(stylesheet()))
         .expect("the generated stylesheet is built from constants and cannot fail to parse");
 }
@@ -315,6 +326,7 @@ mod tests {
             ".value",
             ".subtle",
             ".disabled",
+            ".icon",
             ".track",
             ".accent",
             ".hoverable",
