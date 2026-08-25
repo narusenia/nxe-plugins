@@ -98,9 +98,16 @@ pub const ACCENT: Token = Token::rgb(0x38, 0xBD, 0xF8);
 pub const ACCENT_BRIGHT: Token = Token::rgb(0x7D, 0xD3, 0xFC);
 pub const ACCENT_DIM: Token = Token::rgba(0x38, 0xBD, 0xF8, 0.18);
 
-/// Corner radii. Three steps and no more: controls, surfaces, and round.
-pub const RADIUS_CONTROL: f32 = 6.0;
-pub const RADIUS_CARD: f32 = 10.0;
+/// Corner radii. Deliberately small: the design is angular, and the corners are
+/// there to stop a one-pixel border from looking chipped, not to soften
+/// anything. Set both to zero for hard corners — nothing else has to change.
+pub const RADIUS_CONTROL: f32 = 2.0;
+pub const RADIUS_CARD: f32 = 3.0;
+
+// Guards, not tests: someone reaching for a comfortable radius later should be
+// stopped by the compiler rather than by a test they might not run.
+const _: () = assert!(RADIUS_CONTROL <= 3.0, "controls are getting round");
+const _: () = assert!(RADIUS_CARD <= 4.0, "surfaces are getting round");
 
 /// The spacing scale. Five steps on a four-pixel grid; nothing between them.
 pub const SPACE_1: f32 = 4.0;
@@ -132,6 +139,14 @@ pub fn stylesheet() -> String {
 
     format!(
         "
+/* An element selector, not a class: vizia's default text colour is black, so
+   every label without a class would come out unreadable on a dark surface.
+   The classes below then only have to say what is *different*. */
+label {{
+    color: {foreground};
+    font-size: {FONT_VALUE}px;
+}}
+
 .root {{
     background-color: {background};
     child-space: {SPACE_5}px;
@@ -205,6 +220,7 @@ pub fn stylesheet() -> String {
 }}
 
 .hoverable {{
+    color: {foreground};
     background-color: {elevated};
     border-width: 1px;
     border-color: {border};
@@ -268,6 +284,21 @@ mod tests {
                 "{name} is tinted: {token:?}"
             );
         }
+    }
+
+    /// Without a base rule on `label`, vizia paints text black and anything
+    /// that forgot a class disappears into the background.
+    #[test]
+    fn labels_have_a_default_colour() {
+        let css = stylesheet();
+        let base = css
+            .split_once("label {")
+            .expect("no base rule for labels")
+            .1;
+        assert!(
+            base.starts_with(&format!("\n    color: {}", FOREGROUND.css())),
+            "the base label rule does not set a colour"
+        );
     }
 
     #[test]

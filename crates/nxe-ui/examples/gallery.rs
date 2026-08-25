@@ -97,9 +97,9 @@ fn shapes(cx: &mut Context) {
     panel(cx, "RADII", |cx| {
         HStack::new(cx, |cx| {
             for (name, radius) in [
-                ("control 6", theme::RADIUS_CONTROL),
-                ("card 10", theme::RADIUS_CARD),
-                ("round", 20.0),
+                ("control 2", theme::RADIUS_CONTROL),
+                ("card 3", theme::RADIUS_CARD),
+                ("round (dots only)", 20.0),
             ] {
                 VStack::new(cx, |cx| {
                     Element::new(cx)
@@ -135,7 +135,7 @@ fn spacing(cx: &mut Context) {
                     Element::new(cx)
                         .size(Pixels(16.0))
                         .background_color(theme::ACCENT.vizia())
-                        .border_radius(Pixels(2.0));
+                        .border_radius(Pixels(theme::RADIUS_CONTROL));
                 }
             })
             .col_between(Pixels(gap))
