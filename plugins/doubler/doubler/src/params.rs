@@ -15,6 +15,8 @@
 
 use doubler_core::{DEFAULT_SHAPE, MAX_VOICES, Macros, Source, VoiceShape, Voices};
 use nih_plug::prelude::*;
+use nih_plug_vizia::ViziaState;
+use std::sync::Arc;
 
 /// How many voices are live.
 ///
@@ -68,6 +70,11 @@ impl From<SourceParam> for Source {
 
 #[derive(Params)]
 pub struct DoublerParams {
+    /// The editor's size and, later, whether the Detail table is open. Persisted
+    /// with the parameters so a project reopens looking the way it was left.
+    #[persist = "editor-state"]
+    pub editor_state: Arc<ViziaState>,
+
     #[id = "voices"]
     pub voices: EnumParam<VoicesParam>,
     #[id = "source"]
@@ -117,6 +124,8 @@ impl Default for DoublerParams {
         let defaults = Macros::default();
 
         Self {
+            editor_state: crate::ui::default_state(),
+
             voices: EnumParam::new("Voices", VoicesParam::Four),
             source: EnumParam::new("Source", SourceParam::MonoSum),
 

@@ -1,15 +1,14 @@
 //! The NXE Doubler nih-plug wrapper: parameter declarations, and the wiring
 //! between them and `doubler_core`.
 //!
-//! No DSP lives here (`.agents/rules/rust.md`). The UI arrives in `DBL-9`; for
-//! now a host draws its own generic controls, which is enough to judge the
-//! sound (`docs/implementation/roadmap.md`, phase 1).
+//! No DSP lives here (`.agents/rules/rust.md`).
 
 use doubler_core::VoiceEngine;
 use nih_plug::prelude::*;
 use std::sync::Arc;
 
 mod params;
+mod ui;
 
 use params::DoublerParams;
 
@@ -66,6 +65,10 @@ impl Plugin for Doubler {
 
     fn params(&self) -> Arc<dyn Params> {
         self.params.clone()
+    }
+
+    fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
+        ui::create(self.params.clone(), self.params.editor_state.clone())
     }
 
     /// The only place that allocates. Every buffer the audio thread touches is
