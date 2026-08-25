@@ -40,6 +40,18 @@ Important references:
 - `docs/implementation/backlog.md` — every implementation unit on one page
 - `docs/implementation/roadmap.md` — the order and why it is that order
 
+## Naming
+
+Plugins ship as **`NXE <name>`** — `NXE Doubler`, and so on for everything that
+follows. That string is the plugin's `NAME`, its bundle name in `bundler.toml`,
+and how it appears in a host's plugin list. The **crate** keeps the bare name
+(`doubler`, `doubler-core`) so paths stay short, and the documents use the bare
+name as shorthand.
+
+The vendor is `NXE`. CLAP ids are `com.nxe.<name>`. **A shipped `CLAP_ID` or
+`VST3_CLASS_ID` must never change** — a host stores it in the project file, so
+changing it silently breaks every session that used the plugin.
+
 ## Licensing
 
 The repository is **GPL-3.0**. This is not a preference: nih-plug's VST3 wrapper

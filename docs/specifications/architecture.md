@@ -127,7 +127,8 @@ Windows・Linux でバンドルし、プラットフォームごとの zip を G
 
 1. `plugins/<name>/` に `<name>-core` と `<name>` の 2 クレートを作り、
    ワークスペースの `members` に追加する
-2. ワークスペース直下の `bundler.toml` に `[<パッケージ名>] name = "表示名"` を足す
+2. ワークスペース直下の `bundler.toml` に `[<パッケージ名>] name = "NXE <名前>"` を足す
+   （表示名の規約は `AGENTS.md`。クレート名は接頭辞なしの素の名前）
 3. `plugins/<name>/docs/requirements/REQ-<PREFIX>.md` を書く。ID は
    `REQ-<PREFIX>-<番号>`（Doubler は `DBL`）。要件が無い実装は始めない
 4. DSP と UI の仕様を `plugins/<name>/docs/specifications/` に書く

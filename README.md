@@ -12,7 +12,7 @@ and **VST3**.
 
 | Plugin | What it is | Status |
 |---|---|---|
-| [Doubler](plugins/doubler/docs/requirements/REQ-DBL.md) | Multi-voice doubler — 2/4/8 detuned, delayed, humanized voices from one source | Design |
+| [NXE Doubler](plugins/doubler/docs/requirements/REQ-DBL.md) | Multi-voice doubler — 2/4/8 detuned, delayed, humanized voices from one source | Design |
 
 ## Formats
 
@@ -49,7 +49,7 @@ Releases attach a zip per platform. Unpack it and copy the bundles into:
 Gatekeeper will refuse it. Clear the quarantine attribute:
 
 ```bash
-xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/CLAP/Doubler.clap
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/CLAP/'NXE Doubler.clap'
 ```
 
 ## License

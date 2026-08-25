@@ -18,8 +18,8 @@ struct Doubler {
 struct DoublerParams {}
 
 impl Plugin for Doubler {
-    const NAME: &'static str = "Doubler";
-    const VENDOR: &'static str = "nxeu";
+    const NAME: &'static str = "NXE Doubler";
+    const VENDOR: &'static str = "NXE";
     const URL: &'static str = "https://github.com/narusenia/nxe-plugins";
     const EMAIL: &'static str = "";
     const VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -48,7 +48,7 @@ impl Plugin for Doubler {
 }
 
 impl ClapPlugin for Doubler {
-    const CLAP_ID: &'static str = "com.nxeu.doubler";
+    const CLAP_ID: &'static str = "com.nxe.doubler";
     const CLAP_DESCRIPTION: Option<&'static str> = Some("Multi-voice doubler");
     const CLAP_MANUAL_URL: Option<&'static str> = Some(Self::URL);
     const CLAP_SUPPORT_URL: Option<&'static str> = None;
@@ -60,7 +60,7 @@ impl ClapPlugin for Doubler {
 }
 
 impl Vst3Plugin for Doubler {
-    const VST3_CLASS_ID: [u8; 16] = *b"nxeuDoubler.....";
+    const VST3_CLASS_ID: [u8; 16] = *b"NXEDoubler......";
     const VST3_SUBCATEGORIES: &'static [Vst3SubCategory] =
         &[Vst3SubCategory::Fx, Vst3SubCategory::Modulation];
 }

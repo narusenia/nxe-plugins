@@ -1,4 +1,7 @@
 # Display names for `cargo xtask bundle`. The bundler reads this from the
 # workspace root, keyed by package name.
+#
+# Every plugin ships as `NXE <name>` (`AGENTS.md`). The crate keeps the bare
+# name so paths stay short.
 [doubler]
-name = "Doubler"
+name = "NXE Doubler"
