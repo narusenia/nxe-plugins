@@ -51,6 +51,10 @@ cp -R target/bundled/*.vst3 ~/Library/Audio/Plug-Ins/VST3/
 echo "installed into ~/Library/Audio/Plug-Ins"
 '''
 
+[tasks."icons:generate"]
+description = "Regenerate the Lucide icon constants from the font's metadata"
+run = "python3 scripts/generate-icons.py"
+
 [tasks."hooks:install"]
 description = "Install lefthook git hooks"
 run = "lefthook install"
