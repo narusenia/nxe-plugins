@@ -53,6 +53,8 @@ pub struct DoublerParams {
     pub delay: FloatParam,
     #[id = "spread"]
     pub spread: FloatParam,
+    #[id = "human"]
+    pub humanize: FloatParam,
     #[id = "mix"]
     pub mix: FloatParam,
     #[id = "output"]
@@ -115,6 +117,16 @@ impl Default for DoublerParams {
             spread: FloatParam::new(
                 "Spread",
                 defaults.spread,
+                FloatRange::Linear { min: 0.0, max: 1.0 },
+            )
+            .with_unit(" %")
+            .with_smoother(SmoothingStyle::Linear(20.0))
+            .with_value_to_string(formatters::v2s_f32_percentage(0))
+            .with_string_to_value(formatters::s2v_f32_percentage()),
+
+            humanize: FloatParam::new(
+                "Humanize",
+                defaults.humanize,
                 FloatRange::Linear { min: 0.0, max: 1.0 },
             )
             .with_unit(" %")
@@ -206,6 +218,7 @@ impl DoublerParams {
             detune: self.detune.smoothed.next(),
             delay: self.delay.smoothed.next(),
             spread: self.spread.smoothed.next(),
+            humanize: self.humanize.smoothed.next(),
         }
     }
 
