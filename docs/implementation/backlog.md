@@ -28,7 +28,6 @@
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| UI-7 | `PolarField` | `nxe-ui-plan.md` |
 | UI-10 | `CurveView` | `nxe-ui-plan.md` |
 | UI-8 / UI-9 | `Meter` / `ToggleSwitch`（Doubler は使わない。フェーズ 5） | `nxe-ui-plan.md` |
 | INFRA-2 | プルリクエストの CI（フェーズ 4） | `infra-plan.md` |
@@ -60,7 +59,7 @@
 | UI-4 | `Knob`（大小 2 サイズ） | ✅ |
 | UI-5 | `Bar` | ✅ |
 | UI-6 | `SegmentedControl` | ✅ ❓ キーボード未 |
-| UI-7 | `PolarField`（領域知識を持たない極座標フィールド） | 🟡 |
+| UI-7 | `PolarField`（領域知識を持たない極座標フィールド） | ✅ |
 | UI-10 | `CurveView`（領域知識を持たない対数軸の曲線表示） | 🟡 |
 | UI-8 | `Meter` — **Doubler は使わない** | 🟡 |
 | UI-9 | `ToggleSwitch` — **Doubler は使わない** | 🟡 |
