@@ -10,6 +10,7 @@
 //! `plugins/doubler/docs/specifications/ui.md`: neutral surfaces in a few
 //! steps, one accent, one-pixel borders, no shadows, depth from contrast.
 
+use crate::font;
 use crate::icon;
 use vizia::prelude::*;
 use vizia::vg;
@@ -278,9 +279,10 @@ label {{
     )
 }
 
-/// Installs the stylesheet and the icon font. Call once when the window is
-/// built.
+/// Installs the typeface, the icon font and the stylesheet. Call once when the
+/// window is built.
 pub fn install(cx: &mut Context) {
+    font::install(cx);
     icon::install(cx);
     cx.add_stylesheet(CSS::String(stylesheet()))
         .expect("the generated stylesheet is built from constants and cannot fail to parse");

@@ -9,6 +9,7 @@
 
 pub mod bar;
 pub mod curve;
+pub mod font;
 pub mod icon;
 pub mod input;
 pub mod knob;
