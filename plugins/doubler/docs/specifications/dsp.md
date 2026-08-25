@@ -231,13 +231,17 @@ RBJ のシェルビング係数で biquad 各 1 段。チャネルごとに独�
 ### Tone Spread
 
 ボイスごとに 1 次の HPF と LPF を挿し、カットオフをボイスごとに散らす。
-散らし方は固定シード（ボイス index 由来）なので再現可能。
 
 ```
-u_i, v_i    = uniform(−1, +1)、ボイス index からのシードで固定
+(u_i, v_i)  = 固定表 SPREAD_OFFSETS[i]
 HPF cutoff  = 20 Hz  × 2^(u_i × Spread × 3.5)     →  Spread=1 で 1.8 – 226 Hz
 LPF cutoff  = 20 kHz / 2^(|v_i| × Spread × 2.5)   →  Spread=1 で 3.5 – 20 kHz
 ```
+
+**散らし方は乱数ではなく固定表。** 形状表と同じ理由で、**どの先頭 N 個でも
+散っている**必要がある。シード付きの乱数はボイス 0 と 1 を両方 0 付近に置くことが
+あり、そうなると 2 ボイスモードで Tone Spread がほぼ効かない。表にすることで
+生成器もシードも要らなくなる。
 
 `Tone Spread` = 0 のとき HPF は 20 Hz、LPF は 20 kHz で実質的に透明になるが、
 **係数を計算せずフィルタごと迂回する**。「0 のとき音が変わらない」を、
@@ -283,7 +287,7 @@ wet_gain = 1 / sqrt( Σ_{i<N} g_i² )      g_i = dB→linear(Gain_i)
 - Humanize の深さ係数 8 cent / 3 ms
 - True Stereo のパン係数 0.5 / 0.3 / 0.2
 - `Source` 切り替えのクロスフェード 20 ms
-- Tone Spread の散らし幅 3.5 / 2.5 オクターブ
+- Tone Spread の散らし幅 3.5 / 2.5 オクターブ、および `SPREAD_OFFSETS` の表
 - Tone のシェルフ周波数 200 Hz / 4 kHz
 - 既定の形状表（上記）
 

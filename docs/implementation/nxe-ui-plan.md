@@ -29,6 +29,7 @@ Label / Divider / Disclosure は CSS のクラスと Vizia 組み込みの `Butt
 | `Bar` | UI-5 | Doubler の Detail 表 |
 | `SegmentedControl` | UI-6 | Doubler の `Voices` / `Source` |
 | `PolarField` | UI-7 | Doubler の Voice Field |
+| `CurveView` | UI-10 | Doubler の Filter View |
 | `Meter` | UI-8 | まだ誰も使わない（下記） |
 | `ToggleSwitch` | UI-9 | まだ誰も使わない（下記） |
 
@@ -125,6 +126,22 @@ Label / Divider / Disclosure は CSS のクラスと Vizia 組み込みの `Butt
 
 - **完了条件**: gallery で 8 点を任意に動かせる。基準点 1 個／2 個の両方が
   描ける。点の値を外から変えると表示が追随する
+- **依存**: UI-3
+
+### UI-10 — CurveView
+
+対数横軸の曲線表示。**領域知識を持たない** — 折れ線の集合、帯の区間（開始と
+終了の x）、目盛りのラベル、縦ドラッグ可能なハンドルの x 位置と値しか知らない。
+
+- 対数の横軸と目盛り、0 の基準線を描く
+- 折れ線を任意本数描く
+- 帯（`x` の区間 + 濃度）を折れ線の背後に描く
+- ハンドルを縦ドラッグすると値を通知する。`Shift` で微調整、ダブルクリックで
+  リセットを通知、ドラッグの開始と終了も通知する
+
+- **完了条件**: gallery で 2 本の折れ線と数本の帯が描け、ハンドルを縦に
+  動かせる。値を外から変えると表示が追随する。横軸が対数として正しい
+  （目盛りの間隔が桁で等しい）
 - **依存**: UI-3
 
 ### UI-8 — Meter

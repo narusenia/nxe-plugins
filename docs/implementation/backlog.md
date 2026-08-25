@@ -28,7 +28,7 @@
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| DBL-7 | Tone と Tone Spread | `doubler-plan.md` |
+| DBL-8 | スムージングとサンプルレート／ブロックサイズ非依存の詰め | `doubler-plan.md` |
 | UI-1 | テーマトークンと gallery の中身 | `nxe-ui-plan.md` |
 | INFRA-2 | プルリクエストの CI | `infra-plan.md` |
 
@@ -60,6 +60,7 @@
 | UI-5 | `Bar` | ⬜ UI-3 |
 | UI-6 | `SegmentedControl` | ⬜ UI-1 |
 | UI-7 | `PolarField`（領域知識を持たない極座標フィールド） | ⬜ UI-3 |
+| UI-10 | `CurveView`（領域知識を持たない対数軸の曲線表示） | ⬜ UI-3 |
 | UI-8 | `Meter` — **Doubler は使わない** | ⬜ UI-1 |
 | UI-9 | `ToggleSwitch` — **Doubler は使わない** | ⬜ UI-1 |
 
@@ -73,10 +74,11 @@
 | DBL-4 | nih-plug ラッパと配線（**ここで音が出る**。UI 無し） | ✅ `556c5a0` |
 | DBL-5 | Humanize | ✅ |
 | DBL-6 | Source モード（Mono Sum / True Stereo） | ✅ |
-| DBL-7 | Tone と Tone Spread | 🟡 |
-| DBL-8 | スムージングとサンプルレート／ブロックサイズ非依存の詰め | ⬜ DBL-5, DBL-6, DBL-7 |
+| DBL-7 | Tone と Tone Spread | ✅ |
+| DBL-8 | スムージングとサンプルレート／ブロックサイズ非依存の詰め | 🟡 |
 | DBL-9 | UI マクロ層（ノブとセグメント） | ⬜ DBL-4, UI-4, UI-6, UI-2 |
 | DBL-10 | UI Voice Field | ⬜ DBL-9, DBL-5, DBL-6, UI-7 |
 | DBL-11 | UI Detail 層（ボイス表） | ⬜ DBL-10, UI-5 |
+| DBL-14 | UI Filter View | ⬜ DBL-9, UI-10 |
 | DBL-12 | CPU 予算の確認（criterion） | ⬜ DBL-8 |
 | DBL-13 | 既定値の詰めと実機確認 | ⬜ DBL-12, DBL-11 |
