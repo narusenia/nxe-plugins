@@ -80,6 +80,12 @@ pub struct DoublerParams {
     pub spread: FloatParam,
     #[id = "human"]
     pub humanize: FloatParam,
+    #[id = "tonelo"]
+    pub tone_lo: FloatParam,
+    #[id = "tonehi"]
+    pub tone_hi: FloatParam,
+    #[id = "tonespr"]
+    pub tone_spread: FloatParam,
     #[id = "mix"]
     pub mix: FloatParam,
     #[id = "output"]
@@ -153,6 +159,40 @@ impl Default for DoublerParams {
             humanize: FloatParam::new(
                 "Humanize",
                 defaults.humanize,
+                FloatRange::Linear { min: 0.0, max: 1.0 },
+            )
+            .with_unit(" %")
+            .with_smoother(SmoothingStyle::Linear(20.0))
+            .with_value_to_string(formatters::v2s_f32_percentage(0))
+            .with_string_to_value(formatters::s2v_f32_percentage()),
+
+            tone_lo: FloatParam::new(
+                "Tone Lo",
+                defaults.tone_lo,
+                FloatRange::Linear {
+                    min: -12.0,
+                    max: 12.0,
+                },
+            )
+            .with_unit(" dB")
+            .with_smoother(SmoothingStyle::Linear(20.0))
+            .with_value_to_string(formatters::v2s_f32_rounded(1)),
+
+            tone_hi: FloatParam::new(
+                "Tone Hi",
+                defaults.tone_hi,
+                FloatRange::Linear {
+                    min: -12.0,
+                    max: 12.0,
+                },
+            )
+            .with_unit(" dB")
+            .with_smoother(SmoothingStyle::Linear(20.0))
+            .with_value_to_string(formatters::v2s_f32_rounded(1)),
+
+            tone_spread: FloatParam::new(
+                "Tone Spread",
+                defaults.tone_spread,
                 FloatRange::Linear { min: 0.0, max: 1.0 },
             )
             .with_unit(" %")
@@ -246,6 +286,9 @@ impl DoublerParams {
             delay: self.delay.smoothed.next(),
             spread: self.spread.smoothed.next(),
             humanize: self.humanize.smoothed.next(),
+            tone_lo: self.tone_lo.smoothed.next(),
+            tone_hi: self.tone_hi.smoothed.next(),
+            tone_spread: self.tone_spread.smoothed.next(),
         }
     }
 
