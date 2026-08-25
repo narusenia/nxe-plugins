@@ -8,6 +8,7 @@
 //! (`docs/implementation/nxe-ui-plan.md`); the theme is here.
 
 pub mod bar;
+pub mod curve;
 pub mod icon;
 pub mod input;
 pub mod knob;

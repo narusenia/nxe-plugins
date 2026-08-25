@@ -1,0 +1,284 @@
+//! A curve display with vertically draggable handles.
+//!
+//! **Knows nothing about frequency, decibels, or logarithms.** Everything comes
+//! in normalized: `x` runs `0`..`1` across the view, `y` runs `0`..`1` bottom to
+//! top with `0.5` as the resting line. Mapping Hz onto a log axis is the
+//! caller's business, which is also what lets the caller place the axis labels —
+//! vizia's `draw_text` only renders a view's own text, so a widget cannot label
+//! its own gridlines (the same limitation the polar field works around).
+//!
+//! The vertical arithmetic is [`crate::input::Drag::value_after`], so a handle
+//! and a knob move by the same amount for the same travel, `Shift` included.
+
+use crate::input::{Drag, Gesture};
+use crate::theme;
+use vizia::prelude::*;
+use vizia::vg;
+
+/// A polyline in normalized coordinates.
+pub type Curve = Vec<(f32, f32)>;
+
+/// A shaded `x` range, drawn behind the curves.
+pub type Span = (f32, f32);
+
+/// A draggable point: `(x, y)`. `x` is fixed; only `y` moves.
+pub type Grip = (f32, f32);
+
+/// How close the pointer has to be to a handle, horizontally, to grab it.
+const GRAB: f32 = 16.0;
+
+const CURVE_WIDTH: f32 = 2.0;
+const GRIP_RADIUS: f32 = 4.0;
+
+type CurveCallback = Box<dyn Fn(&mut EventContext, usize, Gesture)>;
+
+enum CurveEvent {
+    Curves(Vec<Curve>),
+    Spans(Vec<Span>),
+    Grips(Vec<Grip>),
+}
+
+pub struct CurveView {
+    curves: Vec<Curve>,
+    spans: Vec<Span>,
+    grips: Vec<Grip>,
+    /// Gridline positions in normalized `x`. Fixed for the life of the view —
+    /// the caller knows where its own axis marks go.
+    grid: Vec<f32>,
+    drag: Drag,
+    dragging: Option<usize>,
+    on_gesture: CurveCallback,
+}
+
+impl CurveView {
+    pub fn new<'a>(
+        cx: &'a mut Context,
+        curves: impl Res<Vec<Curve>> + 'static,
+        spans: impl Res<Vec<Span>> + 'static,
+        grips: impl Res<Vec<Grip>> + 'static,
+        grid: Vec<f32>,
+        on_gesture: impl Fn(&mut EventContext, usize, Gesture) + 'static,
+    ) -> Handle<'a, Self> {
+        let initial_curves = curves.get_val(cx);
+        let initial_spans = spans.get_val(cx);
+        let initial_grips = grips.get_val(cx);
+
+        Self {
+            curves: initial_curves,
+            spans: initial_spans,
+            grips: initial_grips,
+            grid,
+            drag: Drag::default(),
+            dragging: None,
+            on_gesture: Box::new(on_gesture),
+        }
+        .build(cx, move |cx| {
+            let entity = cx.current();
+            curves.set_or_bind(cx, entity, move |cx, value| {
+                cx.emit_to(entity, CurveEvent::Curves(value));
+            });
+            spans.set_or_bind(cx, entity, move |cx, value| {
+                cx.emit_to(entity, CurveEvent::Spans(value));
+            });
+            grips.set_or_bind(cx, entity, move |cx, value| {
+                cx.emit_to(entity, CurveEvent::Grips(value));
+            });
+        })
+    }
+
+    /// The handle nearest the pointer's `x`, if it is close enough to grab.
+    ///
+    /// Horizontal distance only: the handles sit at fixed `x` positions, so
+    /// requiring the pointer to also be near the current `y` would make a
+    /// handle that is already at the top hard to pull back down.
+    fn nearest(&self, bounds: BoundingBox, x: f32, scale: f32) -> Option<usize> {
+        let reach = GRAB * scale;
+        self.grips
+            .iter()
+            .enumerate()
+            .map(|(index, (grip_x, _))| {
+                (
+                    index,
+                    (bounds.x + grip_x.clamp(0.0, 1.0) * bounds.w - x).abs(),
+                )
+            })
+            .filter(|(_, distance)| *distance <= reach)
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+            .map(|(index, _)| index)
+    }
+}
+
+impl View for CurveView {
+    fn element(&self) -> Option<&'static str> {
+        Some("nxecurveview")
+    }
+
+    fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
+        event.map(|curve_event: &CurveEvent, _| {
+            match curve_event {
+                CurveEvent::Curves(curves) => self.curves = curves.clone(),
+                CurveEvent::Spans(spans) => self.spans = spans.clone(),
+                CurveEvent::Grips(grips) => self.grips = grips.clone(),
+            }
+            cx.needs_redraw();
+        });
+
+        // Grab a handle first; from then on the shared drag state machine runs
+        // it, so the travel and the fine factor match every other control.
+        let mut grabbed = None;
+        if self.dragging.is_none() {
+            event.map(|window_event, _meta| {
+                if let WindowEvent::MouseDown(MouseButton::Left) = window_event {
+                    grabbed = self.nearest(cx.bounds(), cx.mouse().cursorx, cx.scale_factor());
+                }
+            });
+        }
+        if let Some(index) = grabbed {
+            self.dragging = Some(index);
+        }
+
+        let Some(index) = self.dragging else {
+            return;
+        };
+        let value = self.grips[index].1;
+
+        if let Some(gesture) = self.drag.handle(cx, event, value) {
+            match gesture {
+                Gesture::Change(new_value) => {
+                    self.grips[index].1 = new_value;
+                    cx.needs_redraw();
+                }
+                Gesture::End => self.dragging = None,
+                _ => {}
+            }
+            (self.on_gesture)(cx, index, gesture);
+        }
+    }
+
+    fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
+        let bounds = cx.bounds();
+        let scale = cx.scale_factor();
+        let line = scale.max(1.0);
+        let at = |x: f32, y: f32| {
+            (
+                bounds.x + x.clamp(0.0, 1.0) * bounds.w,
+                bounds.y + (1.0 - y.clamp(0.0, 1.0)) * bounds.h,
+            )
+        };
+
+        // Shaded ranges go behind everything: they are context, not data.
+        for (start, end) in &self.spans {
+            let (left, _) = at(start.min(*end), 0.0);
+            let (right, _) = at(start.max(*end), 0.0);
+            let mut path = vg::Path::new();
+            path.rect(left, bounds.y, (right - left).max(0.0), bounds.h);
+            canvas.fill_path(&path, &vg::Paint::color(theme::ACCENT_DIM.vg()));
+        }
+
+        let mut grid = vg::Path::new();
+        for x in &self.grid {
+            let (gx, _) = at(*x, 0.0);
+            grid.move_to(gx, bounds.y);
+            grid.line_to(gx, bounds.y + bounds.h);
+        }
+        let mut paint = vg::Paint::color(theme::ELEVATED.vg());
+        paint.set_line_width(line);
+        canvas.stroke_path(&grid, &paint);
+
+        // The resting line, brighter than the grid: a curve's distance from it
+        // is the thing being read.
+        let mut centre = vg::Path::new();
+        let (_, centre_y) = at(0.0, 0.5);
+        centre.move_to(bounds.x, centre_y);
+        centre.line_to(bounds.x + bounds.w, centre_y);
+        let mut paint = vg::Paint::color(theme::BORDER.vg());
+        paint.set_line_width(line);
+        canvas.stroke_path(&centre, &paint);
+
+        for curve in &self.curves {
+            let mut path = vg::Path::new();
+            for (index, (x, y)) in curve.iter().enumerate() {
+                let (px, py) = at(*x, *y);
+                if index == 0 {
+                    path.move_to(px, py);
+                } else {
+                    path.line_to(px, py);
+                }
+            }
+            let mut paint = vg::Paint::color(theme::ACCENT.vg());
+            paint.set_line_width(CURVE_WIDTH * scale);
+            paint.set_line_cap(vg::LineCap::Butt);
+            canvas.stroke_path(&path, &paint);
+        }
+
+        for (index, (x, y)) in self.grips.iter().enumerate() {
+            let (px, py) = at(*x, *y);
+            let radius = GRIP_RADIUS * scale;
+
+            if self.dragging == Some(index) {
+                let mut ring = vg::Path::new();
+                ring.circle(px, py, radius + 3.0 * scale);
+                canvas.fill_path(&ring, &vg::Paint::color(theme::ACCENT_DIM.vg()));
+            }
+
+            let mut path = vg::Path::new();
+            path.circle(px, py, radius);
+            canvas.fill_path(&path, &vg::Paint::color(theme::ACCENT_BRIGHT.vg()));
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn view(grips: Vec<Grip>) -> CurveView {
+        CurveView {
+            curves: Vec::new(),
+            spans: Vec::new(),
+            grips,
+            grid: Vec::new(),
+            drag: Drag::default(),
+            dragging: None,
+            on_gesture: Box::new(|_, _, _| {}),
+        }
+    }
+
+    fn bounds() -> BoundingBox {
+        BoundingBox {
+            x: 0.0,
+            y: 0.0,
+            w: 200.0,
+            h: 100.0,
+        }
+    }
+
+    #[test]
+    fn a_handle_is_grabbed_by_its_x_alone() {
+        // Two handles, one at each quarter; the y values are far apart on
+        // purpose — they must not affect the grab.
+        let view = view(vec![(0.25, 0.0), (0.75, 1.0)]);
+
+        assert_eq!(view.nearest(bounds(), 50.0, 1.0), Some(0));
+        assert_eq!(view.nearest(bounds(), 150.0, 1.0), Some(1));
+    }
+
+    #[test]
+    fn the_nearest_handle_wins() {
+        let view = view(vec![(0.4, 0.5), (0.5, 0.5)]);
+        assert_eq!(view.nearest(bounds(), 82.0, 1.0), Some(0));
+        assert_eq!(view.nearest(bounds(), 98.0, 1.0), Some(1));
+    }
+
+    #[test]
+    fn a_pointer_far_from_every_handle_grabs_nothing() {
+        let view = view(vec![(0.1, 0.5)]);
+        assert_eq!(view.nearest(bounds(), 180.0, 1.0), None);
+    }
+
+    #[test]
+    fn no_handles_means_nothing_to_grab() {
+        let view = view(Vec::new());
+        assert_eq!(view.nearest(bounds(), 100.0, 1.0), None);
+    }
+}
