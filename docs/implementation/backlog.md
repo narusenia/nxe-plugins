@@ -28,13 +28,12 @@
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| UI-10 | `CurveView` | `nxe-ui-plan.md` |
 | UI-8 / UI-9 | `Meter` / `ToggleSwitch`（Doubler は使わない。フェーズ 5） | `nxe-ui-plan.md` |
 | INFRA-2 | プルリクエストの CI（フェーズ 4） | `infra-plan.md` |
 
-順序は [`roadmap.md`](roadmap.md) が決める。フェーズ 3 進行中で、`UI-5` /
-`UI-6` / `UI-7` / `UI-10` は互いに独立なのでどの順でもよい。これらが揃うと
-`DBL-9` 以降のプラグイン側 UI に入れる。
+順序は [`roadmap.md`](roadmap.md) が決める。**Doubler が使うウィジェットは
+揃った**ので、次は `DBL-9` 以降のプラグイン側 UI。その前に `nxe-ui` の
+README を用意する（他プラグインから使うための契約とトークンの使い方）。
 
 `UI-3` はツールチップを残している（`✅ ❓`）。vizia に `Tooltip` view はあるので
 最初に必要になった単位で入れる。
@@ -60,7 +59,7 @@
 | UI-5 | `Bar` | ✅ |
 | UI-6 | `SegmentedControl` | ✅ ❓ キーボード未 |
 | UI-7 | `PolarField`（領域知識を持たない極座標フィールド） | ✅ |
-| UI-10 | `CurveView`（領域知識を持たない対数軸の曲線表示） | 🟡 |
+| UI-10 | `CurveView`（領域知識を持たない曲線表示） | ✅ |
 | UI-8 | `Meter` — **Doubler は使わない** | 🟡 |
 | UI-9 | `ToggleSwitch` — **Doubler は使わない** | 🟡 |
 
