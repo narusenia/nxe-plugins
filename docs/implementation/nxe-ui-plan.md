@@ -41,13 +41,21 @@ Label / Divider / Disclosure は CSS のクラスと Vizia 組み込みの `Butt
 
 ### UI-1 — クレート骨格・テーマ・gallery
 
-`crates/nxe-ui` を作り、テーマトークン（`--bg` / `--surface` / `--line` /
-`--text` / `--text-dim` / `--accent` / `--track`）と CSS の土台を置く。
-`examples/gallery.rs` が単体で起動し、トークンの色見本と CSS のクラス
-（Panel / Section / Row / Label / Divider）を並べる。
+`crates/nxe-ui` を作り、テーマトークンと CSS の土台を置く。トークンの一覧と値は
+[`../../plugins/doubler/docs/specifications/ui.md`](../../plugins/doubler/docs/specifications/ui.md)
+の「トークン」節が正（shadcn / IntentUI 系のニュートラル多段 + アクセント 1 色）。
 
-- **完了条件**: `mise run gallery` でウィンドウが開き、色見本とクラスの見本が
-  見える。`nxe-ui` の依存に nih-plug が無い
+**トークンは Rust の定数を正とし、CSS はそれを埋め込んで生成する。** カスタム
+描画のウィジェットは Rust 側で色を必要とするので、CSS を正にすると二重管理に
+なる。Vizia の CSS が custom property をどこまで解釈するかにも依存させない。
+
+`examples/gallery.rs` が単体で起動し、トークンの色見本、角丸 3 段、間隔の
+5 段、文字の 2 段、CSS のクラス（Panel / Section / Row / Label / Divider）を
+並べる。
+
+- **完了条件**: `mise run gallery` でウィンドウが開き、上記の見本が見える。
+  色のリテラルが CSS にも `View::draw` にも直接書かれていない（すべて
+  `theme` モジュール経由）。`nxe-ui` の依存に nih-plug が無い
 - **依存**: INFRA-1
 
 ### UI-2 — Lucide アイコン

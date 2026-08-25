@@ -14,6 +14,8 @@
 | **今どの実装単位があって、どれが着手できるか** | [implementation/backlog.md](implementation/backlog.md) |
 | **共通 UI コンポーネントの計画** | [implementation/nxe-ui-plan.md](implementation/nxe-ui-plan.md) |
 | **ワークスペース骨格と CI の計画** | [implementation/infra-plan.md](implementation/infra-plan.md) |
+| **共通 UI コンポーネントの計画** | [implementation/nxe-ui-plan.md](implementation/nxe-ui-plan.md) |
+| **ワークスペース骨格と CI の計画** | [implementation/infra-plan.md](implementation/infra-plan.md) |
 | **どの順でやるか、なぜその順か** | [implementation/roadmap.md](implementation/roadmap.md) |
 | **守るべき規約**（Rust / UI / 文書） | [`../.agents/rules/`](../.agents/rules/) |
 | **プラグイン固有の要件・仕様・計画** | `plugins/<name>/docs/` |
