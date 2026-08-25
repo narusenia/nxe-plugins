@@ -37,6 +37,12 @@ struct Demo {
     tone_lo: f32,
     tone_hi: f32,
     tone_spread: f32,
+    /// Derived from the three above. A lens can only map one field, so a curve
+    /// that depends on two has to be computed when they change rather than when
+    /// it is read — which is also cheaper.
+    curves: Vec<Curve>,
+    spans: Vec<Span>,
+    grips: Vec<Grip>,
     last_gesture: String,
 }
 
@@ -55,12 +61,28 @@ enum DemoEvent {
     Gesture(&'static str),
 }
 
+impl Demo {
+    /// Recomputes everything derived from the tone values.
+    fn refresh(&mut self) {
+        self.curves = vec![shelf_curve(self.tone_lo, self.tone_hi)];
+        self.spans = spread_spans(self.tone_spread);
+        self.grips = vec![
+            (log_x(SHELF_LOW_HZ), self.tone_lo),
+            (log_x(SHELF_HIGH_HZ), self.tone_hi),
+        ];
+    }
+}
+
 impl Model for Demo {
     fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
         event.map(|demo_event: &DemoEvent, _| match demo_event {
             DemoEvent::Set(0, value) => self.detune = *value,
             DemoEvent::Set(1, value) => self.delay = *value,
-            DemoEvent::Set(_, value) => self.mix = *value,
+            DemoEvent::Set(2, value) => self.mix = *value,
+            DemoEvent::Set(_, value) => {
+                self.tone_spread = *value;
+                self.refresh();
+            }
             DemoEvent::SetRow(index, value) => self.rows[*index] = *value,
             DemoEvent::SetVoices(index) => {
                 self.voices = *index;
@@ -80,8 +102,14 @@ impl Model for Demo {
             DemoEvent::ResetPoint(index) => {
                 self.field[*index] = default_field()[*index];
             }
-            DemoEvent::SetTone(0, value) => self.tone_lo = *value,
-            DemoEvent::SetTone(_, value) => self.tone_hi = *value,
+            DemoEvent::SetTone(0, value) => {
+                self.tone_lo = *value;
+                self.refresh();
+            }
+            DemoEvent::SetTone(_, value) => {
+                self.tone_hi = *value;
+                self.refresh();
+            }
             DemoEvent::SetSource(index) => self.source = *index,
             DemoEvent::Gesture(name) => self.last_gesture = (*name).to_owned(),
         });
@@ -130,7 +158,7 @@ fn main() {
     Application::new(|cx| {
         theme::install(cx);
 
-        Demo {
+        let mut demo = Demo {
             detune: 0.24,
             delay: 0.62,
             mix: 0.4,
@@ -145,9 +173,13 @@ fn main() {
             tone_lo: 0.62,
             tone_hi: 0.44,
             tone_spread: 0.5,
+            curves: Vec::new(),
+            spans: Vec::new(),
+            grips: Vec::new(),
             last_gesture: "—".to_owned(),
-        }
-        .build(cx);
+        };
+        demo.refresh();
+        demo.build(cx);
 
         // The gallery grows every time a widget is added, so it scrolls from
         // the start rather than when someone notices it has stopped fitting.
@@ -262,6 +294,7 @@ fn knobs(cx: &mut Context) {
             knob_column(cx, 0, "DETUNE", Demo::detune, 56.0);
             knob_column(cx, 1, "DELAY", Demo::delay, 56.0);
             knob_column(cx, 2, "MIX", Demo::mix, 34.0);
+            knob_column(cx, 3, "TONE SPREAD", Demo::tone_spread, 34.0);
         })
         .class("row")
         .height(Auto);
@@ -431,12 +464,15 @@ fn hz_at(x: f32) -> f32 {
     20.0 * 10.0f32.powf(x * (20_000.0f32 / 20.0).log10())
 }
 
+const SHELF_LOW_HZ: f32 = 200.0;
+const SHELF_HIGH_HZ: f32 = 4_000.0;
+
 /// A stand-in for two shelves, good enough to see the widget work. The plugin
 /// computes its real response from the same filter coefficients the DSP uses
 /// (`DBL-14`); this is not that.
 fn shelf_curve(lo: f32, hi: f32) -> Curve {
-    const LOW_HZ: f32 = 200.0;
-    const HIGH_HZ: f32 = 4_000.0;
+    const LOW_HZ: f32 = SHELF_LOW_HZ;
+    const HIGH_HZ: f32 = SHELF_HIGH_HZ;
     let lo_db = (lo - 0.5) * 24.0;
     let hi_db = (hi - 0.5) * 24.0;
 
