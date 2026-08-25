@@ -9,12 +9,59 @@
 //!
 //! Run it with `mise run gallery`.
 
+use nxe_ui::input::Gesture;
+use nxe_ui::knob::Knob;
 use nxe_ui::{icon, theme};
 use vizia::prelude::*;
+
+/// Somewhere for the demo controls to keep their values. A plugin has its
+/// parameters instead; what matters here is that the widgets accept a lens, so
+/// a value changed from outside reaches them.
+#[derive(Lens)]
+struct Demo {
+    detune: f32,
+    delay: f32,
+    mix: f32,
+    last_gesture: String,
+}
+
+enum DemoEvent {
+    Set(usize, f32),
+    Gesture(&'static str),
+}
+
+impl Model for Demo {
+    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
+        event.map(|demo_event: &DemoEvent, _| match demo_event {
+            DemoEvent::Set(0, value) => self.detune = *value,
+            DemoEvent::Set(1, value) => self.delay = *value,
+            DemoEvent::Set(_, value) => self.mix = *value,
+            DemoEvent::Gesture(name) => self.last_gesture = (*name).to_owned(),
+        });
+    }
+}
+
+fn name_of(gesture: Gesture) -> &'static str {
+    match gesture {
+        Gesture::Begin => "begin",
+        Gesture::Change(_) => "change",
+        Gesture::End => "end",
+        Gesture::Reset => "reset (double click)",
+        Gesture::Edit => "edit (cmd click)",
+    }
+}
 
 fn main() {
     Application::new(|cx| {
         theme::install(cx);
+
+        Demo {
+            detune: 0.24,
+            delay: 0.62,
+            mix: 0.4,
+            last_gesture: "—".to_owned(),
+        }
+        .build(cx);
 
         // The gallery grows every time a widget is added, so it scrolls from
         // the start rather than when someone notices it has stopped fitting.
@@ -24,6 +71,7 @@ fn main() {
                 Label::new(cx, "tokens and widgets").class("subtle");
 
                 colours(cx);
+                knobs(cx);
                 icons(cx);
                 shapes(cx);
                 spacing(cx);
@@ -88,6 +136,55 @@ fn colours(cx: &mut Context) {
             swatch(cx, "accent", theme::ACCENT);
             swatch(cx, "accent-bright", theme::ACCENT_BRIGHT);
             swatch(cx, "accent-dim", theme::ACCENT_DIM);
+        })
+        .class("row")
+        .height(Auto);
+    });
+}
+
+/// One labelled knob. Generic over the lens because every field's lens is its
+/// own type, so they cannot share a list.
+fn knob_column<L>(cx: &mut Context, index: usize, label: &'static str, lens: L, size: f32)
+where
+    L: Lens<Target = f32> + Copy,
+{
+    VStack::new(cx, |cx| {
+        Knob::new(cx, lens, move |cx, gesture| {
+            if let Gesture::Change(value) = gesture {
+                cx.emit(DemoEvent::Set(index, value));
+            }
+            cx.emit(DemoEvent::Gesture(name_of(gesture)));
+        })
+        .size(Pixels(size));
+        Label::new(cx, label).class("label");
+        Label::new(cx, lens.map(|value| format!("{value:.3}"))).class("value");
+    })
+    .width(Auto)
+    .height(Auto)
+    .row_between(Pixels(theme::SPACE_1))
+    .child_left(Stretch(1.0))
+    .child_right(Stretch(1.0));
+}
+
+fn knobs(cx: &mut Context) {
+    panel(cx, "KNOBS", |cx| {
+        HStack::new(cx, |cx| {
+            knob_column(cx, 0, "DETUNE", Demo::detune, 56.0);
+            knob_column(cx, 1, "DELAY", Demo::delay, 56.0);
+            knob_column(cx, 2, "MIX", Demo::mix, 34.0);
+        })
+        .class("row")
+        .height(Auto);
+
+        Element::new(cx).class("divider");
+
+        HStack::new(cx, |cx| {
+            Label::new(
+                cx,
+                "drag · shift = fine · double click = reset · cmd click = type",
+            )
+            .class("subtle");
+            Label::new(cx, Demo::last_gesture).class("value");
         })
         .class("row")
         .height(Auto);
