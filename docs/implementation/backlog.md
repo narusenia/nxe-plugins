@@ -28,7 +28,6 @@
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| DBL-5 | Humanize | `doubler-plan.md` |
 | DBL-6 | Source モード（Mono Sum / True Stereo） | `doubler-plan.md` |
 | DBL-7 | Tone と Tone Spread | `doubler-plan.md` |
 | UI-1 | テーマトークンと gallery の中身 | `nxe-ui-plan.md` |
@@ -73,7 +72,7 @@
 | DBL-2 | 回転タップピッチシフタ（**ゲート通過**） | ✅ `f2501d6` |
 | DBL-3 | ボイスエンジン（形状表・実効値・パン則・ゲイン補償） | ✅ `3aec7af` |
 | DBL-4 | nih-plug ラッパと配線（**ここで音が出る**。UI 無し） | ✅ `556c5a0` |
-| DBL-5 | Humanize | 🟡 |
+| DBL-5 | Humanize | ✅ |
 | DBL-6 | Source モード（Mono Sum / True Stereo） | 🟡 |
 | DBL-7 | Tone と Tone Spread | 🟡 |
 | DBL-8 | スムージングとサンプルレート／ブロックサイズ非依存の詰め | ⬜ DBL-5, DBL-6, DBL-7 |
