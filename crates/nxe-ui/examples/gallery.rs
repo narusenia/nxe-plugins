@@ -12,6 +12,7 @@
 use nxe_ui::bar::Bar;
 use nxe_ui::input::Gesture;
 use nxe_ui::knob::Knob;
+use nxe_ui::polar::{FieldGesture, FieldPoint, PolarField};
 use nxe_ui::segmented::SegmentedControl;
 use nxe_ui::{icon, theme};
 use vizia::prelude::*;
@@ -29,6 +30,8 @@ struct Demo {
     rows: Vec<f32>,
     voices: usize,
     source: usize,
+    /// The Doubler's default shape, read as pan and delay.
+    field: Vec<FieldPoint>,
     last_gesture: String,
 }
 
@@ -37,6 +40,12 @@ enum DemoEvent {
     SetRow(usize, f32),
     SetVoices(usize),
     SetSource(usize),
+    MovePoint {
+        index: usize,
+        angle: f32,
+        radius: f32,
+    },
+    ResetPoint(usize),
     Gesture(&'static str),
 }
 
@@ -47,11 +56,56 @@ impl Model for Demo {
             DemoEvent::Set(1, value) => self.delay = *value,
             DemoEvent::Set(_, value) => self.mix = *value,
             DemoEvent::SetRow(index, value) => self.rows[*index] = *value,
-            DemoEvent::SetVoices(index) => self.voices = *index,
+            DemoEvent::SetVoices(index) => {
+                self.voices = *index;
+                let live = [2, 4, 8][*index];
+                for (i, point) in self.field.iter_mut().enumerate() {
+                    point.enabled = i < live;
+                }
+            }
+            DemoEvent::MovePoint {
+                index,
+                angle,
+                radius,
+            } => {
+                self.field[*index].angle = *angle;
+                self.field[*index].radius = *radius;
+            }
+            DemoEvent::ResetPoint(index) => {
+                self.field[*index] = default_field()[*index];
+            }
             DemoEvent::SetSource(index) => self.source = *index,
             DemoEvent::Gesture(name) => self.last_gesture = (*name).to_owned(),
         });
     }
+}
+
+/// The Doubler's default shape as field points: pan on the angle, delay on the
+/// radius, alternating which source they hang off.
+fn default_field() -> Vec<FieldPoint> {
+    const SHAPE: [(f32, f32); 8] = [
+        (-1.00, 1.00),
+        (1.00, 0.62),
+        (-0.45, 0.84),
+        (0.45, 0.44),
+        (-0.75, 0.92),
+        (0.75, 0.30),
+        (-0.20, 0.72),
+        (0.20, 0.52),
+    ];
+
+    SHAPE
+        .iter()
+        .enumerate()
+        .map(|(index, (angle, radius))| FieldPoint {
+            angle: *angle,
+            radius: *radius,
+            size: 0.5,
+            anchor: index % 2,
+            // Four voices to start with, matching the VOICES control.
+            enabled: index < 4,
+        })
+        .collect()
 }
 
 fn name_of(gesture: Gesture) -> &'static str {
@@ -79,6 +133,7 @@ fn main() {
             ],
             voices: 1,
             source: 0,
+            field: default_field(),
             last_gesture: "—".to_owned(),
         }
         .build(cx);
@@ -94,6 +149,7 @@ fn main() {
                 knobs(cx);
                 bars(cx);
                 segments(cx);
+                field(cx);
                 icons(cx);
                 shapes(cx);
                 spacing(cx);
@@ -286,6 +342,69 @@ fn segments(cx: &mut Context) {
         .height(Auto);
 
         Label::new(cx, "click to select; 150 ms on hover and selection").class("subtle");
+    });
+}
+
+fn field(cx: &mut Context) {
+    panel(cx, "POLAR FIELD", |cx| {
+        // The anchors come from the SOURCE control: one source in the middle,
+        // or two sitting either side of it.
+        PolarField::new(
+            cx,
+            Demo::field,
+            Demo::source.map(|source| {
+                if *source == 0 {
+                    vec![FieldPoint {
+                        angle: 0.0,
+                        radius: 0.0,
+                        ..FieldPoint::default()
+                    }]
+                } else {
+                    vec![
+                        FieldPoint {
+                            angle: -0.30,
+                            radius: 0.10,
+                            ..FieldPoint::default()
+                        },
+                        FieldPoint {
+                            angle: 0.30,
+                            radius: 0.10,
+                            ..FieldPoint::default()
+                        },
+                    ]
+                }
+            }),
+            |cx, gesture| match gesture {
+                FieldGesture::Change {
+                    index,
+                    angle,
+                    radius,
+                } => {
+                    cx.emit(DemoEvent::MovePoint {
+                        index,
+                        angle,
+                        radius,
+                    });
+                    cx.emit(DemoEvent::Gesture("change"));
+                }
+                FieldGesture::Reset(index) => {
+                    cx.emit(DemoEvent::ResetPoint(index));
+                    cx.emit(DemoEvent::Gesture("reset (double click)"));
+                }
+                FieldGesture::Begin(_) => cx.emit(DemoEvent::Gesture("begin")),
+                FieldGesture::End(_) => cx.emit(DemoEvent::Gesture("end")),
+                FieldGesture::Hover(Some(_)) => cx.emit(DemoEvent::Gesture("hover")),
+                FieldGesture::Hover(None) => {}
+            },
+        )
+        .height(Pixels(180.0))
+        .width(Stretch(1.0));
+
+        Label::new(
+            cx,
+            "drag a dot to move both axes · shift = fine · VOICES dims the unused              ones · SOURCE splits the anchor",
+        )
+        .class("subtle");
     });
 }
 
