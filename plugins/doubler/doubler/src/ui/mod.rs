@@ -168,8 +168,9 @@ fn footer(cx: &mut Context) {
                         icon::CHEVRON_DOWN
                     }
                 }),
-            );
-            Label::new(cx, "DETAIL").class("label");
+            )
+            .class("decoration");
+            Label::new(cx, "DETAIL").class("label").class("decoration");
         })
         .class("hoverable")
         .width(Pixels(96.0))

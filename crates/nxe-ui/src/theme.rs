@@ -261,6 +261,14 @@ label {{
     background-color: {accent};
 }}
 
+/* Content inside something pressable. vizia only emits a press when the entity
+   hovered on mouse-up is the one hovered on mouse-down, so a hit-testable child
+   makes the container's press fire only when the pointer happens not to cross
+   between children. Decoration must not be hit-testable. */
+.decoration {{
+    pointer-events: none;
+}}
+
 .hoverable {{
     color: {foreground};
     background-color: {elevated};
@@ -365,6 +373,7 @@ mod tests {
             ".segment",
             ".track",
             ".accent",
+            ".decoration",
             ".hoverable",
         ] {
             assert!(

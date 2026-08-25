@@ -80,6 +80,13 @@ the icon family — a stylesheet's `font-family` does not select an embedded fac
 needs nothing. A different family for one label needs the modifier;
 `font::value` is that for figures.
 
+**A container's `on_press` needs its content marked `pointer-events: none`.**
+Vizia emits a press only when the entity hovered on mouse-up is the one hovered
+on mouse-down (`hovered == triggered`). A pressable box with two labels in it
+therefore fires only when the pointer happens not to cross from one label to
+the other — which reads as "the button needs several clicks", not as a layout
+problem. Put `.class("decoration")` on anything inside something pressable.
+
 **Vizia's default text colour is black.** A `Label` with no colour disappears on
 a dark surface. The stylesheet has a base `label` element rule for exactly this;
 do not remove it.

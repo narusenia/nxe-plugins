@@ -106,6 +106,12 @@ Panel / Section / Row / Label / Divider をウィジェットにしていない�
 （`:checked` で accent）を単体の `Label` に当て、`checked` と `on_press` を
 付ければトグルになる。
 
+**押せる箱の中身には `.decoration` を付ける。** vizia は「マウスダウン時の
+ホバー対象とマウスアップ時のホバー対象が同一のとき」だけ Press を発行するので、
+中の Label がヒットテスト対象だと、ポインタが子をまたいだときに押せない
+（「何回かクリックしないと反応しない」に見える）。`.decoration` は
+`pointer-events: none` だけを持つクラス。
+
 ## フォント
 
 [Geist](https://vercel.com/font)（SIL OFL 1.1）を埋め込んでいる。Sans と Mono の
