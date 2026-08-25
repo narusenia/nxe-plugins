@@ -6,7 +6,7 @@
 [`../specifications/architecture.md`](../specifications/architecture.md)。
 状態は [`backlog.md`](backlog.md)、順序の根拠は [`roadmap.md`](roadmap.md)。
 
-## INFRA-1 — ワークスペース骨格
+## INFRA-1 — ワークスペース骨格 ✅ `3f98dce`
 
 ルートの `Cargo.toml`（workspace）、`xtask`（`nih_plug_xtask`）、
 `crates/nxe-ui`、`plugins/doubler/doubler-core`、`plugins/doubler/doubler`、
@@ -18,6 +18,16 @@
   ウィンドウを開く。依存の向きが `architecture.md` のとおりで、
   `doubler-core` の依存に nih-plug も Vizia も無い
 - **依存**: なし
+- **やってみて分かったこと**（`architecture.md` に反映済み）:
+  1. **`bundler.toml` はワークスペース直下に 1 つ。** バンドラがそこを読むので
+     プラグインごとには置けない
+  2. **vizia の `winit` と `baseview` は相互排他。** 両方有効にすると
+     `Application` がどちらも re-export されず、`nih_plug_vizia` 自身が
+     コンパイルできない。dev-dependency に隔離する手も効かない（resolver v2 は
+     dev ターゲットを含むビルドで feature を統合する）。**ワークスペース全体を
+     `baseview` に寄せ、gallery も baseview の単体ウィンドウで開く**
+  3. mise の `{{arg(name="plugin")}}` は期待どおり動く。ただしクローン後に
+     `mise trust` が必要
 
 ## INFRA-2 — プルリクエストの CI
 

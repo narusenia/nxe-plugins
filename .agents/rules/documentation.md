@@ -25,8 +25,8 @@ paths:
 - The backlog says *what exists and what its state is*; the roadmap says *in
   what order and why*. Do not put ordering rationale in the backlog or unit
   descriptions in the roadmap.
-- A completed unit keeps its row and becomes `✅` with its PR number. Rows are
-  not deleted.
+- A completed unit keeps its row and becomes `✅` with its PR number, or its
+  commit SHA while work goes straight to `main`. Rows are not deleted.
 - Do not describe a planned feature as implemented behaviour.
 - Keep `AGENTS.md` short and durable; task-specific plans belong in
   `docs/implementation/` or a plugin's plan.
