@@ -12,6 +12,7 @@
 use nxe_ui::bar::Bar;
 use nxe_ui::input::Gesture;
 use nxe_ui::knob::Knob;
+use nxe_ui::segmented::SegmentedControl;
 use nxe_ui::{icon, theme};
 use vizia::prelude::*;
 
@@ -26,12 +27,16 @@ struct Demo {
     /// Four values per row, laid out like the Doubler's Detail table:
     /// delay, detune, pan, gain.
     rows: Vec<f32>,
+    voices: usize,
+    source: usize,
     last_gesture: String,
 }
 
 enum DemoEvent {
     Set(usize, f32),
     SetRow(usize, f32),
+    SetVoices(usize),
+    SetSource(usize),
     Gesture(&'static str),
 }
 
@@ -42,6 +47,8 @@ impl Model for Demo {
             DemoEvent::Set(1, value) => self.delay = *value,
             DemoEvent::Set(_, value) => self.mix = *value,
             DemoEvent::SetRow(index, value) => self.rows[*index] = *value,
+            DemoEvent::SetVoices(index) => self.voices = *index,
+            DemoEvent::SetSource(index) => self.source = *index,
             DemoEvent::Gesture(name) => self.last_gesture = (*name).to_owned(),
         });
     }
@@ -70,6 +77,8 @@ fn main() {
                 0.62, 1.00, 1.00, 0.65, //
                 0.84, 0.30, 0.28, 0.50,
             ],
+            voices: 1,
+            source: 0,
             last_gesture: "—".to_owned(),
         }
         .build(cx);
@@ -84,6 +93,7 @@ fn main() {
                 colours(cx);
                 knobs(cx);
                 bars(cx);
+                segments(cx);
                 icons(cx);
                 shapes(cx);
                 spacing(cx);
@@ -253,6 +263,29 @@ fn bars(cx: &mut Context) {
         }
 
         Label::new(cx, "same gesture as a knob, including the vertical drag").class("subtle");
+    });
+}
+
+fn segments(cx: &mut Context) {
+    panel(cx, "SEGMENTED", |cx| {
+        HStack::new(cx, |cx| {
+            Label::new(cx, "VOICES").class("label");
+            SegmentedControl::new(cx, Demo::voices, &["2", "4", "8"], |cx, index| {
+                cx.emit(DemoEvent::SetVoices(index));
+            });
+
+            Label::new(cx, "SOURCE").class("label");
+            SegmentedControl::new(
+                cx,
+                Demo::source,
+                &["Mono Sum", "True Stereo"],
+                |cx, index| cx.emit(DemoEvent::SetSource(index)),
+            );
+        })
+        .class("row")
+        .height(Auto);
+
+        Label::new(cx, "click to select; 150 ms on hover and selection").class("subtle");
     });
 }
 
