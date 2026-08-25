@@ -1,10 +1,9 @@
 //! The voice engine: N voices from one source, each with its own delay,
 //! detune, position and level.
 //!
-//! Tone is not here yet (`DBL-7`).
-//!
 //! See `plugins/doubler/docs/specifications/dsp.md`.
 
+use crate::filter::{Biquad, OnePole, Shelf};
 use crate::wobble::Wobble;
 use crate::{DelayLine, PitchShifter};
 
@@ -38,6 +37,38 @@ const SOURCE_FADE_SECONDS: f32 = 0.020;
 const STEREO_BASE_PAN: f32 = 0.5;
 const STEREO_SPREAD_PAN: f32 = 0.3;
 const STEREO_SHAPE_PAN: f32 = 0.2;
+
+/// The wet-bus shelves. Ear-tuned (`dsp.md`).
+const SHELF_LOW_HZ: f32 = 200.0;
+const SHELF_HIGH_HZ: f32 = 4_000.0;
+
+/// Tone Spread scatters each voice's highpass up from here and its lowpass down
+/// from there, by at most this many octaves at full depth. Ear-tuned
+/// (`dsp.md`).
+const SPREAD_HIGHPASS_HZ: f32 = 20.0;
+const SPREAD_LOWPASS_HZ: f32 = 20_000.0;
+const SPREAD_HIGHPASS_OCTAVES: f32 = 3.5;
+const SPREAD_LOWPASS_OCTAVES: f32 = 2.5;
+
+/// How far each voice's two cutoffs are pushed, as a fraction of the octave
+/// ranges above. `(highpass, lowpass)`; the lowpass factor is used as a
+/// magnitude, so its sign carries nothing.
+///
+/// A fixed table rather than a seeded random draw, for the same reason
+/// `DEFAULT_SHAPE` is one: **any prefix has to be spread**. A random draw can
+/// legitimately put voices 0 and 1 both near zero, and then Tone Spread does
+/// almost nothing in two-voice mode — which is exactly what a test caught. It
+/// also drops the generator and the seed.
+const SPREAD_OFFSETS: [(f32, f32); MAX_VOICES] = [
+    (0.85, 0.15),
+    (-0.70, 0.80),
+    (0.35, 0.55),
+    (-0.95, 0.25),
+    (0.60, 0.90),
+    (-0.40, 0.40),
+    (0.15, 0.70),
+    (-0.80, 0.05),
+];
 
 /// How many voices are live. Discrete, so an out-of-range count cannot exist.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -153,6 +184,13 @@ pub struct Macros {
     pub spread: f32,
     /// `0..=1`. Depth of the per-voice wobble. Zero is completely static.
     pub humanize: f32,
+    /// dB. Low shelf on the wet bus only.
+    pub tone_lo: f32,
+    /// dB. High shelf on the wet bus only.
+    pub tone_hi: f32,
+    /// `0..=1`. How far the per-voice filters are scattered. Zero bypasses
+    /// them outright.
+    pub tone_spread: f32,
 }
 
 impl Default for Macros {
@@ -164,6 +202,9 @@ impl Default for Macros {
             delay: 22.0,
             spread: 0.7,
             humanize: 0.35,
+            tone_lo: 0.0,
+            tone_hi: 0.0,
+            tone_spread: 0.0,
         }
     }
 }
@@ -189,6 +230,18 @@ pub struct VoiceEngine {
     /// it for us.
     source_blend: f32,
     source_step: f32,
+    /// The wet-bus shelves, one pair per output channel.
+    shelf_low: [Biquad; 2],
+    shelf_high: [Biquad; 2],
+    /// Tone Spread's per-voice colour.
+    voice_highpass: [OnePole; MAX_VOICES],
+    voice_lowpass: [OnePole; MAX_VOICES],
+    /// Coefficients are recomputed only when the value behind them moves. A
+    /// static setting then costs nothing, and a moving one costs a handful of
+    /// transcendentals for the length of the smoothing ramp.
+    last_tone_lo: f32,
+    last_tone_hi: f32,
+    last_tone_spread: f32,
 }
 
 impl VoiceEngine {
@@ -204,6 +257,13 @@ impl VoiceEngine {
             }),
             source_blend: 1.0,
             source_step: (SOURCE_FADE_SECONDS * sample_rate).recip(),
+            shelf_low: [Biquad::default(); 2],
+            shelf_high: [Biquad::default(); 2],
+            voice_highpass: [OnePole::default(); MAX_VOICES],
+            voice_lowpass: [OnePole::default(); MAX_VOICES],
+            last_tone_lo: f32::NAN,
+            last_tone_hi: f32::NAN,
+            last_tone_spread: f32::NAN,
         }
     }
 
@@ -215,6 +275,45 @@ impl VoiceEngine {
         }
         for wobble in self.detune_wobble.iter_mut().chain(&mut self.delay_wobble) {
             wobble.reset();
+        }
+        for shelf in self.shelf_low.iter_mut().chain(&mut self.shelf_high) {
+            shelf.reset();
+        }
+        for filter in self
+            .voice_highpass
+            .iter_mut()
+            .chain(&mut self.voice_lowpass)
+        {
+            filter.reset();
+        }
+    }
+
+    /// Recomputes whatever coefficients the current values invalidate.
+    fn update_filters(&mut self, tone_lo: f32, tone_hi: f32, tone_spread: f32) {
+        if tone_lo != self.last_tone_lo {
+            self.last_tone_lo = tone_lo;
+            for shelf in &mut self.shelf_low {
+                shelf.set_shelf(Shelf::Low, self.sample_rate, SHELF_LOW_HZ, tone_lo);
+            }
+        }
+        if tone_hi != self.last_tone_hi {
+            self.last_tone_hi = tone_hi;
+            for shelf in &mut self.shelf_high {
+                shelf.set_shelf(Shelf::High, self.sample_rate, SHELF_HIGH_HZ, tone_hi);
+            }
+        }
+        if tone_spread != self.last_tone_spread {
+            self.last_tone_spread = tone_spread;
+            for (voice, &(high, low)) in SPREAD_OFFSETS.iter().enumerate() {
+                self.voice_highpass[voice].set_cutoff(
+                    self.sample_rate,
+                    SPREAD_HIGHPASS_HZ * (high * tone_spread * SPREAD_HIGHPASS_OCTAVES).exp2(),
+                );
+                self.voice_lowpass[voice].set_cutoff(
+                    self.sample_rate,
+                    SPREAD_LOWPASS_HZ / (low.abs() * tone_spread * SPREAD_LOWPASS_OCTAVES).exp2(),
+                );
+            }
         }
     }
 
@@ -240,6 +339,9 @@ impl VoiceEngine {
         };
         self.source_blend = approach(self.source_blend, target, self.source_step);
         let blend = self.source_blend;
+
+        let tone_spread = macros.tone_spread.clamp(0.0, 1.0);
+        self.update_filters(macros.tone_lo, macros.tone_hi, tone_spread);
 
         let ms_to_samples = self.sample_rate / 1000.0;
         let humanize = macros.humanize.clamp(0.0, 1.0);
@@ -280,7 +382,21 @@ impl VoiceEngine {
                 },
                 delay_ms * ms_to_samples,
                 cents,
-            ) * gain;
+            );
+
+            // Tone Spread at zero bypasses the filters rather than setting them
+            // to a transparent cutoff, so "no colour" does not depend on where
+            // the coefficients round (`REQ-DBL-005`). The state is cleared while
+            // bypassed so re-engaging starts from rest rather than from whatever
+            // was left behind.
+            let voice = if tone_spread > 0.0 {
+                let highpassed = voice - self.voice_highpass[voice_index].process(voice);
+                self.voice_lowpass[voice_index].process(highpassed)
+            } else {
+                self.voice_highpass[voice_index].reset();
+                self.voice_lowpass[voice_index].reset();
+                voice
+            } * gain;
 
             let (gain_l, gain_r) =
                 equal_power_pan(pan_position(blend, spread, shape.pan, own_is_left));
@@ -293,11 +409,14 @@ impl VoiceEngine {
         // level put when `Voices` or a `Gain_i` changes (`REQ-DBL-006`).
         // Summing the squared gains rather than counting voices means pulling
         // one voice down compensates as it should.
-        if energy <= 0.0 {
-            return (0.0, 0.0);
-        }
-        let compensation = energy.sqrt().recip();
-        (left * compensation, right * compensation)
+        let compensation = if energy > 0.0 {
+            energy.sqrt().recip()
+        } else {
+            0.0
+        };
+        let left = self.shelf_high[0].process(self.shelf_low[0].process(left * compensation));
+        let right = self.shelf_high[1].process(self.shelf_low[1].process(right * compensation));
+        (left, right)
     }
 }
 
@@ -766,6 +885,141 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// The settings that should add nothing: two voices at the same position
+    /// and the same delay, no detune, no wobble, no tone. Two voices at unity
+    /// summed and then compensated come back to unity, so the output is the
+    /// input delayed by the interpolator's floor of two samples — nothing more.
+    ///
+    /// This is the strongest single check in the engine: every stage is in the
+    /// path, so any one of them colouring or scaling the signal breaks it.
+    ///
+    /// The offset is one sample, not two: the line is written before it is
+    /// read, so the newest sample sits at a delay of one and the interpolator's
+    /// floor of two reaches the one before it.
+    fn neutral_macros() -> Macros {
+        Macros {
+            voices: Voices::Two,
+            source: Source::MonoSum,
+            detune: 0.0,
+            delay: 0.0,
+            spread: 0.0,
+            humanize: 0.0,
+            tone_lo: 0.0,
+            tone_hi: 0.0,
+            tone_spread: 0.0,
+        }
+    }
+
+    #[test]
+    fn a_neutral_setting_passes_the_signal_through() {
+        let input = noise(8192);
+        let (left, right) = run(&neutral_macros(), &input);
+
+        for i in 1..input.len() {
+            let expected = input[i - 1];
+            assert!(
+                (left[i] - expected).abs() < 1e-4,
+                "left sample {i}: expected {expected}, got {}",
+                left[i]
+            );
+            assert_eq!(left[i], right[i], "channels differ at sample {i}");
+        }
+    }
+
+    /// `REQ-DBL-005`: Tone Spread at zero must not colour anything. The neutral
+    /// path stays exact with it at zero, and stops being exact once it is up —
+    /// which is also what proves the filters are actually in the signal path.
+    #[test]
+    fn tone_spread_colours_only_when_it_is_up() {
+        let input = noise(8192);
+
+        let coloured = run(
+            &Macros {
+                tone_spread: 1.0,
+                ..neutral_macros()
+            },
+            &input,
+        );
+        let difference: f32 = coloured
+            .0
+            .iter()
+            .skip(1)
+            .zip(input.iter())
+            .map(|(a, b)| (a - b).abs())
+            .sum::<f32>()
+            / input.len() as f32;
+        assert!(
+            difference > 1e-3,
+            "tone spread changed nothing ({difference})"
+        );
+    }
+
+    /// The scatter has to be the same every run, or a mix would not render the
+    /// same way twice (`REQ-DBL-005`).
+    /// Any prefix of the scatter table has to be spread, or Tone Spread stops
+    /// doing much in two- or four-voice mode.
+    #[test]
+    fn the_spread_offsets_are_distinct_for_every_voice_count() {
+        for voices in [Voices::Two, Voices::Four, Voices::Eight] {
+            let live = &SPREAD_OFFSETS[..voices.count()];
+            for (i, (high_a, low_a)) in live.iter().enumerate() {
+                assert!(
+                    high_a.abs() > 0.1 || *low_a > 0.1,
+                    "voice {i} is barely filtered at all"
+                );
+                for (j, (high_b, low_b)) in live.iter().enumerate().skip(i + 1) {
+                    let gap = (high_a - high_b).abs() + (low_a - low_b).abs();
+                    assert!(gap > 0.2, "voices {i} and {j} are only {gap} apart");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn tone_spread_is_reproducible() {
+        let macros = Macros {
+            tone_spread: 0.8,
+            ..Macros::default()
+        };
+        let input = noise(24_000);
+        assert_eq!(run(&macros, &input), run(&macros, &input));
+    }
+
+    /// `REQ-DBL-005`: the shelves lift the wet bus by the amount asked for. The
+    /// neutral path makes the wet bus equal to the input, so the shelf's effect
+    /// is directly measurable.
+    #[test]
+    fn the_tone_shelves_lift_the_wet_bus() {
+        let low = 60.0;
+        let high = 12_000.0;
+        let tone = |lo: f32, hi: f32, hz: f32| {
+            let input: Vec<f32> = (0..48_000)
+                .map(|i| (i as f32 * std::f32::consts::TAU * hz / SR).sin())
+                .collect();
+            let macros = Macros {
+                tone_lo: lo,
+                tone_hi: hi,
+                ..neutral_macros()
+            };
+            let (left, _) = run(&macros, &input);
+            20.0 * (rms(&left[8_000..]) / rms(&input[8_000..])).log10()
+        };
+
+        assert!((tone(6.0, 0.0, low) - 6.0).abs() < 0.6, "low shelf missed");
+        assert!(
+            tone(6.0, 0.0, high).abs() < 0.6,
+            "low shelf reached the top"
+        );
+        assert!(
+            (tone(0.0, -6.0, high) + 6.0).abs() < 0.6,
+            "high shelf missed"
+        );
+        assert!(
+            tone(0.0, -6.0, low).abs() < 0.6,
+            "high shelf reached the bottom"
+        );
     }
 
     #[test]

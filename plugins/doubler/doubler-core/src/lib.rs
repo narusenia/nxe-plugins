@@ -7,6 +7,8 @@
 //! and built in units `DBL-1` onward
 //! (`plugins/doubler/docs/implementation/doubler-plan.md`).
 
+mod filter;
+
 mod delay;
 mod shifter;
 mod voice;
