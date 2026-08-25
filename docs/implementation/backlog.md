@@ -28,11 +28,12 @@
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| DBL-3 | ボイスエンジン（形状表・実効値・パン則・ゲイン補償） | `doubler-plan.md` |
+| DBL-4 | nih-plug ラッパと配線（**ここで音が出る**） | `doubler-plan.md` |
 | UI-1 | テーマトークンと gallery の中身 | `nxe-ui-plan.md` |
 | INFRA-2 | プルリクエストの CI | `infra-plan.md` |
 
-順序は [`roadmap.md`](roadmap.md) が決める。今は `DBL-3`（フェーズ 1）が次。
+順序は [`roadmap.md`](roadmap.md) が決める。今は `DBL-4`（フェーズ 1 の最後）が
+次。`DBL-5`〜`DBL-7` も依存は解けているが、フェーズ 2 なので `DBL-4` の後。
 `UI-1` はフェーズ 3、`INFRA-2` はフェーズ 4。
 
 `DBL-2` はコードとテストは済んでいるが、**ゲートの耳での確認が `DBL-4` 待ち**
@@ -68,11 +69,11 @@
 |---|---|---|
 | DBL-1 | リングバッファ遅延線と Hermite 補間 | ✅ `a84779d` |
 | DBL-2 | 回転タップピッチシフタ（**ゲート**の耳確認は `DBL-4` 待ち） | ✅ `f2501d6` ❓ |
-| DBL-3 | ボイスエンジン（形状表・実効値・パン則・ゲイン補償） | 🟡 |
-| DBL-4 | nih-plug ラッパと配線（**ここで音が出る**。UI 無し） | ⬜ DBL-3, INFRA-1 |
-| DBL-5 | Humanize | ⬜ DBL-3 |
-| DBL-6 | Source モード（Mono Sum / True Stereo） | ⬜ DBL-3 |
-| DBL-7 | Tone と Tone Spread | ⬜ DBL-3 |
+| DBL-3 | ボイスエンジン（形状表・実効値・パン則・ゲイン補償） | ✅ `3aec7af` |
+| DBL-4 | nih-plug ラッパと配線（**ここで音が出る**。UI 無し） | 🟡 |
+| DBL-5 | Humanize | 🟡 |
+| DBL-6 | Source モード（Mono Sum / True Stereo） | 🟡 |
+| DBL-7 | Tone と Tone Spread | 🟡 |
 | DBL-8 | スムージングとサンプルレート／ブロックサイズ非依存の詰め | ⬜ DBL-5, DBL-6, DBL-7 |
 | DBL-9 | UI マクロ層（ノブとセグメント） | ⬜ DBL-4, UI-4, UI-6, UI-2 |
 | DBL-10 | UI Voice Field | ⬜ DBL-9, DBL-5, DBL-6, UI-7 |
