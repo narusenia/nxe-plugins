@@ -77,19 +77,21 @@ impl Token {
     }
 }
 
-// Surfaces.
-pub const BACKGROUND: Token = Token::rgb(0x09, 0x09, 0x0B);
-pub const CARD: Token = Token::rgb(0x13, 0x13, 0x16);
-pub const ELEVATED: Token = Token::rgb(0x1B, 0x1B, 0x1F);
-pub const BORDER: Token = Token::rgb(0x27, 0x27, 0x2A);
+// Surfaces. Fully neutral — every channel equal — so the accent is the only
+// hue anywhere in the window. A slight blue cast in the greys reads as a
+// colour scheme rather than as a background.
+pub const BACKGROUND: Token = Token::rgb(0x0A, 0x0A, 0x0A);
+pub const CARD: Token = Token::rgb(0x14, 0x14, 0x14);
+pub const ELEVATED: Token = Token::rgb(0x1F, 0x1F, 0x1F);
+pub const BORDER: Token = Token::rgb(0x2A, 0x2A, 0x2A);
 /// The one-pixel lift along the top of a surface. Most of the "shadcn feel" is
 /// this line.
 pub const HIGHLIGHT: Token = Token::rgba(0xFF, 0xFF, 0xFF, 0.04);
 
-// Text.
+// Text. Neutral for the same reason as the surfaces.
 pub const FOREGROUND: Token = Token::rgb(0xFA, 0xFA, 0xFA);
-pub const MUTED: Token = Token::rgb(0xA1, 0xA1, 0xAA);
-pub const SUBTLE: Token = Token::rgb(0x71, 0x71, 0x7A);
+pub const MUTED: Token = Token::rgb(0xA3, 0xA3, 0xA3);
+pub const SUBTLE: Token = Token::rgb(0x73, 0x73, 0x73);
 
 // One accent, and no other hue anywhere.
 pub const ACCENT: Token = Token::rgb(0x38, 0xBD, 0xF8);
@@ -243,7 +245,29 @@ mod tests {
     fn tokens_render_as_rgba() {
         assert_eq!(ACCENT.css(), "rgba(56, 189, 248, 1)");
         assert_eq!(ACCENT_DIM.css(), "rgba(56, 189, 248, 0.18)");
-        assert_eq!(BACKGROUND.css(), "rgba(9, 9, 11, 1)");
+        assert_eq!(BACKGROUND.css(), "rgba(10, 10, 10, 1)");
+    }
+
+    /// The surfaces and the text have to be neutral: the accent is the only
+    /// hue the design allows, and a grey with a cast stops reading as a
+    /// background.
+    #[test]
+    fn the_neutrals_have_no_hue() {
+        for (name, token) in [
+            ("background", BACKGROUND),
+            ("card", CARD),
+            ("elevated", ELEVATED),
+            ("border", BORDER),
+            ("highlight", HIGHLIGHT),
+            ("foreground", FOREGROUND),
+            ("muted", MUTED),
+            ("subtle", SUBTLE),
+        ] {
+            assert!(
+                token.red == token.green && token.green == token.blue,
+                "{name} is tinted: {token:?}"
+            );
+        }
     }
 
     #[test]

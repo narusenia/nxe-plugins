@@ -16,17 +16,23 @@ fn main() {
     Application::new(|cx| {
         theme::install(cx);
 
-        VStack::new(cx, |cx| {
-            Label::new(cx, "nxe-ui").class("value");
-            Label::new(cx, "tokens and widgets").class("subtle");
+        // The gallery grows every time a widget is added, so it scrolls from
+        // the start rather than when someone notices it has stopped fitting.
+        ScrollView::new(cx, 0.0, 0.0, false, true, |cx| {
+            VStack::new(cx, |cx| {
+                Label::new(cx, "nxe-ui").class("value");
+                Label::new(cx, "tokens and widgets").class("subtle");
 
-            colours(cx);
-            shapes(cx);
-            spacing(cx);
-            text(cx);
-            states(cx);
+                colours(cx);
+                shapes(cx);
+                spacing(cx);
+                text(cx);
+                states(cx);
+            })
+            .class("root")
+            .height(Auto);
         })
-        .class("root");
+        .background_color(theme::BACKGROUND.vizia());
     })
     .title("nxe-ui gallery")
     .inner_size((760, 720))
