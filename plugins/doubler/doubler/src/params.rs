@@ -17,6 +17,7 @@ use doubler_core::{DEFAULT_SHAPE, MAX_VOICES, Macros, Source, VoiceShape, Voices
 use nih_plug::prelude::*;
 use nih_plug_vizia::ViziaState;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 /// How many voices are live.
 ///
@@ -70,10 +71,17 @@ impl From<SourceParam> for Source {
 
 #[derive(Params)]
 pub struct DoublerParams {
-    /// The editor's size and, later, whether the Detail table is open. Persisted
-    /// with the parameters so a project reopens looking the way it was left.
+    /// The editor's size. Persisted with the parameters so a project reopens
+    /// looking the way it was left.
     #[persist = "editor-state"]
     pub editor_state: Arc<ViziaState>,
+
+    /// Whether the Detail table is open. Not a parameter: it does not affect
+    /// the sound and automating it would be meaningless (`REQ-DBL-008`). The
+    /// editor's model is what the display binds to; this is the copy that
+    /// survives closing the project.
+    #[persist = "detail-open"]
+    pub detail_open: Arc<AtomicBool>,
 
     #[id = "voices"]
     pub voices: EnumParam<VoicesParam>,
@@ -123,8 +131,11 @@ impl Default for DoublerParams {
     fn default() -> Self {
         let defaults = Macros::default();
 
+        let detail_open = Arc::new(AtomicBool::new(false));
+
         Self {
-            editor_state: crate::ui::default_state(),
+            editor_state: crate::ui::default_state(detail_open.clone()),
+            detail_open,
 
             voices: EnumParam::new("Voices", VoicesParam::Four),
             source: EnumParam::new("Source", SourceParam::MonoSum),

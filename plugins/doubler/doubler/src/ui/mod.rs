@@ -6,6 +6,7 @@
 //! (`DBL-11`) land in their own units; their space is left framed but empty so
 //! the proportions are already right.
 
+mod detail;
 mod field;
 mod param_bind;
 mod tone;
@@ -13,25 +14,61 @@ mod tone;
 use crate::params::DoublerParams;
 use nih_plug::prelude::Editor;
 use nih_plug_vizia::vizia::prelude::*;
+use nih_plug_vizia::widgets::GuiContextEvent;
 use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
-use nxe_ui::{font, theme};
+use nxe_ui::{font, icon, theme};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
-/// The two heights `ui.md` fixes: closed, and with the Detail table open. Only
-/// the closed one is reachable until `DBL-11`.
+/// The two heights `ui.md` fixes: closed, and with the Detail table open.
 const WIDTH: u32 = 620;
-const HEIGHT: u32 = 500;
+const HEIGHT_CLOSED: u32 = 500;
+const HEIGHT_OPEN: u32 = 760;
 
-pub fn default_state() -> Arc<ViziaState> {
-    ViziaState::new(|| (WIDTH, HEIGHT))
+/// The size is a function of the plugin's own state, so reopening a project
+/// restores the height the Detail toggle left behind.
+pub fn default_state(detail_open: Arc<AtomicBool>) -> Arc<ViziaState> {
+    ViziaState::new(move || {
+        if detail_open.load(Ordering::Relaxed) {
+            (WIDTH, HEIGHT_OPEN)
+        } else {
+            (WIDTH, HEIGHT_CLOSED)
+        }
+    })
 }
 
 #[derive(Lens)]
 pub(crate) struct Ui {
     params: Arc<DoublerParams>,
+    /// The reactive copy of `params.detail_open`. An `AtomicBool` cannot be
+    /// observed by a lens, so the display binds to this and the atomic follows.
+    detail_open: bool,
+    /// Which voice the pointer is over in the Voice Field, so the matching row
+    /// can be highlighted. This is what stands in for numbering the dots
+    /// (`plugins/doubler/docs/specifications/ui.md`).
+    hovered: Option<usize>,
 }
 
-impl Model for Ui {}
+pub(crate) enum UiEvent {
+    ToggleDetail,
+    Hover(Option<usize>),
+}
+
+impl Model for Ui {
+    fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
+        event.map(|ui_event: &UiEvent, _| match ui_event {
+            UiEvent::ToggleDetail => {
+                self.detail_open = !self.detail_open;
+                self.params
+                    .detail_open
+                    .store(self.detail_open, Ordering::Relaxed);
+                // Re-asks the size function, which now answers differently.
+                cx.emit(GuiContextEvent::Resize);
+            }
+            UiEvent::Hover(index) => self.hovered = *index,
+        });
+    }
+}
 
 pub fn create(params: Arc<DoublerParams>, state: Arc<ViziaState>) -> Option<Box<dyn Editor>> {
     // `ViziaTheming::None`: the plugin brings its own stylesheet and wants none
@@ -40,6 +77,8 @@ pub fn create(params: Arc<DoublerParams>, state: Arc<ViziaState>) -> Option<Box<
         theme::install(cx);
 
         Ui {
+            detail_open: params.detail_open.load(Ordering::Relaxed),
+            hovered: None,
             params: params.clone(),
         }
         .build(cx);
@@ -50,6 +89,7 @@ pub fn create(params: Arc<DoublerParams>, state: Arc<ViziaState>) -> Option<Box<
             macros(cx);
             tone::view(cx);
             footer(cx);
+            detail::view(cx);
         })
         .class("root")
         .child_space(Pixels(theme::SPACE_3))
@@ -110,8 +150,26 @@ fn macros(cx: &mut Context) {
 }
 fn footer(cx: &mut Context) {
     HStack::new(cx, |cx| {
-        // `DBL-11` turns this into the Detail disclosure.
-        Label::new(cx, "DETAIL").class("subtle").width(Pixels(96.0));
+        HStack::new(cx, |cx| {
+            icon::label(
+                cx, // The chevron points the way the panel will move.
+                "",
+            )
+            .bind(Ui::detail_open, |handle, open| {
+                let glyph = if open.get(&handle) {
+                    icon::CHEVRON_UP
+                } else {
+                    icon::CHEVRON_DOWN
+                };
+                handle.text(glyph);
+            });
+            Label::new(cx, "DETAIL").class("label");
+        })
+        .class("hoverable")
+        .width(Pixels(96.0))
+        .height(Pixels(22.0))
+        .col_between(Pixels(theme::SPACE_1))
+        .on_press(|cx| cx.emit(UiEvent::ToggleDetail));
         macro_knob(cx, "MIX", |params| &params.mix, 34.0);
         macro_knob(cx, "OUTPUT", |params| &params.output, 34.0);
     })
