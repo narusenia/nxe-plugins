@@ -152,7 +152,14 @@ pub fn view(cx: &mut Context) {
         .width(Stretch(1.0))
         .height(Auto);
 
-        macro_knob(cx, "SPREAD", |params| &params.tone_spread, 34.0);
+        // A fixed column: `macro_knob` stretches, and two stretching children
+        // would split the row in half — leaving the curve drawn across half the
+        // width it is supposed to span.
+        VStack::new(cx, |cx| {
+            macro_knob(cx, "SPREAD", |params| &params.tone_spread, 34.0);
+        })
+        .width(Pixels(96.0))
+        .height(Auto);
     })
     .class("row")
     .col_between(Pixels(theme::SPACE_3))

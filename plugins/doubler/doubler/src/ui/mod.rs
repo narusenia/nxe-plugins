@@ -20,10 +20,15 @@ use nxe_ui::{font, icon, theme};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-/// The two heights `ui.md` fixes: closed, and with the Detail table open.
+/// The two heights, closed and with the Detail table open.
+///
+/// Measured against the built layout rather than estimated: the numbers the
+/// specification started with were too small and cut the footer off. If a
+/// section changes height, these move with it — a window smaller than its
+/// contents makes controls unreachable, not just untidy.
 const WIDTH: u32 = 620;
-const HEIGHT_CLOSED: u32 = 500;
-const HEIGHT_OPEN: u32 = 760;
+const HEIGHT_CLOSED: u32 = 584;
+const HEIGHT_OPEN: u32 = 892;
 
 /// The size is a function of the plugin's own state, so reopening a project
 /// restores the height the Detail toggle left behind.
