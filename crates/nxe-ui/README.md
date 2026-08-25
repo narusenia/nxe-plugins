@@ -106,6 +106,26 @@ Panel / Section / Row / Label / Divider をウィジェットにしていない�
 （`:checked` で accent）を単体の `Label` に当て、`checked` と `on_press` を
 付ければトグルになる。
 
+## フォント
+
+[Geist](https://vercel.com/font)（SIL OFL 1.1）を埋め込んでいる。Sans と Mono の
+Regular 1 ウェイトずつ。この設計は階層を**サイズと色**で作るので、他のウェイトは
+使わない。
+
+- 既定は Geist Sans。`theme::install` が `set_default_font` で入れるので、
+  普通の `Label` はそのまま Geist になる
+- **数値は Geist Mono。** `font::value(cx, text)` を使う
+
+```rust
+font::value(cx, lens.map(|v| format!("{v:.1}")));
+```
+
+小数桁を固定しても、プロポーショナルな字形では `1` と `8` で幅が違うので、
+ノブをドラッグしている間に数字が横に揺れる。等幅にすればそれが根本的に消える。
+
+ライセンス文はフォントの隣（`assets/geist/`）。**バイナリに焼き込まれるので
+リリースのバンドルにも同梱が必要。**
+
 ## アイコン
 
 Lucide の埋め込みフォント。2035 個すべてが定数になっている。

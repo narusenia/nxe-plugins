@@ -14,7 +14,7 @@ use crate::params::DoublerParams;
 use nih_plug::prelude::Editor;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
-use nxe_ui::theme;
+use nxe_ui::{font, theme};
 use std::sync::Arc;
 
 /// The two heights `ui.md` fixes: closed, and with the Detail table open. Only
@@ -82,15 +82,14 @@ where
     VStack::new(cx, |cx| {
         param_bind::knob(cx, Ui::params, to_param, size);
         Label::new(cx, label).class("label");
-        Label::new(
+        font::value(
             cx,
             nih_plug_vizia::widgets::param_base::ParamWidgetBase::make_lens(
                 Ui::params,
                 to_param,
                 |param| param.to_string(),
             ),
-        )
-        .class("value");
+        );
     })
     .width(Stretch(1.0))
     .height(Auto)

@@ -15,7 +15,7 @@ use nxe_ui::input::Gesture;
 use nxe_ui::knob::Knob;
 use nxe_ui::polar::{FieldGesture, FieldPoint, PolarField};
 use nxe_ui::segmented::SegmentedControl;
-use nxe_ui::{icon, theme};
+use nxe_ui::{font, icon, theme};
 use vizia::prelude::*;
 
 /// Somewhere for the demo controls to keep their values. A plugin has its
@@ -279,7 +279,7 @@ where
         })
         .size(Pixels(size));
         Label::new(cx, label).class("label");
-        Label::new(cx, lens.map(|value| format!("{value:.3}"))).class("value");
+        font::value(cx, lens.map(|value| format!("{value:.3}")));
     })
     .width(Auto)
     .height(Auto)
@@ -646,11 +646,15 @@ fn spacing(cx: &mut Context) {
 fn text(cx: &mut Context) {
     panel(cx, "TEXT", |cx| {
         Label::new(cx, "LABEL — names a thing, 12 px, muted").class("label");
-        Label::new(cx, "Value — says what it is, 13 px").class("value");
+        Label::new(cx, "Value — says what it is, 13 px, Geist Sans").class("value");
         Label::new(cx, "Subtle — gridlines, units, disabled rows").class("subtle");
         Element::new(cx).class("divider");
-        Label::new(cx, "-12.0 ct    22.0 ms    L70    0.0 dB").class("value");
-        Label::new(cx, "fixed decimals, right aligned: the numbers move").class("subtle");
+        font::value(cx, "-12.0 ct    22.0 ms    L70    0.0 dB");
+        Label::new(
+            cx,
+            "figures are Geist Mono: a digit changing does not shift the rest",
+        )
+        .class("subtle");
     });
 }
 

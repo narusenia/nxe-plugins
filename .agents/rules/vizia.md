@@ -74,6 +74,12 @@ place labels as absolutely-positioned siblings using the same mapping the widget
 was given (`CurveView`), or report what the pointer is over so the caller can
 highlight the matching row elsewhere (`PolarField`).
 
+**The default font is set through `set_default_font`, not CSS.** Same reason as
+the icon family — a stylesheet's `font-family` does not select an embedded face.
+`theme::install` registers Geist and makes it the default, so a plain `Label`
+needs nothing. A different family for one label needs the modifier;
+`font::value` is that for figures.
+
 **Vizia's default text colour is black.** A `Label` with no colour disappears on
 a dark surface. The stylesheet has a base `label` element rule for exactly this;
 do not remove it.
