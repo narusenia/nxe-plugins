@@ -1,8 +1,7 @@
 //! The voice engine: N voices from one source, each with its own delay,
 //! detune, position and level.
 //!
-//! `Source` modes and Tone are not here yet (`DBL-6`, `DBL-7`); this is the
-//! mono-sum path.
+//! Tone is not here yet (`DBL-7`).
 //!
 //! See `plugins/doubler/docs/specifications/dsp.md`.
 
@@ -29,6 +28,17 @@ const HUMANIZE_DETUNE_CENTS: f32 = 8.0;
 /// Ear-tuned (`dsp.md`).
 const HUMANIZE_DELAY_MS: f32 = 3.0;
 
+/// How long a `Source` change takes to cross over. Long enough not to click,
+/// short enough to feel like a switch.
+const SOURCE_FADE_SECONDS: f32 = 0.020;
+
+/// In `TrueStereo`, how far a voice's own channel sits from the centre, and how
+/// much `Pan_i` moves it from there. The two add to exactly 1 at full spread,
+/// so the pan never has to be clamped. Ear-tuned (`dsp.md`).
+const STEREO_BASE_PAN: f32 = 0.5;
+const STEREO_SPREAD_PAN: f32 = 0.3;
+const STEREO_SHAPE_PAN: f32 = 0.2;
+
 /// How many voices are live. Discrete, so an out-of-range count cannot exist.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum Voices {
@@ -46,6 +56,19 @@ impl Voices {
             Voices::Eight => 8,
         }
     }
+}
+
+/// Where a voice takes its input from (`REQ-DBL-004`).
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum Source {
+    /// Every voice reads `(L + R) / 2`, and `Pan_i` is an absolute position.
+    /// Behaves the same whether the input is mono or wide, so the width and the
+    /// phase are predictable.
+    #[default]
+    MonoSum,
+    /// Even voices read L, odd voices read R, and `Pan_i` is an offset from
+    /// that side. Leaves an already-wide source's image intact.
+    TrueStereo,
 }
 
 /// One voice's normalized shape. The macros scale these; neither layer
@@ -121,6 +144,7 @@ pub const DEFAULT_SHAPE: [VoiceShape; MAX_VOICES] = [
 #[derive(Clone, Copy, Debug)]
 pub struct Macros {
     pub voices: Voices,
+    pub source: Source,
     /// Cents. Scales `VoiceShape::detune`.
     pub detune: f32,
     /// Milliseconds. Scales `VoiceShape::delay`.
@@ -135,6 +159,7 @@ impl Default for Macros {
     fn default() -> Self {
         Self {
             voices: Voices::Four,
+            source: Source::MonoSum,
             detune: 12.0,
             delay: 22.0,
             spread: 0.7,
@@ -145,30 +170,46 @@ impl Default for Macros {
 
 pub struct VoiceEngine {
     sample_rate: f32,
-    line: DelayLine,
+    /// One line per input channel. **There is no third line for the mono sum**:
+    /// a delay line and Hermite interpolation are both linear, so
+    /// `(left.read(d) + right.read(d)) / 2` is exactly what reading a summed
+    /// line would give. That saves a buffer, keeps the write path free of any
+    /// mode switch, and — the real payoff — makes a `Source` change a crossfade
+    /// between two read formulas rather than between two buffer contents.
+    line_left: DelayLine,
+    line_right: DelayLine,
     shifters: [PitchShifter; MAX_VOICES],
     /// Two independent wobbles per voice, so pitch and timing do not drift
     /// together — a single source would make every voice sound like one take
     /// being bent rather than several takes.
     detune_wobble: [Wobble; MAX_VOICES],
     delay_wobble: [Wobble; MAX_VOICES],
+    /// 1 is fully `MonoSum`, 0 is fully `TrueStereo`. Ramped rather than
+    /// switched, because `Source` is a discrete parameter and nothing smooths
+    /// it for us.
+    source_blend: f32,
+    source_step: f32,
 }
 
 impl VoiceEngine {
     pub fn new(sample_rate: f32) -> Self {
         Self {
             sample_rate,
-            line: DelayLine::new(sample_rate, LINE_SECONDS),
+            line_left: DelayLine::new(sample_rate, LINE_SECONDS),
+            line_right: DelayLine::new(sample_rate, LINE_SECONDS),
             shifters: std::array::from_fn(|_| PitchShifter::new(sample_rate)),
             detune_wobble: std::array::from_fn(|i| Wobble::new(sample_rate, i as u32)),
             delay_wobble: std::array::from_fn(|i| {
                 Wobble::new(sample_rate, (i + MAX_VOICES) as u32)
             }),
+            source_blend: 1.0,
+            source_step: (SOURCE_FADE_SECONDS * sample_rate).recip(),
         }
     }
 
     pub fn reset(&mut self) {
-        self.line.reset();
+        self.line_left.reset();
+        self.line_right.reset();
         for shifter in &mut self.shifters {
             shifter.reset();
         }
@@ -177,18 +218,32 @@ impl VoiceEngine {
         }
     }
 
-    /// One mono sample in, the stereo wet pair out. Dry is the caller's
+    /// One stereo frame in, the stereo wet pair out. Dry is the caller's
     /// business — it never passes through here (`REQ-DBL-006`).
+    ///
+    /// A mono caller passes the same sample for both channels; `MonoSum` then
+    /// produces exactly what a mono input should
+    /// (`REQ-DBL-004`).
     pub fn process(
         &mut self,
-        input: f32,
+        left_in: f32,
+        right_in: f32,
         macros: &Macros,
         shape: &[VoiceShape; MAX_VOICES],
     ) -> (f32, f32) {
-        self.line.write(input);
+        self.line_left.write(left_in);
+        self.line_right.write(right_in);
+
+        let target = match macros.source {
+            Source::MonoSum => 1.0,
+            Source::TrueStereo => 0.0,
+        };
+        self.source_blend = approach(self.source_blend, target, self.source_step);
+        let blend = self.source_blend;
 
         let ms_to_samples = self.sample_rate / 1000.0;
         let humanize = macros.humanize.clamp(0.0, 1.0);
+        let spread = macros.spread.clamp(0.0, 1.0);
         let live = macros.voices.count();
         let mut left = 0.0;
         let mut right = 0.0;
@@ -212,11 +267,23 @@ impl VoiceEngine {
                 macros.detune * shape.detune + humanize * HUMANIZE_DETUNE_CENTS * detune_wobble;
             let delay_ms =
                 (macros.delay * shape.delay + humanize * HUMANIZE_DELAY_MS * delay_wobble).max(0.0);
-            let voice =
-                self.shifters[voice_index].process(&self.line, delay_ms * ms_to_samples, cents)
-                    * gain;
 
-            let (gain_l, gain_r) = equal_power_pan(macros.spread * shape.pan);
+            let own_is_left = voice_index % 2 == 0;
+            let line_left = &self.line_left;
+            let line_right = &self.line_right;
+            let voice = self.shifters[voice_index].process(
+                |delay| {
+                    let l = line_left.read(delay);
+                    let r = line_right.read(delay);
+                    let own = if own_is_left { l } else { r };
+                    (l + r) * 0.5 * blend + own * (1.0 - blend)
+                },
+                delay_ms * ms_to_samples,
+                cents,
+            ) * gain;
+
+            let (gain_l, gain_r) =
+                equal_power_pan(pan_position(blend, spread, shape.pan, own_is_left));
             left += voice * gain_l;
             right += voice * gain_r;
         }
@@ -231,6 +298,31 @@ impl VoiceEngine {
         }
         let compensation = energy.sqrt().recip();
         (left * compensation, right * compensation)
+    }
+}
+
+/// Where a voice sits, blended between what each source mode would say.
+///
+/// **`Pan_i` means different things in the two modes** and that is deliberate
+/// (`REQ-DBL-004`): an absolute position under `MonoSum`, an offset from the
+/// voice's own channel under `TrueStereo`. Switching modes therefore moves the
+/// voices, which is the specified behaviour and not a bug.
+fn pan_position(blend: f32, spread: f32, shape_pan: f32, own_is_left: bool) -> f32 {
+    let mono = spread * shape_pan;
+
+    let own_side = if own_is_left { -1.0 } else { 1.0 };
+    let stereo = own_side * (STEREO_BASE_PAN + STEREO_SPREAD_PAN * spread)
+        + shape_pan * STEREO_SHAPE_PAN * spread;
+
+    mono * blend + stereo * (1.0 - blend)
+}
+
+/// Moves `current` toward `target` by at most `step`, landing on it exactly.
+fn approach(current: f32, target: f32, step: f32) -> f32 {
+    if current < target {
+        (current + step).min(target)
+    } else {
+        (current - step).max(target)
     }
 }
 
@@ -252,16 +344,21 @@ mod tests {
 
     const SR: f32 = 48_000.0;
 
-    /// Runs `input` through the engine and returns the stereo output.
+    /// Runs a mono signal through the engine (both inputs fed the same sample)
+    /// and returns the stereo output.
     fn run(macros: &Macros, input: &[f32]) -> (Vec<f32>, Vec<f32>) {
-        let mut engine = VoiceEngine::new(SR);
-        let mut left = Vec::with_capacity(input.len());
-        let mut right = Vec::with_capacity(input.len());
+        run_stereo(macros, input, input)
+    }
 
-        for &sample in input {
-            let (l, r) = engine.process(sample, macros, &DEFAULT_SHAPE);
-            left.push(l);
-            right.push(r);
+    fn run_stereo(macros: &Macros, left_in: &[f32], right_in: &[f32]) -> (Vec<f32>, Vec<f32>) {
+        let mut engine = VoiceEngine::new(SR);
+        let mut left = Vec::with_capacity(left_in.len());
+        let mut right = Vec::with_capacity(left_in.len());
+
+        for (&l, &r) in left_in.iter().zip(right_in) {
+            let (out_l, out_r) = engine.process(l, r, macros, &DEFAULT_SHAPE);
+            left.push(out_l);
+            right.push(out_r);
         }
         (left, right)
     }
@@ -281,6 +378,13 @@ mod tests {
                 (state as f32 / u32::MAX as f32) * 2.0 - 1.0
             })
             .collect()
+    }
+
+    fn max_step(signal: &[f32]) -> f32 {
+        signal
+            .windows(2)
+            .map(|w| (w[1] - w[0]).abs())
+            .fold(0.0f32, f32::max)
     }
 
     /// `REQ-DBL-001`: taking the first N entries of the shape has to stay
@@ -345,6 +449,7 @@ mod tests {
     fn zero_spread_is_centred() {
         let macros = Macros {
             spread: 0.0,
+            humanize: 0.0,
             ..Macros::default()
         };
         let (l, r) = run(&macros, &noise(4096));
@@ -365,19 +470,12 @@ mod tests {
             detune: 0.0,
             delay: 40.0,
             humanize: 0.0,
+            ..Macros::default()
         };
-        let mut engine = VoiceEngine::new(SR);
 
         let mut impulse = vec![0.0; 8192];
         impulse[0] = 1.0;
-
-        let mut left = Vec::new();
-        let mut right = Vec::new();
-        for &s in &impulse {
-            let (l, r) = engine.process(s, &macros, &DEFAULT_SHAPE);
-            left.push(l);
-            right.push(r);
-        }
+        let (left, right) = run(&macros, &impulse);
 
         // Voice 0 sits at `delay * 1.00` = 40 ms and is panned hard left;
         // voice 1 at `delay * 0.62` = 24.8 ms, hard right.
@@ -405,6 +503,7 @@ mod tests {
             delay: 22.0,
             spread: 0.0,
             humanize: 0.0,
+            ..Macros::default()
         };
         let mut impulse = vec![0.0; 8192];
         impulse[0] = 1.0;
@@ -506,13 +605,8 @@ mod tests {
             &input,
         );
 
-        let step = |s: &[f32]| {
-            s.windows(2)
-                .map(|w| (w[1] - w[0]).abs())
-                .fold(0.0f32, f32::max)
-        };
-        let input_step = step(&input);
-        let out_step = step(&left[8_000..]);
+        let input_step = max_step(&input);
+        let out_step = max_step(&left[8_000..]);
         assert!(
             out_step < input_step * 1.5,
             "output steps by {out_step} where the input steps by at most {input_step}"
@@ -557,6 +651,123 @@ mod tests {
         );
     }
 
+    /// `REQ-DBL-004`: a mono input and a stereo input carrying the same signal
+    /// have to give the same result under `MonoSum`. This is what makes a mono
+    /// caller — a host that only offers a mono-in layout — correct without a
+    /// separate code path.
+    #[test]
+    fn mono_sum_treats_a_mono_input_and_a_doubled_one_alike() {
+        let macros = Macros {
+            source: Source::MonoSum,
+            ..Macros::default()
+        };
+        let input = noise(24_000);
+
+        let duplicated = run_stereo(&macros, &input, &input);
+        let same_signal_both_sides = run(&macros, &input);
+        assert_eq!(duplicated, same_signal_both_sides);
+    }
+
+    /// `REQ-DBL-004`: under `TrueStereo`, a voice fed from a silent channel has
+    /// to be silent. Signal in the left only, so the odd voices contribute
+    /// nothing — which shows up as the right channel being far quieter than the
+    /// left rather than as an exact zero, because the even voices are panned
+    /// left but not hard left.
+    #[test]
+    fn true_stereo_keeps_a_silent_channel_silent() {
+        let macros = Macros {
+            source: Source::TrueStereo,
+            voices: Voices::Two,
+            spread: 1.0,
+            humanize: 0.0,
+            ..Macros::default()
+        };
+        let input = noise(24_000);
+        let silence = vec![0.0; input.len()];
+
+        let (left, right) = run_stereo(&macros, &input, &silence);
+        // Voice 0 reads L and sits hard left; voice 1 reads R (silent).
+        let ratio = 20.0 * (rms(&right[8_000..]) / rms(&left[8_000..])).log10();
+        assert!(ratio < -30.0, "the silent channel produced {ratio:.1} dB");
+    }
+
+    /// The same input under the two modes must not sound the same, or the mode
+    /// is not wired up.
+    #[test]
+    fn the_source_modes_differ() {
+        let left_in = noise(48_000);
+        let right_in: Vec<f32> = noise(48_000).iter().rev().copied().collect();
+
+        let mono = run_stereo(
+            &Macros {
+                source: Source::MonoSum,
+                ..Macros::default()
+            },
+            &left_in,
+            &right_in,
+        );
+        let stereo = run_stereo(
+            &Macros {
+                source: Source::TrueStereo,
+                ..Macros::default()
+            },
+            &left_in,
+            &right_in,
+        );
+        assert_ne!(mono, stereo);
+    }
+
+    /// `REQ-DBL-004`: switching modes must not click. The blend is ramped, so
+    /// the output's largest step stays in the region the input explains.
+    #[test]
+    fn switching_source_does_not_click() {
+        let input: Vec<f32> = (0..96_000)
+            .map(|i| (i as f32 * std::f32::consts::TAU * 220.0 / SR).sin())
+            .collect();
+        let mut engine = VoiceEngine::new(SR);
+        let mut out = Vec::with_capacity(input.len());
+
+        for (i, &sample) in input.iter().enumerate() {
+            // Flip the mode every 10 000 samples, well inside the fade time.
+            let source = if (i / 10_000) % 2 == 0 {
+                Source::MonoSum
+            } else {
+                Source::TrueStereo
+            };
+            let macros = Macros {
+                source,
+                humanize: 0.0,
+                ..Macros::default()
+            };
+            let (l, _) = engine.process(sample, -sample, &macros, &DEFAULT_SHAPE);
+            out.push(l);
+        }
+
+        let input_step = max_step(&input);
+        let out_step = max_step(&out[8_000..]);
+        assert!(
+            out_step < input_step * 1.5,
+            "output steps by {out_step} where the input steps by at most {input_step}"
+        );
+    }
+
+    /// `TrueStereo`'s pan formula must never need clamping: at full spread the
+    /// two terms add to exactly one.
+    #[test]
+    fn the_stereo_pan_formula_stays_in_range() {
+        for spread in [0.0f32, 0.25, 0.5, 0.75, 1.0] {
+            for shape_pan in [-1.0f32, -0.5, 0.0, 0.5, 1.0] {
+                for own_is_left in [true, false] {
+                    let pan = pan_position(0.0, spread, shape_pan, own_is_left);
+                    assert!(
+                        (-1.0..=1.0).contains(&pan),
+                        "spread {spread}, pan {shape_pan}, left {own_is_left}: {pan}"
+                    );
+                }
+            }
+        }
+    }
+
     #[test]
     fn silent_voices_produce_silence_not_a_division_by_zero() {
         let shape = [VoiceShape {
@@ -567,7 +778,7 @@ mod tests {
         let macros = Macros::default();
 
         for _ in 0..1000 {
-            let (l, r) = engine.process(1.0, &macros, &shape);
+            let (l, r) = engine.process(1.0, 1.0, &macros, &shape);
             assert!(l.is_finite() && r.is_finite());
         }
     }

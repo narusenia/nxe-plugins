@@ -18,8 +18,6 @@
 //!
 //! See `plugins/doubler/docs/specifications/dsp.md`.
 
-use crate::DelayLine;
-
 /// How far the read position is allowed to drift before it wraps.
 ///
 /// Longer means rarer wraps — at ±50 cent the position takes about 1.7 s to
@@ -73,11 +71,16 @@ impl PitchShifter {
         self.fade_left = 0.0;
     }
 
-    /// Advances one sample and reads `line`.
+    /// Advances one sample and reads through `read`.
+    ///
+    /// The source is a closure rather than a `DelayLine` so the shifter does
+    /// not have to know what a voice is reading from — one channel, the average
+    /// of two, or a blend of both while the source mode crossfades
+    /// (`REQ-DBL-004`).
     ///
     /// `base_delay` and the return value are in samples; `cents` is the shift.
     /// Nothing here allocates or locks, so it is safe on the audio thread.
-    pub fn process(&mut self, line: &DelayLine, base_delay: f32, cents: f32) -> f32 {
+    pub fn process(&mut self, read: impl Fn(f32) -> f32, base_delay: f32, cents: f32) -> f32 {
         // Reading at rate `r` moves the read position away from the write head
         // by `1 - r` samples per sample: faster than realtime (`r > 1`, a
         // higher pitch) eats into the delay, slower lets it grow.
@@ -103,7 +106,7 @@ impl PitchShifter {
             self.fade_left = self.fade;
         }
 
-        let live = line.read(base_delay + self.offset);
+        let live = read(base_delay + self.offset);
         if self.fade_left <= 0.0 {
             return live;
         }
@@ -113,13 +116,14 @@ impl PitchShifter {
         // amplitudes.
         let progress = 1.0 - self.fade_left / self.fade;
         let (sin, cos) = (progress * std::f32::consts::FRAC_PI_2).sin_cos();
-        sin * live + cos * line.read(base_delay + self.fade_from)
+        sin * live + cos * read(base_delay + self.fade_from)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::DelayLine;
 
     const SR: f32 = 48_000.0;
 
@@ -132,7 +136,7 @@ mod tests {
             .iter()
             .map(|&s| {
                 line.write(s);
-                shifter.process(&line, base_delay, cents)
+                shifter.process(|delay| line.read(delay), base_delay, cents)
             })
             .collect()
     }
@@ -208,7 +212,7 @@ mod tests {
 
         for &s in &input {
             line.write(s);
-            let shifted = shifter.process(&line, base, 0.0);
+            let shifted = shifter.process(|delay| line.read(delay), base, 0.0);
             let plain = line.read(base);
             assert_eq!(shifted, plain);
         }
