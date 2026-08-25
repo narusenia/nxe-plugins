@@ -21,6 +21,10 @@ struct Doubler {
     params: Arc<DoublerParams>,
     engine: VoiceEngine,
     sample_rate: f32,
+    /// How many input channels the host actually negotiated. With one, the
+    /// buffer still has two channels (the output count), and only the first
+    /// holds input — so the second has to be ignored rather than read.
+    input_channels: usize,
 }
 
 impl Default for Doubler {
@@ -29,6 +33,7 @@ impl Default for Doubler {
             params: Arc::new(DoublerParams::default()),
             engine: VoiceEngine::new(FALLBACK_SAMPLE_RATE),
             sample_rate: FALLBACK_SAMPLE_RATE,
+            input_channels: 2,
         }
     }
 }
@@ -40,11 +45,21 @@ impl Plugin for Doubler {
     const EMAIL: &'static str = "";
     const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
-    const AUDIO_IO_LAYOUTS: &'static [AudioIOLayout] = &[AudioIOLayout {
-        main_input_channels: NonZeroU32::new(2),
-        main_output_channels: NonZeroU32::new(2),
-        ..AudioIOLayout::const_default()
-    }];
+    const AUDIO_IO_LAYOUTS: &'static [AudioIOLayout] = &[
+        AudioIOLayout {
+            main_input_channels: NonZeroU32::new(2),
+            main_output_channels: NonZeroU32::new(2),
+            ..AudioIOLayout::const_default()
+        },
+        // Mono in, stereo out. The wet signal is stereo by definition — the
+        // voices are spread across the image — so a mono-out layout would throw
+        // away the point of the plugin. This one lets a mono track host it.
+        AudioIOLayout {
+            main_input_channels: NonZeroU32::new(1),
+            main_output_channels: NonZeroU32::new(2),
+            ..AudioIOLayout::const_default()
+        },
+    ];
 
     type SysExMessage = ();
     type BackgroundTask = ();
@@ -58,10 +73,14 @@ impl Plugin for Doubler {
     /// (`REQ-DBL-011`).
     fn initialize(
         &mut self,
-        _audio_io_layout: &AudioIOLayout,
+        audio_io_layout: &AudioIOLayout,
         buffer_config: &BufferConfig,
         _context: &mut impl InitContext<Self>,
     ) -> bool {
+        self.input_channels = audio_io_layout
+            .main_input_channels
+            .map_or(0, |channels| channels.get() as usize);
+
         if buffer_config.sample_rate != self.sample_rate {
             self.sample_rate = buffer_config.sample_rate;
             self.engine = VoiceEngine::new(self.sample_rate);
@@ -92,11 +111,16 @@ impl Plugin for Doubler {
             let shape = self.params.shape();
 
             let dry_left = left[sample];
-            let dry_right = right[sample];
+            // A mono input leaves the second channel undefined, so mirror the
+            // first instead of reading it. `MonoSum` then produces exactly what
+            // a mono source should (`REQ-DBL-004`).
+            let dry_right = if self.input_channels >= 2 {
+                right[sample]
+            } else {
+                dry_left
+            };
 
-            // Mono sum for now; `Source` and true stereo arrive in `DBL-6`.
-            let mono = (dry_left + dry_right) * 0.5;
-            let (wet_left, wet_right) = self.engine.process(mono, &macros, &shape);
+            let (wet_left, wet_right) = self.engine.process(dry_left, dry_right, &macros, &shape);
 
             let mix = self.params.mix.smoothed.next();
             let output = util::db_to_gain(self.params.output.smoothed.next());

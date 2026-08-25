@@ -13,7 +13,7 @@
 //! because the path from the value to the sound differs: a gain can move in
 //! 20 ms, but a read position moving that fast is an audible pitch transient.
 
-use doubler_core::{DEFAULT_SHAPE, MAX_VOICES, Macros, VoiceShape, Voices};
+use doubler_core::{DEFAULT_SHAPE, MAX_VOICES, Macros, Source, VoiceShape, Voices};
 use nih_plug::prelude::*;
 
 /// How many voices are live.
@@ -43,10 +43,35 @@ impl From<VoicesParam> for Voices {
     }
 }
 
+/// Where the voices take their input from.
+///
+/// A separate type from `doubler_core::Source` for the same reason as
+/// `VoicesParam`.
+#[derive(Enum, Debug, PartialEq, Eq, Clone, Copy)]
+pub enum SourceParam {
+    #[id = "mono"]
+    #[name = "Mono Sum"]
+    MonoSum,
+    #[id = "stereo"]
+    #[name = "True Stereo"]
+    TrueStereo,
+}
+
+impl From<SourceParam> for Source {
+    fn from(value: SourceParam) -> Self {
+        match value {
+            SourceParam::MonoSum => Source::MonoSum,
+            SourceParam::TrueStereo => Source::TrueStereo,
+        }
+    }
+}
+
 #[derive(Params)]
 pub struct DoublerParams {
     #[id = "voices"]
     pub voices: EnumParam<VoicesParam>,
+    #[id = "source"]
+    pub source: EnumParam<SourceParam>,
     #[id = "detune"]
     pub detune: FloatParam,
     #[id = "delay"]
@@ -87,6 +112,7 @@ impl Default for DoublerParams {
 
         Self {
             voices: EnumParam::new("Voices", VoicesParam::Four),
+            source: EnumParam::new("Source", SourceParam::MonoSum),
 
             detune: FloatParam::new(
                 "Detune",
@@ -215,6 +241,7 @@ impl DoublerParams {
     pub fn macros(&self) -> Macros {
         Macros {
             voices: self.voices.value().into(),
+            source: self.source.value().into(),
             detune: self.detune.smoothed.next(),
             delay: self.delay.smoothed.next(),
             spread: self.spread.smoothed.next(),
