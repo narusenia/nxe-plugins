@@ -516,10 +516,9 @@ fn curves(cx: &mut Context) {
     panel(cx, "CURVE VIEW", |cx| {
         CurveView::new(
             cx,
-            Demo::tone_lo.map(|lo| vec![shelf_curve(*lo, 0.5)]),
-            Demo::tone_spread.map(|spread| spread_spans(*spread)),
-            Demo::tone_lo
-                .map(|lo| -> Vec<Grip> { vec![(log_x(200.0), *lo), (log_x(4_000.0), 0.44)] }),
+            Demo::curves,
+            Demo::spans,
+            Demo::grips,
             MARKS.iter().map(|(hz, _)| log_x(*hz)).collect(),
             |cx, index, gesture| {
                 if let Gesture::Change(value) = gesture {

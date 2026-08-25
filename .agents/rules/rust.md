@@ -62,6 +62,14 @@ guarantee quietly, in a way only a host with an unusual buffer size would show.
 assert!(...)` next to the constant fails the build instead of a test run nobody
 had to execute. The radius guards in `nxe_ui::theme` are the example.
 
+**A string replacement against a formatted file silently does nothing.**
+Editing by matching source text you wrote earlier fails the moment `rustfmt` has
+reflowed it — and unlike a bad edit, a no-op edit still compiles, so the only
+symptom is that the behaviour never changed. This has already produced one
+"fixed" claim that was not fixed and one feature that was never wired up. After
+any edit that is supposed to change behaviour, **grep the file for the new text
+before believing it landed.**
+
 **Check the exit code, not the output.** `cargo clippy ... | tail` reports
 `tail`'s status, so a `&&` chain after it runs even though clippy failed. This
 has already put unformatted and lint-failing code into a commit twice. Run the
