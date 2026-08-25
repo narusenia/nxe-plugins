@@ -456,6 +456,54 @@ impl VoiceEngine {
     }
 }
 
+/// Where voice `index` sits, in the same `-1..=1` the pan law takes.
+///
+/// **The editor draws its dots with this, so there is one formula rather than
+/// two that drift.** It takes the discrete mode rather than the crossfade
+/// blend: mid-switch positions are a transient the DSP hears and the display
+/// should not chase.
+pub fn pan_for(source: Source, spread: f32, shape_pan: f32, index: usize) -> f32 {
+    let blend = match source {
+        Source::MonoSum => 1.0,
+        Source::TrueStereo => 0.0,
+    };
+    pan_position(
+        blend,
+        spread.clamp(0.0, 1.0),
+        shape_pan,
+        index.is_multiple_of(2),
+    )
+}
+
+/// The inverse: the `Pan_i` that would put voice `index` at `pan`.
+///
+/// `None` when the mode and spread leave nothing to invert — under `MonoSum`
+/// with `Spread` at zero every voice is centred whatever its shape, so there is
+/// no shape value that would move it. The editor has to ignore a sideways drag
+/// in that state rather than divide by zero.
+pub fn pan_shape_for(source: Source, spread: f32, pan: f32, index: usize) -> Option<f32> {
+    let spread = spread.clamp(0.0, 1.0);
+    let own_side = if index.is_multiple_of(2) { -1.0 } else { 1.0 };
+
+    let shape = match source {
+        Source::MonoSum => {
+            if spread <= f32::EPSILON {
+                return None;
+            }
+            pan / spread
+        }
+        Source::TrueStereo => {
+            let scale = STEREO_SHAPE_PAN * spread;
+            if scale <= f32::EPSILON {
+                return None;
+            }
+            (pan - own_side * (STEREO_BASE_PAN + STEREO_SPREAD_PAN * spread)) / scale
+        }
+    };
+
+    Some(shape.clamp(-1.0, 1.0))
+}
+
 /// Where a voice sits, blended between what each source mode would say.
 ///
 /// **`Pan_i` means different things in the two modes** and that is deliberate
@@ -1192,6 +1240,37 @@ mod tests {
         let high = excursion(96_000.0);
         let db = 20.0 * (high / low).log10();
         assert!(db.abs() < 1.0, "the wobble changed level by {db:.2} dB");
+    }
+
+    /// The editor converts a dragged position back into a shape value, so the
+    /// two directions have to agree or a dot would creep while being dragged.
+    #[test]
+    fn the_pan_mapping_round_trips() {
+        for source in [Source::MonoSum, Source::TrueStereo] {
+            for spread in [0.2f32, 0.5, 1.0] {
+                for index in 0..MAX_VOICES {
+                    for shape in [-1.0f32, -0.4, 0.0, 0.6, 1.0] {
+                        let pan = pan_for(source, spread, shape, index);
+                        let back = pan_shape_for(source, spread, pan, index)
+                            .expect("invertible at this spread");
+                        assert!(
+                            (back - shape).abs() < 1e-3,
+                            "{source:?} spread {spread} voice {index}: \
+                             {shape} came back as {back}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// With nothing to invert the editor has to be told so, rather than handed
+    /// an infinity.
+    #[test]
+    fn the_pan_mapping_reports_when_it_cannot_be_inverted() {
+        assert_eq!(pan_shape_for(Source::MonoSum, 0.0, 0.0, 0), None);
+        assert_eq!(pan_shape_for(Source::TrueStereo, 0.0, 0.0, 0), None);
+        assert!(pan_shape_for(Source::MonoSum, 0.5, 0.0, 0).is_some());
     }
 
     #[test]
