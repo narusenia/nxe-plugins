@@ -11,5 +11,6 @@ pub mod bar;
 pub mod icon;
 pub mod input;
 pub mod knob;
+pub mod polar;
 pub mod segmented;
 pub mod theme;

@@ -1,0 +1,467 @@
+//! A half-circle field of draggable points.
+//!
+//! Knows nothing about what the two axes mean. The caller supplies points in
+//! normalized coordinates — angle `-1`..`1` across the arc, radius `0`..`1` from
+//! the origin — and decides what they stand for. The Doubler reads them as pan
+//! and delay (`plugins/doubler/docs/specifications/ui.md`).
+//!
+//! [`crate::input::Drag`] is not reused: that state machine turns vertical
+//! travel into one value, and a point here moves in two at once. The fine-drag
+//! factor is shared, so both behave the same under `Shift`.
+//!
+//! **The points carry no labels.** Vizia's `draw_text` renders the entity's own
+//! text, so one view cannot put eight numbers at eight positions. Instead the
+//! field reports which point the pointer is over, which lets the caller
+//! highlight the matching row elsewhere — more use than eight small digits.
+
+use crate::input::FINE;
+use crate::theme;
+use std::f32::consts::FRAC_PI_2;
+use vizia::prelude::*;
+use vizia::vg;
+
+/// Room for a dot to sit on the outer arc without being clipped.
+const MARGIN: f32 = 10.0;
+
+/// Dot radius at `size` 0 and 1.
+const DOT_MIN: f32 = 3.0;
+const DOT_MAX: f32 = 7.0;
+
+/// How close the pointer has to be to grab a dot.
+const GRAB: f32 = 14.0;
+
+/// One point in the field.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct FieldPoint {
+    /// `-1` at the left end of the arc, `0` straight up, `1` at the right end.
+    pub angle: f32,
+    /// `0` at the origin, `1` on the arc.
+    pub radius: f32,
+    /// `0`..`1`, scaling the dot between [`DOT_MIN`] and [`DOT_MAX`].
+    pub size: f32,
+    /// Which anchor this point belongs to. Ignored when there is one anchor.
+    pub anchor: usize,
+    /// A disabled point is drawn dim but stays draggable — the caller may well
+    /// want to set up something that is not in use yet.
+    pub enabled: bool,
+}
+
+/// Vizia compares bound values to decide whether to rebuild. `PartialEq` is the
+/// whole answer here — the struct is four floats and two small values.
+impl Data for FieldPoint {
+    fn same(&self, other: &Self) -> bool {
+        self == other
+    }
+}
+
+impl Default for FieldPoint {
+    fn default() -> Self {
+        Self {
+            angle: 0.0,
+            radius: 0.5,
+            size: 0.5,
+            anchor: 0,
+            enabled: true,
+        }
+    }
+}
+
+/// What the pointer did. Two values move together, which is why this is not
+/// [`crate::input::Gesture`].
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum FieldGesture {
+    Begin(usize),
+    Change {
+        index: usize,
+        angle: f32,
+        radius: f32,
+    },
+    End(usize),
+    Reset(usize),
+    /// Which point the pointer is over, if any.
+    Hover(Option<usize>),
+}
+
+type FieldCallback = Box<dyn Fn(&mut EventContext, FieldGesture)>;
+
+enum FieldEvent {
+    SetPoints(Vec<FieldPoint>),
+    SetAnchors(Vec<FieldPoint>),
+}
+
+/// Where the field sits inside its bounds. The origin is the bottom centre, so
+/// the half circle fills the view.
+struct Geometry {
+    origin_x: f32,
+    origin_y: f32,
+    radius: f32,
+}
+
+impl Geometry {
+    fn of(bounds: BoundingBox, margin: f32) -> Self {
+        Self {
+            origin_x: bounds.x + bounds.w * 0.5,
+            origin_y: bounds.y + bounds.h - margin,
+            radius: ((bounds.w * 0.5).min(bounds.h) - margin).max(1.0),
+        }
+    }
+
+    /// Screen position of a normalized point.
+    fn position(&self, angle: f32, radius: f32) -> (f32, f32) {
+        let theta = angle.clamp(-1.0, 1.0) * FRAC_PI_2;
+        let distance = radius.clamp(0.0, 1.0) * self.radius;
+        (
+            self.origin_x + theta.sin() * distance,
+            self.origin_y - theta.cos() * distance,
+        )
+    }
+
+    /// The normalized point a screen position lands on. Below the baseline
+    /// folds onto it rather than wrapping around.
+    fn value_at(&self, x: f32, y: f32) -> (f32, f32) {
+        let dx = x - self.origin_x;
+        let dy = (self.origin_y - y).max(0.0);
+        let angle = dx.atan2(dy) / FRAC_PI_2;
+        let radius = (dx * dx + dy * dy).sqrt() / self.radius;
+        (angle.clamp(-1.0, 1.0), radius.clamp(0.0, 1.0))
+    }
+}
+
+pub struct PolarField {
+    points: Vec<FieldPoint>,
+    anchors: Vec<FieldPoint>,
+    dragging: Option<usize>,
+    hovered: Option<usize>,
+    /// Where the pointer was when the drag started, and what the point was, so
+    /// a fine drag can scale the travel rather than jumping to the pointer.
+    grab: (f32, f32),
+    grab_value: (f32, f32),
+    on_gesture: FieldCallback,
+}
+
+impl PolarField {
+    pub fn new<'a>(
+        cx: &'a mut Context,
+        points: impl Res<Vec<FieldPoint>> + 'static,
+        anchors: impl Res<Vec<FieldPoint>> + 'static,
+        on_gesture: impl Fn(&mut EventContext, FieldGesture) + 'static,
+    ) -> Handle<'a, Self> {
+        let initial_points = points.get_val(cx);
+        let initial_anchors = anchors.get_val(cx);
+
+        Self {
+            points: initial_points,
+            anchors: initial_anchors,
+            dragging: None,
+            hovered: None,
+            grab: (0.0, 0.0),
+            grab_value: (0.0, 0.0),
+            on_gesture: Box::new(on_gesture),
+        }
+        .build(cx, move |cx| {
+            let entity = cx.current();
+            points.set_or_bind(cx, entity, move |cx, value| {
+                cx.emit_to(entity, FieldEvent::SetPoints(value));
+            });
+            anchors.set_or_bind(cx, entity, move |cx, value| {
+                cx.emit_to(entity, FieldEvent::SetAnchors(value));
+            });
+        })
+    }
+
+    /// The point nearest to a screen position, if it is close enough to grab.
+    ///
+    /// Pure, so the thing that decides whether the field feels responsive or
+    /// fiddly is testable.
+    fn nearest(&self, geometry: &Geometry, x: f32, y: f32, scale: f32) -> Option<usize> {
+        let reach = GRAB * scale;
+        self.points
+            .iter()
+            .enumerate()
+            .map(|(index, point)| {
+                let (px, py) = geometry.position(point.angle, point.radius);
+                (index, (px - x).hypot(py - y))
+            })
+            .filter(|(_, distance)| *distance <= reach)
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+            .map(|(index, _)| index)
+    }
+
+    fn geometry(&self, cx: &EventContext) -> Geometry {
+        Geometry::of(cx.bounds(), MARGIN * cx.scale_factor())
+    }
+}
+
+impl View for PolarField {
+    fn element(&self) -> Option<&'static str> {
+        Some("nxepolarfield")
+    }
+
+    fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
+        event.map(|field_event: &FieldEvent, _| match field_event {
+            FieldEvent::SetPoints(points) => {
+                self.points = points.clone();
+                cx.needs_redraw();
+            }
+            FieldEvent::SetAnchors(anchors) => {
+                self.anchors = anchors.clone();
+                cx.needs_redraw();
+            }
+        });
+
+        let mut gesture = None;
+
+        event.map(|window_event, meta| match window_event {
+            WindowEvent::MouseDown(MouseButton::Left) => {
+                let geometry = self.geometry(cx);
+                let scale = cx.scale_factor();
+                let (x, y) = (cx.mouse().cursorx, cx.mouse().cursory);
+                if let Some(index) = self.nearest(&geometry, x, y, scale) {
+                    cx.capture();
+                    cx.focus();
+                    cx.set_active(true);
+                    self.dragging = Some(index);
+                    self.grab = (x, y);
+                    self.grab_value = (self.points[index].angle, self.points[index].radius);
+                    gesture = Some(FieldGesture::Begin(index));
+                    meta.consume();
+                }
+            }
+
+            WindowEvent::MouseMove(x, y) => {
+                let geometry = self.geometry(cx);
+                if let Some(index) = self.dragging {
+                    // Move by the pointer's travel from the grab, so `Shift` can
+                    // scale it. Following the pointer absolutely would make a
+                    // fine drag impossible.
+                    let factor = if cx.modifiers().contains(Modifiers::SHIFT) {
+                        FINE
+                    } else {
+                        1.0
+                    };
+                    let (grab_x, grab_y) = geometry.position(self.grab_value.0, self.grab_value.1);
+                    let target_x = grab_x + (*x - self.grab.0) * factor;
+                    let target_y = grab_y + (*y - self.grab.1) * factor;
+                    let (angle, radius) = geometry.value_at(target_x, target_y);
+                    gesture = Some(FieldGesture::Change {
+                        index,
+                        angle,
+                        radius,
+                    });
+                } else {
+                    let scale = cx.scale_factor();
+                    let hovered = self.nearest(&geometry, *x, *y, scale);
+                    if hovered != self.hovered {
+                        self.hovered = hovered;
+                        cx.needs_redraw();
+                        gesture = Some(FieldGesture::Hover(hovered));
+                    }
+                }
+            }
+
+            WindowEvent::MouseUp(MouseButton::Left) => {
+                if let Some(index) = self.dragging.take() {
+                    cx.release();
+                    cx.set_active(false);
+                    gesture = Some(FieldGesture::End(index));
+                    meta.consume();
+                }
+            }
+
+            WindowEvent::MouseDoubleClick(MouseButton::Left) => {
+                let geometry = self.geometry(cx);
+                let scale = cx.scale_factor();
+                if let Some(index) =
+                    self.nearest(&geometry, cx.mouse().cursorx, cx.mouse().cursory, scale)
+                {
+                    gesture = Some(FieldGesture::Reset(index));
+                    meta.consume();
+                }
+            }
+
+            WindowEvent::MouseOut if self.dragging.is_none() && self.hovered.is_some() => {
+                self.hovered = None;
+                cx.needs_redraw();
+                gesture = Some(FieldGesture::Hover(None));
+            }
+
+            _ => {}
+        });
+
+        if let Some(gesture) = gesture {
+            if let FieldGesture::Change {
+                index,
+                angle,
+                radius,
+            } = gesture
+            {
+                if let Some(point) = self.points.get_mut(index) {
+                    point.angle = angle;
+                    point.radius = radius;
+                }
+                cx.needs_redraw();
+            }
+            (self.on_gesture)(cx, gesture);
+        }
+    }
+
+    fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
+        let scale = cx.scale_factor();
+        let geometry = Geometry::of(cx.bounds(), MARGIN * scale);
+        let line = (1.0 * scale).max(1.0);
+
+        // The outer arc and the baseline: the frame the values are read against.
+        let mut frame = vg::Path::new();
+        frame.arc(
+            geometry.origin_x,
+            geometry.origin_y,
+            geometry.radius,
+            std::f32::consts::PI,
+            std::f32::consts::TAU,
+            vg::Solidity::Hole,
+        );
+        frame.move_to(geometry.origin_x - geometry.radius, geometry.origin_y);
+        frame.line_to(geometry.origin_x + geometry.radius, geometry.origin_y);
+        let mut paint = vg::Paint::color(theme::BORDER.vg());
+        paint.set_line_width(line);
+        canvas.stroke_path(&frame, &paint);
+
+        // One mid arc, so a radius can be judged rather than guessed.
+        let mut mid = vg::Path::new();
+        mid.arc(
+            geometry.origin_x,
+            geometry.origin_y,
+            geometry.radius * 0.5,
+            std::f32::consts::PI,
+            std::f32::consts::TAU,
+            vg::Solidity::Hole,
+        );
+        let mut paint = vg::Paint::color(theme::ELEVATED.vg());
+        paint.set_line_width(line);
+        canvas.stroke_path(&mid, &paint);
+
+        // Links from each point to its anchor, but only when there is more than
+        // one anchor to tell apart.
+        if self.anchors.len() > 1 {
+            let mut links = vg::Path::new();
+            for point in &self.points {
+                if let Some(anchor) = self.anchors.get(point.anchor) {
+                    let (ax, ay) = geometry.position(anchor.angle, anchor.radius);
+                    let (px, py) = geometry.position(point.angle, point.radius);
+                    links.move_to(ax, ay);
+                    links.line_to(px, py);
+                }
+            }
+            let mut paint = vg::Paint::color(theme::ELEVATED.vg());
+            paint.set_line_width(line);
+            canvas.stroke_path(&links, &paint);
+        }
+
+        // Anchors: a small upward triangle, which reads as a source rather than
+        // as another draggable dot.
+        for anchor in &self.anchors {
+            let (x, y) = geometry.position(anchor.angle, anchor.radius);
+            let size = 5.0 * scale;
+            let mut path = vg::Path::new();
+            path.move_to(x, y - size);
+            path.line_to(x + size, y + size * 0.7);
+            path.line_to(x - size, y + size * 0.7);
+            path.close();
+            canvas.fill_path(&path, &vg::Paint::color(theme::MUTED.vg()));
+        }
+
+        for (index, point) in self.points.iter().enumerate() {
+            let (x, y) = geometry.position(point.angle, point.radius);
+            let dot = (DOT_MIN + (DOT_MAX - DOT_MIN) * point.size.clamp(0.0, 1.0)) * scale;
+
+            if self.hovered == Some(index) || self.dragging == Some(index) {
+                let mut ring = vg::Path::new();
+                ring.circle(x, y, dot + 3.0 * scale);
+                canvas.fill_path(&ring, &vg::Paint::color(theme::ACCENT_DIM.vg()));
+            }
+
+            let colour = if point.enabled {
+                theme::ACCENT
+            } else {
+                theme::SUBTLE
+            };
+            let mut path = vg::Path::new();
+            path.circle(x, y, dot);
+            canvas.fill_path(&path, &vg::Paint::color(colour.vg()));
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn geometry() -> Geometry {
+        Geometry {
+            origin_x: 100.0,
+            origin_y: 100.0,
+            radius: 100.0,
+        }
+    }
+
+    #[test]
+    fn the_origin_is_the_bottom_centre() {
+        let (x, y) = geometry().position(0.0, 0.0);
+        assert!((x - 100.0).abs() < 1e-4);
+        assert!((y - 100.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn the_arc_runs_left_to_right_through_the_top() {
+        let g = geometry();
+        let (left_x, left_y) = g.position(-1.0, 1.0);
+        let (top_x, top_y) = g.position(0.0, 1.0);
+        let (right_x, right_y) = g.position(1.0, 1.0);
+
+        assert!((left_x - 0.0).abs() < 1e-3, "{left_x}");
+        assert!((left_y - 100.0).abs() < 1e-3, "{left_y}");
+        assert!((top_x - 100.0).abs() < 1e-3, "{top_x}");
+        assert!((top_y - 0.0).abs() < 1e-3, "{top_y}");
+        assert!((right_x - 200.0).abs() < 1e-3, "{right_x}");
+        assert!((right_y - 100.0).abs() < 1e-3, "{right_y}");
+    }
+
+    /// A position converted to a value and back has to land where it started,
+    /// or dragging a point would make it creep.
+    #[test]
+    fn position_and_value_round_trip() {
+        let g = geometry();
+        for angle in [-1.0f32, -0.5, 0.0, 0.25, 1.0] {
+            for radius in [0.1f32, 0.5, 1.0] {
+                let (x, y) = g.position(angle, radius);
+                let (back_angle, back_radius) = g.value_at(x, y);
+                assert!(
+                    (back_angle - angle).abs() < 1e-3,
+                    "angle {angle} came back as {back_angle}"
+                );
+                assert!(
+                    (back_radius - radius).abs() < 1e-3,
+                    "radius {radius} came back as {back_radius}"
+                );
+            }
+        }
+    }
+
+    /// Dragging below the baseline or past the arc must fold onto the edge, not
+    /// wrap around to the other side.
+    #[test]
+    fn out_of_bounds_positions_fold_onto_the_edge() {
+        let g = geometry();
+        let (angle, radius) = g.value_at(100.0, 400.0);
+        assert!((0.0..=1.0).contains(&radius));
+        assert!((-1.0..=1.0).contains(&angle));
+
+        let (_, far) = g.value_at(100.0, -500.0);
+        assert_eq!(far, 1.0);
+
+        let (left, _) = g.value_at(-500.0, 100.0);
+        assert_eq!(left, -1.0);
+        let (right, _) = g.value_at(500.0, 100.0);
+        assert_eq!(right, 1.0);
+    }
+}
