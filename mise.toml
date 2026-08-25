@@ -1,0 +1,56 @@
+# Tool and task management for nxe-plugins.
+#
+# `mise run check` is the canonical verification entry point; CI and the
+# lefthook pre-commit hook run the same tasks. Run `mise run hooks:install`
+# once after cloning to enable the git hooks.
+
+[tools]
+rust = { version = "1.95", components = "rustfmt,clippy", profile = "minimal" }
+"npm:lefthook" = "2.1.5"
+
+[tasks.fmt]
+description = "Check formatting"
+run = "cargo fmt --all -- --check"
+
+[tasks."fmt:fix"]
+description = "Apply formatting"
+run = "cargo fmt --all"
+
+[tasks.clippy]
+description = "Clippy with warnings denied"
+run = "cargo clippy --workspace --all-targets -- -D warnings"
+
+[tasks.test]
+description = "Workspace test suite"
+run = "cargo test --workspace"
+
+[tasks.check]
+description = "Full verification (fmt + clippy + test)"
+depends = ["fmt", "clippy", "test"]
+
+[tasks.gallery]
+description = "Run the shared UI widget gallery as a desktop app"
+run = "cargo run -p nxe-ui --example gallery"
+
+[tasks.bundle]
+description = "Build the CLAP and VST3 bundles for one plugin"
+run = 'cargo xtask bundle {{arg(name="plugin")}} --release'
+
+# macOS only. `cargo xtask bundle` writes every bundle into one directory, so
+# this copies the whole directory rather than guessing how the bundler cased
+# the plugin's display name. With more than one plugin built, it installs them
+# all — which is what you want locally and not worth a filter.
+[tasks.install]
+description = "Bundle one plugin and install it into the user plugin folders (macOS)"
+run = '''
+set -euo pipefail
+cargo xtask bundle {{arg(name="plugin")}} --release
+mkdir -p ~/Library/Audio/Plug-Ins/CLAP ~/Library/Audio/Plug-Ins/VST3
+cp -R target/bundled/*.clap ~/Library/Audio/Plug-Ins/CLAP/
+cp -R target/bundled/*.vst3 ~/Library/Audio/Plug-Ins/VST3/
+echo "installed into ~/Library/Audio/Plug-Ins"
+'''
+
+[tasks."hooks:install"]
+description = "Install lefthook git hooks"
+run = "lefthook install"
