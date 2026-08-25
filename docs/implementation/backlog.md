@@ -28,15 +28,19 @@
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| UI-1 | テーマトークンと gallery の中身 | `nxe-ui-plan.md` |
-| INFRA-2 | プルリクエストの CI | `infra-plan.md` |
+| UI-5 | `Bar` | `nxe-ui-plan.md` |
+| UI-6 | `SegmentedControl` | `nxe-ui-plan.md` |
+| UI-7 | `PolarField` | `nxe-ui-plan.md` |
+| UI-10 | `CurveView` | `nxe-ui-plan.md` |
+| UI-8 / UI-9 | `Meter` / `ToggleSwitch`（Doubler は使わない。フェーズ 5） | `nxe-ui-plan.md` |
+| INFRA-2 | プルリクエストの CI（フェーズ 4） | `infra-plan.md` |
 
-順序は [`roadmap.md`](roadmap.md) が決める。今は `DBL-4`（フェーズ 1 の最後）が
-次。`DBL-5`〜`DBL-7` も依存は解けているが、フェーズ 2 なので `DBL-4` の後。
-`UI-1` はフェーズ 3、`INFRA-2` はフェーズ 4。
+順序は [`roadmap.md`](roadmap.md) が決める。フェーズ 3 進行中で、`UI-5` /
+`UI-6` / `UI-7` / `UI-10` は互いに独立なのでどの順でもよい。これらが揃うと
+`DBL-9` 以降のプラグイン側 UI に入れる。
 
-`DBL-2` はコードとテストは済んでいるが、**ゲートの耳での確認が `DBL-4` 待ち**
-（ホストで鳴らせるようになるまで判断できない）。`✅ ❓` はその状態。
+`UI-3` はツールチップを残している（`✅ ❓`）。vizia に `Tooltip` view はあるので
+最初に必要になった単位で入れる。
 
 ## 全単位
 
@@ -52,16 +56,16 @@
 
 | ID | 単位 | 状態 |
 |---|---|---|
-| UI-1 | テーマトークンと gallery の中身（クレートと空の gallery は INFRA-1 で済み） | 🟡 |
-| UI-2 | Lucide アイコン埋め込みと定数生成 | ⬜ UI-1 |
-| UI-3 | 共通の入力ふるまい（ドラッグ / 微調整 / リセット / ツールチップ / 値入力 / ジェスチャー通知） | ⬜ UI-1 |
-| UI-4 | `Knob`（大小 2 サイズ） | ⬜ UI-3 |
-| UI-5 | `Bar` | ⬜ UI-3 |
-| UI-6 | `SegmentedControl` | ⬜ UI-1 |
-| UI-7 | `PolarField`（領域知識を持たない極座標フィールド） | ⬜ UI-3 |
-| UI-10 | `CurveView`（領域知識を持たない対数軸の曲線表示） | ⬜ UI-3 |
-| UI-8 | `Meter` — **Doubler は使わない** | ⬜ UI-1 |
-| UI-9 | `ToggleSwitch` — **Doubler は使わない** | ⬜ UI-1 |
+| UI-1 | テーマトークンと gallery の中身 | ✅ |
+| UI-2 | Lucide アイコン埋め込みと定数生成 | ✅ |
+| UI-3 | 共通の入力ふるまい（ドラッグ / 微調整 / リセット / 値入力 / ジェスチャー通知） | ✅ ❓ ツールチップ未 |
+| UI-4 | `Knob`（大小 2 サイズ） | ✅ |
+| UI-5 | `Bar` | 🟡 |
+| UI-6 | `SegmentedControl` | 🟡 |
+| UI-7 | `PolarField`（領域知識を持たない極座標フィールド） | 🟡 |
+| UI-10 | `CurveView`（領域知識を持たない対数軸の曲線表示） | 🟡 |
+| UI-8 | `Meter` — **Doubler は使わない** | 🟡 |
+| UI-9 | `ToggleSwitch` — **Doubler は使わない** | 🟡 |
 
 ### Doubler — `../../plugins/doubler/docs/implementation/doubler-plan.md`
 
