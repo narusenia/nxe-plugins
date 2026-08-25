@@ -10,6 +10,7 @@
 //! Run it with `mise run gallery`.
 
 use nxe_ui::bar::Bar;
+use nxe_ui::curve::{Curve, CurveView, Grip, Span};
 use nxe_ui::input::Gesture;
 use nxe_ui::knob::Knob;
 use nxe_ui::polar::{FieldGesture, FieldPoint, PolarField};
@@ -32,6 +33,10 @@ struct Demo {
     source: usize,
     /// The Doubler's default shape, read as pan and delay.
     field: Vec<FieldPoint>,
+    /// Shelf gains and scatter, normalized with 0.5 as flat.
+    tone_lo: f32,
+    tone_hi: f32,
+    tone_spread: f32,
     last_gesture: String,
 }
 
@@ -46,6 +51,7 @@ enum DemoEvent {
         radius: f32,
     },
     ResetPoint(usize),
+    SetTone(usize, f32),
     Gesture(&'static str),
 }
 
@@ -74,6 +80,8 @@ impl Model for Demo {
             DemoEvent::ResetPoint(index) => {
                 self.field[*index] = default_field()[*index];
             }
+            DemoEvent::SetTone(0, value) => self.tone_lo = *value,
+            DemoEvent::SetTone(_, value) => self.tone_hi = *value,
             DemoEvent::SetSource(index) => self.source = *index,
             DemoEvent::Gesture(name) => self.last_gesture = (*name).to_owned(),
         });
@@ -134,6 +142,9 @@ fn main() {
             voices: 1,
             source: 0,
             field: default_field(),
+            tone_lo: 0.62,
+            tone_hi: 0.44,
+            tone_spread: 0.5,
             last_gesture: "—".to_owned(),
         }
         .build(cx);
@@ -150,6 +161,7 @@ fn main() {
                 bars(cx);
                 segments(cx);
                 field(cx);
+                curves(cx);
                 icons(cx);
                 shapes(cx);
                 spacing(cx);
@@ -403,6 +415,102 @@ fn field(cx: &mut Context) {
         Label::new(
             cx,
             "drag a dot to move both axes · shift = fine · VOICES dims the unused              ones · SOURCE splits the anchor",
+        )
+        .class("subtle");
+    });
+}
+
+/// 20 Hz to 20 kHz on a log axis, normalized. The widget knows nothing about
+/// this — mapping the axis is the caller's job, which is also what lets the
+/// caller place the labels.
+fn log_x(hz: f32) -> f32 {
+    (hz / 20.0).log10() / (20_000.0f32 / 20.0).log10()
+}
+
+fn hz_at(x: f32) -> f32 {
+    20.0 * 10.0f32.powf(x * (20_000.0f32 / 20.0).log10())
+}
+
+/// A stand-in for two shelves, good enough to see the widget work. The plugin
+/// computes its real response from the same filter coefficients the DSP uses
+/// (`DBL-14`); this is not that.
+fn shelf_curve(lo: f32, hi: f32) -> Curve {
+    const LOW_HZ: f32 = 200.0;
+    const HIGH_HZ: f32 = 4_000.0;
+    let lo_db = (lo - 0.5) * 24.0;
+    let hi_db = (hi - 0.5) * 24.0;
+
+    (0..=64)
+        .map(|step| {
+            let x = step as f32 / 64.0;
+            let hz = hz_at(x);
+            let low_weight = 1.0 / (1.0 + (hz / LOW_HZ).powi(2));
+            let high_weight = 1.0 / (1.0 + (HIGH_HZ / hz).powi(2));
+            let db = lo_db * low_weight + hi_db * high_weight;
+            (x, 0.5 + db / 24.0)
+        })
+        .collect()
+}
+
+/// Where Tone Spread puts each voice's band, as a stand-in for the real scatter.
+fn spread_spans(spread: f32) -> Vec<Span> {
+    const OFFSETS: [(f32, f32); 4] = [(0.85, 0.15), (-0.70, 0.80), (0.35, 0.55), (-0.95, 0.25)];
+    if spread <= 0.0 {
+        return Vec::new();
+    }
+    OFFSETS
+        .iter()
+        .map(|(high, low)| {
+            let highpass = 20.0 * (high * spread * 3.5).exp2();
+            let lowpass = 20_000.0 / (low.abs() * spread * 2.5).exp2();
+            (log_x(highpass), log_x(lowpass))
+        })
+        .collect()
+}
+
+fn curves(cx: &mut Context) {
+    const MARKS: [(f32, &str); 5] = [
+        (20.0, "20"),
+        (200.0, "200"),
+        (1000.0, "1k"),
+        (5000.0, "5k"),
+        (20000.0, "20k"),
+    ];
+
+    panel(cx, "CURVE VIEW", |cx| {
+        CurveView::new(
+            cx,
+            Demo::tone_lo.map(|lo| vec![shelf_curve(*lo, 0.5)]),
+            Demo::tone_spread.map(|spread| spread_spans(*spread)),
+            Demo::tone_lo
+                .map(|lo| -> Vec<Grip> { vec![(log_x(200.0), *lo), (log_x(4_000.0), 0.44)] }),
+            MARKS.iter().map(|(hz, _)| log_x(*hz)).collect(),
+            |cx, index, gesture| {
+                if let Gesture::Change(value) = gesture {
+                    cx.emit(DemoEvent::SetTone(index, value));
+                }
+                cx.emit(DemoEvent::Gesture(name_of(gesture)));
+            },
+        )
+        .height(Pixels(120.0))
+        .width(Stretch(1.0));
+
+        // The axis labels are the caller's, placed with the caller's own
+        // mapping — the widget cannot draw text at arbitrary positions.
+        HStack::new(cx, |cx| {
+            for (hz, text) in MARKS {
+                Label::new(cx, text)
+                    .class("subtle")
+                    .position_type(PositionType::SelfDirected)
+                    .left(Percentage(log_x(hz) * 100.0));
+            }
+        })
+        .height(Pixels(16.0))
+        .width(Stretch(1.0));
+
+        Label::new(
+            cx,
+            "drag a handle vertically · the shaded bands are Tone Spread",
         )
         .class("subtle");
     });
