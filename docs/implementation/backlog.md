@@ -28,7 +28,6 @@
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| UI-5 | `Bar` | `nxe-ui-plan.md` |
 | UI-6 | `SegmentedControl` | `nxe-ui-plan.md` |
 | UI-7 | `PolarField` | `nxe-ui-plan.md` |
 | UI-10 | `CurveView` | `nxe-ui-plan.md` |
@@ -60,7 +59,7 @@
 | UI-2 | Lucide アイコン埋め込みと定数生成 | ✅ |
 | UI-3 | 共通の入力ふるまい（ドラッグ / 微調整 / リセット / 値入力 / ジェスチャー通知） | ✅ ❓ ツールチップ未 |
 | UI-4 | `Knob`（大小 2 サイズ） | ✅ |
-| UI-5 | `Bar` | 🟡 |
+| UI-5 | `Bar` | ✅ |
 | UI-6 | `SegmentedControl` | 🟡 |
 | UI-7 | `PolarField`（領域知識を持たない極座標フィールド） | 🟡 |
 | UI-10 | `CurveView`（領域知識を持たない対数軸の曲線表示） | 🟡 |
