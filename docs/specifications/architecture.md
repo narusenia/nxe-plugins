@@ -123,6 +123,23 @@ Windows・Linux でバンドルし、プラットフォームごとの zip を G
 添付する。macOS は署名も公証もしないので、Gatekeeper の回避手順を README に
 持つ（Apple Developer Program を契約したら署名を足す。それまでは手順が正）。
 
+## 踏んだ罠
+
+実装して分かったことは、それぞれ守るべき形として `.agents/rules/` に書いてある。
+探す場所の地図だけここに置く。
+
+| 罠 | 書いてある場所 |
+|---|---|
+| vizia の `winit` / `baseview` が相互排他 | 上記「依存のピン」と `.agents/rules/vizia.md` |
+| CSS の `font-family` が埋め込みフォントを選ばない | `.agents/rules/vizia.md` |
+| `draw_text` が view 自身のテキストしか描けない | `.agents/rules/vizia.md` |
+| vizia の既定の文字色が黒 | `.agents/rules/vizia.md` |
+| CSS のプロパティ名が web と違う（`child-space` 等） | `.agents/rules/vizia.md` |
+| レンズの `map` は 1 フィールドしか見られない | `.agents/rules/vizia.md` |
+| `bundler.toml` はワークスペース直下に 1 つ | 上記「クレート構成」 |
+| ブロック単位 API を使うと `REQ-DBL-012` が壊れる | `.agents/rules/rust.md` |
+| `cargo clippy \| tail` で終了コードが潰れる | `.agents/rules/rust.md` |
+
 ## 新しいプラグインを足す
 
 1. `plugins/<name>/` に `<name>-core` と `<name>` の 2 クレートを作り、

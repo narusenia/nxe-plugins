@@ -55,6 +55,33 @@ guarantee quietly, in a way only a host with an unusual buffer size would show.
 - No test frameworks beyond `#[test]`. `criterion` is allowed for benchmarks
   that back a stated CPU budget, and only for those.
 
+## Things that cost time here
+
+**Assert on a constant at compile time, not in a test.** clippy rejects
+`assert!` on a constant expression, and it is right: `const _: () =
+assert!(...)` next to the constant fails the build instead of a test run nobody
+had to execute. The radius guards in `nxe_ui::theme` are the example.
+
+**Check the exit code, not the output.** `cargo clippy ... | tail` reports
+`tail`'s status, so a `&&` chain after it runs even though clippy failed. This
+has already put unformatted and lint-failing code into a commit twice. Run the
+three checks so their status is visible:
+
+```bash
+cargo fmt --all -- --check; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace
+```
+
+**A pure function is the testable part.** Interaction, drawing and hosting can
+only be judged by looking, but the arithmetic underneath cannot. Every widget
+and DSP block here splits the arithmetic out — `Drag::value_after`,
+`Bar::span`, `Geometry::position`, `DelayLine::read` — and that is where the
+bugs were actually caught.
+
+**A doubled or mirrored value is where the sign error lives.** The bipolar bar
+growing the wrong way, the polar field's angle winding backwards, the delay
+line's index direction: each of these was a test that failed once and then never
+again. Write that test before believing the drawing.
+
 ## Dependencies
 
 - Adding a dependency needs a reason written down in the plan that adds it.

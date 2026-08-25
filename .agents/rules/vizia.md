@@ -45,11 +45,68 @@ paths:
   stroke has to be drawn as a path in `View::draw`; that is a deliberate,
   documented exception, not the default.
 
+## What this vizia revision does and does not do
+
+`nih_plug_vizia` pins vizia to Robbert van der Helm's fork at tag
+`patched-2024-05-06` (see `docs/specifications/architecture.md`). These are
+things that cost real time to find. Read this section before assuming something
+does not work because you wrote it wrong.
+
+**`winit` and `baseview` are mutually exclusive.** `Application` is re-exported
+under `cfg(all(not(feature = "winit"), feature = "baseview"))` and the mirror
+image, so enabling both exports **neither** and nothing that uses `Application`
+compiles — including `nih_plug_vizia` itself. The whole workspace is on
+`baseview`; never enable `winit`, not even as a dev-dependency (resolver v2
+unifies dev-dependency features once a dev target is built).
+
+**A stylesheet's `font-family` does not select an embedded font.** The
+declaration parses and the conversion to cosmic-text's family list looks correct
+on inspection, but the glyphs come from a fallback face. Set the family with the
+`font_family` modifier. For icons, `icon::label` does this. The failure mode is
+worth knowing: private use codepoints in a fallback face render as unrelated CJK
+glyphs, so it looks like a corrupt font file rather than a font that was never
+selected.
+
+**`draw_text` renders the view's own text, nothing else.** A custom `View` cannot
+put labels at arbitrary positions inside itself, so a widget cannot label its own
+gridlines or number its own dots. Two ways out, both used here: let the caller
+place labels as absolutely-positioned siblings using the same mapping the widget
+was given (`CurveView`), or report what the pointer is over so the caller can
+highlight the matching row elsewhere (`PolarField`).
+
+**Vizia's default text colour is black.** A `Label` with no colour disappears on
+a dark surface. The stylesheet has a base `label` element rule for exactly this;
+do not remove it.
+
+**The CSS property names are not the web's.** `child-space` rather than padding,
+`col-between` / `row-between` rather than gap, `space` / `left` / `top` rather
+than margin, and `layout-type: row | column` to choose the axis. Layout is
+Morphorm, not flexbox.
+
+**Bind inside `build`'s closure.** `Res::set_or_bind` needs `cx`, and the handle
+`build` returns holds it, so binding after the build does not compile. Inside the
+closure, `cx.current()` is the new view.
+
+**A custom type in a lens needs `Data`.** With `PartialEq` derived it is a
+one-line impl.
+
+**`on_press` actions must be `Send + Sync`.** Share a handler across children
+with `Arc`, not `Rc`.
+
+**The built-in `Knob` is not usable for a plugin.** It takes a `Lens` and offers
+only `on_changing` — no way to tell the host a gesture started and ended, which
+is what makes a host record an automation move as one edit. Same for adding
+shift-fine, double-click reset, or type-a-value around it.
+
 ## Parameter interaction
 
 - A knob or slider bound to a parameter supports: vertical drag, fine drag with
   `Shift`, double-click to reset to default, and a tooltip showing the value
   the host would display.
+- **A lens can only map one field.** A value derived from two of them cannot be
+  produced in a lens `map`; compute it when the inputs change and bind to the
+  result. Getting this wrong is silent — the display simply stops responding to
+  one of its inputs, which reads as "that control does nothing".
 - **A macro control and a per-voice control must never overwrite each other.**
   The per-voice value is a normalized shape and the macro scales it (see
   `plugins/doubler/docs/specifications/ui.md`). Any UI that writes a computed
