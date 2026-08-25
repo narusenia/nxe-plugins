@@ -1,11 +1,12 @@
 //! The voice engine: N voices from one source, each with its own delay,
 //! detune, position and level.
 //!
-//! `Source` modes, Humanize and Tone are not here yet (`DBL-5`..`DBL-7`); this
-//! is the mono-sum path with static per-voice values.
+//! `Source` modes and Tone are not here yet (`DBL-6`, `DBL-7`); this is the
+//! mono-sum path.
 //!
 //! See `plugins/doubler/docs/specifications/dsp.md`.
 
+use crate::wobble::Wobble;
 use crate::{DelayLine, PitchShifter};
 
 /// Parameters exist for this many voices at all times; `Voices` decides how
@@ -17,6 +18,16 @@ pub const MAX_VOICES: usize = 8;
 /// The delay line has to hold the largest base delay, the Humanize wobble on
 /// top of it, and the shifter's window.
 const LINE_SECONDS: f32 = 0.150;
+
+/// Humanize at full depth moves a voice's detune this far either way.
+/// Ear-tuned (`dsp.md`).
+const HUMANIZE_DETUNE_CENTS: f32 = 8.0;
+
+/// ...and its delay this far. Deliberately much smaller than the detune depth:
+/// moving a read position *is* a pitch change, so a wide delay wobble is heard
+/// as a glide rather than as timing.
+/// Ear-tuned (`dsp.md`).
+const HUMANIZE_DELAY_MS: f32 = 3.0;
 
 /// How many voices are live. Discrete, so an out-of-range count cannot exist.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -116,6 +127,8 @@ pub struct Macros {
     pub delay: f32,
     /// `0..=1`. Scales `VoiceShape::pan`.
     pub spread: f32,
+    /// `0..=1`. Depth of the per-voice wobble. Zero is completely static.
+    pub humanize: f32,
 }
 
 impl Default for Macros {
@@ -125,6 +138,7 @@ impl Default for Macros {
             detune: 12.0,
             delay: 22.0,
             spread: 0.7,
+            humanize: 0.35,
         }
     }
 }
@@ -133,6 +147,11 @@ pub struct VoiceEngine {
     sample_rate: f32,
     line: DelayLine,
     shifters: [PitchShifter; MAX_VOICES],
+    /// Two independent wobbles per voice, so pitch and timing do not drift
+    /// together — a single source would make every voice sound like one take
+    /// being bent rather than several takes.
+    detune_wobble: [Wobble; MAX_VOICES],
+    delay_wobble: [Wobble; MAX_VOICES],
 }
 
 impl VoiceEngine {
@@ -141,6 +160,10 @@ impl VoiceEngine {
             sample_rate,
             line: DelayLine::new(sample_rate, LINE_SECONDS),
             shifters: std::array::from_fn(|_| PitchShifter::new(sample_rate)),
+            detune_wobble: std::array::from_fn(|i| Wobble::new(sample_rate, i as u32)),
+            delay_wobble: std::array::from_fn(|i| {
+                Wobble::new(sample_rate, (i + MAX_VOICES) as u32)
+            }),
         }
     }
 
@@ -148,6 +171,9 @@ impl VoiceEngine {
         self.line.reset();
         for shifter in &mut self.shifters {
             shifter.reset();
+        }
+        for wobble in self.detune_wobble.iter_mut().chain(&mut self.delay_wobble) {
+            wobble.reset();
         }
     }
 
@@ -162,22 +188,33 @@ impl VoiceEngine {
         self.line.write(input);
 
         let ms_to_samples = self.sample_rate / 1000.0;
+        let humanize = macros.humanize.clamp(0.0, 1.0);
+        let live = macros.voices.count();
         let mut left = 0.0;
         let mut right = 0.0;
         let mut energy = 0.0;
 
-        for (shifter, shape) in self
-            .shifters
-            .iter_mut()
-            .zip(shape.iter())
-            .take(macros.voices.count())
-        {
+        for voice_index in 0..MAX_VOICES {
+            // Every wobble advances whether its voice is live or not, so the
+            // sound of a given setting does not depend on what `Voices` was a
+            // moment ago.
+            let detune_wobble = self.detune_wobble[voice_index].next();
+            let delay_wobble = self.delay_wobble[voice_index].next();
+            if voice_index >= live {
+                continue;
+            }
+
+            let shape = &shape[voice_index];
             let gain = db_to_gain(shape.gain_db);
             energy += gain * gain;
 
-            let base_delay = macros.delay * shape.delay * ms_to_samples;
-            let cents = macros.detune * shape.detune;
-            let voice = shifter.process(&self.line, base_delay, cents) * gain;
+            let cents =
+                macros.detune * shape.detune + humanize * HUMANIZE_DETUNE_CENTS * detune_wobble;
+            let delay_ms =
+                (macros.delay * shape.delay + humanize * HUMANIZE_DELAY_MS * delay_wobble).max(0.0);
+            let voice =
+                self.shifters[voice_index].process(&self.line, delay_ms * ms_to_samples, cents)
+                    * gain;
 
             let (gain_l, gain_r) = equal_power_pan(macros.spread * shape.pan);
             left += voice * gain_l;
@@ -327,6 +364,7 @@ mod tests {
             spread: 1.0,
             detune: 0.0,
             delay: 40.0,
+            humanize: 0.0,
         };
         let mut engine = VoiceEngine::new(SR);
 
@@ -366,6 +404,7 @@ mod tests {
             detune: 0.0,
             delay: 22.0,
             spread: 0.0,
+            humanize: 0.0,
         };
         let mut impulse = vec![0.0; 8192];
         impulse[0] = 1.0;
@@ -406,6 +445,116 @@ mod tests {
         // Out of range is clamped, not wrapped.
         assert_eq!(equal_power_pan(-4.0), equal_power_pan(-1.0));
         assert_eq!(equal_power_pan(4.0), equal_power_pan(1.0));
+    }
+
+    /// `REQ-DBL-003`: at zero depth the voices are completely static, which is
+    /// what makes a MicroShift-style setting possible at all.
+    #[test]
+    fn humanize_at_zero_is_static_and_repeatable() {
+        let macros = Macros {
+            humanize: 0.0,
+            ..Macros::default()
+        };
+        let input = noise(48_000);
+        assert_eq!(run(&macros, &input), run(&macros, &input));
+    }
+
+    /// And with depth it actually does something.
+    #[test]
+    fn humanize_changes_the_sound() {
+        let input = noise(96_000);
+        let (static_l, _) = run(
+            &Macros {
+                humanize: 0.0,
+                ..Macros::default()
+            },
+            &input,
+        );
+        let (wobbly_l, _) = run(
+            &Macros {
+                humanize: 1.0,
+                ..Macros::default()
+            },
+            &input,
+        );
+
+        // Skip the head: the wobbles start at rest, so the two runs agree until
+        // the first targets have been slewed toward.
+        let difference: f32 = static_l[48_000..]
+            .iter()
+            .zip(&wobbly_l[48_000..])
+            .map(|(a, b)| (a - b).abs())
+            .sum::<f32>()
+            / (static_l.len() - 48_000) as f32;
+        assert!(
+            difference > 1e-3,
+            "humanize changed nothing (mean {difference})"
+        );
+    }
+
+    /// Humanize moves read positions, so a wobble that is too fast is a click.
+    #[test]
+    fn humanize_does_not_click() {
+        let input: Vec<f32> = (0..192_000)
+            .map(|i| (i as f32 * std::f32::consts::TAU * 220.0 / SR).sin())
+            .collect();
+        let (left, _) = run(
+            &Macros {
+                humanize: 1.0,
+                ..Macros::default()
+            },
+            &input,
+        );
+
+        let step = |s: &[f32]| {
+            s.windows(2)
+                .map(|w| (w[1] - w[0]).abs())
+                .fold(0.0f32, f32::max)
+        };
+        let input_step = step(&input);
+        let out_step = step(&left[8_000..]);
+        assert!(
+            out_step < input_step * 1.5,
+            "output steps by {out_step} where the input steps by at most {input_step}"
+        );
+    }
+
+    /// Out-of-range depth is clamped, like every other host-controlled value.
+    #[test]
+    fn humanize_out_of_range_is_clamped() {
+        let input = noise(4096);
+        assert_eq!(
+            run(
+                &Macros {
+                    humanize: 5.0,
+                    ..Macros::default()
+                },
+                &input
+            ),
+            run(
+                &Macros {
+                    humanize: 1.0,
+                    ..Macros::default()
+                },
+                &input
+            )
+        );
+        assert_eq!(
+            run(
+                &Macros {
+                    humanize: -5.0,
+                    ..Macros::default()
+                },
+                &input
+            ),
+            run(
+                &Macros {
+                    humanize: 0.0,
+                    ..Macros::default()
+                },
+                &input
+            )
+        );
     }
 
     #[test]

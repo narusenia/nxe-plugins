@@ -10,6 +10,7 @@
 mod delay;
 mod shifter;
 mod voice;
+mod wobble;
 
 pub use delay::DelayLine;
 pub use shifter::PitchShifter;
