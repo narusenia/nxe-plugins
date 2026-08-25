@@ -54,7 +54,10 @@ pub fn install(cx: &mut Context) {
 /// Size and colour are still `font-size` and `color` — only the family has to
 /// come from here (see the module docs). The `.icon` class gives the default
 /// muted colour; override it per call where an icon should be brighter.
-pub fn label<'a>(cx: &'a mut Context, glyph: &str) -> Handle<'a, Label> {
+pub fn label<T>(cx: &mut Context, glyph: impl Res<T> + Clone) -> Handle<'_, Label>
+where
+    T: ToStringLocalized,
+{
     Label::new(cx, glyph)
         .font_family(vec![FamilyOwned::Name(FAMILY.to_owned())])
         .class("icon")

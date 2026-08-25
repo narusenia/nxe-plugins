@@ -18,6 +18,14 @@ use nxe_ui::{font, theme};
 /// How much a row fades when its voice is not live.
 const DIMMED: f32 = 0.42;
 
+/// Rows are a fixed height, not `Auto`.
+///
+/// `Auto` height with stretched child space is circular in Morphorm — the
+/// height depends on the children, and the stretch depends on the height — and
+/// it hangs the layout rather than resolving to something wrong. A table wants
+/// uniform rows anyway.
+const ROW_HEIGHT: f32 = 22.0;
+
 const INDEX_WIDTH: f32 = 18.0;
 const BAR_HEIGHT: f32 = 10.0;
 const VALUE_WIDTH: f32 = 62.0;
@@ -54,10 +62,8 @@ where
             .child_left(Stretch(1.0));
     })
     .width(Stretch(1.0))
-    .height(Auto)
-    .col_between(Pixels(theme::SPACE_2))
-    .child_top(Stretch(1.0))
-    .child_bottom(Stretch(1.0));
+    .height(Stretch(1.0))
+    .col_between(Pixels(theme::SPACE_2));
 }
 
 fn row(cx: &mut Context, index: usize) {
@@ -109,7 +115,7 @@ fn row(cx: &mut Context, index: usize) {
         );
     })
     .class("row")
-    .height(Auto)
+    .height(Pixels(ROW_HEIGHT))
     // Dimming the whole row rather than each control keeps the bars and the
     // numbers consistent, and costs one modifier.
     .opacity(Ui::params.map(move |params| {
@@ -141,7 +147,7 @@ pub fn view(cx: &mut Context) {
             }
         })
         .class("row")
-        .height(Auto);
+        .height(Pixels(ROW_HEIGHT));
 
         for index in 0..MAX_VOICES {
             row(cx, index);

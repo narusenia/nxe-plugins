@@ -28,7 +28,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 /// contents makes controls unreachable, not just untidy.
 const WIDTH: u32 = 620;
 const HEIGHT_CLOSED: u32 = 584;
-const HEIGHT_OPEN: u32 = 892;
+const HEIGHT_OPEN: u32 = 930;
 
 /// The size is a function of the plugin's own state, so reopening a project
 /// restores the height the Detail toggle left behind.
@@ -156,18 +156,19 @@ fn macros(cx: &mut Context) {
 fn footer(cx: &mut Context) {
     HStack::new(cx, |cx| {
         HStack::new(cx, |cx| {
+            // A mapped lens rather than `Handle::bind` with an imperative
+            // `text()` call: the glyph is a function of the state, so it should
+            // be expressed as one.
             icon::label(
-                cx, // The chevron points the way the panel will move.
-                "",
-            )
-            .bind(Ui::detail_open, |handle, open| {
-                let glyph = if open.get(&handle) {
-                    icon::CHEVRON_UP
-                } else {
-                    icon::CHEVRON_DOWN
-                };
-                handle.text(glyph);
-            });
+                cx,
+                Ui::detail_open.map(|open| {
+                    if *open {
+                        icon::CHEVRON_UP
+                    } else {
+                        icon::CHEVRON_DOWN
+                    }
+                }),
+            );
             Label::new(cx, "DETAIL").class("label");
         })
         .class("hoverable")
