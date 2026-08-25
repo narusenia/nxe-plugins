@@ -1,0 +1,14 @@
+[package]
+name = "nxe-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Shared Vizia widgets and theme for the nxe plugins"
+
+# No `nih_plug` here, and there must never be one: the widgets take a value and
+# a callback, and each plugin owns the adapter that binds them to its
+# parameters. That boundary is what lets `examples/gallery` run as a plain
+# desktop app (`.agents/rules/vizia.md`).
+[dependencies]
+vizia = { workspace = true }
