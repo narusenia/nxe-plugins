@@ -100,6 +100,12 @@ pub struct Weights {
     pub down: f32,
     pub up: f32,
     pub gain_db: f32,
+    /// How much of the curve's ceiling this band may use, `0..=1`.
+    ///
+    /// **This is all Sub Protect is** (`REQ-SPK-008`): the bottom band's
+    /// ceiling closed down, not a process of its own. `crate::protect` works
+    /// out the number.
+    pub ceiling_scale: f32,
 }
 
 impl Weights {
@@ -107,6 +113,7 @@ impl Weights {
         down: 1.0,
         up: 1.0,
         gain_db: 0.0,
+        ceiling_scale: 1.0,
     };
 }
 
@@ -182,8 +189,9 @@ pub fn band_gain_db(
         curve.up_ratio,
         curve.knee_db,
     )
-    .min(finite(curve.ceiling_db, 0.0).max(0.0))
-        * taper(level_db, floor_db);
+    .min(
+        finite(curve.ceiling_db, 0.0).max(0.0) * finite(weights.ceiling_scale, 1.0).clamp(0.0, 1.0),
+    ) * taper(level_db, floor_db);
 
     let weighted = down * finite(weights.down, 0.0).clamp(0.0, 1.0)
         + up * finite(weights.up, 0.0).clamp(0.0, 1.0);
@@ -432,7 +440,7 @@ mod tests {
                 let weights = Weights {
                     down: weight,
                     up: weight,
-                    gain_db: 0.0,
+                    ..NEUTRAL
                 };
                 let reading = band_gain_db(level, &CURVE, &weights, 1.0, FLOOR_DB);
                 assert!(
@@ -500,6 +508,7 @@ mod tests {
                     down: value,
                     up: value,
                     gain_db: value,
+                    ceiling_scale: value,
                 };
                 for spark in wild {
                     let reading = band_gain_db(level, &curve, &weights, spark, value);
@@ -528,7 +537,7 @@ mod tests {
         settings.weights[2] = Weights {
             down: 0.0,
             up: 0.0,
-            gain_db: 0.0,
+            ..NEUTRAL
         };
 
         let gains = gains_db(&settings, [-6.0; BAND_COUNT]);
