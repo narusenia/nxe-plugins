@@ -1,8 +1,8 @@
 # 引き継ぎ
 
 **2026-08-26 時点。** Doubler は `doubler-v0.1.0` を**公開済み**、Velour は
-`velour-v0.1.0` で**一区切り**（下書き Release）。**Sparkleur は `SPK-4` まで —
-`nxe-audio`、クロスオーバーのゲート、検波、上下コンプのゲイン計算が入っている。
+`velour-v0.1.0` で**一区切り**（下書き Release）。**Sparkleur は `SPK-6` まで —
+`nxe-audio`、クロスオーバーのゲート、検波、上下コンプ、Sparkle が入っている。
 まだ音は出ない**（ラッパは `SPK-8`）。
 
 このファイルは**そのとき何が動いていて、次に触る人が最初に知るべきこと**を
@@ -26,26 +26,28 @@
 | `crates/nxe-audio` | 共通の**処理**（`shaper` / `oversample` / `biquad` / `envelope` / `guard` / `harmonics`）。`SPK-1` で `velour-core` から抜いた |
 | `crates/nxe-ui` | 共通ウィジェット・テーマ・アイコン。`mise run gallery` |
 | `crates/nxe-dsp` | 共通の解析（`Handoff` / `PanScope` / `Spectrum` / `Level`） |
-| `plugins/sparkleur/sparkleur-core` | **`SPK-4` まで。** 5 帯域クロスオーバー（LR4 の木 + オールパス補正、`FOCUS`）、検波（帯域ごとのパワー、`SPEED` と帯域中心からの床）、上下コンプのゲイン計算（純関数）。Sparkle と `CHARACTER` はまだ |
+| `plugins/sparkleur/sparkleur-core` | **`SPK-6` まで。** 5 帯域クロスオーバー、検波、上下コンプのゲイン計算（純関数）、Sparkle（上蓋 → 4x → シェイパ → HPF → トランジェントゲート）。`CHARACTER` と De-Harsh はまだ |
 | `plugins/sparkleur/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`SPK-1`〜`SPK-18`）。`sparkleur` ラッパクレートは無い |
 | CI | `check`（PR と main への push）、`release`（`<plugin>-v<version>` タグ） |
 
-テスト 281 本。CPU は予算 533 µs に対し **Doubler 85 µs / Velour 128 µs**
+テスト 290 本。CPU は予算 533 µs に対し **Doubler 85 µs / Velour 128 µs**
 （`VEL-16`。Velour の内訳はエンジン 4x が 79、`Spectrum` 48 バンド × 2 が 45、
 `Level` × 4 が 4）。
 
 ## 次にやること
 
-**`SPK-6`（Sparkle）。** band 5 を 4x → `nxe_audio::shaper` → HPF に通し、
-速い/遅いフォロワの比で作った `snap` で出力ゲインを開く。材料は `SPK-1` で
-`nxe-audio` に揃っている。**`SPK-5`（CHARACTER）は `SPK-4` と `SPK-6` の両方を
-待っている**ので、先に `SPK-6`。
+**`SPK-5`（CHARACTER）。** アンカー 3 点（POLISH / GLOSS / CRUSH）の表を
+補間して、`R_down` / `R_up` / `CEILING` / ニー幅 / Sparkle の `(β, h)` /
+De-Harsh / Sub Protect / `SPEED` の中心を出す。Velour の `texture.rs` と同じ
+機構だが**同じコードにはしない**（乗っている項目が違う）。**レベルトリムの枠を
+最初から置く** — Velour で `TEXTURE` が −3.0 dB 動いて後から吸収する必要が出た。
 
 **ここまで通っている**: `SPK-1` の `nxe-audio`（`shaper` / `oversample` /
 `biquad` / `envelope` / `guard` / `harmonics`、`guard` は `RelativeGuard<N>`）、
 `SPK-2` のクロスオーバー（44.1〜192 kHz・`FOCUS` 全域で和が ±0.1 dB 以内）、
 `SPK-3` の検波（帯域ごとのパワー、`SPEED` を帯域中心の周期で下から抑える床）、
-`SPK-4` の上下コンプ（状態を持たない純関数。`SPARK` = 0 がちょうど 0 dB）。
+`SPK-4` の上下コンプ（状態を持たない純関数。`SPARK` = 0 がちょうど 0 dB）、
+`SPK-6` の Sparkle（折り返し −60 dB 以下、持続音でゲート 0.008）。
 
 **この 2 つは Sparkleur のコードを 1 行も書かずに着手できる**:
 
@@ -107,6 +109,12 @@
 1 オクターブ下は `HP(1500)` がまだ効いていて 30 dB/oct で落ちる。24 dB/oct を
 測るなら境界が 1 つしか効かないところ。**帯域の幾何中心も 0 dB ではない**
 （band 2 は 1.7 オクターブ幅で中心が −1.5 dB）。
+
+**非対称なフォロワを比の分子に置くな**（`SPK-6`）。仕様の Sparkle は fast を
+1 ms / 40 ms の非対称にしていたが、非対称な追従は平均とピークの間に座るので
+（下の `SPK-3`）、対称な slow との比が**定常音でも 3 dB 出る** — ゲートが
+0.44 開いたままだった。**フォロワは両方対称にして、リリースは比の後ろの
+ホールドに置く。** 同じ形は「2 つの検波器の比」を取るところ全部にある。
 
 **有限の dB は有限のゲインではない**（`SPK-4`）。hostile テストが `GAIN` に
 1e9 dB を渡したとき、dB は有限のまま `linear()` が無限大を返した。

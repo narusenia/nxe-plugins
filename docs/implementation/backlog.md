@@ -163,13 +163,26 @@ attack/release の比が決める）ので、**RMS とピークパワーの間�
 対 上限 6 / 9 dB）。CRUSH だけが当たる。**聴き手が当たっている制限が
 `CHARACTER` で入れ替わる**ので、`SPK-18` で数字を動かすときはここを見る。
 
+**`SPK-6`（Sparkle）も入った**（2026-08-26）。band 5 を上蓋 → 4x → シェイパ →
+HPF に通し、速い/遅いフォロワの比で作ったゲートで出力を開く。テスト 290 本。
+**次は `SPK-5`（CHARACTER）** — `SPK-4` と `SPK-6` が揃ったので着手できる。
+
+ここで**仕様の弾道を 1 つ書き換えた**。仕様は fast follower を 1 ms / 40 ms の
+非対称にしていたが、`SPK-3` で分かったとおり非対称な追従は平均とピークの間に
+座るので、**対称な slow より定常音でも約 3 dB 高い**。比を取ると持続音で
+ゲートが 0.44 開いたままになる（`REQ-SPK-007` が禁じている挙動）。フォロワを
+両方対称にして、40 ms のリリースを**比の後ろのホールド**に移した。実測は
+無音 0.000 / アタック 1.000 / 持続音 0.008。**`SPK-3` の知見が 1 つ下の単位で
+直接効いた。**
+
 ## 今すぐ着手できるもの
 
 依存が無いか、依存がすべて解決している単位。
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| SPK-6 | **Sparkle** — トランジェントでゲートした倍音生成（band 5） | `sparkleur-plan.md` |
+| SPK-5 | **CHARACTER** — アンカー 3 点の補間（POLISH ↔ CRUSH） | `sparkleur-plan.md` |
+| SPK-7 | **De-Harsh / Sub Protect** — `RelativeGuard` 1 個 + `CEILING` の値違い | `sparkleur-plan.md` |
 | SPK-10 | `nxe_ui::band::Band` の `reduction` を符号付き `delta` に（上げコンプが描けない） | `sparkleur-plan.md` |
 | SPK-11 | `param_bind` の共通化（3 個目が要求した。行き先は `nxe-ui` ではない） | `sparkleur-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
@@ -186,6 +199,7 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 |---|---|
 | 値の直接入力を戻す | `UI-3`。`ValueEntry` は `nxe-ui` にあり gallery では動く。プラグインに載せると editor の表示が更新されなくなる（原因未特定） |
 | 見た目の最終調整（フォントサイズ、寸法、余白） | ユーザーの指示で最後にまとめる |
+| パワーフォロワの共通化 | **3 個目が来た**（`nxe_audio::guard::Follower` / `sparkleur_core::Detector` / `sparkleur_core::Sparkle`）。ただし形が 3 つとも違う（帯域通過込み / 配列 / 単体）ので、上げるなら何を共通にするかを決めてから |
 
 ## 全単位
 
@@ -286,9 +300,9 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | SPK-2 | クロスオーバー（**ゲート**。LR4 の木 + オールパス補正、`FOCUS`）。`sparkleur-core` もここで作った | ✅ **ゲート通過** `e62aafe` |
 | SPK-3 | 検波と時定数（`SPEED` と帯域中心からの導出） | ✅ `d00f080` |
 | SPK-4 | ゲイン計算（上下コンプ。**製品の核**） | ✅ `351f55a` |
-| SPK-5 | CHARACTER（POLISH ↔ CRUSH の 1 軸） | ⬜ SPK-4 / SPK-6 |
-| SPK-6 | Sparkle（トランジェントでゲートした倍音生成） | 🟡 |
-| SPK-7 | De-Harsh / Sub Protect | ⬜ SPK-4 / SPK-5 |
+| SPK-5 | CHARACTER（POLISH ↔ CRUSH の 1 軸） | 🟡 |
+| SPK-6 | Sparkle（トランジェントでゲートした倍音生成） | ✅ `0117e1e` |
+| SPK-7 | De-Harsh / Sub Protect | 🟡（`SPK-5` が先だと読みやすい） |
 | SPK-8 | ラッパとパラメータ（**ここで音が出る**） | ⬜ SPK-4 / SPK-5 / SPK-6 / SPK-7 |
 | SPK-9 | 詰め（レート・ブロック・極端値） | ⬜ SPK-8 |
 | SPK-10 | `nxe_ui::band::Band` の `reduction` を符号付き `delta` に | 🟡 |
