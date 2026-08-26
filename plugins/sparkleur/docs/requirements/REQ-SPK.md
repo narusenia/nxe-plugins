@@ -345,9 +345,10 @@ Advanced  per-band UP / DOWN / GAIN ── 重み（絶対量ではない）
 - **per-band の UP / DOWN は重み。** `SPARK` を上げると全部が深くなり、
   UP/DOWN の比は保たれる。VO-TT の触り心地はここで出る。
 - **受入条件**:
-  - [ ] `SPARK` を動かしても per-band の値が変わらない（型で保証）
-  - [ ] per-band を動かしても `SPARK` の値が変わらない
-  - [ ] `SPARK` = 0 でダイナミクスと Sparkle の両方が無効
+  - [x] `SPARK` を動かしても per-band の値が変わらない（型で保証 —
+        `Levels` と `Shape` が別の型で、UI はどちらも書き戻さない）
+  - [x] per-band を動かしても `SPARK` の値が変わらない
+  - [x] `SPARK` = 0 でダイナミクスと Sparkle の両方が無効 — `SPK-8`
 - **依存**: REQ-SPK-003
 
 ---

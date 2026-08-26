@@ -1,9 +1,9 @@
 # 引き継ぎ
 
 **2026-08-27 時点。** Doubler は `doubler-v0.1.0` を**公開済み**、Velour は
-`velour-v0.1.0` で**一区切り**（下書き Release）。**Sparkleur は `SPK-1`〜`SPK-14` と `SPK-16` / `SPK-17` —
-残っているのは Advanced タブ（`SPK-15`）と既定値（`SPK-18`、耳が要る）だけ**。
-**実機で見ていないので、寸法も含めてまだ確認が要る。**
+`velour-v0.1.0` で**一区切り**（下書き Release）。**Sparkleur は `SPK-1`〜`SPK-17` —
+残っているのは `SPK-18`（既定値 33 個。**耳が要る**）だけ**。
+**実機で一度も見ていないので、寸法も音もまだ確認が要る。**
 
 このファイルは**そのとき何が動いていて、次に触る人が最初に知るべきこと**を
 1 枚にまとめたもの。設計の正は各仕様書、状態の正は
@@ -28,11 +28,11 @@
 | `crates/nxe-plug-ui` | nih-plug のパラメータと `nxe-ui` の結線。**両方を知る唯一のクレート**（`SPK-11`） |
 | `crates/nxe-dsp` | 共通の解析（`Handoff` / `PanScope` / `Spectrum` / `Level`） |
 | `plugins/sparkleur/sparkleur-core` | **DSP は全部。** 5 帯域クロスオーバー、検波、上下コンプ、Sparkle、`CHARACTER`、De-Harsh / Sub Protect、エンジン |
-| `plugins/sparkleur/sparkleur` | NXE Sparkleur。CLAP + VST3。パラメータ 33 個。**UI は 7 ノブ + タブ + Band Field + 伝達曲線の小窓 + メーター**（Advanced は `SPK-15`） |
+| `plugins/sparkleur/sparkleur` | NXE Sparkleur。CLAP + VST3。パラメータ 33 個、**全部にコントロールがある**。UI は MAIN の 7 ノブ + Band Field + 伝達曲線の小窓 + メーター + Advanced の表 |
 | `plugins/sparkleur/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`SPK-1`〜`SPK-18`）。`sparkleur` ラッパクレートは無い |
 | CI | `check`（PR と main への push）、`release`（`<plugin>-v<version>` タグ） |
 
-テスト 346 本。CPU は予算 533 µs に対し
+テスト 349 本。CPU は予算 533 µs に対し
 **Doubler 85 µs / Velour 128 µs / Sparkleur 129 µs**
 （`VEL-16`。Velour の内訳はエンジン 4x が 79、`Spectrum` 48 バンド × 2 が 45、
 `Level` × 4 が 4）。
@@ -43,11 +43,15 @@
 `SPK-8` の完了条件で唯一残っているのがこれで、**耳と DAW が要る**。UI はまだ
 無いのでホストの汎用ビューで触ることになる。
 
-次は **`SPK-15`（Advanced タブ）** — per-band の UP / DOWN / GAIN / SOLO の
-表と、`FOCUS` / `DE-HARSH` / `SUB PROT` / `SNAP` / `LIFT` / `OVERSAMPLE`。
-`ui.md` の表の形は Velour の Advanced とほぼ同じで、**バーには必ず高さを
-指定する**（Velour はそれを忘れて表全体が「動かないコントロール」になった）。
-**最後が `SPK-18`（既定値。耳が要る）。**
+**まず実機で見る。** `mise run install sparkleur` して DAW で開く。
+`SPK-8` / `SPK-12`〜`SPK-15` の完了条件で残っているのは全部これ —
+**音が出ること**と**寸法**（680 × 528 は Velour から借りただけ。Velour 自身は
+580 で始めて 528 に詰めた）。
+
+その後が **`SPK-18`（既定値 33 個と `dsp.md` の「耳で詰める定数」の表）**。
+**持ち越した宿題が 1 つ**: `CHARACTER` の既定 0.27 は読み値が「GLOSS 27 %」に
+なる（一番近いアンカーが GLOSS のため）。既定を 0.25 未満にするか、読み値の
+規則を変えるか。
 
 **`SPK-18` に持ち越した宿題が 1 つ**: `CHARACTER` の既定 0.27 は読み値が
 「GLOSS 27 %」になる（一番近いアンカーが GLOSS のため）。既定を 0.25 未満に

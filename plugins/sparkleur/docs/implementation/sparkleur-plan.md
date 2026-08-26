@@ -30,7 +30,7 @@ SPK-11 param_bind の共通化 ✅
 SPK-12 UI マクロ層 ✅
 SPK-13 UI Band Field ✅
 SPK-14 UI 小窓とメーター ✅
-SPK-15 UI Advanced
+SPK-15 UI Advanced ✅
 SPK-16 解析の配線 ✅
 SPK-17 CPU 予算 ✅
 SPK-18 既定値と耳
@@ -532,17 +532,31 @@ gallery も同じ変更で更新した。
 
 ---
 
-### SPK-15 — UI Advanced タブ
+### SPK-15 — UI Advanced タブ ✅（実機確認を除く）
 
-per-band UP / DOWN / GAIN / SOLO × 5、`FOCUS`、De-Harsh / Sub Protect の偏差、
-`SNAP`、`LIFT`、オーバーサンプル。
+`sparkleur/src/ui/advanced.rs`。per-band UP / DOWN / GAIN / SOLO × 5、
+`FOCUS`、De-Harsh / Sub Protect の偏差、`SNAP`、`LIFT`、オーバーサンプル。
 
-- **完了条件**: 24 個すべてが効く。行にポインタを乗せると図の区画が光り、
-  逆も効く
+- **完了条件**:
+  - [x] ~~24 個~~ **26 個**すべてが効く（下）
+  - [x] 行にポインタを乗せると図の区画が光り、逆も効く（`Ui::hovered` 1 つで
+        両方向）
+  - [ ] **実機で見る**
 - **要件**: REQ-SPK-009, REQ-SPK-013
 - **依存**: SPK-13
-- **踏むと分かっている罠**: **バーに高さを指定しないと当たり判定が 0 になる。**
-  Velour の Advanced 表がまるごと「動かないコントロール」になった
+- **数え直した**: 計画書は 24 個と書いていたが **26 個**。per-band 4 × 5 = 20 と
+  グローバル 6（`FOCUS` / `DE-HARSH` / `SUB PROT` / `SNAP` / `LIFT` /
+  `OVERSAMPLE`）で、33 − MAIN の 7 = 26。**算術をテストに置いた**
+- **踏まずに済んだ罠**: **バーに高さを指定しないと当たり判定が 0 になる。**
+  Velour の Advanced 表がまるごと「動かないコントロール」として出荷された
+  （`VEL-14`）。全部のバーに `height: 10px` を明示してある
+- **足したテスト**: **33 個すべてにコントロールがあること。** `params.rs` から
+  フィールド名を読み出して UI のソース 4 本を走査する。**コントロールの無い
+  パラメータは誰も気付かない** — コンパイルも保存もオートメーションも通り、
+  窓がそれに触れないだけ。33 個もあれば 1 つ静かに落ちる
+- **決めたこと**: `DE-HARSH` / `SUB PROT` は**双極の偏差**。0 で `CHARACTER` に
+  従う。絶対量にすると軸とこのパネルが 1 つの値を書くことになる
+  （`.agents/rules/vizia.md`）
 
 ---
 
