@@ -80,6 +80,14 @@ pub enum FieldGesture {
     Reset(usize),
     /// Which point the pointer is over, if any.
     Hover(Option<usize>),
+    /// The anchors were dragged. **They share one radius and do not move on the
+    /// angle** — an anchor marks where a source is, and the caller decides what
+    /// its distance from the origin means. A caller with nothing to write here
+    /// can ignore these and the anchors simply will not move.
+    AnchorBegin,
+    AnchorChange(f32),
+    AnchorEnd,
+    AnchorReset,
 }
 
 type FieldCallback = Box<dyn Fn(&mut EventContext, FieldGesture)>;
@@ -127,10 +135,18 @@ impl Geometry {
     }
 }
 
+/// What the pointer has hold of. Points come first when both are in reach:
+/// they are what the field is for, and an anchor sits behind them.
+#[derive(Clone, Copy, PartialEq)]
+enum Grabbed {
+    Point(usize),
+    Anchor,
+}
+
 pub struct PolarField {
     points: Vec<FieldPoint>,
     anchors: Vec<FieldPoint>,
-    dragging: Option<usize>,
+    dragging: Option<Grabbed>,
     hovered: Option<usize>,
     /// Where the pointer was when the drag started, and what the point was, so
     /// a fine drag can scale the travel rather than jumping to the pointer.
@@ -187,6 +203,33 @@ impl PolarField {
             .map(|(index, _)| index)
     }
 
+    /// Whether an anchor is close enough to grab. They share a radius, so
+    /// which one it is does not matter.
+    fn near_anchor(&self, geometry: &Geometry, x: f32, y: f32, scale: f32) -> bool {
+        let reach = GRAB * scale;
+        self.anchors.iter().any(|anchor| {
+            let (ax, ay) = geometry.position(anchor.angle, anchor.radius);
+            (ax - x).hypot(ay - y) <= reach
+        })
+    }
+
+    /// What a drag from `grab` to the pointer lands on, scaled by `Shift`.
+    ///
+    /// Travel from the grab rather than the pointer's absolute position:
+    /// following the pointer would make a fine drag impossible.
+    fn drag_to(&self, geometry: &Geometry, cx: &EventContext, x: f32, y: f32) -> (f32, f32) {
+        let factor = if cx.modifiers().contains(Modifiers::SHIFT) {
+            FINE
+        } else {
+            1.0
+        };
+        let (grab_x, grab_y) = geometry.position(self.grab_value.0, self.grab_value.1);
+        geometry.value_at(
+            grab_x + (x - self.grab.0) * factor,
+            grab_y + (y - self.grab.1) * factor,
+        )
+    }
+
     fn geometry(&self, cx: &EventContext) -> Geometry {
         Geometry::of(cx.bounds(), MARGIN * cx.scale_factor())
     }
@@ -220,33 +263,35 @@ impl View for PolarField {
                     cx.capture();
                     cx.focus();
                     cx.set_active(true);
-                    self.dragging = Some(index);
+                    self.dragging = Some(Grabbed::Point(index));
                     self.grab = (x, y);
                     self.grab_value = (self.points[index].angle, self.points[index].radius);
                     gesture = Some(FieldGesture::Begin(index));
+                    meta.consume();
+                } else if self.near_anchor(&geometry, x, y, scale) {
+                    cx.capture();
+                    cx.focus();
+                    cx.set_active(true);
+                    self.dragging = Some(Grabbed::Anchor);
+                    self.grab = (x, y);
+                    let anchor = self.anchors[0];
+                    self.grab_value = (anchor.angle, anchor.radius);
+                    gesture = Some(FieldGesture::AnchorBegin);
                     meta.consume();
                 }
             }
 
             WindowEvent::MouseMove(x, y) => {
                 let geometry = self.geometry(cx);
-                if let Some(index) = self.dragging {
-                    // Move by the pointer's travel from the grab, so `Shift` can
-                    // scale it. Following the pointer absolutely would make a
-                    // fine drag impossible.
-                    let factor = if cx.modifiers().contains(Modifiers::SHIFT) {
-                        FINE
-                    } else {
-                        1.0
-                    };
-                    let (grab_x, grab_y) = geometry.position(self.grab_value.0, self.grab_value.1);
-                    let target_x = grab_x + (*x - self.grab.0) * factor;
-                    let target_y = grab_y + (*y - self.grab.1) * factor;
-                    let (angle, radius) = geometry.value_at(target_x, target_y);
-                    gesture = Some(FieldGesture::Change {
-                        index,
-                        angle,
-                        radius,
+                if let Some(grabbed) = self.dragging {
+                    let (angle, radius) = self.drag_to(&geometry, cx, *x, *y);
+                    gesture = Some(match grabbed {
+                        Grabbed::Point(index) => FieldGesture::Change {
+                            index,
+                            angle,
+                            radius,
+                        },
+                        Grabbed::Anchor => FieldGesture::AnchorChange(radius),
                     });
                 } else {
                     let scale = cx.scale_factor();
@@ -260,10 +305,13 @@ impl View for PolarField {
             }
 
             WindowEvent::MouseUp(MouseButton::Left) => {
-                if let Some(index) = self.dragging.take() {
+                if let Some(grabbed) = self.dragging.take() {
                     cx.release();
                     cx.set_active(false);
-                    gesture = Some(FieldGesture::End(index));
+                    gesture = Some(match grabbed {
+                        Grabbed::Point(index) => FieldGesture::End(index),
+                        Grabbed::Anchor => FieldGesture::AnchorEnd,
+                    });
                     meta.consume();
                 }
             }
@@ -271,10 +319,12 @@ impl View for PolarField {
             WindowEvent::MouseDoubleClick(MouseButton::Left) => {
                 let geometry = self.geometry(cx);
                 let scale = cx.scale_factor();
-                if let Some(index) =
-                    self.nearest(&geometry, cx.mouse().cursorx, cx.mouse().cursory, scale)
-                {
+                let (x, y) = (cx.mouse().cursorx, cx.mouse().cursory);
+                if let Some(index) = self.nearest(&geometry, x, y, scale) {
                     gesture = Some(FieldGesture::Reset(index));
+                    meta.consume();
+                } else if self.near_anchor(&geometry, x, y, scale) {
+                    gesture = Some(FieldGesture::AnchorReset);
                     meta.consume();
                 }
             }
@@ -289,17 +339,27 @@ impl View for PolarField {
         });
 
         if let Some(gesture) = gesture {
-            if let FieldGesture::Change {
-                index,
-                angle,
-                radius,
-            } = gesture
-            {
-                if let Some(point) = self.points.get_mut(index) {
-                    point.angle = angle;
-                    point.radius = radius;
+            // Move the local copy so the drag looks live even before the caller
+            // writes anything back.
+            match gesture {
+                FieldGesture::Change {
+                    index,
+                    angle,
+                    radius,
+                } => {
+                    if let Some(point) = self.points.get_mut(index) {
+                        point.angle = angle;
+                        point.radius = radius;
+                    }
+                    cx.needs_redraw();
                 }
-                cx.needs_redraw();
+                FieldGesture::AnchorChange(radius) => {
+                    for anchor in &mut self.anchors {
+                        anchor.radius = radius;
+                    }
+                    cx.needs_redraw();
+                }
+                _ => {}
             }
             (self.on_gesture)(cx, gesture);
         }
@@ -374,7 +434,7 @@ impl View for PolarField {
             let (x, y) = geometry.position(point.angle, point.radius);
             let dot = (DOT_MIN + (DOT_MAX - DOT_MIN) * point.size.clamp(0.0, 1.0)) * scale;
 
-            if self.hovered == Some(index) || self.dragging == Some(index) {
+            if self.hovered == Some(index) || self.dragging == Some(Grabbed::Point(index)) {
                 let mut ring = vg::Path::new();
                 ring.circle(x, y, dot + 3.0 * scale);
                 canvas.fill_path(&ring, &vg::Paint::color(theme::ACCENT_DIM.vg()));

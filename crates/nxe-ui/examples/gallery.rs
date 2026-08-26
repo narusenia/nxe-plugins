@@ -33,6 +33,12 @@ struct Demo {
     source: usize,
     /// The Doubler's default shape, read as pan and delay.
     field: Vec<FieldPoint>,
+    /// How far the source markers sit from the origin. Dragging one moves them
+    /// all, which is how the Doubler puts its dry level on the figure.
+    anchor_radius: f32,
+    /// Derived from `source` and `anchor_radius`, for the same reason `curves`
+    /// is derived: a lens can only map one field.
+    anchors: Vec<FieldPoint>,
     /// Shelf gains and scatter, normalized with 0.5 as flat.
     tone_lo: f32,
     tone_hi: f32,
@@ -60,6 +66,7 @@ enum DemoEvent {
         radius: f32,
     },
     ResetPoint(usize),
+    MoveAnchors(f32),
     SetTone(usize, f32),
     Gesture(&'static str),
     ToggleDetail,
@@ -106,6 +113,10 @@ impl Model for Demo {
             DemoEvent::ResetPoint(index) => {
                 self.field[*index] = default_field()[*index];
             }
+            DemoEvent::MoveAnchors(radius) => {
+                self.anchor_radius = *radius;
+                self.anchors = anchors_of(self.source, self.anchor_radius);
+            }
             DemoEvent::SetTone(0, value) => {
                 self.tone_lo = *value;
                 self.refresh();
@@ -114,7 +125,10 @@ impl Model for Demo {
                 self.tone_hi = *value;
                 self.refresh();
             }
-            DemoEvent::SetSource(index) => self.source = *index,
+            DemoEvent::SetSource(index) => {
+                self.source = *index;
+                self.anchors = anchors_of(self.source, self.anchor_radius);
+            }
             DemoEvent::Gesture(name) => self.last_gesture = (*name).to_owned(),
             DemoEvent::ToggleDetail => self.detail_open = !self.detail_open,
         });
@@ -175,6 +189,8 @@ fn main() {
             voices: 1,
             source: 0,
             field: default_field(),
+            anchor_radius: 0.10,
+            anchors: anchors_of(0, 0.10),
             tone_lo: 0.62,
             tone_hi: 0.44,
             tone_spread: 0.5,
@@ -397,6 +413,20 @@ fn segments(cx: &mut Context) {
     });
 }
 
+/// One source marker in the middle, or two either side of it. All of them sit
+/// at the same radius, which is what the anchor drag moves.
+fn anchors_of(source: usize, radius: f32) -> Vec<FieldPoint> {
+    let angles: &[f32] = if source == 0 { &[0.0] } else { &[-0.30, 0.30] };
+    angles
+        .iter()
+        .map(|angle| FieldPoint {
+            angle: *angle,
+            radius,
+            ..FieldPoint::default()
+        })
+        .collect()
+}
+
 fn field(cx: &mut Context) {
     panel(cx, "POLAR FIELD", |cx| {
         // The anchors come from the SOURCE control: one source in the middle,
@@ -404,28 +434,7 @@ fn field(cx: &mut Context) {
         PolarField::new(
             cx,
             Demo::field,
-            Demo::source.map(|source| {
-                if *source == 0 {
-                    vec![FieldPoint {
-                        angle: 0.0,
-                        radius: 0.0,
-                        ..FieldPoint::default()
-                    }]
-                } else {
-                    vec![
-                        FieldPoint {
-                            angle: -0.30,
-                            radius: 0.10,
-                            ..FieldPoint::default()
-                        },
-                        FieldPoint {
-                            angle: 0.30,
-                            radius: 0.10,
-                            ..FieldPoint::default()
-                        },
-                    ]
-                }
-            }),
+            Demo::anchors,
             |cx, gesture| match gesture {
                 FieldGesture::Change {
                     index,
@@ -447,6 +456,16 @@ fn field(cx: &mut Context) {
                 FieldGesture::End(_) => cx.emit(DemoEvent::Gesture("end")),
                 FieldGesture::Hover(Some(_)) => cx.emit(DemoEvent::Gesture("hover")),
                 FieldGesture::Hover(None) => {}
+                FieldGesture::AnchorChange(radius) => {
+                    cx.emit(DemoEvent::MoveAnchors(radius));
+                    cx.emit(DemoEvent::Gesture("anchor change"));
+                }
+                FieldGesture::AnchorReset => {
+                    cx.emit(DemoEvent::MoveAnchors(FieldPoint::default().radius));
+                    cx.emit(DemoEvent::Gesture("anchor reset (double click)"));
+                }
+                FieldGesture::AnchorBegin => cx.emit(DemoEvent::Gesture("anchor begin")),
+                FieldGesture::AnchorEnd => cx.emit(DemoEvent::Gesture("anchor end")),
             },
         )
         .height(Pixels(180.0))
