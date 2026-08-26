@@ -3377,6 +3377,9 @@ dependencies = [
 [[package]]
 name = "velour-core"
 version = "0.1.0"
+dependencies = [
+ "criterion",
+]
 
 [[package]]
 name = "version_check"

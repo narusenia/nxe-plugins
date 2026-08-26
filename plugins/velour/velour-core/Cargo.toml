@@ -10,3 +10,10 @@ description = "The Velour DSP, independent of any plugin host"
 # host API: that is what keeps a future AU wrapper possible and what lets the
 # DSP be tested without a host (`.agents/rules/rust.md`, `REQ-VEL-015`).
 [dependencies]
+
+[dev-dependencies]
+criterion = { version = "0.5", default-features = false }
+
+[[bench]]
+name = "engine"
+harness = false

@@ -10,7 +10,7 @@
 //! per sample — which is exactly why it is measured rather than assumed.
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use nxe_dsp::{PanScope, Spectrum};
+use nxe_dsp::{Level, PanScope, Spectrum};
 use std::hint::black_box;
 
 const SAMPLE_RATE: f32 = 48_000.0;
@@ -19,6 +19,13 @@ const BLOCK: usize = 512;
 /// The sizes the Doubler asks for (`plugins/doubler/doubler/src/analysis.rs`).
 const PAN_BINS: usize = 24;
 const BANDS: usize = 32;
+
+/// And what Velour asks for: **two** spectra at a higher resolution, because its
+/// upper curve is a harmonic series and three bands per octave merge neighbouring
+/// harmonics above a few kHz (`plugins/velour/velour/src/analysis.rs`). Measured
+/// separately because doubling the count and raising the resolution is the one
+/// place a display can eat a plugin's budget.
+const WIDE_BANDS: usize = 48;
 
 fn signal() -> Vec<f32> {
     (0..BLOCK).map(|i| (i as f32 * 0.07).sin() * 0.5).collect()
@@ -49,6 +56,33 @@ fn analysis(criterion: &mut Criterion) {
                     spectrum.push(sample);
                 }
                 black_box(spectrum.levels());
+            },
+            criterion::BatchSize::SmallInput,
+        );
+    });
+
+    group.bench_function("spectrum, 512 samples, 48 bands", |bencher| {
+        bencher.iter_batched_ref(
+            || Spectrum::<WIDE_BANDS>::new(SAMPLE_RATE, 20.0, 20_000.0),
+            |spectrum| {
+                for &sample in &input {
+                    spectrum.push(sample);
+                }
+                black_box(spectrum.levels());
+            },
+            criterion::BatchSize::SmallInput,
+        );
+    });
+
+    // Velour runs four of these — IN and OUT, left and right.
+    group.bench_function("level, 512 samples", |bencher| {
+        bencher.iter_batched_ref(
+            || Level::new(SAMPLE_RATE),
+            |level| {
+                for &sample in &input {
+                    level.push(sample);
+                }
+                black_box((level.peak(), level.hold(), level.rms()));
             },
             criterion::BatchSize::SmallInput,
         );
