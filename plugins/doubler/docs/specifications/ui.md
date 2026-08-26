@@ -334,8 +334,9 @@ detune のボイス別編集ができなくなる。図と表は同じ形状層�
 | `SegmentedControl` | `Voices` / `Source` | ボタン列。選択中に `--accent` |
 
 いずれも**値とコールバックしか知らない**。パラメータとの結線は
-`plugins/doubler/src/ui/param_bind.rs` が持つ（`nxe-ui` は nih-plug に
-依存しない — `docs/specifications/architecture.md`）。
+`crates/nxe-plug-ui` が持つ（`nxe-ui` は nih-plug に依存しない —
+`docs/specifications/architecture.md`）。Doubler に残っているのは鏡像編集
+（`src/ui/mirror.rs`）だけで、他は `SPK-11` で共通クレートに上がった。
 
 同じ変更で `crates/nxe-ui/examples/gallery.rs` にも追加する。gallery に無い
 ウィジェットは DAW を開かないとレビューできないので、レビューされない。

@@ -185,7 +185,16 @@ HPF に通し、速い/遅いフォロワの比で作ったゲートで出力を
 いるか」と「どれくらい起きているか」の両方を動かしてしまう（`REQ-SPK-010`）。
 
 **`SPK-7`（De-Harsh / Sub Protect）も入った**（2026-08-26）。テスト 305 本。
-**DSP は全部揃った。次は `SPK-8` で、ここで初めて音が出る。**
+**DSP は全部揃った。**
+
+**`SPK-11` で `nxe-plug-ui` を作った**（2026-08-26）。Doubler と Velour が
+同内容で持っていた `param_bind.rs` を、**3 個目が要求した時点で**共通クレートに
+上げた（`architecture.md` の規則どおり）。`nxe-ui` には入れていない —
+入れると gallery が nih-plug をリンクして単体起動できなくなる。`cargo tree -p
+nxe-ui` に nih は 0 件のまま。**プラグインに残ったのは Doubler の鏡像編集だけ**
+（対にすべき 2 つのボイスを持つのが Doubler だけなので）。正味 −57 行。
+
+**次は `SPK-8`（ラッパとパラメータ）で、ここで初めて音が出る。**
 
 `SPK-1` で `RelativeGuard` を一般化した甲斐がここで出た。**De-Harsh の実装は
 設定の `const` 1 個と 4 行のラッパ**で、入力ゲイン非依存（±12 dB で 0.2 dB
@@ -201,7 +210,6 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 |---|---|---|
 | SPK-8 | **ラッパとパラメータ** — パラメータ 33 個。**ここで初めて音が出る** | `sparkleur-plan.md` |
 | SPK-10 | `nxe_ui::band::Band` の `reduction` を符号付き `delta` に（上げコンプが描けない） | `sparkleur-plan.md` |
-| SPK-11 | `param_bind` の共通化（3 個目が要求した。行き先は `nxe-ui` ではない） | `sparkleur-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 | UI-9 | `ToggleSwitch` — **3 個目の設計でも要らなかった**（`.segment` を当てた `Label` で足りる）。**落として良い** | `nxe-ui-plan.md` |
 
@@ -308,8 +316,8 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 平坦）。ここが通らないと「全部 0 で何もしない」が成立せず、その上の全部が
 意味を持たない。Velour の `VEL-1` と同じ位置。
 
-`SPK-10` と `SPK-11` は共通クレート側の単位で、Sparkleur のコードを 1 行も
-書かずに着手できる。
+`SPK-10` は共通クレート側の単位で、Sparkleur のコードを 1 行も書かずに
+着手できる（`SPK-11` は済んだ）。
 
 | ID | 単位 | 状態 |
 |---|---|---|
@@ -323,8 +331,8 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | SPK-8 | ラッパとパラメータ（**ここで音が出る**） | 🟡 |
 | SPK-9 | 詰め（レート・ブロック・極端値） | ⬜ SPK-8 |
 | SPK-10 | `nxe_ui::band::Band` の `reduction` を符号付き `delta` に | 🟡 |
-| SPK-11 | `param_bind` の共通化（行き先は `nxe-ui` ではない） | 🟡 |
-| SPK-12 | UI マクロ層（メインタブ） | ⬜ SPK-9 / SPK-11 |
+| SPK-11 | `param_bind` の共通化（行き先は `nxe-plug-ui`） | ✅ `5e05b70` |
+| SPK-12 | UI マクロ層（メインタブ） | ⬜ SPK-9 |
 | SPK-13 | UI Band Field（5 区画） | ⬜ SPK-10 / SPK-12 / SPK-16 |
 | SPK-14 | UI 小窓とメーター | ⬜ SPK-12 / SPK-16 |
 | SPK-15 | UI Advanced タブ | ⬜ SPK-13 |

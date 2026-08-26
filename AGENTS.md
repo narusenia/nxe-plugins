@@ -22,6 +22,9 @@ with the code, and fix the document in the same change.
   harmonic measurement the tests are written against. Host-agnostic and
   interface-agnostic. **Separate from `nxe-dsp` on purpose**: a bug here
   breaks the sound, a bug there breaks a picture
+- `crates/nxe-plug-ui`: the adapter between nih-plug's parameters and the
+  `nxe-ui` widgets — **the only crate allowed to know both**. Separate from
+  `nxe-ui` so that `examples/gallery` never links nih-plug
 - `crates/nxe-ui`: shared Vizia widgets, theme tokens, and the embedded Lucide
   icon font. **Depends on Vizia only, never on nih-plug** — widgets take a
   value plus a callback, and each plugin owns the thin adapter that binds them

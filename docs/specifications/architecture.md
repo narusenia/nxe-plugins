@@ -50,8 +50,13 @@ nih-plug と vizia の両方を知る必要があるので、**3 つ目のクレ
 なり、**DAW を開かずに UI を反復する**という土台が消える。
 
 Doubler と Velour は同内容の `param_bind.rs` をそれぞれ持っていた。
-**3 個目（Sparkleur）が要求した時点で上げる**（下の「共通クレートに上げる
-タイミング」）。
+**3 個目（Sparkleur）が要求したので `SPK-11` で上げた**（下の「共通クレートに
+上げるタイミング」）。中身はジェスチャの橋渡し（`apply`）、値のレンズ
+（`value_of`）、`knob` / `bar` / `segmented` / `toggle`。
+
+**プラグインに残るのは、そのプラグインにしか意味が無いもの**だけ。実際に
+残ったのは Doubler の鏡像編集 1 つ（`doubler::ui::mirror`）で、他の
+プラグインには対にすべき 2 つのボイスが無い。
 
 ## 依存の向き
 
@@ -59,7 +64,8 @@ Doubler と Velour は同内容の `param_bind.rs` をそれぞれ持ってい�
 <plugin> ──→ <plugin>-core ──→ nxe-audio  （処理。nih-plug も Vizia も知らない）
          ├─→ nxe-audio                    （ラッパが直接触る型だけ）
          ├─→ nxe-dsp                      （解析。同上）
-         └─→ nxe-ui                       （ウィジェット。nih-plug を知らない）
+         ├─→ nxe-ui                       （ウィジェット。nih-plug を知らない）
+         └─→ nxe-plug-ui ──→ nxe-ui       （結線。**両方を知る唯一のクレート**）
 ```
 
 `nxe-audio` は `SPK-1` で `velour-core` から抜き出して作った。`velour-core` は

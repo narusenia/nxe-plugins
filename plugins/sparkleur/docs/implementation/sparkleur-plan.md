@@ -26,7 +26,7 @@ SPK-7  De-Harsh / Sub Protect ✅
 SPK-8  ラッパとパラメータ  ← ここで初めて音が出る
 SPK-9  詰め（レート・ブロック・極端値）
 SPK-10 nxe-ui の delta 符号付き化
-SPK-11 param_bind の共通化
+SPK-11 param_bind の共通化 ✅
 SPK-12 UI マクロ層
 SPK-13 UI Band Field
 SPK-14 UI 小窓とメーター
@@ -357,19 +357,30 @@ gallery も同じ変更で更新する。
 
 ---
 
-### SPK-11 — `param_bind` の共通化
+### SPK-11 — `param_bind` の共通化 ✅
 
-Doubler と Velour で同内容が 2 つある。**3 個目が要求したので上げる。**
+`crates/nxe-plug-ui`。Doubler と Velour で同内容が 2 つあった。
+**3 個目が要求したので上げた。**
 
 - **完了条件**:
-  - [ ] 新クレート（仮 `nxe-plug-ui`）が nih-plug と vizia を知り、**`nxe-ui`
-        はどちらも知らないまま**
-  - [ ] `mise run gallery` が nih-plug をリンクせずに起動する
-  - [ ] Doubler と Velour の UI が変わらない
+  - [x] 新クレート `nxe-plug-ui` が nih-plug と vizia を知り、**`nxe-ui` は
+        どちらも知らないまま**（`cargo tree -p nxe-ui` に nih は 0 件）
+  - [x] `mise run gallery` が nih-plug をリンクせずに起動する
+  - [x] Doubler と Velour の UI が変わらない
 - **要件**: REQ-SPK-013
 - **依存**: なし
 - **決めたこと**: `nxe-ui` に入れない。入れると gallery が単体起動できなくなり、
   **DAW を開かずに UI を反復する**という土台が消える
+- **上げたもの**: `apply`（ジェスチャの橋渡し）、`value_of`（値のレンズ）、
+  `knob` / `bar` / `segmented` / `toggle`。**Velour 側が育っていたほう**なので
+  そちらを移し、Doubler をそれに合わせた
+- **残したもの**: Doubler の鏡像編集（`Mirror` / `mirrored_bar`）を
+  `doubler::ui::mirror` に。**対にすべき 2 つのボイスを持つのが Doubler だけ**
+  なので、消費者が 1 つのものは上げない
+- **確かめ方**: 移動が振る舞いを変えていないことを **HEAD との diff** で
+  確認した（共有した関数はコメント 1 行を除いてバイト一致。Doubler の `knob`
+  だけ `make_lens` の展開が `value_of` の呼び出しになったが同じ式）。
+  差分は正味 **−57 行**
 
 ---
 

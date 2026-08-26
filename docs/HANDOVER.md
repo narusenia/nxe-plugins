@@ -24,12 +24,13 @@ DSP は全部揃った。まだ音は出ない**（ラッパは `SPK-8`）。
 | `plugins/velour` | NXE Velour。CLAP + VST3。パラメータ 22 個。UI・解析・既定値まで完了。`velour-v0.1.0` |
 | `crates/nxe-audio` | 共通の**処理**（`shaper` / `oversample` / `biquad` / `envelope` / `guard` / `harmonics`）。`SPK-1` で `velour-core` から抜いた |
 | `crates/nxe-ui` | 共通ウィジェット・テーマ・アイコン。`mise run gallery` |
+| `crates/nxe-plug-ui` | nih-plug のパラメータと `nxe-ui` の結線。**両方を知る唯一のクレート**（`SPK-11`） |
 | `crates/nxe-dsp` | 共通の解析（`Handoff` / `PanScope` / `Spectrum` / `Level`） |
 | `plugins/sparkleur/sparkleur-core` | **`SPK-1`〜`SPK-7`。DSP は全部。** 5 帯域クロスオーバー、検波、上下コンプ、Sparkle、`CHARACTER`、De-Harsh / Sub Protect。**ラッパがまだ無いので音は出ない** |
 | `plugins/sparkleur/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`SPK-1`〜`SPK-18`）。`sparkleur` ラッパクレートは無い |
 | CI | `check`（PR と main への push）、`release`（`<plugin>-v<version>` タグ） |
 
-テスト 305 本。CPU は予算 533 µs に対し **Doubler 85 µs / Velour 128 µs**
+テスト 305 本（`SPK-11` は振る舞いを変えないので増減なし）。CPU は予算 533 µs に対し **Doubler 85 µs / Velour 128 µs**
 （`VEL-16`。Velour の内訳はエンジン 4x が 79、`Spectrum` 48 バンド × 2 が 45、
 `Level` × 4 が 4）。
 
@@ -37,9 +38,8 @@ DSP は全部揃った。まだ音は出ない**（ラッパは `SPK-8`）。
 
 **`SPK-8`（ラッパとパラメータ）。ここで初めて音が出る。** パラメータ 33 個、
 `sparkleur/src/{lib.rs, params.rs}` と `engine.rs`。**DSP は `SPK-7` まで全部
-揃っている**ので、ここは配線。Velour の `velour/src/` が最も近い手本で、
-`param_bind.rs` は `SPK-11` でまだ共通化していないから **3 個目のコピーを作る
-ことになる**（`SPK-11` を先にやる手もある）。
+揃っていて、結線も `SPK-11` で `nxe-plug-ui` に共通化済み**なので、ここは
+配線だけ。Velour の `velour/src/` が最も近い手本。
 
 **`MIX` = 0 のビット一致**（`REQ-SPK-001`）が最初に測るもの。原音は分割前で
 分岐する。
@@ -169,7 +169,7 @@ DSP は全部揃った。まだ音は出ない**（ラッパは `SPK-8`）。
 | `DBL-13` 既定値の詰め | `doubler-plan.md` | **耳が要る** |
 | Velour の `SOLO` が保存される | `params.rs` | nih-plug に逃げ道が無い。**画面には出るようにした** — Advanced の `ON` と、`BandField` が他の区画を落とすこと（`band.rs` の `soloing`）。図はタブに関係なく常に見えるので、ラッチしたまま開いても分かる |
 | 値の直接入力 | `crates/nxe-ui/src/entry.rs` | gallery では動くがプラグインに載せると editor の表示が止まる。**原因未特定** |
-| `UI-9` `ToggleSwitch` | `nxe-ui-plan.md` | **2 個のプラグインがどちらも要らなかった。** 3 個目でも要らなければ落とす |
+| `UI-9` `ToggleSwitch` | `nxe-ui-plan.md` | **2 個のプラグインがどちらも要らなかった。** 3 個目でも要らなければ落とす（Sparkleur の UI 仕様も `.segment` の `Label` で足りている） |
 | 混ざったコミット `f89b40c` / `68d5199` | — | それぞれフォント修正 + Dry Gain 削除、コード + 文書の一部。分けるなら push 済み履歴の書き換えが要る |
 
 ## 次にプラグインを足すとき
