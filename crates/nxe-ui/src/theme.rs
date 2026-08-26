@@ -240,7 +240,6 @@ pub fn stylesheet() -> String {
     let accent_dim = ACCENT_DIM.css();
     let accent_fill = gradient("right", ACCENT, ACCENT_WASH);
     let accent_fill_up = gradient("top", ACCENT, ACCENT_WASH);
-    let rule_accent = gradient("right", ACCENT, ACCENT.at(0.0));
 
     format!(
         "
@@ -348,12 +347,15 @@ label {{
     background-color: {border};
 }}
 
-/* A rule that marks the subject of a region. Fades out along its length, so it
-   reads as a start rather than as one side of a box. */
+/* A rule that marks the subject of a region.
+   **Flat, not faded.** It was a gradient that ran out along its length, which
+   put the design's one directional device on something with no direction —
+   the same rule that keeps a selected segment flat (`accent_paint`). A line
+   that fades also reads as unfinished at the end it fades into. */
 .rule-accent {{
     height: 2px;
     width: 1s;
-    background-image: {rule_accent};
+    background-color: {accent};
 }}
 
 /* A region's name, over its rule. `.eyebrow` is the text, `.heading` is the

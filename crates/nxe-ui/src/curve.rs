@@ -34,6 +34,12 @@ const ANALYSIS_ALPHA: f32 = 0.14;
 const CURVE_WIDTH: f32 = 2.0;
 const GRIP_RADIUS: f32 = 4.0;
 
+/// The ring marking where the signal is on the curve.
+///
+/// Smaller than a grip: a grip is something to grab and this is something to
+/// read, and the two must not look like the same offer.
+const POINT_RADIUS: f32 = 3.0;
+
 type CurveCallback = Box<dyn Fn(&mut EventContext, usize, Gesture)>;
 
 enum CurveEvent {
@@ -42,6 +48,7 @@ enum CurveEvent {
     Grips(Vec<Grip>),
     Analysis(Curve),
     Reference(Curve),
+    Point(Option<(f32, f32)>),
 }
 
 pub struct CurveView {
@@ -54,6 +61,9 @@ pub struct CurveView {
     /// The line the curves are read against. Empty means the horizontal one
     /// through the middle of the window.
     reference: Curve,
+    /// Where the signal is sitting on the curve right now, in the same
+    /// normalized coordinates as everything else. `None` draws nothing.
+    point: Option<(f32, f32)>,
     /// Gridline positions in normalized `x`. Fixed for the life of the view —
     /// the caller knows where its own axis marks go.
     grid: Vec<f32>,
@@ -81,6 +91,7 @@ impl CurveView {
             grips: initial_grips,
             analysis: Curve::new(),
             reference: Curve::new(),
+            point: None,
             grid,
             drag: Drag::default(),
             dragging: None,
@@ -136,6 +147,15 @@ pub trait CurveViewModifiers {
     /// a view cannot draw a diagonal as a gridline — those are vertical. Give
     /// it the line instead.
     fn reference(self, curve: impl Res<Curve> + 'static) -> Self;
+
+    /// **Where the signal is on the curve right now.**
+    ///
+    /// A transfer plot says what *would* happen at every level. The one thing it
+    /// cannot say on its own is which of those levels is arriving — and that is
+    /// what a compressor is watched for: whether the material is sitting on the
+    /// flat part, in the knee, or past it. Same normalized coordinates as the
+    /// curves; `None` draws nothing.
+    fn point(self, position: impl Res<Option<(f32, f32)>> + 'static) -> Self;
 }
 
 impl CurveViewModifiers for Handle<'_, CurveView> {
@@ -154,6 +174,14 @@ impl CurveViewModifiers for Handle<'_, CurveView> {
         });
         self
     }
+
+    fn point(mut self, position: impl Res<Option<(f32, f32)>> + 'static) -> Self {
+        let entity = self.entity();
+        position.set_or_bind(self.context(), entity, move |cx, value| {
+            cx.emit_to(entity, CurveEvent::Point(value));
+        });
+        self
+    }
 }
 
 impl View for CurveView {
@@ -168,6 +196,7 @@ impl View for CurveView {
                 CurveEvent::Spans(spans) => self.spans = spans.clone(),
                 CurveEvent::Grips(grips) => self.grips = grips.clone(),
                 CurveEvent::Analysis(analysis) => self.analysis = analysis.clone(),
+                CurveEvent::Point(point) => self.point = *point,
                 CurveEvent::Reference(reference) => self.reference = reference.clone(),
             }
             cx.needs_redraw();
@@ -308,6 +337,28 @@ impl View for CurveView {
             canvas.stroke_path(&path, &paint);
         }
 
+        // **Where the signal is right now**, over the curve and under nothing.
+        //
+        // A ring rather than a disc: a filled dot on a two-pixel line hides the
+        // very thing it is marking a place on, and what is being read is the
+        // shape of the curve at that place.
+        if let Some((x, y)) = self.point {
+            let (px, py) = at(x, y);
+            let radius = POINT_RADIUS * scale;
+
+            // A dark disc under the ring, so the ring reads against the curve
+            // rather than merging with it wherever the two cross.
+            let mut back = vg::Path::new();
+            back.circle(px, py, radius);
+            canvas.fill_path(&back, &vg::Paint::color(theme::BACKGROUND.vg()));
+
+            let mut ring = vg::Path::new();
+            ring.circle(px, py, radius);
+            let mut paint = vg::Paint::color(theme::FOREGROUND.vg());
+            paint.set_line_width(line);
+            canvas.stroke_path(&ring, &paint);
+        }
+
         for (index, (x, y)) in self.grips.iter().enumerate() {
             let (px, py) = at(*x, *y);
             let radius = GRIP_RADIUS * scale;
@@ -336,6 +387,7 @@ mod tests {
             grips,
             analysis: Curve::new(),
             reference: Curve::new(),
+            point: None,
             grid: Vec::new(),
             drag: Drag::default(),
             dragging: None,

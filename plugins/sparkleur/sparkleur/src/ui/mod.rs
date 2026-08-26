@@ -207,7 +207,7 @@ pub fn create(
                 // of half a panel (`SPK-19`). Everything is on screen.
                 shape_row(cx);
                 Element::new(cx).class("rule");
-                advanced::view(cx);
+                advanced::view(cx, analysis.clone());
             })
             .width(Stretch(1.0))
             .height(Stretch(1.0))
@@ -233,8 +233,8 @@ pub fn create(
 /// The figure and the window that reads one band of it, side by side.
 fn figure_row(cx: &mut Context, host_rate: f32, analysis: Arc<Analysis>) {
     HStack::new(cx, |cx| {
-        field::view(cx, host_rate, analysis);
-        curve::view(cx);
+        field::view(cx, host_rate, analysis.clone());
+        curve::view(cx, analysis);
     })
     // **Not `.class("row")`.** That centres its children vertically, and
     // `child-top: 1s` / `child-bottom: 1s` are two more stretches for the

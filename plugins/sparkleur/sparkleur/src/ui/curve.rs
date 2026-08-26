@@ -20,12 +20,14 @@
 //! does not have.
 
 use super::Ui;
+use crate::analysis::Analysis;
 use crate::params::SparkleurParams;
 use nih_plug_vizia::vizia::prelude::*;
 use nxe_ui::curve::{Curve, CurveView, CurveViewModifiers};
 use nxe_ui::theme;
 use sparkleur_core::crossover::BAND_COUNT;
 use sparkleur_core::engine::transfer_db;
+use std::sync::Arc;
 
 /// How many points the curve is drawn with. Enough that a knee reads as a curve
 /// rather than a corner.
@@ -123,7 +125,21 @@ fn diagonal() -> Curve {
     vec![(0.0, 0.0), (1.0, 1.0)]
 }
 
-pub fn view(cx: &mut Context) {
+/// Where the shown band is sitting on its own curve, right now.
+///
+/// **Both halves come from the audio thread** (`SPK-19`): the detector's reading
+/// is the input, and the gain actually applied — De-Harsh included — is what
+/// takes it to the output. Recomputing the output from the curve instead would
+/// give a point that is always exactly on the line, which is a picture of the
+/// arithmetic rather than of the sound.
+fn point_of(level_db: f32, gain_db: f32) -> Option<(f32, f32)> {
+    if !level_db.is_finite() || !gain_db.is_finite() || level_db <= LOW_DB {
+        return None;
+    }
+    Some((axis(level_db), axis(level_db + gain_db)))
+}
+
+pub fn view(cx: &mut Context, analysis: Arc<Analysis>) {
     VStack::new(cx, |cx| {
         CurveView::new(
             cx,
@@ -138,6 +154,13 @@ pub fn view(cx: &mut Context) {
             |_cx, _index, _gesture| {},
         )
         .reference(diagonal())
+        // Read inside the lens rather than copied into the model: the
+        // handoff's identity never changes, and the heartbeat is a change to
+        // the model thirty times a second (`ui/field.rs`).
+        .point(Ui::params.map(move |params| {
+            let band = shown(params, None);
+            point_of(analysis.levels.read()[band], analysis.gains.read()[band])
+        }))
         // **Both sides given, not stretched.** A stretching plot would take the
         // height the row hands it and the width the panel hands it, and those
         // are not the same number.

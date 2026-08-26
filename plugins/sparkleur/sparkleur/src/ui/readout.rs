@@ -10,10 +10,18 @@
 //! **Nothing new is measured.** `IN` and `OUT` are the meter frames the strip
 //! beside the window already draws, and `REDUCTION` is the deepest of the
 //! per-band gains the figure already moves the regions by (`analysis.rs`).
+//!
+//! `SPARKLE` and `DE-HARSH` were **published every block and read by nothing**
+//! (`SPK-19`). The gate is what separates this from a static exciter
+//! (`REQ-SPK-007`) and there was no way to see it working at all; the guard's
+//! doc says a protection that works invisibly leaves a user with an `AIR` knob
+//! that does nothing and no way to find out why (`REQ-SPK-008`) — the figure
+//! sinks the region it holds back, but never said how far.
 
 use super::{METER_FLOOR_DB, Ui};
 use crate::analysis::Analysis;
 use nih_plug_vizia::vizia::prelude::*;
+use nxe_ui::meter::Meter;
 use nxe_ui::{font, theme};
 use sparkleur_core::crossover::BAND_COUNT;
 use std::sync::Arc;
@@ -26,6 +34,10 @@ const SILENT_DB: f32 = METER_FLOOR_DB;
 /// Room for the widest reading — a sign, two digits, a point and a decimal — in
 /// the mono face at [`theme::FONT_READOUT`].
 const VALUE_WIDTH: f32 = 44.0;
+
+/// The gate's bar. Short enough to read as a readout rather than as a meter of
+/// its own — the meter strip beside the window is what levels are read on.
+const GATE_HEIGHT: f32 = 8.0;
 
 /// A level in dBFS, or a dash when there is nothing there.
 ///
@@ -88,15 +100,58 @@ pub fn view(cx: &mut Context, analysis: Arc<Analysis>) {
             }),
         );
 
+        let deepest = gains.clone();
         cell(
             cx,
             "REDUCTION",
-            Ui::params.map(move |_| reduction(&gains.gains.read())),
+            Ui::params.map(move |_| reduction(&deepest.gains.read())),
+        );
+
+        // **The gate, as a bar rather than a number.** What is asked of it is
+        // "is it lighting up on this material", which a moving bar answers at a
+        // glance and a figure flickering between 0 and 100 does not.
+        let gate = gains.clone();
+        meter_cell(
+            cx,
+            "SPARKLE",
+            Ui::params.map(move |_| gate.sparkle.read()[0]),
+        );
+
+        cell(
+            cx,
+            "DE-HARSH",
+            // Always signed, for the same reason `reduction` is — and more so:
+            // this one sits at zero on ordinary material by design (`SPK-18`),
+            // so the sign would otherwise appear only on the rare occasion it
+            // has something to say.
+            Ui::params.map(move |_| format!("-{:.1}", gains.de_harsh.read()[0].abs())),
         );
     })
     .height(Auto)
     .width(Stretch(1.0))
     .col_between(Pixels(theme::SPACE_4));
+}
+
+/// A cell whose content is a bar rather than a figure.
+fn meter_cell(cx: &mut Context, name: &'static str, level: impl Res<f32> + 'static) {
+    VStack::new(cx, |cx| {
+        VStack::new(cx, |cx| {
+            Label::new(cx, name).class("eyebrow");
+        })
+        .class("heading");
+
+        // **No hold and no marks.** A held peak answers "how loud did it get",
+        // and the question here is "is it open right now" — a mark left behind
+        // would say the gate is still doing something after it shut.
+        Meter::horizontal(cx, level, 0.0, Vec::new())
+            .width(Stretch(1.0))
+            .height(Pixels(GATE_HEIGHT))
+            .top(Stretch(1.0))
+            .bottom(Pixels(theme::SPACE_1));
+    })
+    .width(Stretch(1.0))
+    .height(Auto)
+    .row_between(Pixels(theme::SPACE_1));
 }
 
 /// One figure under its own eyebrow and rule — the same shape every named

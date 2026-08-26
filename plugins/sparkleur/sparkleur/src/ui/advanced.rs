@@ -15,9 +15,11 @@
 //! region marks the row. One value, both directions.
 
 use super::{Ui, UiEvent};
+use crate::analysis::Analysis;
 use nih_plug_vizia::vizia::prelude::*;
-use nxe_ui::theme;
+use nxe_ui::{font, theme};
 use sparkleur_core::crossover::BAND_COUNT;
+use std::sync::Arc;
 
 /// The name column and the width one bar gets. Fixed rather than stretched, so
 /// the five rows and the header line up.
@@ -44,9 +46,9 @@ const SIDE_WIDTH: f32 = 224.0;
 
 const NAMES: [&str; BAND_COUNT] = ["SUB", "BODY", "MID", "PRES", "AIR"];
 
-pub fn view(cx: &mut Context) {
+pub fn view(cx: &mut Context, analysis: Arc<Analysis>) {
     HStack::new(cx, |cx| {
-        table(cx);
+        table(cx, analysis);
         Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
         side(cx);
     })
@@ -56,7 +58,7 @@ pub fn view(cx: &mut Context) {
 }
 
 /// `UP` / `DOWN` / `GAIN` / `SOLO`, one row per band.
-fn table(cx: &mut Context) {
+fn table(cx: &mut Context, analysis: Arc<Analysis>) {
     VStack::new(cx, |cx| {
         HStack::new(cx, |cx| {
             heading(cx, "", NAME_WIDTH);
@@ -70,12 +72,24 @@ fn table(cx: &mut Context) {
         .col_between(Pixels(theme::SPACE_2));
 
         for index in 0..BAND_COUNT {
-            row(cx, index);
+            row(cx, index, analysis.clone());
         }
     })
     .height(Auto)
     .width(Auto)
     .row_between(Pixels(theme::SPACE_2));
+}
+
+/// What a band is actually running at, in dB.
+///
+/// **Always signed, and always the same width**, for the same reason the
+/// reduction readout is (`ui/readout.rs`): a number that gains and loses a minus
+/// as the band crosses unity makes a table of five rows twitch.
+fn applied(gain_db: f32) -> String {
+    if !gain_db.is_finite() {
+        return "  0.0".to_owned();
+    }
+    format!("{gain_db:+.1}")
 }
 
 fn heading(cx: &mut Context, text: &'static str, width: f32) {
@@ -88,15 +102,29 @@ fn heading(cx: &mut Context, text: &'static str, width: f32) {
         .height(Auto);
 }
 
-fn row(cx: &mut Context, index: usize) {
+fn row(cx: &mut Context, index: usize, analysis: Arc<Analysis>) {
     HStack::new(cx, |cx| {
-        Label::new(cx, NAMES[index])
-            .class("label")
-            // The row marks the region while the pointer is on it, so the name
-            // must not eat the hover: only the row is hoverable.
+        // **The name and what the band is doing, together** (`SPK-19`). The
+        // figure moves the region by this number already; a table of five rows
+        // is where it can be read rather than compared by eye.
+        VStack::new(cx, |cx| {
+            Label::new(cx, NAMES[index])
+                .class("label")
+                .class("decoration")
+                .height(Auto);
+            font::value(
+                cx,
+                Ui::params.map(move |_| applied(analysis.gains.read()[index])),
+            )
+            .class("subtle")
             .class("decoration")
-            .width(Pixels(NAME_WIDTH))
             .height(Auto);
+        })
+        // The row marks the region while the pointer is on it, so the name
+        // must not eat the hover: only the row is hoverable.
+        .class("decoration")
+        .width(Pixels(NAME_WIDTH))
+        .height(Auto);
 
         // The bars are wrapped so each column is a fixed width whatever the bar
         // itself decides to be.
