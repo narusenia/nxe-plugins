@@ -208,6 +208,22 @@ nxe-ui` に nih は 0 件のまま。**プラグインに残ったのは Doubler
 `MIX` = 1 で 6 dB 上がる）、`BODY` / `AIR` は帯域ごとの `SPARK` を倍率する、
 `SPEED` は `CHARACTER` からの双極の偏差。どれも `dsp.md` に書いた。
 
+**`SPK-9`（詰め）も入った**（2026-08-26）。テスト 323 本。**ここでもう 1 個
+実装側のバグを見つけた** — **NaN 1 個でエンジンが永久にラッチする**。`VEL-10` が
+Velour で見つけたのと同じ形が、別の場所（クロスオーバー本体）に居た。Velour は
+検波器のモノ和だけを消毒していたが、Sparkleur は**分割そのものが信号経路**な
+ので両チャネルを入口で消毒する必要がある。
+
+**レート非依存は定在音で測ってはいけない**（`SPK-9`）。7 kHz の正弦で 48 対
+96 kHz が 1.0 dB ずれたが、中身の違いではなく **Sparkle の層が通る IIR
+オーバーサンプラの遅延がサンプル数で固定**なので位相がレートで回るのが原因。
+分割だけなら 3 レートで**完全に同じ数字**、ノイズなら 0.33 dB。上蓋の絶対値も
+20 → **12 kHz** に直した（Velour と同じ値）。
+
+**確保が無いことを数えるアロケータで測るようにした。** nih-plug の
+`assert_process_allocs` はホストの debug ビルドの中でしか動かないので、
+`mise run check` で毎回動くほうが regression を見つける。
+
 `SPK-1` で `RelativeGuard` を一般化した甲斐がここで出た。**De-Harsh の実装は
 設定の `const` 1 個と 4 行のラッパ**で、入力ゲイン非依存（±12 dB で 0.2 dB
 以内）は Velour と同じコードの同じ性質を 2 つの製品が別々に測っている状態。
@@ -220,8 +236,8 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| SPK-9 | **詰め** — レート・ブロックサイズ・極端値 | `sparkleur-plan.md` |
-| SPK-16 | **解析の配線** — 図が読むもの（`SPK-8` が済んだので着手できる） | `sparkleur-plan.md` |
+| SPK-16 | **解析の配線** — 図が読むもの | `sparkleur-plan.md` |
+| SPK-12 | **UI マクロ層** — メインタブの 7 ノブ | `sparkleur-plan.md` |
 | SPK-10 | `nxe_ui::band::Band` の `reduction` を符号付き `delta` に（上げコンプが描けない） | `sparkleur-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 | UI-9 | `ToggleSwitch` — **3 個目の設計でも要らなかった**（`.segment` を当てた `Label` で足りる）。**落として良い** | `nxe-ui-plan.md` |
@@ -342,10 +358,10 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | SPK-6 | Sparkle（トランジェントでゲートした倍音生成） | ✅ `0117e1e` |
 | SPK-7 | De-Harsh / Sub Protect | ✅ `1fc7366` |
 | SPK-8 | ラッパとパラメータ（**ここで音が出る**） | ✅ `982f2ce` **実機確認だけ未** |
-| SPK-9 | 詰め（レート・ブロック・極端値） | 🟡 |
+| SPK-9 | 詰め（レート・ブロック・極端値） | ✅ `736442c` |
 | SPK-10 | `nxe_ui::band::Band` の `reduction` を符号付き `delta` に | 🟡 |
 | SPK-11 | `param_bind` の共通化（行き先は `nxe-plug-ui`） | ✅ `5e05b70` |
-| SPK-12 | UI マクロ層（メインタブ） | ⬜ SPK-9 |
+| SPK-12 | UI マクロ層（メインタブ） | 🟡 |
 | SPK-13 | UI Band Field（5 区画） | ⬜ SPK-10 / SPK-12 / SPK-16 |
 | SPK-14 | UI 小窓とメーター | ⬜ SPK-12 / SPK-16 |
 | SPK-15 | UI Advanced タブ | ⬜ SPK-13 |
