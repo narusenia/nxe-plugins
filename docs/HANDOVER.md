@@ -1,7 +1,7 @@
 # 引き継ぎ
 
 **2026-08-26 時点。** Doubler が `doubler-v0.1.0` で一区切り、Velour は
-**DSP が全部入って音が出る状態**（残りは詰めと UI）。
+**DSP も UI も一通り入った状態**（残りは CPU の実測と、実機で見て・聴いての詰め）。
 
 このファイルは**そのとき何が動いていて、次に触る人が最初に知るべきこと**を
 1 枚にまとめたもの。設計の正は各仕様書、状態の正は
@@ -20,25 +20,26 @@
 | | |
 |---|---|
 | `plugins/doubler` | NXE Doubler。CLAP + VST3。`doubler-v0.1.0`（**下書き Release。未公開**） |
-| `plugins/velour` | NXE Velour。CLAP + VST3。**UI 無し**、パラメータ 22 個（打ち止め）。Live で音を確認済み |
+| `plugins/velour` | NXE Velour。CLAP + VST3。パラメータ 22 個（打ち止め）。UI あり（**実機で見ての確認が残っている**） |
 | `crates/nxe-ui` | 共通ウィジェット・テーマ・アイコン。`mise run gallery` |
 | `crates/nxe-dsp` | 共通の解析（`Handoff` / `PanScope` / `Spectrum` / `Level`） |
 | CI | `check`（PR と main への push）、`release`（`<plugin>-v<version>` タグ） |
 
-テスト 229 本。Doubler の CPU はエンジン 70 µs + 解析 15 µs / 予算 533 µs。
+テスト 240 本。Doubler の CPU はエンジン 70 µs + 解析 15 µs / 予算 533 µs。
 **Velour の CPU は未測定**（`VEL-16`）。
 
 ## 次にやること
 
-**`VEL-11`〜`VEL-15`（UI）。** `velour-plan.md` に完了条件がある。
-**DSP は `VEL-10` の詰めまで全部終わっている** — パラメータは 22 個で打ち止め、
-`REQ-VEL-001`〜`012` と `016`（安全性）/ `017` は実装済み。
+**`VEL-16`（CPU 予算の実測）→ `VEL-17`（実機で見て・聴いて詰める）。**
+`velour-plan.md` に完了条件がある。**単位はこの 2 つだけ残っている。**
 
-その後は `VEL-16`（CPU 予算。**Velour は未測定**）→ `VEL-17`（耳で全定数）。
+`VEL-16` で最初に疑うのは**解析**: `Spectrum` を 2 本、48 バンドで回している
+（`plugins/velour/velour/src/analysis.rs`）。予算に入らなければバンド数が
+最初に削るところ。
 
-UI に入る前に [`../.agents/rules/vizia.md`](../.agents/rules/vizia.md) と
-`crates/nxe-ui/README.md` を読む。Velour が要求したウィジェットは 3 つとも
-入っていて（`BandField` / `Meter` / `Level`）、`mise run gallery` で動く。
+`VEL-17` は**目と耳の両方**。UI は組み上がっているが、**実機で見たのはまだ
+`VEL-5` の頃の「UI 無し」状態だけ**。寸法（680 × 580）も Doubler と同じく
+最後に詰める前提で置いてある。
 
 ## 耳での確認を待っているもの
 
@@ -51,6 +52,7 @@ UI に入る前に [`../.agents/rules/vizia.md`](../.agents/rules/vizia.md) と
 | `VEL-9` の `SOLO` | 各帯域が何を足しているか。`Air Bias` +1 の質感 |
 | `VEL-6` の `EMOTION` | 既定 0.5 で、**声量差で質感が変わるのが分かるか / 不安定でないか**。`REFERENCE_DB` −18 が普通のボーカルの位置に合っているか |
 | `VEL-7` の `DENSITY` | 振り切って「平坦だが死んでいない」か。`REFERENCE_DB` は `EMOTION` と**共有**なので、動かすと両方に効く |
+| UI 全体 | **まだ実機で見ていない。** 寸法、区画の掴みやすさ、Advanced の列の揃い、メーターの読みやすさ |
 | 既定値すべて | **全部仮。** プリセットを持たない方針（`REQ-VEL-020`）なので既定値が製品の顔。`VEL-17` でまとめて詰める |
 
 ## Velour で踏んだ罠（同じ形を 3 回やった）
