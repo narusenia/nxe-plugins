@@ -104,6 +104,14 @@ away — the same CSS works when the child is a `Label`, which sets `Auto` itsel
 When a container's size comes from its content, say `.width(Auto)` on every
 level, not just the outermost.
 
+**The same rule is how a control becomes untouchable.** A custom-drawn widget
+with no size of its own — `Bar` is one — collapses to nothing inside an
+`Auto`-sized row, and what is left is a hairline that still draws, still binds,
+and cannot be hit. It reads as "this control does nothing", not as a layout
+problem. Velour's whole Advanced table shipped that way (`VEL-14`). **Give every
+custom widget an explicit height**; the gallery's panels are the reference for
+what each one expects.
+
 **`font-size` takes a bare number, not a length.** This revision parses it as a
 keyword (`medium`, `x-small`, …) or an `f32` and nothing else, so `font-size:
 12px` fails to parse and **the declaration is dropped silently** — the label
@@ -134,6 +142,14 @@ and the label inside it, invisible at `opacity: 0`, swallows the clicks meant
 for that. Mark the content `.decoration` (`theme::hint` does). It also has no
 placement logic: near the right edge it runs off the window unless something
 sets `left: 1s; right: 0px` on it.
+
+**Centring a container's children costs a stretching child its width.**
+`child-left: 1s` / `child-right: 1s` are two more `Stretch`es for the row to
+divide, so a child asking for `Stretch(1.0)` gets a *third* of the space rather
+than all of it. Velour's transfer-curve window was drawn 44 px wide inside a
+132 px column for exactly this reason (`VEL-13`). Centre the thing that needs
+centring — put the stretch on the `Label`, not on the column that also holds a
+full-width view.
 
 **A widget must not move its own value optimistically.** `binding_system`
 re-reads every bound lens and compares with `Data::same`, so **a write the caller
