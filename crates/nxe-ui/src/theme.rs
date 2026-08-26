@@ -283,6 +283,16 @@ label {{
     background-color: {accent};
 }}
 
+/* Keyboard focus. Only ever from a keyboard: vizia sets `:focus-visible` when
+   focus arrived by `Tab` rather than by a click, so a pointer user never sees a
+   ring (`plugins/doubler/docs/specifications/ui.md`). Outline rather than
+   border, so nothing moves when it appears. */
+:focus-visible {{
+    outline-width: 2px;
+    outline-color: {accent_dim};
+    outline-offset: 1px;
+}}
+
 /* Hover help. vizia's `.tooltip(…)` modifier builds the view and toggles `.vis`
    on it after a delay; all that is left is what it looks like. An element
    selector because the view has no class of its own.
@@ -415,6 +425,7 @@ mod tests {
             ".value",
             ".title",
             "tooltip",
+            ":focus-visible",
             ".subtle",
             ".disabled",
             ".icon",
