@@ -27,11 +27,30 @@ Input (L,R)
   │                                                                 │
   └─ 検波（モノ和、帯域ごと 1 本）→ 上下のゲイン計算                  │
                                                                     │
-                                          out = dry + MIX·wet ──────┴─ × OUTPUT
+                                          out = dry + MIX·(wet − dry) ┴─ × OUTPUT
 ```
 
 **原音は分割前で分岐する**（`REQ-SPK-001`）。`MIX` = 0 が加算 1 回で入力
 そのものになるのはこれだけが理由。
+
+**`MIX` はクロスフェード**（`SPK-8` で確定）。`dry + MIX·(wet − dry)` は
+`MIX` = 0 でちょうど `dry`（有限の値に 0 を掛けて足すだけ）なので、
+「加算 1 回で入力そのもの」を満たしたまま `MIX` = 1 が wet になる。
+`dry + MIX·wet` だと `MIX` = 1 で 6 dB 上がってしまう。
+
+**De-Harsh は `SPARK` に乗る**（`SPK-8`）。概念文書の
+`Spark ↑ → Harshness Suppression ↑` はこの掛け算のこと（`REQ-SPK-008`）で、
+**同時に `SPARK` = 0 の平坦性を成立させているのもこれ** — 乗せないと、
+2 kHz の単音は自分の参照帯に対してしきい値を超えているので、ダイナミクスを
+切っていても De-Harsh に引かれて −3.6 dB 出る。実測で見つけた。
+
+**`BODY` / `AIR` は帯域ごとの `SPARK` を倍率する**（`SPK-8`）。傾き 0 で
+`SPARK` のまま、`+1` で 2 倍、`-1` で無音。Advanced の重みは触らない —
+「マクロが per-band を倍率する」規約そのまま（`.agents/rules/vizia.md`）。
+`AIR` は最上帯域のダイナミクスと Sparkle の量の**両方**に乗る。
+
+**`SPEED` は `CHARACTER` からの双極の偏差**（`SPK-8`）。De-Harsh /
+Sub Protect と同じ形で、0 が「軸の言うとおり」。
 
 ## クロスオーバー
 

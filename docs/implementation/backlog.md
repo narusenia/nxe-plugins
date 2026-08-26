@@ -194,7 +194,19 @@ HPF に通し、速い/遅いフォロワの比で作ったゲートで出力を
 nxe-ui` に nih は 0 件のまま。**プラグインに残ったのは Doubler の鏡像編集だけ**
 （対にすべき 2 つのボイスを持つのが Doubler だけなので）。正味 −57 行。
 
-**次は `SPK-8`（ラッパとパラメータ）で、ここで初めて音が出る。**
+**`SPK-8` が入った**（2026-08-26）。パラメータ 33 個、CLAP と VST3 の
+バンドルが出る。テスト 317 本。**残っているのは実機確認 1 つだけ** —
+`mise run install sparkleur` して DAW で読み込む。**それは耳と DAW が要る。**
+
+ここで**要件を読み返して直したものが 1 つ**。`SPARK` = 0 の平坦性テストが
+2 kHz だけ **−3.6 dB** で落ちた。De-Harsh が `SPARK` に乗っていなかったため
+（2 kHz の単音は自分の参照帯に対してしきい値を超えている）。`REQ-SPK-008` の
+`Spark ↑ → Harshness Suppression ↑` がまさにその掛け算で、**要件どおりに直したら
+平坦性も同時に通った。**
+
+**仕様の曖昧さを 3 つ確定させた**: `MIX` はクロスフェード（`dry + MIX·wet` だと
+`MIX` = 1 で 6 dB 上がる）、`BODY` / `AIR` は帯域ごとの `SPARK` を倍率する、
+`SPEED` は `CHARACTER` からの双極の偏差。どれも `dsp.md` に書いた。
 
 `SPK-1` で `RelativeGuard` を一般化した甲斐がここで出た。**De-Harsh の実装は
 設定の `const` 1 個と 4 行のラッパ**で、入力ゲイン非依存（±12 dB で 0.2 dB
@@ -208,7 +220,8 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| SPK-8 | **ラッパとパラメータ** — パラメータ 33 個。**ここで初めて音が出る** | `sparkleur-plan.md` |
+| SPK-9 | **詰め** — レート・ブロックサイズ・極端値 | `sparkleur-plan.md` |
+| SPK-16 | **解析の配線** — 図が読むもの（`SPK-8` が済んだので着手できる） | `sparkleur-plan.md` |
 | SPK-10 | `nxe_ui::band::Band` の `reduction` を符号付き `delta` に（上げコンプが描けない） | `sparkleur-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 | UI-9 | `ToggleSwitch` — **3 個目の設計でも要らなかった**（`.segment` を当てた `Label` で足りる）。**落として良い** | `nxe-ui-plan.md` |
@@ -328,14 +341,14 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | SPK-5 | CHARACTER（POLISH ↔ CRUSH の 1 軸） | ✅ `6401de9` |
 | SPK-6 | Sparkle（トランジェントでゲートした倍音生成） | ✅ `0117e1e` |
 | SPK-7 | De-Harsh / Sub Protect | ✅ `1fc7366` |
-| SPK-8 | ラッパとパラメータ（**ここで音が出る**） | 🟡 |
-| SPK-9 | 詰め（レート・ブロック・極端値） | ⬜ SPK-8 |
+| SPK-8 | ラッパとパラメータ（**ここで音が出る**） | ✅ `982f2ce` **実機確認だけ未** |
+| SPK-9 | 詰め（レート・ブロック・極端値） | 🟡 |
 | SPK-10 | `nxe_ui::band::Band` の `reduction` を符号付き `delta` に | 🟡 |
 | SPK-11 | `param_bind` の共通化（行き先は `nxe-plug-ui`） | ✅ `5e05b70` |
 | SPK-12 | UI マクロ層（メインタブ） | ⬜ SPK-9 |
 | SPK-13 | UI Band Field（5 区画） | ⬜ SPK-10 / SPK-12 / SPK-16 |
 | SPK-14 | UI 小窓とメーター | ⬜ SPK-12 / SPK-16 |
 | SPK-15 | UI Advanced タブ | ⬜ SPK-13 |
-| SPK-16 | 解析の配線 | ⬜ SPK-8 |
+| SPK-16 | 解析の配線 | 🟡 |
 | SPK-17 | CPU 予算 | ⬜ SPK-16 |
 | SPK-18 | 既定値と耳 | ⬜ SPK-17 |

@@ -1,8 +1,9 @@
 # 引き継ぎ
 
 **2026-08-26 時点。** Doubler は `doubler-v0.1.0` を**公開済み**、Velour は
-`velour-v0.1.0` で**一区切り**（下書き Release）。**Sparkleur は `SPK-1`〜`SPK-7` —
-DSP は全部揃った。まだ音は出ない**（ラッパは `SPK-8`）。
+`velour-v0.1.0` で**一区切り**（下書き Release）。**Sparkleur は `SPK-1`〜`SPK-8` と `SPK-11` —
+音が出るところまで来た。UI はまだ無い**（ホストの汎用ビューで触る）。
+**実機で読み込んで音を出すのだけ未確認。**
 
 このファイルは**そのとき何が動いていて、次に触る人が最初に知るべきこと**を
 1 枚にまとめたもの。設計の正は各仕様書、状態の正は
@@ -26,23 +27,24 @@ DSP は全部揃った。まだ音は出ない**（ラッパは `SPK-8`）。
 | `crates/nxe-ui` | 共通ウィジェット・テーマ・アイコン。`mise run gallery` |
 | `crates/nxe-plug-ui` | nih-plug のパラメータと `nxe-ui` の結線。**両方を知る唯一のクレート**（`SPK-11`） |
 | `crates/nxe-dsp` | 共通の解析（`Handoff` / `PanScope` / `Spectrum` / `Level`） |
-| `plugins/sparkleur/sparkleur-core` | **`SPK-1`〜`SPK-7`。DSP は全部。** 5 帯域クロスオーバー、検波、上下コンプ、Sparkle、`CHARACTER`、De-Harsh / Sub Protect。**ラッパがまだ無いので音は出ない** |
+| `plugins/sparkleur/sparkleur-core` | **DSP は全部。** 5 帯域クロスオーバー、検波、上下コンプ、Sparkle、`CHARACTER`、De-Harsh / Sub Protect、エンジン |
+| `plugins/sparkleur/sparkleur` | NXE Sparkleur。CLAP + VST3。**パラメータ 33 個。UI はまだ無い**（`SPK-12` から） |
 | `plugins/sparkleur/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`SPK-1`〜`SPK-18`）。`sparkleur` ラッパクレートは無い |
 | CI | `check`（PR と main への push）、`release`（`<plugin>-v<version>` タグ） |
 
-テスト 305 本（`SPK-11` は振る舞いを変えないので増減なし）。CPU は予算 533 µs に対し **Doubler 85 µs / Velour 128 µs**
+テスト 317 本。CPU は予算 533 µs に対し **Doubler 85 µs / Velour 128 µs**
 （`VEL-16`。Velour の内訳はエンジン 4x が 79、`Spectrum` 48 バンド × 2 が 45、
 `Level` × 4 が 4）。
 
 ## 次にやること
 
-**`SPK-8`（ラッパとパラメータ）。ここで初めて音が出る。** パラメータ 33 個、
-`sparkleur/src/{lib.rs, params.rs}` と `engine.rs`。**DSP は `SPK-7` まで全部
-揃っていて、結線も `SPK-11` で `nxe-plug-ui` に共通化済み**なので、ここは
-配線だけ。Velour の `velour/src/` が最も近い手本。
+**まず実機で 1 回鳴らす。** `mise run install sparkleur` して DAW で読み込む。
+`SPK-8` の完了条件で唯一残っているのがこれで、**耳と DAW が要る**。UI はまだ
+無いのでホストの汎用ビューで触ることになる。
 
-**`MIX` = 0 のビット一致**（`REQ-SPK-001`）が最初に測るもの。原音は分割前で
-分岐する。
+その後は **`SPK-9`（詰め）** か **`SPK-16`（解析の配線）**、あるいは UI の
+入口の **`SPK-10`**（`nxe_ui::band::Band` の `reduction` → 符号付き `delta`）。
+`SPK-12` は `SPK-9` を待っている。
 
 **ここまで通っている**: `SPK-1` の `nxe-audio`（`shaper` / `oversample` /
 `biquad` / `envelope` / `guard` / `harmonics`、`guard` は `RelativeGuard<N>`）、
@@ -51,7 +53,8 @@ DSP は全部揃った。まだ音は出ない**（ラッパは `SPK-8`）。
 `SPK-4` の上下コンプ（状態を持たない純関数。`SPARK` = 0 がちょうど 0 dB）、
 `SPK-6` の Sparkle（折り返し −60 dB 以下、持続音でゲート 0.008）、
 `SPK-5` の `CHARACTER`（軸端から端でラウドネス 0.98 dB）、
-`SPK-7` の De-Harsh（±12 dB の入力で動作量 0.2 dB 以内）と Sub Protect。
+`SPK-7` の De-Harsh（±12 dB の入力で動作量 0.2 dB 以内）と Sub Protect、
+`SPK-8` のラッパ（`MIX` = 0 でビット一致、`SPARK` = 0 で ±0.1 dB 平坦）。
 
 **この 2 つは Sparkleur のコードを 1 行も書かずに着手できる**:
 
@@ -113,6 +116,12 @@ DSP は全部揃った。まだ音は出ない**（ラッパは `SPK-8`）。
 1 オクターブ下は `HP(1500)` がまだ効いていて 30 dB/oct で落ちる。24 dB/oct を
 測るなら境界が 1 つしか効かないところ。**帯域の幾何中心も 0 dB ではない**
 （band 2 は 1.7 オクターブ幅で中心が −1.5 dB）。
+
+**保護は `SPARK` に乗せる**（`SPK-8`）。De-Harsh を `SPARK` と独立にすると、
+**`SPARK` = 0 でも平坦にならない** — 2 kHz の単音は自分の参照帯に対して
+しきい値を超えているので引かれる。`REQ-SPK-008` の
+`Spark ↑ → Harshness Suppression ↑` がまさにその掛け算で、**要件を読み返したら
+答えが書いてあった**。保護を足すときは「量の macro に乗るか」を先に決める。
 
 **非対称なフォロワを比の分子に置くな**（`SPK-6`）。仕様の Sparkle は fast を
 1 ms / 40 ms の非対称にしていたが、非対称な追従は平均とピークの間に座るので
