@@ -34,17 +34,45 @@ pub const GUARDED_BAND: usize = 3;
 /// The band Sub Protect closes: SUB, the first.
 pub const PROTECTED_BAND: usize = 0;
 
-/// **Ear-tuned** (`SPK-18`): the band-to-reference power ratio ordinary
-/// material sits at, so ordinary material does not move it at all.
-const THRESHOLD_DB: f32 = -8.0;
+/// The band-to-reference power ratio above which the presence band is being
+/// held back.
+///
+/// **Measured, not guessed** (`SPK-18`). Zero says "the 1.5–5 kHz band carries
+/// as much power as the 200–1200 Hz band under it", which spectrally ordinary
+/// material sits 1.7 dB below:
+///
+/// | | ratio |
+/// |---|---|
+/// | six steady partials | −6.8 dB |
+/// | **pink noise** | **−1.7 dB** |
+/// | pink, presence +3 dB | +0.2 dB |
+/// | hi-hats | +3.8 dB |
+/// | pink, presence +10 dB | +5.4 dB |
+/// | white noise | +5.6 dB |
+///
+/// It shipped at −8 dB, which is below every one of those — so it pulled 1.3 dB
+/// out of plain pink noise at the defaults, exactly what its own comment said
+/// it must not do. The tests it had used two tones with almost nothing in the
+/// guarded band, so nothing caught it until the whole engine was measured on
+/// broadband material.
+const THRESHOLD_DB: f32 = 0.0;
 
 /// De-Harsh's shape (`dsp.md`).
 const DE_HARSH: Settings<1> = Settings {
-    // Wide enough to stand for "the sound", narrow enough that rumble and air
-    // do not swamp it — the same reference Velour's guards share.
+    // **Below the band it judges, not around it** (`SPK-18`). Velour's guards
+    // share a 300 Hz–8 kHz reference, and copying it here put the guarded band
+    // inside its own reference: lifting 1.5–5 kHz by 10 dB lifted the reference
+    // by 6 of them, so ten decibels of harshness read as two and the threshold
+    // had almost nothing to sit between. Taking the guarded band out of the
+    // reference widens that span from **2.0 dB to 7.1 dB**.
+    //
+    // Velour is not changed to match. It is released, its `CLAP_ID` is in
+    // people's projects, and this is a different judgement about a different
+    // band — a shared mechanism carrying one product's tuning is what `SPK-1`
+    // took apart.
     reference: Band {
-        low_hz: 300.0,
-        high_hz: 8_000.0,
+        low_hz: 200.0,
+        high_hz: 1_200.0,
     },
     bands: [GuardedBand {
         // Where it hurts. Fixed, because `FOCUS` does not move the ear.
@@ -133,6 +161,22 @@ mod tests {
 
     const RATE: f32 = 48_000.0;
 
+    /// Deterministic pink noise — the proxy for spectrally ordinary material.
+    fn pink(length: usize) -> Vec<f32> {
+        let mut state = 0x1234_5678u32;
+        let (mut b0, mut b1, mut b2) = (0.0f32, 0.0f32, 0.0f32);
+        (0..length)
+            .map(|_| {
+                state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+                let value = (state >> 8) as f32 / (1 << 23) as f32 * 2.0 - 1.0;
+                b0 = 0.99765 * b0 + value * 0.099_046;
+                b1 = 0.96300 * b1 + value * 0.296_516_4;
+                b2 = 0.57000 * b2 + value * 1.052_691_3;
+                (b0 + b1 + b2 + value * 0.1848) * 0.15
+            })
+            .collect()
+    }
+
     /// A quiet tone standing for "the rest of the sound", plus one in the
     /// painful band at `harsh`.
     fn signal(harsh: f32, length: usize) -> Vec<f32> {
@@ -147,6 +191,93 @@ mod tests {
             de_harsh.push(*sample, amount);
         }
         de_harsh.reduction_db()
+    }
+
+    /// Pink noise with the painful band lifted: a signal that is harsh rather
+    /// than merely loud.
+    fn tilted(boost_db: f32, length: usize) -> Vec<f32> {
+        let mut band = nxe_audio::biquad::BandPass::new(1_500.0, 5_000.0, RATE);
+        let gain = 10.0f32.powf(boost_db / 20.0) - 1.0;
+        pink(length)
+            .iter()
+            .map(|sample| sample + band.process(*sample) * gain)
+            .collect()
+    }
+
+    /// How long the followers are given before anything is believed.
+    ///
+    /// **The reference follower starts at zero**, so for the first instants the
+    /// band is compared against silence and every signal reads as infinitely
+    /// harsh. Measured from sample zero, plain pink noise pulls the full 12 dB.
+    const SETTLE: usize = 4_800;
+
+    /// The furthest it pulled at any point after it settled.
+    ///
+    /// **Not the reading left at the end**, which on noise is one arbitrary
+    /// instant — a guard that fires in bursts would measure as doing nothing.
+    fn worst(input: &[f32], amount: f32) -> f32 {
+        let mut de_harsh = DeHarsh::new(RATE);
+        let mut worst = 0.0f32;
+        for (index, sample) in input.iter().enumerate() {
+            de_harsh.push(*sample, amount);
+            if index > SETTLE {
+                worst = worst.min(de_harsh.reduction_db());
+            }
+        }
+        worst
+    }
+
+    /// **Ordinary material does not move it, and harsh material does**
+    /// (`SPK-18`, `REQ-SPK-008`).
+    ///
+    /// This is the test the shipping threshold did not have. The one next to it
+    /// balances two tones, and a two-tone signal with almost nothing in the
+    /// guarded band passes at any threshold at all — which is how −8 dB survived
+    /// to the point where the whole engine was measured and found to be pulling
+    /// 1.3 dB out of plain pink noise.
+    ///
+    /// The ratio each material actually sits at, over four settled seconds:
+    ///
+    /// | | p50 | p95 | max |
+    /// |---|---|---|---|
+    /// | six steady partials | −7.04 | −6.80 | −6.69 |
+    /// | **pink noise** | **−1.67** | **−0.40** | **+0.29** |
+    /// | pink, presence +6 dB | +2.69 | +3.77 | +4.86 |
+    /// | pink, presence +10 dB | +5.57 | +6.45 | +7.58 |
+    ///
+    /// A threshold of zero therefore sits above everything ordinary material
+    /// reaches — pink crosses it in the top one per cent of instants, by three
+    /// tenths of a decibel — while leaving five decibels of pull available on
+    /// material that is genuinely presence-heavy.
+    #[test]
+    fn ordinary_material_does_not_move_it_and_harsh_material_does() {
+        let length = 48_000;
+
+        // Spectrally neutral, and something with even less up there.
+        assert_eq!(worst(&pink(length), 1.0), 0.0, "it fired on pink noise");
+        let mut mixed = vec![0.0f32; length];
+        for hz in [110.0f32, 220.0, 330.0, 550.0, 1_100.0, 3_300.0] {
+            for (sample, value) in mixed.iter_mut().zip(tone(0.05, hz, RATE, length)) {
+                *sample += value;
+            }
+        }
+        assert_eq!(worst(&mixed, 1.0), 0.0, "it fired on steady partials");
+
+        // And it grows with how harsh the material actually is.
+        let mut previous = 0.0f32;
+        for boost_db in [3.0f32, 6.0, 10.0] {
+            let pull = worst(&tilted(boost_db, length), 1.0);
+            assert!(
+                pull < previous - 0.5,
+                "+{boost_db:.0} dB pulled {pull:.2}, no more than +{:.0} dB did ({previous:.2})",
+                boost_db - 3.0
+            );
+            previous = pull;
+        }
+        assert!(
+            previous < -3.0,
+            "ten decibels of harshness only pulled {previous:.2} dB"
+        );
     }
 
     /// **The property the relative detector exists for** (`REQ-SPK-008`). It is

@@ -302,7 +302,7 @@ band 5 ─→ Oversampler ─→ shaper(β, h) ─→ highpass ─→ × gain �
 
 | | 何 | 機構 |
 |---|---|---|
-| De-Harsh | 1.5〜5 kHz が広い参照帯に対して過剰なとき PRESENCE 帯を引く | **相対検出器**（`nxe_audio::guard`。Velour の Harsh Guard と同じもの） |
+| De-Harsh | 1.5〜5 kHz が**その下の参照帯**（200 Hz〜1.2 kHz）に対して過剰なとき PRESENCE 帯を引く | **相対検出器**（`nxe_audio::guard`。Velour の Harsh Guard と同じ機構、値は別） |
 | Sub Protect | LOW の上げコンプの上限を下げる | **`REQ-SPK-003` の `CEILING` の値違い** |
 
 - **量は `CHARACTER` が決める。** 「明るくなるのに痛くならない OTT」が製品の
@@ -320,6 +320,9 @@ band 5 ─→ Oversampler ─→ shaper(β, h) ─→ highpass ─→ × gain �
   - [x] 入力ゲインを ±12 dB 変えても De-Harsh の動作量が 0.2 dB 以内
         （相対検出の帰結）
   - [x] Sub Protect が LOW の上げ量だけを制限し、他の帯域を触らない
+  - [x] **スペクトル的に普通の素材で De-Harsh がまったく動かない**
+        （`SPK-18`。ピンクノイズと定常倍音列で引き量ちょうど 0 dB。
+        参照帯が検出帯を含んでいたため出荷時のしきい値ではここが破れていた）
 - **依存**: REQ-SPK-003, REQ-SPK-006
 
 ---

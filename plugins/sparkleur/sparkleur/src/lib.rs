@@ -14,6 +14,8 @@ use sparkleur_core::Engine;
 use std::sync::Arc;
 
 mod analysis;
+#[cfg(test)]
+mod defaults;
 mod params;
 mod ui;
 
