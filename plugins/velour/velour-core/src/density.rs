@@ -108,7 +108,7 @@ impl Density {
     }
 
     /// **Per sample.** `level` is the detector's linear reading
-    /// (`crate::envelope::Envelope::level`).
+    /// (`nxe_audio::Envelope::level`).
     ///
     /// Exactly `1.0` while the amount is zero, so an untouched control costs
     /// one comparison and changes nothing.

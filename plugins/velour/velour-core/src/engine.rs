@@ -14,9 +14,9 @@
 use crate::bands::{BANDS, Band, Generator};
 use crate::density::Density;
 use crate::emotion;
-use crate::envelope::Envelope;
 use crate::guard::{GUARDS, Guarded, Guards};
 use crate::texture;
+use nxe_audio::envelope::Envelope;
 use nxe_audio::oversample::{Factor, Oversampler};
 use nxe_audio::shaper::{DRIVE_MAX, DRIVE_MIN, Shaper};
 
@@ -315,7 +315,7 @@ impl Engine {
             soloing: false,
             guards: Guards::new(host_rate),
             guard_amounts: [1.0; 2],
-            envelope: Envelope::new(host_rate),
+            envelope: crate::envelope::vocal(host_rate),
             density: Density::new(),
             wet: (0.0, 0.0),
         }

@@ -22,9 +22,11 @@
 //! not stale: they are the reason the code has the shape it has.
 
 pub mod biquad;
+pub mod envelope;
 pub mod harmonics;
 pub mod oversample;
 pub mod shaper;
 
+pub use envelope::Envelope;
 pub use oversample::{Factor, Oversampler};
 pub use shaper::Shaper;
