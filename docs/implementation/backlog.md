@@ -25,6 +25,8 @@
 ## 現在地
 
 **フェーズ 3（UI）完了。フェーズ 4 は `DBL-13` だけ残り**（2026-08-26）。
+そのうえで `nxe-dsp`（共通の解析）と、それを 2 つの図に重ねる `DBL-16` を
+足した — 他のプラグインでも使うことが決まっているため。
 
 - CI は 2 本。`check`（PR と main への push で `mise run check`）と `release`
   （タグ → 3 OS の zip → 下書き Release）。**`release` はまだ一度も走っていない**
@@ -61,6 +63,14 @@
 | INFRA-2 | プルリクエストの CI（`mise run check`） | ✅ |
 | INFRA-3 | リリースの CI（タグ → 3 OS bundle → Release） | ✅ ❓ タグ未実行 |
 
+### 共通の解析 — `nxe-dsp-plan.md`
+
+| ID | 単位 | 状態 |
+|---|---|---|
+| DSP-1 | 音声スレッド → UI の受け渡し（`Handoff`） | ✅ |
+| DSP-2 | ステレオ像の分布（`PanScope`） | ✅ |
+| DSP-3 | スペクトラム（`Spectrum`。定 Q のフィルタバンク） | ✅ |
+
 ### 共通 UI — `nxe-ui-plan.md`
 
 | ID | 単位 | 状態 |
@@ -73,6 +83,8 @@
 | UI-6 | `SegmentedControl` | ✅ |
 | UI-7 | `PolarField`（領域知識を持たない極座標フィールド） | ✅ |
 | UI-10 | `CurveView`（領域知識を持たない曲線表示） | ✅ |
+| UI-11 | `PolarField` の分布オーバーレイ | ✅ |
+| UI-12 | `CurveView` の解析カーブ | ✅ |
 | UI-8 | `Meter` — **Doubler は使わない** | 🟡 |
 | UI-9 | `ToggleSwitch` — **Doubler は使わない** | 🟡 |
 
@@ -94,4 +106,5 @@
 | DBL-14 | UI Filter View | ✅ |
 | DBL-15 | UI ミラー編集（`REQ-DBL-014`） | ✅ |
 | DBL-12 | CPU 予算の確認（criterion） | ✅ 69.4 µs / 予算 533 µs |
+| DBL-16 | 通っている音の表示（`REQ-DBL-015`） | ✅ ❓ 実機未確認 |
 | DBL-13 | 既定値の詰めと実機確認 | 🟡 |

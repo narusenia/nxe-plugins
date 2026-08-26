@@ -248,6 +248,8 @@ pub fn view(cx: &mut Context) {
     // Whatever the model says is under the pointer — a dot, or a row in the
     // Detail table — gets a ring here.
     .highlight(Ui::hovered)
+    // And under all of it, where the output's energy actually is.
+    .density(Ui::density)
     .height(Stretch(1.0))
     .width(Stretch(1.0));
 }

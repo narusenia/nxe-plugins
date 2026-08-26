@@ -14,6 +14,7 @@ mod field;
 mod param_bind;
 mod tone;
 
+use crate::analysis::{Analysis, BANDS, HIGH_HZ, LOW_HZ, PAN_BINS};
 use crate::params::DoublerParams;
 use nih_plug::prelude::Editor;
 use nih_plug_vizia::vizia::prelude::*;
@@ -22,6 +23,7 @@ use nxe_ui::segmented::SegmentedControl;
 use nxe_ui::{font, icon, theme};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
+use std::time::Duration;
 
 /// One size, tall enough for whichever tab needs the most room. Measured
 /// against the built layout rather than estimated.
@@ -66,7 +68,22 @@ pub(crate) struct Ui {
     mirror_detune: bool,
     mirror_delay: bool,
     mirror_gain: bool,
+    /// What the audio thread has published. Read on a timer rather than mapped
+    /// from the `Arc`: the handoff's identity never changes, so nothing would
+    /// tell the binding system to look again.
+    analysis: Arc<Analysis>,
+    /// The reactive copies. Updating these is what makes the display move.
+    density: Vec<f32>,
+    spectrum: Vec<(f32, f32)>,
 }
+
+/// How often the display re-reads the analysis. 30 Hz is as fast as a meter
+/// needs to look alive, and half the work of matching the frame rate.
+const ANALYSIS_INTERVAL: Duration = Duration::from_millis(33);
+
+/// The floor of the spectrum display. Below this a band is drawn as silence —
+/// without a floor the curve sits on the noise of an idle track.
+const SPECTRUM_FLOOR_DB: f32 = -72.0;
 
 /// Which axis a mirror switch controls — one per shape axis.
 ///
@@ -86,6 +103,8 @@ pub(crate) enum UiEvent {
     SelectTab(usize),
     Hover(Option<usize>),
     ToggleMirror(MirrorAxis),
+    /// The timer asking the model to re-read what the audio thread published.
+    Poll,
 }
 
 impl Model for Ui {
@@ -98,6 +117,10 @@ impl Model for Ui {
                     .store(*tab == TAB_DETAIL, Ordering::Relaxed);
             }
             UiEvent::Hover(index) => self.hovered = *index,
+            UiEvent::Poll => {
+                self.density = self.analysis.pan.read().to_vec();
+                self.spectrum = spectrum_curve(&self.analysis.spectrum.read());
+            }
             UiEvent::ToggleMirror(axis) => match axis {
                 MirrorAxis::Pan => {
                     self.mirror_pan = !self.mirror_pan;
@@ -128,7 +151,35 @@ impl Model for Ui {
     }
 }
 
-pub fn create(params: Arc<DoublerParams>, state: Arc<ViziaState>) -> Option<Box<dyn Editor>> {
+/// The published band levels as a curve for the Filter View: `x` across the log
+/// frequency axis, `y` on the same ±12 dB scale the Tone curve uses.
+///
+/// **Both live on the caller's side of the widget**, which is the same split as
+/// everywhere else — `nxe-ui` knows nothing about hertz or decibels, and
+/// `nxe-dsp` knows nothing about the view it ends up in.
+fn spectrum_curve(levels: &[f32; BANDS]) -> Vec<(f32, f32)> {
+    let span = (HIGH_HZ / LOW_HZ).log10();
+
+    levels
+        .iter()
+        .enumerate()
+        .map(|(index, level)| {
+            let hz = LOW_HZ * (HIGH_HZ / LOW_HZ).powf(index as f32 / (BANDS - 1) as f32);
+            let x = (hz / LOW_HZ).log10() / span;
+            // `20 log10` of an amplitude, floored so silence is the bottom of
+            // the view rather than minus infinity.
+            let db = 20.0 * level.max(1e-9).log10();
+            let y = ((db - SPECTRUM_FLOOR_DB) / -SPECTRUM_FLOOR_DB).clamp(0.0, 1.0);
+            (x, y)
+        })
+        .collect()
+}
+
+pub fn create(
+    params: Arc<DoublerParams>,
+    state: Arc<ViziaState>,
+    analysis: Arc<Analysis>,
+) -> Option<Box<dyn Editor>> {
     // `ViziaTheming::None`: the plugin brings its own stylesheet and wants none
     // of vizia's defaults leaking into it.
     create_vizia_editor(state, ViziaTheming::None, move |cx, _| {
@@ -145,9 +196,21 @@ pub fn create(params: Arc<DoublerParams>, state: Arc<ViziaState>) -> Option<Box<
             mirror_detune: params.mirror_detune.load(Ordering::Relaxed),
             mirror_delay: params.mirror_delay.load(Ordering::Relaxed),
             mirror_gain: params.mirror_gain.load(Ordering::Relaxed),
+            analysis: analysis.clone(),
+            density: vec![0.0; PAN_BINS],
+            spectrum: Vec::new(),
             params: params.clone(),
         }
         .build(cx);
+
+        // Parameter changes wake the binding system on their own; an idle
+        // window with audio running does not. The meter needs its own heartbeat.
+        let timer = cx.add_timer(ANALYSIS_INTERVAL, None, |cx, action| {
+            if action == TimerAction::Tick(ANALYSIS_INTERVAL) {
+                cx.emit(UiEvent::Poll);
+            }
+        });
+        cx.start_timer(timer);
 
         VStack::new(cx, |cx| {
             header(cx);

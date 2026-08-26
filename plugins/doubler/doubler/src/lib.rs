@@ -3,10 +3,13 @@
 //!
 //! No DSP lives here (`.agents/rules/rust.md`).
 
+use analysis::{Analysis, BANDS, HIGH_HZ, LOW_HZ, PAN_BINS};
 use doubler_core::VoiceEngine;
 use nih_plug::prelude::*;
+use nxe_dsp::{PanScope, Spectrum};
 use std::sync::Arc;
 
+mod analysis;
 mod params;
 mod ui;
 
@@ -24,6 +27,12 @@ struct Doubler {
     /// buffer still has two channels (the output count), and only the first
     /// holds input — so the second has to be ignored rather than read.
     input_channels: usize,
+    /// What the editor is shown about the sound. **Analysers on the audio
+    /// thread, one `Arc` of atomics between the two** — the editor never
+    /// touches the state below (`plugins/doubler/doubler/src/analysis.rs`).
+    analysis: Arc<Analysis>,
+    pan_scope: PanScope<PAN_BINS>,
+    spectrum: Spectrum<BANDS>,
 }
 
 impl Default for Doubler {
@@ -33,6 +42,9 @@ impl Default for Doubler {
             engine: VoiceEngine::new(FALLBACK_SAMPLE_RATE),
             sample_rate: FALLBACK_SAMPLE_RATE,
             input_channels: 2,
+            analysis: Arc::new(Analysis::default()),
+            pan_scope: PanScope::new(FALLBACK_SAMPLE_RATE),
+            spectrum: Spectrum::new(FALLBACK_SAMPLE_RATE, LOW_HZ, HIGH_HZ),
         }
     }
 }
@@ -68,7 +80,11 @@ impl Plugin for Doubler {
     }
 
     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
-        ui::create(self.params.clone(), self.params.editor_state.clone())
+        ui::create(
+            self.params.clone(),
+            self.params.editor_state.clone(),
+            self.analysis.clone(),
+        )
     }
 
     /// The only place that allocates. Every buffer the audio thread touches is
@@ -87,12 +103,21 @@ impl Plugin for Doubler {
         if buffer_config.sample_rate != self.sample_rate {
             self.sample_rate = buffer_config.sample_rate;
             self.engine = VoiceEngine::new(self.sample_rate);
+            // The analysers hold time constants and filter coefficients in
+            // samples, so they are rebuilt with the engine rather than
+            // corrected afterwards.
+            self.pan_scope = PanScope::new(self.sample_rate);
+            self.spectrum = Spectrum::new(self.sample_rate, LOW_HZ, HIGH_HZ);
         }
         true
     }
 
     fn reset(&mut self) {
         self.engine.reset();
+        // Otherwise the picture from before the transport stopped is still on
+        // screen, decaying, as if something were playing.
+        self.pan_scope.reset();
+        self.spectrum.reset();
     }
 
     fn process(
@@ -133,7 +158,20 @@ impl Plugin for Doubler {
             // multiplied by one, so a bypassed plugin is bit-transparent.
             left[sample] = (dry_left * (1.0 - mix) + wet_left * mix) * output;
             right[sample] = (dry_right * (1.0 - mix) + wet_right * mix) * output;
+
+            // The picture is of the output — where the sound *is*, under the
+            // dots that say where it was asked to be.
+            self.pan_scope.push(left[sample], right[sample]);
+            // The spectrum is of the wet bus, because `Tone` is what the Filter
+            // View draws and the wet bus is what `Tone` acts on. Summed to mono:
+            // one curve cannot say two things.
+            self.spectrum.push((wet_left + wet_right) * 0.5);
         }
+
+        // Once per block, not per sample: the editor redraws at 30 Hz and these
+        // are stores to shared atomics.
+        self.analysis.pan.write(self.pan_scope.bins());
+        self.analysis.spectrum.write(&self.spectrum.levels());
 
         ProcessStatus::Normal
     }

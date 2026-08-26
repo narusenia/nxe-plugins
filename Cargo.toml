@@ -15,6 +15,7 @@ license = "GPL-3.0-only"
 repository = "https://github.com/narusenia/nxe-plugins"
 
 [workspace.dependencies]
+nxe-dsp = { path = "crates/nxe-dsp" }
 nxe-ui = { path = "crates/nxe-ui" }
 doubler-core = { path = "plugins/doubler/doubler-core" }
 

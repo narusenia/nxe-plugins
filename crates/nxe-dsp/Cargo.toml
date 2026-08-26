@@ -11,3 +11,12 @@ description = "Signal analysis shared by the NXE plugins, independent of any hos
 # lets every analyser be tested without a window
 # (`docs/specifications/architecture.md`).
 [dependencies]
+
+# criterion is a dev dependency, so it never reaches a plugin binary. The rule
+# above is about what the analysis links, not about what measures it.
+[dev-dependencies]
+criterion = { version = "0.5", default-features = false }
+
+[[bench]]
+name = "analysis"
+harness = false

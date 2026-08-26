@@ -13,6 +13,7 @@
 | **新しいプラグインを足す手順** | [specifications/architecture.md](specifications/architecture.md) の「新しいプラグインを足す」 |
 | **今どの実装単位があって、どれが着手できるか** | [implementation/backlog.md](implementation/backlog.md) |
 | **共通 UI コンポーネントの計画** | [implementation/nxe-ui-plan.md](implementation/nxe-ui-plan.md) |
+| **共通の解析（レベル・ステレオ像・スペクトラム）の計画** | [implementation/nxe-dsp-plan.md](implementation/nxe-dsp-plan.md) |
 | **ワークスペース骨格と CI の計画** | [implementation/infra-plan.md](implementation/infra-plan.md) |
 | **共通 UI コンポーネントの計画** | [implementation/nxe-ui-plan.md](implementation/nxe-ui-plan.md) |
 | **ワークスペース骨格と CI の計画** | [implementation/infra-plan.md](implementation/infra-plan.md) |

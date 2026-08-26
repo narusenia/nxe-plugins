@@ -14,7 +14,7 @@ use doubler_core::{MAX_VOICES, spread_band, tone_response_db};
 use nih_plug::prelude::Param;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
-use nxe_ui::curve::{Curve, CurveView, Grip, Span};
+use nxe_ui::curve::{Curve, CurveView, CurveViewModifiers, Grip, Span};
 use nxe_ui::input::Gesture;
 use nxe_ui::theme;
 
@@ -132,6 +132,8 @@ pub fn view(cx: &mut Context) {
                     }
                 },
             )
+            // The wet bus, behind the curve that shapes it.
+            .analysis(Ui::spectrum)
             .height(Pixels(96.0))
             .width(Stretch(1.0));
 

@@ -1029,6 +1029,7 @@ dependencies = [
  "doubler-core",
  "nih_plug",
  "nih_plug_vizia",
+ "nxe-dsp",
  "nxe-ui",
 ]
 
@@ -2141,6 +2142,9 @@ dependencies = [
 [[package]]
 name = "nxe-dsp"
 version = "0.1.0"
+dependencies = [
+ "criterion",
+]
 
 [[package]]
 name = "nxe-ui"
