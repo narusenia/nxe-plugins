@@ -136,33 +136,31 @@ pub struct VoiceShape {
 /// left-right symmetric**. That is what keeps the image from leaning when
 /// `Voices` changes (`REQ-DBL-001`).
 ///
-/// **Each pair is a full mirror image**, delay included: `mirror_partner` is
-/// the neighbour with the low bit flipped, and the two differ only in sign on
-/// the axes that have one. The figure a user opens is therefore symmetric about
-/// its centre line, which is what mirror editing then preserves
-/// (`REQ-DBL-014`).
+/// **A pair mirrors on the axes the figure shows** — `mirror_partner` is the
+/// neighbour with the low bit flipped, and the two are equal and opposite in
+/// `pan` and `detune` and equal in `gain`. The figure a user opens is therefore
+/// symmetric about its centre line.
 ///
-/// The cost is that density now comes from the spacing *between* pairs rather
-/// than within them: eight voices sit at four delays, not eight. With `Detune`
-/// and `Humanize` both at zero a pair collapses to one signal panned two ways —
-/// audible as a thinner double, not as a fault, and neither is zero by
-/// default.
+/// **`delay` is deliberately not part of that.** It is not an axis of the
+/// figure — it is the dot's size — and a pair at two different delays is where
+/// a doubler's thickness comes from. Eight voices sit at eight delays, and the
+/// test below asks that they stay apart.
 pub const DEFAULT_SHAPE: [VoiceShape; MAX_VOICES] = [
     VoiceShape {
         detune: -1.00,
-        delay: 0.78,
+        delay: 1.00,
         pan: -1.00,
         gain_db: 0.0,
     },
     VoiceShape {
         detune: 1.00,
-        delay: 0.78,
+        delay: 0.72,
         pan: 1.00,
         gain_db: 0.0,
     },
     VoiceShape {
         detune: -0.40,
-        delay: 0.44,
+        delay: 0.84,
         pan: -0.45,
         gain_db: 0.0,
     },
@@ -174,19 +172,19 @@ pub const DEFAULT_SHAPE: [VoiceShape; MAX_VOICES] = [
     },
     VoiceShape {
         detune: -0.70,
-        delay: 0.94,
+        delay: 0.92,
         pan: -0.75,
         gain_db: 0.0,
     },
     VoiceShape {
         detune: 0.70,
-        delay: 0.94,
+        delay: 0.30,
         pan: 0.75,
         gain_db: 0.0,
     },
     VoiceShape {
         detune: -0.25,
-        delay: 0.62,
+        delay: 0.52,
         pan: -0.20,
         gain_db: 0.0,
     },
@@ -669,10 +667,10 @@ mod tests {
             let partner = mirror_partner(index);
             assert_ne!(partner, index);
             assert_eq!(mirror_partner(partner), index, "pairing is not mutual");
-            // The bipolar axes invert; the ones with no sign match outright.
+            // The axes the figure shows: angle inverts, radius matches.
+            // `delay` is not one of them — see `DEFAULT_SHAPE`.
             assert_eq!(shape.pan, -DEFAULT_SHAPE[partner].pan);
             assert_eq!(shape.detune, -DEFAULT_SHAPE[partner].detune);
-            assert_eq!(shape.delay, DEFAULT_SHAPE[partner].delay);
             assert_eq!(shape.gain_db, DEFAULT_SHAPE[partner].gain_db);
         }
     }
@@ -752,20 +750,15 @@ mod tests {
         }
     }
 
-    /// The delays are spread out for every prefix too. **Within a pair they are
-    /// equal on purpose** — that is what makes the figure a mirror image — so
-    /// this asks that every *pair* sits at its own delay. Two pairs at the same
-    /// delay would be four voices where two would do.
+    /// The delays are spread out for every prefix too — two voices at the same
+    /// delay would be one voice twice as loud.
     #[test]
-    fn the_default_delays_are_distinct_across_pairs() {
+    fn the_default_delays_are_distinct_for_every_voice_count() {
         for voices in [Voices::Two, Voices::Four, Voices::Eight] {
             let n = voices.count();
             let live = &DEFAULT_SHAPE[..n];
             for (i, a) in live.iter().enumerate() {
                 for (j, b) in live.iter().enumerate().skip(i + 1) {
-                    if mirror_partner(i) == j {
-                        continue;
-                    }
                     let gap = (a.delay - b.delay).abs();
                     assert!(gap > 0.05, "{n} voices: {i} and {j} are only {gap} apart");
                 }
