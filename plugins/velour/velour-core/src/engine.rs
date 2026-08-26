@@ -12,6 +12,8 @@
 //! smoothing to block boundaries.
 
 use crate::bands::{BANDS, Band, Generator};
+use crate::emotion;
+use crate::envelope::Envelope;
 use crate::guard::{GUARDS, Guarded, Guards};
 use crate::oversample::{Factor, Oversampler};
 use crate::shaper::{DRIVE_MAX, DRIVE_MIN, Shaper};
@@ -73,6 +75,9 @@ pub struct Shape {
     /// How much each guard is allowed to pull, `0..=1`, in the order of
     /// [`crate::guard::GUARDS`]. Zero is exactly off (`REQ-VEL-006`).
     pub guards: [f32; 2],
+    /// How much the envelope is allowed to move the curves, `0..=1`
+    /// (`crate::emotion`). **Zero is exactly static** (`REQ-VEL-008`).
+    pub emotion: f32,
     /// `-1..=1`, sliding every band edge together.
     pub focus: f32,
     pub factor: Factor,
@@ -90,6 +95,10 @@ impl Default for Shape {
             // On by default: the plugin's promise is that it does not get
             // painful, and a protection nobody switched on does not keep it.
             guards: [1.0; 2],
+            // Not zero: this is the plugin's whole differentiation, and a
+            // feature nobody switched on is a feature nobody heard
+            // (`REQ-VEL-008`).
+            emotion: 0.5,
             focus: 0.0,
             factor: Factor::default(),
         }
@@ -180,6 +189,9 @@ pub struct Engine {
     /// one side only would move the voice sideways (`REQ-VEL-011`).
     guards: Guards,
     guard_amounts: [f32; 2],
+    /// **One detector, fed the mono sum, read before anything else touches the
+    /// signal** — shared with `DENSITY` (`crate::envelope`).
+    envelope: Envelope,
 }
 
 /// Everything `set_shape` has to notice a change in before rebuilding the
@@ -190,6 +202,11 @@ struct CurveState {
     texture: f32,
     texture_offsets: [f32; BAND_COUNT],
     bias: [f32; BAND_COUNT],
+    /// `EMOTION`'s deflection, already multiplied by its amount — so at amount
+    /// zero this is a constant zero and the envelope cannot cause a rebuild.
+    /// That is what makes "completely static" exact rather than nearly
+    /// (`REQ-VEL-008`).
+    motion: f32,
 }
 
 impl Engine {
@@ -209,11 +226,13 @@ impl Engine {
                 texture: f32::NAN,
                 texture_offsets: [f32::NAN; BAND_COUNT],
                 bias: [f32::NAN; BAND_COUNT],
+                motion: f32::NAN,
             },
             solo: [false; BAND_COUNT],
             soloing: false,
             guards: Guards::new(host_rate),
             guard_amounts: [1.0; 2],
+            envelope: Envelope::new(host_rate),
         }
     }
 
@@ -242,11 +261,18 @@ impl Engine {
         self.soloing = shape.solo.iter().any(|band| *band);
         self.guard_amounts = shape.guards;
 
+        // Read once per block, from the envelope the audio path has been
+        // feeding. `EMOTION` is a curve change, and the curves are block rate
+        // (`crate::emotion`).
+        let amount = clamp_or(shape.emotion, 0.0, 1.0, 0.0);
+        let motion = amount * emotion::deflection(self.envelope.decibels());
+
         let curve = CurveState {
             drive: shape.drive,
             texture: shape.texture,
             texture_offsets: shape.texture_offsets,
             bias: shape.bias,
+            motion,
         };
         if curve != self.curve {
             self.curve = curve;
@@ -257,11 +283,13 @@ impl Engine {
                     texture::for_band(shape.texture, shape.texture_offsets[index], index);
                 let bias = clamp_or(shape.bias[index], -1.0, 1.0, 0.0);
 
-                shaper.set(
-                    drive * curve_drive * (bias * BIAS_OCTAVES).exp2(),
+                let (curve_bias, hardness, band_drive) = emotion::modulate(
                     point.bias,
                     point.hardness,
+                    drive * curve_drive * (bias * BIAS_OCTAVES).exp2(),
+                    motion,
                 );
+                shaper.set(band_drive, curve_bias, hardness);
                 self.trims[index] = point.trim * decibels(bias * BIAS_LEVEL_DB);
             }
         }
@@ -276,8 +304,12 @@ impl Engine {
         // written; borrowing through `self` inside the closure would not.
         // The guards run **before** the split, at the host rate, on the mono
         // sum — one detector for two channels and for both bands.
-        self.guards
-            .push((input.0 + input.1) * 0.5, self.guard_amounts);
+        let mono = (input.0 + input.1) * 0.5;
+        self.guards.push(mono, self.guard_amounts);
+        // **Before the generator bus**, which is where `DENSITY`'s compressor
+        // lives: the detector has to see the signal the singer produced, not
+        // the one that has already been levelled (`REQ-VEL-008`).
+        self.envelope.push(mono);
 
         let Self {
             shapers,
@@ -344,6 +376,7 @@ impl Engine {
         // Otherwise a guard that was pulling when the transport stopped is
         // still pulling when it starts again.
         self.guards.reset();
+        self.envelope.reset();
     }
 }
 
@@ -443,11 +476,17 @@ mod tests {
 
     /// The two rates the API is split across have to be independent: calling
     /// `set_shape` more often must not change the sound.
+    ///
+    /// **`EMOTION` off**, because with it on the block size is exactly what
+    /// decides how often the envelope is sampled — that is the feature, and
+    /// `emotion_moves_with_the_block_and_only_when_it_is_on` is where it is
+    /// pinned.
     #[test]
     fn the_block_size_does_not_change_the_output() {
         let shape = Shape {
             drive: 0.6,
             focus: 0.2,
+            emotion: 0.0,
             ..Shape::default()
         };
         let open = levels(0.7, 0.9);
@@ -521,6 +560,22 @@ mod tests {
         // claim that the levels match.
         let drift = crate::harmonics::db_ratio(crate::harmonics::rms(&edge), level);
         assert!(drift.abs() < 4.0, "the level walked {drift:+.1} dB");
+    }
+
+    /// Renders the way a host does: `set_shape` once per block, then the
+    /// samples. **Anything the envelope feeds has to be measured this way** —
+    /// [`rendered`] resolves the curves before the detector has heard a single
+    /// sample.
+    fn blocked(shape: &Shape, levels: &Levels, input: &[f32], block: usize) -> Vec<f32> {
+        let mut engine = Engine::new(RATE);
+        let mut output = Vec::new();
+        for chunk in input.chunks(block) {
+            engine.set_shape(shape);
+            for sample in chunk {
+                output.push(engine.process((*sample, *sample), levels).0);
+            }
+        }
+        output
     }
 
     fn rendered(shape: &Shape, levels: &Levels, input: &[f32]) -> Vec<f32> {
@@ -766,6 +821,7 @@ mod tests {
                 bias: [value; BAND_COUNT],
                 solo: [true, false, true],
                 guards: [value; 2],
+                emotion: value,
                 focus: value,
                 factor: Factor::Four,
             });
@@ -810,6 +866,148 @@ mod tests {
         }
     }
 
+    /// **`amount = 0` is exactly static** (`REQ-VEL-008`), and the way to see
+    /// it is a signal whose level is moving fast: if the envelope reached the
+    /// curves at all, sampling it every block instead of every sample would
+    /// change the output.
+    ///
+    /// The same test the other way round says the feature is actually wired —
+    /// with the amount up, the block size *does* change the output, because the
+    /// envelope is read once per block.
+    #[test]
+    fn emotion_moves_with_the_block_and_only_when_it_is_on() {
+        // A tone that fades in over the buffer, so the envelope is somewhere
+        // different in every block.
+        let length = 24_000;
+        let input: Vec<f32> = tone(1.0, 220.0, RATE, length)
+            .iter()
+            .enumerate()
+            .map(|(index, sample)| sample * index as f32 / length as f32)
+            .collect();
+        let open = levels(0.8, 1.0);
+
+        let render = |emotion: f32, block: usize| {
+            blocked(
+                &Shape {
+                    drive: 0.6,
+                    emotion,
+                    ..Shape::default()
+                },
+                &open,
+                &input,
+                block,
+            )
+        };
+
+        assert_eq!(
+            render(0.0, 1),
+            render(0.0, 512),
+            "the envelope reached the curves with the amount at zero"
+        );
+        assert_ne!(
+            render(1.0, 1),
+            render(1.0, 512),
+            "the envelope never reached the curves"
+        );
+    }
+
+    /// **The direction the feature claims** (`REQ-VEL-008`, `dsp.md`): sung
+    /// harder comes out less even and more odd.
+    ///
+    /// Compared against `EMOTION` off **at the same input level**, because the
+    /// curve makes more harmonics from a louder signal whatever `EMOTION` does —
+    /// comparing a loud render against a quiet one would measure that instead.
+    #[test]
+    fn a_loud_phrase_loses_even_harmonics_and_gains_odd() {
+        // The analysed half has to hold a whole number of cycles for the
+        // harmonic bins to land on the harmonics.
+        const SETTLED: usize = 16_384;
+        const CYCLES: usize = 100;
+        let hertz = RATE * CYCLES as f32 / SETTLED as f32;
+        // −3 dB, which is far past `emotion::REF_DB`, so the deflection is
+        // pinned at +1.
+        let input = tone(0.7, hertz, RATE, SETTLED * 2);
+
+        // BODY alone: its output filter passes the second and third harmonics
+        // of a 293 Hz tone, and soloing takes the layer rather than the sum it
+        // is buried in.
+        //
+        // **Rendered block by block, not with `rendered`.** That helper calls
+        // `set_shape` once before the first sample, when the envelope has still
+        // only seen silence — so `EMOTION` would read the deflection as −1 and
+        // every direction here would come out backwards.
+        let ratios = |emotion: f32| {
+            let wet = blocked(
+                &Shape {
+                    drive: 0.6,
+                    emotion,
+                    solo: [true, false, false],
+                    ..Shape::default()
+                },
+                &levels(0.8, 1.0),
+                &input,
+                64,
+            );
+            let settled = &wet[SETTLED..];
+            let first = crate::harmonics::amplitude(settled, CYCLES);
+            (
+                crate::harmonics::amplitude(settled, CYCLES * 2) / first,
+                crate::harmonics::amplitude(settled, CYCLES * 3) / first,
+            )
+        };
+
+        let (even_off, odd_off) = ratios(0.0);
+        let (even_on, odd_on) = ratios(1.0);
+
+        assert!(
+            even_on < even_off * 0.9,
+            "H2/H1 went {even_off:.4} -> {even_on:.4}"
+        );
+        assert!(
+            odd_on > odd_off * 1.1,
+            "H3/H1 went {odd_off:.4} -> {odd_on:.4}"
+        );
+    }
+
+    /// The detector is fed the mono sum, so a line panned hard to one side
+    /// still moves the character — and moves it the same for both channels
+    /// (`REQ-VEL-011`).
+    #[test]
+    fn one_channel_still_drives_the_detector() {
+        let input = tone(0.9, 293.0, RATE, 24_000);
+        let open = levels(0.8, 1.0);
+
+        // Hard left, and only the left channel's output is looked at: the right
+        // has nothing to add to.
+        let render = |emotion: f32| {
+            let shape = Shape {
+                drive: 0.6,
+                emotion,
+                solo: [true, false, false],
+                ..Shape::default()
+            };
+            let mut engine = Engine::new(RATE);
+            let mut output = Vec::new();
+            for chunk in input.chunks(64) {
+                engine.set_shape(&shape);
+                for sample in chunk {
+                    output.push(engine.process((*sample, 0.0), &open).0);
+                }
+            }
+            output[12_000..].to_vec()
+        };
+
+        let off = render(0.0);
+        let on = render(1.0);
+        let difference = crate::harmonics::rms(
+            &off.iter().zip(&on).map(|(a, b)| a - b).collect::<Vec<f32>>(),
+        );
+        assert!(
+            difference > crate::harmonics::rms(&off) * 0.02,
+            "a one-sided signal left the curves alone"
+        );
+    }
+
     #[test]
     fn reset_clears_it() {
         let mut engine = engine();
@@ -821,3 +1019,4 @@ mod tests {
         assert_eq!(engine.process((0.0, 0.0), &open), (0.0, 0.0));
     }
 }
+

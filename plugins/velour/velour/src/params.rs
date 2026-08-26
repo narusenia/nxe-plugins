@@ -98,6 +98,17 @@ pub struct VelourParams {
     #[id = "guard_sib"]
     pub guard_sib: FloatParam,
 
+    /// How much the input's envelope moves the curves
+    /// (`velour_core::emotion`).
+    ///
+    /// **One knob, and it has to be reachable.** This is the plugin's
+    /// differentiation, and nobody can decide whether it is an improvement
+    /// without being able to switch it off and A/B it — so it sits in Advanced
+    /// rather than being a hidden behaviour, and zero is exactly static
+    /// (`REQ-VEL-008`).
+    #[id = "emotion"]
+    pub emotion: FloatParam,
+
     /// Listen to one generator alone, with the dry muted.
     ///
     /// **A parameter, reluctantly.** It changes the sound, so it is not the kind
@@ -171,6 +182,11 @@ impl Default for VelourParams {
             guard_harsh: percentage("Harsh Guard", 0.75),
             guard_sib: percentage("Sib Guard", 0.75),
 
+            // Not zero, for the same reason the guards are not: a default of
+            // off means the plugin ships sounding like every other saturator
+            // (`REQ-VEL-008`).
+            emotion: percentage("Emotion", 0.50),
+
             solo_body: listen("Body Solo"),
             solo_presence: listen("Presence Solo"),
             solo_air: listen("Air Solo"),
@@ -237,6 +253,7 @@ impl VelourParams {
                 self.guard_harsh.smoothed.next_step(samples),
                 self.guard_sib.smoothed.next_step(samples),
             ],
+            emotion: self.emotion.smoothed.next_step(samples),
             focus: self.focus.smoothed.next_step(samples),
             factor: self.oversample.value().into(),
         }
