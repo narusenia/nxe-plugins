@@ -369,39 +369,31 @@ where
 /// (`velour_core::texture`).
 const ANCHORS: [(&str, f32); 3] = [("WARM", 0.0), ("CLEAR", 0.5), ("EDGE", 1.0)];
 
-/// `TEXTURE`, with the three names under it instead of a percentage.
+/// `TEXTURE`, with the nearest anchor's name in front of the percentage.
 ///
-/// **The names are what the discrete modes were traded for** (`REQ-VEL-004`).
-/// The axis is continuous, so the readout has to say where between them the
-/// knob is — and a number cannot, because 40% means nothing until you know what
-/// is at either end. The nearest name lights up.
+/// **The name is what the discrete modes were traded for** (`REQ-VEL-004`). The
+/// axis is continuous, so a number alone says nothing — 52% means nothing until
+/// you know what is at either end — and the name alone would hide that there is
+/// anything between the three.
 ///
-/// Not tick marks on the knob's own track: that would be a change to
-/// `nxe_ui::knob` — and every widget change owes the gallery a panel
-/// (`.agents/rules/vizia.md`). Three labels say the same thing from outside.
+/// **One line, not three labels.** The first attempt printed WARM / CLEAR / EDGE
+/// side by side and lit the current one, and it was wrong twice over: `.accent`
+/// is a *fill*, so the current one became a blue chip, and `.subtle` and
+/// `.value` are different sizes, so it also changed size. Worse, three words are
+/// wider than a knob column, and this row's columns are equal stretches — so the
+/// overflow pushed into its neighbours. Every other knob here says label then
+/// one value; this one now does too.
 fn texture_knob(cx: &mut Context) {
     VStack::new(cx, |cx| {
         param_bind::knob(cx, Ui::params, |params| &params.texture, SHAPE_KNOB)
             .tooltip(|cx| theme::hint(cx, "Warm through Clear to Edge"));
         Label::new(cx, "TEXTURE").class("label");
-
-        HStack::new(cx, |cx| {
-            for (name, position) in ANCHORS {
-                Label::new(cx, name)
-                    .class("value")
-                    .toggle_class(
-                        "accent",
-                        Ui::params.map(move |params| nearest(params.texture.value()) == position),
-                    )
-                    .toggle_class(
-                        "subtle",
-                        Ui::params.map(move |params| nearest(params.texture.value()) != position),
-                    );
-            }
-        })
-        .width(Auto)
-        .height(Auto)
-        .col_between(Pixels(theme::SPACE_1));
+        font::value(
+            cx,
+            Ui::params.map(|params| {
+                format!("{} {}", nearest(params.texture.value()), params.texture)
+            }),
+        );
     })
     .width(Stretch(1.0))
     .height(Auto)
@@ -413,17 +405,17 @@ fn texture_knob(cx: &mut Context) {
 /// Which anchor a position is closest to. Ties cannot happen: the anchors are
 /// evenly spaced, so the midpoints are the only ambiguous values and they fall
 /// to the lower name.
-fn nearest(position: f32) -> f32 {
+fn nearest(position: f32) -> &'static str {
     ANCHORS
         .iter()
-        .map(|(_, anchor)| *anchor)
-        .min_by(|a, b| {
+        .min_by(|(_, a), (_, b)| {
             (a - position)
                 .abs()
                 .partial_cmp(&(b - position).abs())
                 .expect("the anchors and the position are finite")
         })
-        .unwrap_or(0.5)
+        .map(|(name, _)| *name)
+        .unwrap_or("CLEAR")
 }
 
 #[cfg(test)]
@@ -432,13 +424,14 @@ mod tests {
 
     #[test]
     fn the_nearest_anchor_is_the_nearest_one() {
-        assert_eq!(nearest(0.0), 0.0);
-        assert_eq!(nearest(0.2), 0.0);
-        assert_eq!(nearest(0.5), 0.5);
-        assert_eq!(nearest(0.8), 1.0);
-        assert_eq!(nearest(1.0), 1.0);
-        // The midpoints fall to the lower name rather than flickering.
-        assert_eq!(nearest(0.25), 0.0);
-        assert_eq!(nearest(0.75), 0.5);
+        assert_eq!(nearest(0.0), "WARM");
+        assert_eq!(nearest(0.2), "WARM");
+        assert_eq!(nearest(0.5), "CLEAR");
+        assert_eq!(nearest(0.8), "EDGE");
+        assert_eq!(nearest(1.0), "EDGE");
+        // The midpoints fall to the lower name rather than flickering between
+        // two of them while the knob sits still.
+        assert_eq!(nearest(0.25), "WARM");
+        assert_eq!(nearest(0.75), "CLEAR");
     }
 }
