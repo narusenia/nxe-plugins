@@ -199,7 +199,13 @@ pub const FONT_EYEBROW: f32 = 9.0;
 /// A panel whose numbers are all the same size has no subject. This is for the
 /// number a region exists to show — the gain reduction, the output level —
 /// and there should be **at most one per region**.
-pub const FONT_READOUT: f32 = 15.0;
+///
+/// **Thirteen, not fifteen.** Fifteen was a headline: three of them across the
+/// top of a window read as the loudest thing on screen, over the figure that is
+/// what the plugin *is*. It only has to be larger than [`FONT_VALUE`], and set
+/// in mono at full contrast it already wins without the extra size (looked at
+/// in a host, `SPK-19`).
+pub const FONT_READOUT: f32 = 13.0;
 
 /// Two text sizes. Labels name things, values say what they are.
 ///

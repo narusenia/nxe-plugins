@@ -11,6 +11,7 @@ mod advanced;
 mod curve;
 mod field;
 mod meters;
+mod readout;
 
 use crate::analysis::{Analysis, BANDS, HIGH_HZ, LOW_HZ, METERS};
 use crate::params::SparkleurParams;
@@ -19,7 +20,6 @@ use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
 use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
 use nxe_ui::curve::Curve;
-use nxe_ui::segmented::SegmentedControl;
 use nxe_ui::{font, theme};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -33,15 +33,8 @@ use std::time::Duration;
 /// padding, the wordmark, the axis labels, the tab strip — around
 /// [`field::HEIGHT`] and [`TAB_HEIGHT`], and it moves when either of those
 /// does.
-const WIDTH: u32 = 680;
-const HEIGHT: u32 = 468;
-
-/// How tall the swapped region is. Fixed, so switching tabs does not move
-/// anything above it.
-///
-/// Sized to MAIN, which is the taller of the two: a 52 px knob with its label
-/// and value is 88, the second row of smaller knobs is 74, and 12 between them.
-const TAB_HEIGHT: f32 = 180.0;
+const WIDTH: u32 = 720;
+const HEIGHT: u32 = 588;
 
 /// The knob sizes. The five that shape the sound are the large ones; the two
 /// that decide how much of it arrives are smaller and sit apart, because they
@@ -57,18 +50,9 @@ pub fn default_state() -> Arc<ViziaState> {
     ViziaState::new(|| (WIDTH, HEIGHT))
 }
 
-const TAB_MAIN: usize = 0;
-const TAB_ADVANCED: usize = 1;
-
 #[derive(Lens)]
 pub(crate) struct Ui {
     params: Arc<SparkleurParams>,
-    /// Which tab is showing.
-    ///
-    /// **Interface state, not a parameter.** Which tab was open does not change
-    /// the sound, so it is not worth an id in the saved state — reopening on
-    /// MAIN is the right default anyway.
-    tab: usize,
     /// Which band the pointer is over, so the Advanced row and the region can
     /// mark each other. One value, both directions.
     hovered: Option<usize>,
@@ -88,7 +72,6 @@ pub(crate) struct Ui {
 }
 
 pub(crate) enum UiEvent {
-    SelectTab(usize),
     Hover(Option<usize>),
     /// The heartbeat asking the model to re-read what the audio thread
     /// published.
@@ -98,7 +81,6 @@ pub(crate) enum UiEvent {
 impl Model for Ui {
     fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
         event.map(|ui_event: &UiEvent, _| match ui_event {
-            UiEvent::SelectTab(tab) => self.tab = *tab,
             UiEvent::Hover(index) => self.hovered = *index,
             UiEvent::Poll => {
                 self.dry = spectrum_curve(&self.analysis.dry.read());
@@ -144,7 +126,7 @@ const SPECTRUM_FLOOR_DB: f32 = -72.0;
 /// The floor of the meters. Shallower than the spectrum's: a meter is read for
 /// "how close to clipping", and 60 dB of travel puts a working mix in the top
 /// third where it can be read.
-const METER_FLOOR_DB: f32 = -60.0;
+pub(crate) const METER_FLOOR_DB: f32 = -60.0;
 
 /// An amplitude as a position on a meter.
 fn meter_position(amplitude: f32) -> f32 {
@@ -194,7 +176,6 @@ pub fn create(
 
         Ui {
             params: params.clone(),
-            tab: TAB_MAIN,
             hovered: None,
             analysis: analysis.clone(),
             dry: Curve::new(),
@@ -213,29 +194,27 @@ pub fn create(
             VStack::new(cx, |cx| {
                 header(cx);
 
-                // The figure stays put above the tabs. It is what the plugin
-                // *is* — hiding it behind a tab would leave the window with
-                // nothing to look at (`ui.md`).
+                // **The three numbers a compressor is read by**, above
+                // everything and never hidden (`SPK-19`).
+                readout::view(cx, analysis.clone());
+
+                // The figure. It is what the plugin *is* (`ui.md`).
                 figure_row(cx, host_rate, analysis.clone());
 
-                tab_strip(cx);
-
-                // Both tabs are built and one is hidden. Rebuilding on a
-                // switch would drop the widgets' own state — a drag in
-                // progress, a hover — for nothing.
-                VStack::new(cx, |cx| {
-                    main_tab(cx);
-                    advanced_tab(cx);
-                })
-                .height(Pixels(TAB_HEIGHT))
-                .width(Stretch(1.0));
+                // **No tabs.** They hid seventeen of the thirty-five controls
+                // behind a click, and the question a multiband compressor is
+                // used to answer — which band is doing what — cannot be asked
+                // of half a panel (`SPK-19`). Everything is on screen.
+                shape_row(cx);
+                Element::new(cx).class("rule");
+                advanced::view(cx);
             })
             .width(Stretch(1.0))
             .height(Stretch(1.0))
             .row_between(Pixels(theme::SPACE_3));
 
-            // **Outside the tabs**, because "is this louder or better" is a
-            // question asked while looking at either of them (`ui.md`).
+            // **Outside everything else**, because "is this louder or better"
+            // is a question asked while looking at any of it (`ui.md`).
             meters::view(cx);
         })
         .width(Stretch(1.0))
@@ -271,73 +250,44 @@ fn header(cx: &mut Context) {
     nxe_ui::header::header(cx, "NXE SPARKLEUR", "five-band dynamics + sparkle");
 }
 
-/// The tab strip is a segmented control: the same "one of these" choice as
-/// everywhere else in this design, so it is the same widget.
-fn tab_strip(cx: &mut Context) {
+/// The seven controls that shape the sound, on one line.
+///
+/// `MIX` and `OUTPUT` are not part of the shape — one decides how much of it is
+/// heard and the other how loud the result is — so they are smaller and sit
+/// apart, past a stretch (`ui.md`).
+fn shape_row(cx: &mut Context) {
     HStack::new(cx, |cx| {
-        SegmentedControl::new(cx, Ui::tab, &["MAIN", "ADVANCED"], |cx, tab| {
-            cx.emit(UiEvent::SelectTab(tab));
+        macro_knob(cx, "SPARK", "How much of everything", |params| {
+            &params.spark
+        });
+        character_knob(cx);
+        macro_knob(cx, "BODY", "Lean on the low mids", |params| &params.body);
+        macro_knob(cx, "AIR", "Lean on the top, and the sparkle", |params| {
+            &params.air
+        });
+        macro_knob(
+            cx,
+            "SPEED",
+            "Faster or slower than the character",
+            |params| &params.speed,
+        );
+
+        Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
+
+        knob_block(
+            cx,
+            "MIX",
+            "Dry against the processed signal",
+            OUTPUT_KNOB,
+            |params| &params.mix,
+        );
+        knob_block(cx, "OUTPUT", "Level out", OUTPUT_KNOB, |params| {
+            &params.output
         });
     })
     .class("row")
-    .height(Auto);
-}
-
-fn main_tab(cx: &mut Context) {
-    VStack::new(cx, |cx| {
-        HStack::new(cx, |cx| {
-            macro_knob(cx, "SPARK", "How much of everything", |params| {
-                &params.spark
-            });
-            character_knob(cx);
-            macro_knob(cx, "BODY", "Lean on the low mids", |params| &params.body);
-            macro_knob(cx, "AIR", "Lean on the top, and the sparkle", |params| {
-                &params.air
-            });
-            macro_knob(
-                cx,
-                "SPEED",
-                "Faster or slower than the character",
-                |params| &params.speed,
-            );
-        })
-        .class("row")
-        .height(Auto);
-
-        // `MIX` and `OUTPUT` are not part of the shape: one decides how much of
-        // it is heard and the other how loud the result is. Centred and
-        // smaller, so the row above reads as the instrument and this one as the
-        // tap.
-        HStack::new(cx, |cx| {
-            Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
-            knob_block(
-                cx,
-                "MIX",
-                "Dry against the processed signal",
-                OUTPUT_KNOB,
-                |params| &params.mix,
-            );
-            knob_block(cx, "OUTPUT", "Level out", OUTPUT_KNOB, |params| {
-                &params.output
-            });
-            Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
-        })
-        .class("row")
-        .height(Auto);
-    })
     .height(Auto)
-    .width(Stretch(1.0))
-    .row_between(Pixels(theme::SPACE_3))
-    .display(Ui::tab.map(|tab| *tab == TAB_MAIN));
-}
-
-fn advanced_tab(cx: &mut Context) {
-    VStack::new(cx, |cx| {
-        advanced::view(cx);
-    })
-    .height(Auto)
-    .width(Stretch(1.0))
-    .display(Ui::tab.map(|tab| *tab == TAB_ADVANCED));
+    .width(Stretch(1.0));
 }
 
 /// One labelled knob with its value underneath: the shape every macro control

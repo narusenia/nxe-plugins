@@ -276,6 +276,16 @@ impl Engine {
         self.gains_db
     }
 
+    /// What each band's detector is reading, in dB.
+    ///
+    /// **The input side of the transfer curve** (`SPK-19`). `gains_db` says how
+    /// much is being applied; without the level it was applied at, a curve can
+    /// be drawn but the point the signal is sitting on cannot be marked — and
+    /// that point is the one thing a compressor's plot is read for.
+    pub fn levels_db(&self) -> [f32; BAND_COUNT] {
+        std::array::from_fn(|band| self.detector.decibels(band))
+    }
+
     /// How far De-Harsh is pulling, in dB — zero when it is doing nothing.
     pub fn de_harsh_db(&self) -> f32 {
         self.de_harsh.reduction_db()

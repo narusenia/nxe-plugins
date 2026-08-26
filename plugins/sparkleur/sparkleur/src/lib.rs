@@ -221,6 +221,7 @@ impl Plugin for Sparkleur {
             .holds
             .write(&std::array::from_fn(|index| self.meters[index].hold()));
         self.analysis.gains.write(&self.engine.gains_db());
+        self.analysis.levels.write(&self.engine.levels_db());
         self.analysis.de_harsh.write(&[self.engine.de_harsh_db()]);
         self.analysis
             .sparkle

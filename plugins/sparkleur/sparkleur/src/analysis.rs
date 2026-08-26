@@ -47,6 +47,10 @@ pub struct Analysis {
     /// band order. Positive is upward compression, and the figure draws it
     /// above the unity line (`nxe_ui::band::Band::delta`, `SPK-10`).
     pub gains: Handoff<BAND_COUNT>,
+    /// What each band's detector is reading, in dB — **the input side of the
+    /// transfer curve** (`SPK-19`). Paired with `gains` it says where on its own
+    /// curve a band is sitting right now, which is what the plot is read for.
+    pub levels: Handoff<BAND_COUNT>,
     /// How far De-Harsh is pulling, in dB. Zero when it is doing nothing —
     /// **a protection that works invisibly leaves a user with an `AIR` knob
     /// that does nothing and no way to find out why** (`REQ-SPK-008`).
