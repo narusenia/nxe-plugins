@@ -19,7 +19,7 @@ use nih_plug::prelude::Editor;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
 use nxe_ui::segmented::SegmentedControl;
-use nxe_ui::{font, theme};
+use nxe_ui::{font, icon, theme};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
@@ -169,6 +169,19 @@ fn field_row(cx: &mut Context) {
     .col_between(Pixels(theme::SPACE_3));
 }
 
+/// What the switch's own parts are coloured.
+///
+/// `.segment:checked` recolours the entity it is on, but this segment has
+/// children, and the `label` and `.icon` class rules beat anything they would
+/// inherit from it. So they are told directly.
+fn segment_color(on: &bool) -> Color {
+    if *on {
+        theme::BACKGROUND.vizia()
+    } else {
+        theme::MUTED.vizia()
+    }
+}
+
 /// The mirror switch: a single segment, checked when mirroring is on.
 ///
 /// Not a new widget. `SegmentedControl` is a row of `.segment` labels with one
@@ -178,10 +191,21 @@ fn field_row(cx: &mut Context) {
 /// figure.
 fn mirror_toggle(cx: &mut Context) {
     HStack::new(cx, |cx| {
-        Label::new(cx, "MIRROR")
-            .class("segment")
-            .checked(Ui::mirror)
-            .on_press(|cx| cx.emit(UiEvent::ToggleMirror));
+        HStack::new(cx, |cx| {
+            // Both children are `.decoration`. A hit-testable child makes the
+            // container's press fire only when the pointer happens not to cross
+            // between children (`.agents/rules/vizia.md`).
+            icon::label(cx, icon::FLIP_HORIZONTAL_2)
+                .class("decoration")
+                .color(Ui::mirror.map(segment_color));
+            Label::new(cx, "MIRROR")
+                .class("decoration")
+                .color(Ui::mirror.map(segment_color));
+        })
+        .class("segment")
+        .col_between(Pixels(theme::SPACE_1))
+        .checked(Ui::mirror)
+        .on_press(|cx| cx.emit(UiEvent::ToggleMirror));
     })
     .class("segmented")
     .position_type(PositionType::SelfDirected)
