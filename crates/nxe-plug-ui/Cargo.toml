@@ -2,7 +2,8 @@
 name = "nxe-plug-ui"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
+# Links `vst3-sys` through `nih_plug`, which is GPLv3. See `LICENSING.md`.
+license = "GPL-3.0-only"
 repository.workspace = true
 description = "The adapter between nih-plug's parameters and the nxe-ui widgets"
 

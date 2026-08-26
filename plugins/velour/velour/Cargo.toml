@@ -6,7 +6,8 @@ name = "velour"
 # `velour-core` moves with it: they are one shipping unit.
 version = "0.1.1"
 edition.workspace = true
-license.workspace = true
+# Links `vst3-sys` through `nih_plug`, which is GPLv3. See `LICENSING.md`.
+license = "GPL-3.0-only"
 repository.workspace = true
 description = "Vocal presence saturator"
 

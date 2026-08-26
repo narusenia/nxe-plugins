@@ -99,6 +99,13 @@ jobs:
         if: matrix.name != 'macos'
         run: cargo xtask bundle ${{ steps.tag.outputs.plugin }} --release
 
+      # The bundles link `vst3-sys` (GPLv3), so the binary is conveyed under
+      # the GPL and the license text travels with it (`LICENSING.md`). The
+      # corresponding source is this repository.
+      - name: Put the license in the archive
+        shell: bash
+        run: cp LICENSE-GPL-3.0 target/bundled/LICENSE
+
       # `zip` is not on the Windows runners and `Compress-Archive` is not
       # anywhere else, so this is two steps rather than one clever one.
       - name: Zip

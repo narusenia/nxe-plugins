@@ -64,5 +64,11 @@ xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/'NXE Velour.vst3'
 
 ## License
 
-GPL-3.0. nih-plug's VST3 wrapper derives from the Steinberg VST3 SDK, which is
-GPLv3, so anything linking it is too. See [LICENSE](LICENSE).
+**Two licenses.** The shared crates — `nxe-audio`, `nxe-dsp`, `nxe-ui` and each
+plugin's `<plugin>-core` — are **MIT OR Apache-2.0**, so the DSP and the widgets
+can be reused anywhere. The wrapper crates and the shipped plugin bundles are
+**GPL-3.0-only**, because `nih_plug` links `vst3-sys` and that is GPLv3.
+
+[`LICENSING.md`](LICENSING.md) has the per-crate table and the reasoning.
+[LICENSE-MIT](LICENSE-MIT) / [LICENSE-APACHE](LICENSE-APACHE) /
+[LICENSE-GPL-3.0](LICENSE-GPL-3.0).

@@ -78,10 +78,26 @@ changing it silently breaks every session that used the plugin.
 
 ## Licensing
 
-The repository is **GPL-3.0**. This is not a preference: nih-plug's VST3 wrapper
-derives from the Steinberg VST3 SDK and is GPLv3, so anything that links it is
-too. Do not add a `LICENSE-MIT` or dual-license header to a crate that ends up
-in a VST3 bundle.
+**Two licenses, and the boundary is whether the crate links `vst3-sys`.**
+[`LICENSING.md`](LICENSING.md) is the full map and the reasoning.
+
+- `nxe-audio`, `nxe-dsp`, `nxe-ui`, `<plugin>-core` — **MIT OR Apache-2.0**.
+  None of them depends on `vst3-sys`, which is a consequence of the dependency
+  rules in `docs/specifications/architecture.md`, not an accident
+- `nxe-plug-ui` and the three wrapper crates — **GPL-3.0-only**. `nih_plug`
+  depends on `vst3-sys` unconditionally, and `vst3-sys` is GPLv3
+
+**nih-plug itself is ISC.** The GPL comes from `vst3-sys` alone. Adding a
+dependency on `nih_plug` to a crate on the permissive side moves it to the GPL
+side; do not do it without saying so in `LICENSING.md`.
+
+**Both shipped bundles are GPLv3, `.clap` included.** Each plugin calls
+`nih_export_clap!` and `nih_export_vst3!` from one cdylib and the bundler copies
+that same binary into both, so "the CLAP build has no VST3 in it" is false here.
+
+Steinberg relicensed the VST3 interface headers to MIT in 2025, so the reason
+`vst3-sys` chose GPLv3 no longer holds upstream — but `vst3-sys` is GPLv3 by its
+authors' choice, and only dropping the dependency changes anything.
 
 ## Verification
 
