@@ -200,8 +200,20 @@ fn field_row(cx: &mut Context) {
         // shape layer has both a figure and a table — one is for reading, the
         // other for setting a number.
         VStack::new(cx, |cx| {
-            macro_knob(cx, "MIX", |params| &params.mix, 34.0);
-            macro_knob(cx, "OUTPUT", |params| &params.output, 34.0);
+            macro_knob(
+                cx,
+                "MIX",
+                "How much of the doubled signal replaces the dry",
+                |params| &params.mix,
+                34.0,
+            );
+            macro_knob(
+                cx,
+                "OUTPUT",
+                "Level after the mix",
+                |params| &params.output,
+                34.0,
+            );
         })
         .width(Pixels(SIDE_WIDTH))
         .height(Stretch(1.0))
@@ -225,6 +237,7 @@ fn field_row(cx: &mut Context) {
 fn mirror_switch(
     cx: &mut Context,
     label: &'static str,
+    hint: &'static str,
     on: impl Lens<Target = bool>,
     axis: MirrorAxis,
 ) {
@@ -232,7 +245,10 @@ fn mirror_switch(
         Label::new(cx, label)
             .class("segment")
             .checked(on)
-            .on_press(move |cx| cx.emit(UiEvent::ToggleMirror(axis)));
+            .on_press(move |cx| cx.emit(UiEvent::ToggleMirror(axis)))
+            .tooltip(move |cx| {
+                Label::new(cx, hint);
+            });
     })
     .class("segmented");
 }
@@ -255,10 +271,34 @@ fn mirror_switches(cx: &mut Context) {
     HStack::new(cx, |cx| {
         icon::label(cx, icon::FLIP_HORIZONTAL_2);
         Label::new(cx, "MIRROR").class("label");
-        mirror_switch(cx, "PAN", Ui::mirror_pan, MirrorAxis::Pan);
-        mirror_switch(cx, "DETUNE", Ui::mirror_detune, MirrorAxis::Detune);
-        mirror_switch(cx, "DELAY", Ui::mirror_delay, MirrorAxis::Delay);
-        mirror_switch(cx, "GAIN", Ui::mirror_gain, MirrorAxis::Gain);
+        mirror_switch(
+            cx,
+            "PAN",
+            "Moving a voice sideways moves its pair the other way",
+            Ui::mirror_pan,
+            MirrorAxis::Pan,
+        );
+        mirror_switch(
+            cx,
+            "DETUNE",
+            "Detuning a voice up detunes its pair down by the same amount",
+            Ui::mirror_detune,
+            MirrorAxis::Detune,
+        );
+        mirror_switch(
+            cx,
+            "DELAY",
+            "A voice's pair takes the same delay. Off by default: two delays are what makes a double thick",
+            Ui::mirror_delay,
+            MirrorAxis::Delay,
+        );
+        mirror_switch(
+            cx,
+            "GAIN",
+            "A voice's pair takes the same level, so the image cannot lean by accident",
+            Ui::mirror_gain,
+            MirrorAxis::Gain,
+        );
     })
     // An unset size is `Stretch(1.0)`, not "size to content"
     // (`.agents/rules/vizia.md`).
@@ -296,13 +336,22 @@ fn main_tab(cx: &mut Context) {
 
 /// One labelled knob with its value underneath, which is the shape every macro
 /// control takes.
-pub(crate) fn macro_knob<P, F>(cx: &mut Context, label: &'static str, to_param: F, size: f32)
-where
+pub(crate) fn macro_knob<P, F>(
+    cx: &mut Context,
+    label: &'static str,
+    hint: &'static str,
+    to_param: F,
+    size: f32,
+) where
     P: nih_plug::prelude::Param + 'static,
     F: Fn(&Arc<DoublerParams>) -> &P + Copy + 'static,
 {
     VStack::new(cx, |cx| {
-        param_bind::knob(cx, Ui::params, to_param, size);
+        // The tooltip goes on the knob rather than the whole block, so it does
+        // not follow the pointer around the label and the number.
+        param_bind::knob(cx, Ui::params, to_param, size).tooltip(move |cx| {
+            Label::new(cx, hint);
+        });
         Label::new(cx, label).class("label");
         font::value(
             cx,
@@ -322,10 +371,34 @@ where
 
 fn macros(cx: &mut Context) {
     HStack::new(cx, |cx| {
-        macro_knob(cx, "DETUNE", |params| &params.detune, 56.0);
-        macro_knob(cx, "DELAY", |params| &params.delay, 56.0);
-        macro_knob(cx, "SPREAD", |params| &params.spread, 56.0);
-        macro_knob(cx, "HUMANIZE", |params| &params.humanize, 56.0);
+        macro_knob(
+            cx,
+            "DETUNE",
+            "How far apart the voices are pitched",
+            |params| &params.detune,
+            56.0,
+        );
+        macro_knob(
+            cx,
+            "DELAY",
+            "How far behind the dry the voices sit",
+            |params| &params.delay,
+            56.0,
+        );
+        macro_knob(
+            cx,
+            "SPREAD",
+            "How wide across the stereo field the voices are placed",
+            |params| &params.spread,
+            56.0,
+        );
+        macro_knob(
+            cx,
+            "HUMANIZE",
+            "How much each voice drifts on its own",
+            |params| &params.humanize,
+            56.0,
+        );
     })
     .class("row")
     .height(Auto);

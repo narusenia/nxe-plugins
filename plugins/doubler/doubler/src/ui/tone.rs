@@ -156,7 +156,13 @@ pub fn view(cx: &mut Context) {
         // would split the row in half — leaving the curve drawn across half the
         // width it is supposed to span.
         VStack::new(cx, |cx| {
-            macro_knob(cx, "SPREAD", |params| &params.tone_spread, 34.0);
+            macro_knob(
+                cx,
+                "SPREAD",
+                "How much the voices differ from each other in colour",
+                |params| &params.tone_spread,
+                34.0,
+            );
         })
         .width(Pixels(96.0))
         .height(Auto);

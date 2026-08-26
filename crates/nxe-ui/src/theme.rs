@@ -283,6 +283,31 @@ label {{
     background-color: {accent};
 }}
 
+/* Hover help. vizia's `.tooltip(…)` modifier builds the view and toggles `.vis`
+   on it after a delay; all that is left is what it looks like. An element
+   selector because the view has no class of its own.
+
+   The delay lives in the transition: 500 ms before it fades in, so a pointer
+   crossing a row of knobs does not leave a trail of boxes. */
+tooltip {{
+    background-color: {elevated};
+    border-width: 1px;
+    border-color: {border};
+    border-radius: {RADIUS_CONTROL}px;
+    child-space: {SPACE_1}px;
+    child-left: {SPACE_2}px;
+    child-right: {SPACE_2}px;
+    color: {foreground};
+    font-size: {FONT_LABEL};
+    opacity: 0;
+    transition: opacity 100ms 500ms;
+}}
+
+tooltip.vis {{
+    opacity: 1;
+    transition: opacity 100ms 500ms;
+}}
+
 /* Content inside something pressable. vizia only emits a press when the entity
    hovered on mouse-up is the one hovered on mouse-down, so a hit-testable child
    makes the container's press fire only when the pointer happens not to cross
@@ -389,6 +414,7 @@ mod tests {
             ".label",
             ".value",
             ".title",
+            "tooltip",
             ".subtle",
             ".disabled",
             ".icon",
