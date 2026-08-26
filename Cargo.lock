@@ -1024,7 +1024,7 @@ dependencies = [
 
 [[package]]
 name = "doubler"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "doubler-core",
  "nih_plug",
@@ -1036,7 +1036,7 @@ dependencies = [
 
 [[package]]
 name = "doubler-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "criterion",
 ]
@@ -3007,7 +3007,7 @@ dependencies = [
 
 [[package]]
 name = "sparkleur"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "nih_plug",
  "nih_plug_vizia",
@@ -3020,7 +3020,7 @@ dependencies = [
 
 [[package]]
 name = "sparkleur-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "criterion",
  "nxe-audio",
@@ -3400,7 +3400,7 @@ dependencies = [
 
 [[package]]
 name = "velour"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "nih_plug",
  "nih_plug_vizia",
@@ -3413,7 +3413,7 @@ dependencies = [
 
 [[package]]
 name = "velour-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "criterion",
  "nxe-audio",
