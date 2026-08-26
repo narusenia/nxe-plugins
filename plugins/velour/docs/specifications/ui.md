@@ -223,8 +223,9 @@ pub struct Band {
     pub high: f32,
     /// 区画の高さ。0..=1
     pub level: f32,
-    /// Guard が引いた量。0 で無し、1 で全部。level から差し引いて描く
-    pub reduction: f32,
+    /// 鳴っている量と設定した量の差。−1..=1、全体の高さに対する割合
+    /// （`SPK-10` で符号付きにした。Velour は負の値しか渡さない）
+    pub delta: f32,
     /// アクセントの濃淡。0 が deep、1 が bright
     pub tint: f32,
     pub soloed: bool,

@@ -32,7 +32,7 @@ DSP は詰めまで終わった。UI はまだ無い**（ホストの汎用ビ�
 | `plugins/sparkleur/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`SPK-1`〜`SPK-18`）。`sparkleur` ラッパクレートは無い |
 | CI | `check`（PR と main への push）、`release`（`<plugin>-v<version>` タグ） |
 
-テスト 323 本。CPU は予算 533 µs に対し **Doubler 85 µs / Velour 128 µs**
+テスト 326 本。CPU は予算 533 µs に対し **Doubler 85 µs / Velour 128 µs**
 （`VEL-16`。Velour の内訳はエンジン 4x が 79、`Spectrum` 48 バンド × 2 が 45、
 `Level` × 4 が 4）。
 
@@ -42,9 +42,9 @@ DSP は詰めまで終わった。UI はまだ無い**（ホストの汎用ビ�
 `SPK-8` の完了条件で唯一残っているのがこれで、**耳と DAW が要る**。UI はまだ
 無いのでホストの汎用ビューで触ることになる。
 
-その後は UI に入る。**`SPK-10`**（`nxe_ui::band::Band` の `reduction` → 符号付き
-`delta`）が入口で、`SPK-12`（マクロ層）と `SPK-16`（解析の配線）も着手できる。
-`SPK-17`（CPU 予算）は `SPK-16` の後。
+その後は UI。**`SPK-12`（マクロ層）**か **`SPK-16`（解析の配線）**。
+`SPK-10`（`Band` の符号付き化）は済んでいるので、`SPK-13` は `SPK-12` と
+`SPK-16` だけを待っている。`SPK-17`（CPU 予算）は `SPK-16` の後。
 
 **ここまで通っている**: `SPK-1` の `nxe-audio`（`shaper` / `oversample` /
 `biquad` / `envelope` / `guard` / `harmonics`、`guard` は `RelativeGuard<N>`）、

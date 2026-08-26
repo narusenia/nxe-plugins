@@ -123,13 +123,15 @@ impl Demo {
             band.low = log_x(low * shift);
             band.high = log_x(high * shift);
             band.soloed = self.solo == index + 1;
-            // A stand-in for a protective detector: the upper two bands are
-            // pulled back once the signal gets loud, so the sinking inside the
-            // set outline is something that can be watched happening.
-            band.reduction = if index == 0 {
-                0.0
+            // A stand-in for the dynamics, in **both** directions: the upper
+            // two bands are pulled back once the signal gets loud, and the
+            // bottom one is lifted while it is quiet. Watching the solid part
+            // move either side of the set outline is the whole point of the
+            // reading being signed (`SPK-10`).
+            band.delta = if index == 0 {
+                ((0.60 - self.meter) * 1.5).clamp(0.0, 0.30)
             } else {
-                ((self.meter - 0.72) * 3.0).clamp(0.0, 0.8)
+                -((self.meter - 0.72) * 3.0).clamp(0.0, 0.8) * band.level
             };
         }
 
@@ -779,6 +781,9 @@ fn band_field(cx: &mut Context) {
         .highlight(Demo::hovered)
         // Wiring this is what makes the rail at the bottom live.
         .focus(Demo::focus)
+        // And this is what draws the line a signed reading is read against. A
+        // field whose regions grow from the floor simply does not call it.
+        .unity(0.5f32)
         .height(Pixels(150.0))
         .width(Stretch(1.0));
 

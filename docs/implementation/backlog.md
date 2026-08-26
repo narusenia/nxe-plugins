@@ -224,6 +224,14 @@ Velour で見つけたのと同じ形が、別の場所（クロスオーバー�
 `assert_process_allocs` はホストの debug ビルドの中でしか動かないので、
 `mise run check` で毎回動くほうが regression を見つける。
 
+**`SPK-10` で `nxe-ui` の `Band` を符号付きにした**（2026-08-26）。
+`reduction`（0〜1、下向き専用）→ `delta`（−1〜1）。テスト 326 本。
+**割合の取り方を変えた** — `level · (1 − reduction)` から `level + delta` へ。
+`level` の割合にすると **`GAIN` を下まで絞った帯域が圧縮されていても絵が
+動かない**。Velour は呼び出し側で `-reduction · level` を渡すので**絵は
+1 ピクセルも変わらず**、そのことを Velour 側のテストで固定した。
+unity の線は `.unity(y)` を呼んだときだけ引かれる。
+
 `SPK-1` で `RelativeGuard` を一般化した甲斐がここで出た。**De-Harsh の実装は
 設定の `const` 1 個と 4 行のラッパ**で、入力ゲイン非依存（±12 dB で 0.2 dB
 以内）は Velour と同じコードの同じ性質を 2 つの製品が別々に測っている状態。
@@ -238,7 +246,6 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 |---|---|---|
 | SPK-16 | **解析の配線** — 図が読むもの | `sparkleur-plan.md` |
 | SPK-12 | **UI マクロ層** — メインタブの 7 ノブ | `sparkleur-plan.md` |
-| SPK-10 | `nxe_ui::band::Band` の `reduction` を符号付き `delta` に（上げコンプが描けない） | `sparkleur-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 | UI-9 | `ToggleSwitch` — **3 個目の設計でも要らなかった**（`.segment` を当てた `Label` で足りる）。**落として良い** | `nxe-ui-plan.md` |
 
@@ -359,10 +366,10 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | SPK-7 | De-Harsh / Sub Protect | ✅ `1fc7366` |
 | SPK-8 | ラッパとパラメータ（**ここで音が出る**） | ✅ `982f2ce` **実機確認だけ未** |
 | SPK-9 | 詰め（レート・ブロック・極端値） | ✅ `736442c` |
-| SPK-10 | `nxe_ui::band::Band` の `reduction` を符号付き `delta` に | 🟡 |
+| SPK-10 | `nxe_ui::band::Band` の `reduction` を符号付き `delta` に | ✅ |
 | SPK-11 | `param_bind` の共通化（行き先は `nxe-plug-ui`） | ✅ `5e05b70` |
 | SPK-12 | UI マクロ層（メインタブ） | 🟡 |
-| SPK-13 | UI Band Field（5 区画） | ⬜ SPK-10 / SPK-12 / SPK-16 |
+| SPK-13 | UI Band Field（5 区画） | ⬜ SPK-12 / SPK-16 |
 | SPK-14 | UI 小窓とメーター | ⬜ SPK-12 / SPK-16 |
 | SPK-15 | UI Advanced タブ | ⬜ SPK-13 |
 | SPK-16 | 解析の配線 | 🟡 |

@@ -39,7 +39,7 @@ const ANALYSIS_ALPHA: f32 = 0.14;
 
 /// The region as it is set, behind the region as it is sounding.
 const SET_ALPHA: f32 = 0.12;
-/// And what is actually getting through after a reduction.
+/// And what is actually sounding.
 const LIVE_ALPHA: f32 = 0.42;
 
 const WET_WIDTH: f32 = 2.0;
@@ -53,10 +53,18 @@ pub struct Band {
     pub high: f32,
     /// How much this band contributes, `0..=1`. What a vertical drag writes.
     pub level: f32,
-    /// How much of `level` is being held back right now, `0` for none and `1`
-    /// for all of it. Drawn as the solid part sinking inside the set outline,
-    /// so a protective detector doing its job is visible rather than silent.
-    pub reduction: f32,
+    /// How far what is **sounding** sits from what was **set**, `-1..=1`.
+    ///
+    /// Negative sinks the solid part inside the set outline, so a protective
+    /// detector doing its job is visible rather than silent. Positive lifts it
+    /// above, which is what an upward compressor needs — half of Sparkleur's
+    /// product is a gain going up, and a picture that can only draw a reduction
+    /// cannot show it (`SPK-10`).
+    ///
+    /// **A share of the whole height, not of `level`.** A band trimmed all the
+    /// way down is still being compressed, and a proportional reading would
+    /// draw that as nothing.
+    pub delta: f32,
     /// Where on the accent ramp this band sits, `0` deepest and `1` brightest.
     /// Steps of one hue rather than several hues (`README.md`).
     pub tint: f32,
@@ -73,9 +81,9 @@ impl Data for Band {
 }
 
 impl Band {
-    /// What is getting through: `level` less whatever is being held back.
+    /// What is sounding: `level` moved by `delta`.
     pub fn live(&self) -> f32 {
-        (self.level.clamp(0.0, 1.0) * (1.0 - self.reduction.clamp(0.0, 1.0))).clamp(0.0, 1.0)
+        (self.level.clamp(0.0, 1.0) + self.delta.clamp(-1.0, 1.0)).clamp(0.0, 1.0)
     }
 
     /// The midpoint of the region, in normalized `x`.
@@ -117,6 +125,7 @@ enum BandEvent {
     Wet(Curve),
     Highlight(Option<usize>),
     Focus(f32),
+    Unity(f32),
 }
 
 type BandCallback = Box<dyn Fn(&mut EventContext, BandGesture)>;
@@ -134,6 +143,10 @@ pub struct BandField {
     /// `None` until a caller wires `.focus(...)`, which is also what decides
     /// whether the rail does anything.
     focus: Option<f32>,
+    /// Where "no change" sits, in normalized `y`. `None` for a field whose
+    /// regions grow from the floor — Velour's, where an empty band is nothing
+    /// added rather than unity.
+    unity: Option<f32>,
     drag: Drag,
     grabbed: Option<Grabbed>,
     /// Pointer `x` at the last move of a rail drag.
@@ -162,6 +175,7 @@ impl BandField {
             highlighted: None,
             hovered: None,
             focus: None,
+            unity: None,
             drag: Drag::default(),
             grabbed: None,
             last_x: 0.0,
@@ -248,6 +262,11 @@ pub trait BandFieldModifiers {
     /// on**; without it a drag there does nothing, the way an unwired anchor in
     /// [`crate::polar::PolarField`] simply does not move.
     fn focus(self, value: impl Res<f32> + 'static) -> Self;
+
+    /// Where "no change" sits, in normalized `y`. **Wiring this is what draws
+    /// the line**; a field that does not call it has regions growing from the
+    /// floor and nothing to mark.
+    fn unity(self, y: impl Res<f32> + 'static) -> Self;
 }
 
 impl BandFieldModifiers for Handle<'_, BandField> {
@@ -266,6 +285,14 @@ impl BandFieldModifiers for Handle<'_, BandField> {
         });
         self
     }
+
+    fn unity(mut self, y: impl Res<f32> + 'static) -> Self {
+        let entity = self.entity();
+        y.set_or_bind(self.context(), entity, move |cx, value| {
+            cx.emit_to(entity, BandEvent::Unity(value));
+        });
+        self
+    }
 }
 
 impl View for BandField {
@@ -281,6 +308,7 @@ impl View for BandField {
                 BandEvent::Wet(curve) => self.wet = curve.clone(),
                 BandEvent::Highlight(index) => self.highlighted = *index,
                 BandEvent::Focus(value) => self.focus = Some(value.clamp(0.0, 1.0)),
+                BandEvent::Unity(value) => self.unity = Some(value.clamp(0.0, 1.0)),
             }
             cx.needs_redraw();
         });
@@ -485,8 +513,8 @@ impl View for BandField {
             set.rect(left, set_top, width, plot.y + plot.h - set_top);
             canvas.fill_path(&set, &vg::Paint::color(tint.at(SET_ALPHA).vg()));
 
-            // And what is getting through. The gap between the two is the
-            // reduction, which is the only way a protective detector is visible.
+            // And what is sounding. The gap between the two is what the
+            // dynamics are doing, which is the only way they are visible.
             let live = band.live();
             let (_, live_top) = at(0.0, live);
             let mut path = vg::Path::new();
@@ -496,6 +524,18 @@ impl View for BandField {
             let mut edge = vg::Path::new();
             edge.rect(left, live_top - line * 0.5, width, line);
             canvas.fill_path(&edge, &vg::Paint::color(tint.vg()));
+        }
+
+        // The line everything is read against. Under the regions, because it
+        // is the ground they stand on rather than something drawn over them.
+        if let Some(unity) = self.unity {
+            let (_, y) = at(0.0, unity);
+            let mut path = vg::Path::new();
+            path.move_to(plot.x, y);
+            path.line_to(plot.x + plot.w, y);
+            let mut paint = vg::Paint::color(theme::SUBTLE.vg());
+            paint.set_line_width(line);
+            canvas.stroke_path(&path, &paint);
         }
 
         let mut grid = vg::Path::new();
@@ -638,39 +678,57 @@ mod tests {
     }
 
     #[test]
-    fn a_reduction_lowers_what_gets_through() {
+    fn no_delta_means_what_was_set() {
         let full = Band {
             level: 0.8,
             ..Band::default()
         };
         assert_eq!(full.live(), 0.8);
+    }
 
+    /// **The half that could not be drawn before** (`SPK-10`): an upward
+    /// compressor moves the gain the other way, and a picture that only sinks
+    /// cannot say so.
+    #[test]
+    fn a_delta_moves_what_is_sounding_either_way() {
         let held = Band {
             level: 0.8,
-            reduction: 0.5,
+            delta: -0.4,
             ..Band::default()
         };
         assert!((held.live() - 0.4).abs() < 1e-6);
 
-        let gone = Band {
-            level: 0.8,
-            reduction: 1.0,
+        let lifted = Band {
+            level: 0.5,
+            delta: 0.3,
             ..Band::default()
         };
-        assert_eq!(gone.live(), 0.0);
+        assert!((lifted.live() - 0.8).abs() < 1e-6);
+    }
+
+    /// **A share of the whole height, not of `level`.** A band trimmed to
+    /// nothing is still being compressed, and the picture has to say so.
+    #[test]
+    fn a_band_at_the_floor_can_still_be_lifted() {
+        let lifted = Band {
+            level: 0.0,
+            delta: 0.6,
+            ..Band::default()
+        };
+        assert!((lifted.live() - 0.6).abs() < 1e-6);
     }
 
     #[test]
-    fn what_gets_through_stays_in_range() {
+    fn what_is_sounding_stays_in_range() {
         for level in [-1.0f32, 0.0, 0.5, 1.0, 2.0] {
-            for reduction in [-1.0f32, 0.0, 0.5, 1.0, 2.0] {
+            for delta in [-2.0f32, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0] {
                 let live = Band {
                     level,
-                    reduction,
+                    delta,
                     ..Band::default()
                 }
                 .live();
-                assert!((0.0..=1.0).contains(&live), "{level} {reduction}: {live}");
+                assert!((0.0..=1.0).contains(&live), "{level} {delta}: {live}");
             }
         }
     }

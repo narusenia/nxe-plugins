@@ -90,7 +90,11 @@ fn bands_of(params: &VelourParams, host_rate: f32, analysis: &Analysis) -> Vec<B
                 low: axis_x(low),
                 high: axis_x(high),
                 level: levels[index],
-                reduction: reduction_of(index, &guards),
+                // **Negative, and scaled by the level.** `Band::delta` is a
+                // share of the whole height and signed either way (`SPK-10`);
+                // Velour only ever pulls down, and it pulls a fraction of what
+                // the band was set to, so the picture is what it always was.
+                delta: -reduction_of(index, &guards) * levels[index],
                 // A step along the accent per band, deep to bright, so the three
                 // are distinguishable without adding a hue
                 // (`crates/nxe-ui/README.md`).
@@ -207,6 +211,29 @@ mod tests {
         // readable.
         let decade = axis_x(2_000.0) - axis_x(200.0);
         assert!((decade - (axis_x(200.0) - axis_x(20.0))).abs() < 1e-6);
+    }
+
+    /// **The picture did not change when `Band::reduction` became a signed
+    /// `delta`** (`SPK-10`). The widget used to compute `level · (1 − r)`; it
+    /// now computes `level + delta`, and this is the call site that has to make
+    /// the two the same number.
+    #[test]
+    fn the_signed_delta_draws_what_the_reduction_used_to() {
+        for level in [0.0f32, 0.3, 0.8, 1.0] {
+            for reduction in [0.0f32, 0.25, 0.5, 1.0] {
+                let band = Band {
+                    level,
+                    delta: -reduction * level,
+                    ..Band::default()
+                };
+                let before = level * (1.0 - reduction);
+                assert!(
+                    (band.live() - before).abs() < 1e-6,
+                    "{level} / {reduction}: {} against {before}",
+                    band.live()
+                );
+            }
+        }
     }
 
     /// The three regions have to come out in the engine's order, or a fader
