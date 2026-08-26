@@ -28,15 +28,25 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 
-/// `ui.md` started from the Doubler's 620 × 572 plus the meter strip, and this
-/// is what looking at it in a host settled it to.
+/// The window.
 ///
-/// **The height is the sum of the parts, not a round number**: 12 of padding,
-/// the wordmark, the readout strip, the figure, the shape row and the per-band
-/// table. Set too tall — it started at 580 — the window ends in a band of
-/// nothing, because everything inside is a fixed height and piles at the top.
+/// **The height is arithmetic, not a number found by looking.** Every part in
+/// the column below has a known height — `nxe_ui::theme::LINE_*` exists so that
+/// the text lines do too — so adding a row moves the window instead of running
+/// off the bottom of it (`SPK-19`).
 const WIDTH: u32 = 720;
-const HEIGHT: u32 = 568;
+const HEIGHT: u32 = (theme::SPACE_3 * 2.0
+    + nxe_ui::header::HEIGHT
+    + theme::SPACE_3
+    + nxe_ui::readout::HEIGHT
+    + theme::SPACE_3
+    + field::HEIGHT
+    + theme::SPACE_3
+    + knob_block_height(SHAPE_KNOB)
+    + theme::SPACE_3
+    + theme::RULE
+    + theme::SPACE_3
+    + advanced::HEIGHT) as u32;
 
 pub fn default_state() -> Arc<ViziaState> {
     ViziaState::new(|| (WIDTH, HEIGHT))
@@ -292,6 +302,14 @@ fn shape_row(cx: &mut Context) {
 
 /// One labelled knob with its value underneath: the shape every macro control
 /// takes.
+/// How tall a [`knob_block`] of a given knob size comes out.
+///
+/// **A window's height is the sum of its parts** (`theme::LINE_LABEL`), and
+/// this is one of them.
+pub(crate) const fn knob_block_height(size: f32) -> f32 {
+    size + theme::SPACE_1 + theme::LINE_LABEL + theme::SPACE_1 + theme::LINE_VALUE
+}
+
 pub(crate) fn knob_block<P, F>(
     cx: &mut Context,
     label: &'static str,
@@ -306,11 +324,14 @@ pub(crate) fn knob_block<P, F>(
         // The tooltip goes on the knob rather than the whole block, so it does
         // not follow the pointer around the label and the number.
         nxe_plug_ui::knob(cx, Ui::params, to_param, size).tooltip(move |cx| theme::hint(cx, hint));
-        Label::new(cx, label).class("label");
+        Label::new(cx, label)
+            .class("label")
+            .height(Pixels(theme::LINE_LABEL));
         font::value(
             cx,
             ParamWidgetBase::make_lens(Ui::params, to_param, |param| param.to_string()),
-        );
+        )
+        .height(Pixels(theme::LINE_VALUE));
     })
     .width(Stretch(1.0))
     .height(Auto)

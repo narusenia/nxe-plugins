@@ -25,16 +25,26 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 
-/// `ui.md` says to start from Velour's 680 × 528, and **looking at it in a
-/// host is what settled it** — the same way Velour came down from 580 to 528.
+/// The window.
 ///
-/// The height is the sum of the parts: everything inside is a fixed height, so
-/// a window set too tall ends in a band of nothing. It is 112 of chrome —
-/// padding, the wordmark, the axis labels, the tab strip — around
-/// [`field::HEIGHT`] and [`TAB_HEIGHT`], and it moves when either of those
-/// does.
+/// **The height is arithmetic, not a number found by looking.** Every part in
+/// the column below has a known height — `nxe_ui::theme::LINE_*` exists so that
+/// the text lines do too — so adding a row to the table moves the window
+/// instead of running off the bottom of it. It ran off the bottom three times
+/// in one afternoon before this (`SPK-19`).
 const WIDTH: u32 = 720;
-const HEIGHT: u32 = 660;
+const HEIGHT: u32 = (theme::SPACE_3 * 2.0
+    + nxe_ui::header::HEIGHT
+    + theme::SPACE_3
+    + nxe_ui::readout::HEIGHT
+    + theme::SPACE_3
+    + field::HEIGHT
+    + theme::SPACE_3
+    + knob_block_height(SHAPE_KNOB)
+    + theme::SPACE_3
+    + theme::RULE
+    + theme::SPACE_3
+    + advanced::HEIGHT) as u32;
 
 /// The knob sizes. The five that shape the sound are the large ones; the two
 /// that decide how much of it arrives are smaller and sit apart, because they
@@ -298,6 +308,14 @@ fn shape_row(cx: &mut Context) {
 
 /// One labelled knob with its value underneath: the shape every macro control
 /// takes.
+/// How tall a [`knob_block`] of a given knob size comes out.
+///
+/// **A window's height is the sum of its parts** (`theme::LINE_LABEL`), and
+/// this is one of them.
+pub(crate) const fn knob_block_height(size: f32) -> f32 {
+    size + theme::SPACE_1 + theme::LINE_LABEL + theme::SPACE_1 + theme::LINE_VALUE
+}
+
 pub(crate) fn knob_block<P, F>(
     cx: &mut Context,
     label: &'static str,
@@ -312,11 +330,14 @@ pub(crate) fn knob_block<P, F>(
         // The tooltip goes on the knob rather than the whole block, so it does
         // not follow the pointer around the label and the number.
         nxe_plug_ui::knob(cx, Ui::params, to_param, size).tooltip(move |cx| theme::hint(cx, hint));
-        Label::new(cx, label).class("label");
+        Label::new(cx, label)
+            .class("label")
+            .height(Pixels(theme::LINE_LABEL));
         font::value(
             cx,
             ParamWidgetBase::make_lens(Ui::params, to_param, |param| param.to_string()),
-        );
+        )
+        .height(Pixels(theme::LINE_VALUE));
     })
     .width(Stretch(1.0))
     .height(Auto)

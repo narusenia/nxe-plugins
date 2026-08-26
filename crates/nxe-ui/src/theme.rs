@@ -224,6 +224,36 @@ pub const FONT_VALUE: f32 = 10.0;
 /// name is not a label — it names the window, not a control in it.
 pub const FONT_TITLE: f32 = 17.0;
 
+/// The height a one-line label occupies at each size.
+///
+/// **A window's height is the sum of its parts, and an `Auto` label is not a
+/// part anyone can add up** — vizia takes its height from the font's own
+/// metrics, which the caller does not have. Every line a window's height
+/// depends on is given one of these instead, so the total is arithmetic rather
+/// than a number found by opening the plugin and looking (which is how it was
+/// found five times in one afternoon, `SPK-19`).
+///
+/// Each is its font size rounded up onto the four-pixel grid, with room for
+/// descenders.
+pub const LINE_EYEBROW: f32 = 12.0;
+pub const LINE_VALUE: f32 = 14.0;
+pub const LINE_LABEL: f32 = 16.0;
+pub const LINE_TITLE: f32 = 24.0;
+
+const _: () = assert!(LINE_EYEBROW > FONT_EYEBROW, "the eyebrow will clip");
+const _: () = assert!(LINE_VALUE > FONT_VALUE, "the value will clip");
+const _: () = assert!(LINE_LABEL > FONT_LABEL, "the label will clip");
+const _: () = assert!(LINE_TITLE > FONT_TITLE, "the wordmark will clip");
+
+/// The two rules, as heights. `.rule` is a hairline; `.rule-accent` is the one
+/// under a wordmark.
+pub const RULE: f32 = 1.0;
+pub const RULE_ACCENT: f32 = 2.0;
+
+/// How tall one segment of a segmented control is. In the stylesheet below and
+/// here, because a window that holds one has to add it up.
+pub const SEGMENT: f32 = 18.0;
+
 /// Hover and selection only. Never a value: a knob that lags the mouse feels
 /// broken.
 pub const TRANSITION_MS: u32 = 150;
@@ -402,7 +432,7 @@ label {{
     child-space: 1s;
     child-left: {SPACE_2}px;
     child-right: {SPACE_2}px;
-    height: 18px;
+    height: {SEGMENT}px;
     border-radius: {RADIUS_CONTROL}px;
     transition: background-color {TRANSITION_MS}ms, color {TRANSITION_MS}ms;
 }}

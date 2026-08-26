@@ -40,10 +40,16 @@ pub const GATE_HEIGHT: f32 = 8.0;
 /// this (`SPK-19`). One number, both kinds.
 const CONTENT_HEIGHT: f32 = 20.0;
 
+/// A region's name over its rule, as a height.
+pub const HEADING_HEIGHT: f32 = theme::LINE_EYEBROW + theme::SPACE_1 + theme::RULE;
+
+/// How tall [`strip`] is. Part of a window's height, so it is arithmetic.
+pub const HEIGHT: f32 = HEADING_HEIGHT + theme::SPACE_1 + CONTENT_HEIGHT;
+
 /// The row. Give it the cells.
 pub fn strip(cx: &mut Context, content: impl Fn(&mut Context)) {
     HStack::new(cx, |cx| content(cx))
-        .height(Auto)
+        .height(Pixels(HEIGHT))
         .width(Stretch(1.0))
         .col_between(Pixels(theme::SPACE_4));
 }
@@ -99,12 +105,15 @@ pub fn meter_cell(cx: &mut Context, name: &'static str, level: impl Res<f32> + C
 fn body(cx: &mut Context, name: &'static str, content: impl Fn(&mut Context)) {
     VStack::new(cx, |cx| {
         VStack::new(cx, |cx| {
-            Label::new(cx, name).class("eyebrow");
+            Label::new(cx, name)
+                .class("eyebrow")
+                .height(Pixels(theme::LINE_EYEBROW));
         })
-        .class("heading");
+        .class("heading")
+        .height(Pixels(HEADING_HEIGHT));
         content(cx);
     })
     .width(Stretch(1.0))
-    .height(Auto)
+    .height(Pixels(HEIGHT))
     .row_between(Pixels(theme::SPACE_1));
 }

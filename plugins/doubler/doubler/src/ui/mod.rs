@@ -26,10 +26,30 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
-/// One size, tall enough for whichever tab needs the most room. Measured
-/// against the built layout rather than estimated.
+/// The window.
+///
+/// **The height is arithmetic, not a number found by looking.** Every part in
+/// the column below has a known height — `nxe_ui::theme::LINE_*` exists so that
+/// the text lines do too — so adding a row moves the window instead of running
+/// off the bottom of it (`SPK-19`).
+///
+/// **The tabs stay here.** Fifteen controls on one screen is more choices than
+/// the question "how wide, and how far apart" needs at once; Sparkleur's
+/// thirty-three and Velour's twenty-two are asked band by band and cannot be
+/// asked of half a panel. The number is not what decides it.
 const WIDTH: u32 = 720;
-const HEIGHT: u32 = 644;
+const HEIGHT: u32 = (theme::SPACE_3 * 2.0
+    + nxe_ui::header::HEIGHT
+    + theme::SPACE_3
+    + theme::SEGMENT
+    + theme::SPACE_3
+    + nxe_ui::readout::HEIGHT
+    + theme::SPACE_3
+    + FIELD_HEIGHT
+    + theme::SPACE_3
+    + theme::SEGMENT
+    + theme::SPACE_3
+    + TAB_HEIGHT) as u32;
 
 /// How tall the swapped region is. Fixed, so switching tabs does not move
 /// anything above it.
@@ -345,8 +365,9 @@ fn field_row(cx: &mut Context) {
 /// `.segmented` row, and one label on its own is the same thing — including
 /// `:checked` recolouring it, which only works because the label carries the
 /// class itself (`plugins/doubler/docs/implementation/doubler-plan.md`).
-/// `UI-9`'s `ToggleSwitch` would be a sliding switch, which is not what belongs
-/// beside a figure.
+/// A sliding switch was planned and dropped: three plugins wanted this instead,
+/// and it keeps "on/off" and "one of these" in the same visual language
+/// (`UI-9`).
 fn mirror_switch(
     cx: &mut Context,
     label: &'static str,

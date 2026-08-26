@@ -360,7 +360,6 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 |---|---|---|
 | SPK-18 | **既定値と耳** ✅ — 測れるものは全部固定。既定値は 1 つも動かす理由が出なかった | `sparkleur-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
-| UI-9 | `ToggleSwitch` — **3 個目の設計でも要らなかった**（`.segment` を当てた `Label` で足りる）。**落として良い** | `nxe-ui-plan.md` |
 
 Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`）は完了。
 **gallery で見る**（`mise run gallery`）。
@@ -410,7 +409,7 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | UI-12 | `CurveView` の解析カーブ | ✅ |
 | UI-13 | `BandField`（領域知識を持たない帯域パネル） | ✅ |
 | UI-8 | `Meter` — **Velour の IN / OUT が使う** | ✅ |
-| UI-9 | `ToggleSwitch` — **3 個目でも要らなかった**（`SPK-19`）。落とす条件が満たされた | 🟡 |
+| UI-9 | `ToggleSwitch` — **3 個目でも要らなかったので落とした**（`SPK-19`） | ❌ |
 
 ### Doubler — `../../plugins/doubler/docs/implementation/doubler-plan.md`
 

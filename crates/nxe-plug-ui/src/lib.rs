@@ -142,8 +142,8 @@ where
 ///
 /// **Not a new widget** (`crates/nxe-ui/README.md`): `.segment` carries its own
 /// `:checked` styling, so one `Label` with the class is the same thing a
-/// `SegmentedControl` is made of. `UI-9`'s `ToggleSwitch` would be a sliding
-/// switch, which is not what belongs in a table.
+/// `SegmentedControl` is made of. A sliding switch was planned and dropped —
+/// three plugins wanted this instead (`UI-9`).
 pub fn toggle<'a, L, Params, P, F>(
     cx: &'a mut Context,
     params: L,

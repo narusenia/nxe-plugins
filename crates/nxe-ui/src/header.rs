@@ -21,6 +21,10 @@ use crate::font;
 use crate::theme;
 use vizia::prelude::*;
 
+/// How tall [`header`] is. Part of a window's height, so it is arithmetic
+/// rather than something to measure on screen (`theme::LINE_TITLE`).
+pub const HEIGHT: f32 = theme::LINE_TITLE + theme::SPACE_2 + theme::RULE_ACCENT;
+
 /// The wordmark, the role, and the rule under both.
 ///
 /// `name` is the **shipped** name — the same string as the plugin's `NAME`, its
@@ -29,7 +33,7 @@ use vizia::prelude::*;
 pub fn header(cx: &mut Context, name: &'static str, role: &'static str) {
     VStack::new(cx, |cx| {
         HStack::new(cx, |cx| {
-            font::title(cx, name);
+            font::title(cx, name).height(Pixels(theme::LINE_TITLE));
             Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
             // Bottom-aligned against the wordmark rather than centred: the two
             // sit on the same baseline that way, which is the point of putting
@@ -37,11 +41,11 @@ pub fn header(cx: &mut Context, name: &'static str, role: &'static str) {
             Label::new(cx, role)
                 .class("eyebrow")
                 .width(Auto)
-                .height(Auto)
+                .height(Pixels(theme::LINE_EYEBROW))
                 .top(Stretch(1.0))
                 .bottom(Pixels(theme::SPACE_1));
         })
-        .height(Auto)
+        .height(Pixels(theme::LINE_TITLE))
         .width(Stretch(1.0));
 
         Element::new(cx).class("rule-accent");

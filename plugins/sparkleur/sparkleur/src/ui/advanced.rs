@@ -46,6 +46,18 @@ const SIDE_WIDTH: f32 = 224.0;
 
 const NAMES: [&str; BAND_COUNT] = ["SUB", "BODY", "MID", "PRES", "AIR"];
 
+/// A row is as tall as its tallest cell: the band's name over the gain it is
+/// running at, which is two lines.
+const ROW_HEIGHT: f32 = theme::LINE_LABEL + theme::LINE_VALUE;
+
+/// How tall the whole panel is — the heading row, then one row per band.
+///
+/// **Part of the window's height, so it is arithmetic** (`nxe_ui::theme`).
+pub const HEIGHT: f32 = theme::LINE_EYEBROW
+    + theme::SPACE_2
+    + ROW_HEIGHT * BAND_COUNT as f32
+    + theme::SPACE_2 * (BAND_COUNT - 1) as f32;
+
 pub fn view(cx: &mut Context, analysis: Arc<Analysis>) {
     HStack::new(cx, |cx| {
         table(cx, analysis);
@@ -99,7 +111,7 @@ fn heading(cx: &mut Context, text: &'static str, width: f32) {
     Label::new(cx, text)
         .class("eyebrow")
         .width(Pixels(width))
-        .height(Auto);
+        .height(Pixels(theme::LINE_EYEBROW));
 }
 
 fn row(cx: &mut Context, index: usize, analysis: Arc<Analysis>) {
@@ -111,14 +123,14 @@ fn row(cx: &mut Context, index: usize, analysis: Arc<Analysis>) {
             Label::new(cx, NAMES[index])
                 .class("label")
                 .class("decoration")
-                .height(Auto);
+                .height(Pixels(theme::LINE_LABEL));
             font::value(
                 cx,
                 Ui::params.map(move |_| applied(analysis.gains.read()[index])),
             )
             .class("subtle")
             .class("decoration")
-            .height(Auto);
+            .height(Pixels(theme::LINE_VALUE));
         })
         // The row marks the region while the pointer is on it, so the name
         // must not eat the hover: only the row is hoverable.
@@ -184,7 +196,7 @@ fn row(cx: &mut Context, index: usize, analysis: Arc<Analysis>) {
         });
     })
     .class("row")
-    .height(Auto)
+    .height(Pixels(ROW_HEIGHT))
     .width(Auto)
     .col_between(Pixels(theme::SPACE_2))
     .on_hover(move |cx| cx.emit(UiEvent::Hover(Some(index))))

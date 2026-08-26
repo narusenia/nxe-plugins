@@ -40,6 +40,27 @@ const SIDE_WIDTH: f32 = 232.0;
 
 const NAMES: [&str; BAND_COUNT] = ["BODY", "PRES", "AIR"];
 
+/// A row is as tall as its tallest cell, which is the solo switch.
+const ROW_HEIGHT: f32 = theme::SEGMENT;
+
+/// The table: a heading row, then one per band.
+const TABLE_HEIGHT: f32 = theme::LINE_EYEBROW
+    + theme::SPACE_2
+    + ROW_HEIGHT * BAND_COUNT as f32
+    + theme::SPACE_2 * (BAND_COUNT - 1) as f32;
+
+/// The right-hand column: three labelled bars over the oversampling row.
+const SIDE_HEIGHT: f32 = ROW_HEIGHT * 4.0 + theme::SPACE_2 * 3.0;
+
+/// How tall the whole panel is — the taller of its two columns.
+///
+/// **Part of the window's height, so it is arithmetic** (`nxe_ui::theme`).
+pub const HEIGHT: f32 = if TABLE_HEIGHT > SIDE_HEIGHT {
+    TABLE_HEIGHT
+} else {
+    SIDE_HEIGHT
+};
+
 pub fn view(cx: &mut Context) {
     HStack::new(cx, |cx| {
         table(cx);
@@ -80,7 +101,7 @@ fn heading(cx: &mut Context, text: &'static str, width: f32) {
     Label::new(cx, text)
         .class("eyebrow")
         .width(Pixels(width))
-        .height(Auto);
+        .height(Pixels(theme::LINE_EYEBROW));
 }
 
 fn row(cx: &mut Context, index: usize) {
@@ -91,7 +112,7 @@ fn row(cx: &mut Context, index: usize) {
             // must not eat the hover: only the row is hoverable.
             .class("decoration")
             .width(Pixels(NAME_WIDTH))
-            .height(Auto);
+            .height(Pixels(theme::LINE_LABEL));
 
         // The bars are wrapped so each column is a fixed width whatever the bar
         // itself decides to be.
@@ -132,7 +153,7 @@ fn row(cx: &mut Context, index: usize) {
         });
     })
     .class("row")
-    .height(Auto)
+    .height(Pixels(ROW_HEIGHT))
     .width(Auto)
     .col_between(Pixels(theme::SPACE_2))
     .on_hover(move |cx| cx.emit(UiEvent::Hover(Some(index))))
