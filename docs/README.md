@@ -17,6 +17,7 @@
 | **共通の解析（レベル・ステレオ像・スペクトラム）の計画** | [implementation/nxe-dsp-plan.md](implementation/nxe-dsp-plan.md) |
 | **ワークスペース骨格と CI の計画** | [implementation/infra-plan.md](implementation/infra-plan.md) |
 | **どの順でやるか、なぜその順か** | [implementation/roadmap.md](implementation/roadmap.md) |
+| **まだ書かれていないプラグインの構想** | [`../concepts/`](../concepts/) |
 | **共通ウィジェットの使い方**（契約・トークン・アイコン） | [`../crates/nxe-ui/README.md`](../crates/nxe-ui/README.md) |
 | **守るべき規約**（Rust / UI / 文書） | [`../.agents/rules/`](../.agents/rules/) |
 | **画面の規則**（グリッド、色、読み値、何を出すか） | [`../.agents/rules/ui.md`](../.agents/rules/ui.md) |
@@ -45,4 +46,14 @@
 |---|---|---|
 | Doubler | マルチボイスダブラー（2/4/8 ボイス） | [要件](../plugins/doubler/docs/requirements/REQ-DBL.md) / [DSP 仕様](../plugins/doubler/docs/specifications/dsp.md) / [UI 仕様](../plugins/doubler/docs/specifications/ui.md) / [計画](../plugins/doubler/docs/implementation/doubler-plan.md) |
 | Velour | ボーカルの存在感を生成するサチュレータ（並列 3 帯域） | [要件](../plugins/velour/docs/requirements/REQ-VEL.md) / [DSP 仕様](../plugins/velour/docs/specifications/dsp.md) / [UI 仕様](../plugins/velour/docs/specifications/ui.md) / [計画](../plugins/velour/docs/implementation/velour-plan.md) |
-| Sparkleur | マルチバンドダイナミクス + 動的な倍音生成（分割 5 帯域）**設計のみ** | [要件](../plugins/sparkleur/docs/requirements/REQ-SPK.md) / [DSP 仕様](../plugins/sparkleur/docs/specifications/dsp.md) / [UI 仕様](../plugins/sparkleur/docs/specifications/ui.md) / [計画](../plugins/sparkleur/docs/implementation/sparkleur-plan.md) |
+| Sparkleur | マルチバンドダイナミクス + 動的な倍音生成（分割 5 帯域） | [要件](../plugins/sparkleur/docs/requirements/REQ-SPK.md) / [DSP 仕様](../plugins/sparkleur/docs/specifications/dsp.md) / [UI 仕様](../plugins/sparkleur/docs/specifications/ui.md) / [計画](../plugins/sparkleur/docs/implementation/sparkleur-plan.md) |
+
+## 構想
+
+まだ要件を書いていないものは [`../concepts/`](../concepts/) に置く。**構想は
+仕様ではない** — 着手が決まった時点で `plugins/<name>/docs/requirements/` に
+要件として書き直し、構想側はそのまま残す（何を削ったかが後で効く）。
+
+着手の順序とその根拠は
+[implementation/roadmap.md](implementation/roadmap.md) の
+「Sparkleur の後 — 構想 6 本の順序」。
