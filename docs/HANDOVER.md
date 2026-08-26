@@ -29,56 +29,47 @@
 | `crates/nxe-dsp` | 共通の解析（`Handoff` / `PanScope` / `Spectrum` / `Level`） |
 | `plugins/sparkleur/sparkleur-core` | **DSP は全部。** 5 帯域クロスオーバー、検波、上下コンプ、Sparkle、`CHARACTER`、De-Harsh / Sub Protect、エンジン |
 | `plugins/sparkleur/sparkleur` | NXE Sparkleur。CLAP + VST3。パラメータ 33 個、**全部にコントロールがある**。UI は MAIN の 7 ノブ + Band Field + 伝達曲線の小窓 + メーター + Advanced の表 |
-| `plugins/sparkleur/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`SPK-1`〜`SPK-18`）。`sparkleur` ラッパクレートは無い |
+| `plugins/sparkleur/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`SPK-1`〜`SPK-18`） |
 | CI | `check`（PR と main への push）、`release`（`<plugin>-v<version>` タグ） |
 
-テスト 349 本。CPU は予算 533 µs に対し
-**Doubler 85 µs / Velour 128 µs / Sparkleur 129 µs**
-（`VEL-16`。Velour の内訳はエンジン 4x が 79、`Spectrum` 48 バンド × 2 が 45、
-`Level` × 4 が 4）。
+テスト 350 本。CPU は予算 533 µs に対し
+**Doubler 85 µs / Velour 128 µs / Sparkleur 129 µs**。
+Sparkleur の内訳（`SPK-17`）はエンジン 4x が **110**、`Spectrum` 32 バンドが
+**15.2**、`Level` × 4 が **3.9**。**2x にしても 11 µs しか減らない**ので 4x が
+既定のまま。
 
 ## 次にやること
 
-**まず実機で 1 回鳴らす。** `mise run install sparkleur` して DAW で読み込む。
-`SPK-8` の完了条件で唯一残っているのがこれで、**耳と DAW が要る**。UI はまだ
-無いのでホストの汎用ビューで触ることになる。
+**`SPK-18`（既定値 33 個と `dsp.md` の「耳で詰める定数」の表）だけが残っている。
+耳が要る。** `SPK-1`〜`SPK-17` は全部通っていて、**実機で音も画面も確認済み**
+（`mise run install sparkleur`）。
 
-**`SPK-18`（既定値 33 個と `dsp.md` の「耳で詰める定数」の表）。耳が要る。**
-実機で音も画面も確認済みなので、残っているのはこれだけ。
-**持ち越した宿題が 1 つ**: `CHARACTER` の既定 0.27 は読み値が「GLOSS 27 %」に
-なる（一番近いアンカーが GLOSS のため）。既定を 0.25 未満にするか、読み値の
-規則を変えるか。
+`SPK-18` で決めるもの:
 
-**`SPK-18` に持ち越した宿題が 1 つ**: `CHARACTER` の既定 0.27 は読み値が
-「GLOSS 27 %」になる（一番近いアンカーが GLOSS のため）。既定を 0.25 未満に
-するか、読み値の規則を変えるか。
-
-**ここまで通っている**: `SPK-1` の `nxe-audio`（`shaper` / `oversample` /
-`biquad` / `envelope` / `guard` / `harmonics`、`guard` は `RelativeGuard<N>`）、
-`SPK-2` のクロスオーバー（44.1〜192 kHz・`FOCUS` 全域で和が ±0.1 dB 以内）、
-`SPK-3` の検波（帯域ごとのパワー、`SPEED` を帯域中心の周期で下から抑える床）、
-`SPK-4` の上下コンプ（状態を持たない純関数。`SPARK` = 0 がちょうど 0 dB）、
-`SPK-6` の Sparkle（折り返し −60 dB 以下、持続音でゲート 0.008）、
-`SPK-5` の `CHARACTER`（軸端から端でラウドネス 0.98 dB）、
-`SPK-7` の De-Harsh（±12 dB の入力で動作量 0.2 dB 以内）と Sub Protect、
-`SPK-8` のラッパ（`MIX` = 0 でビット一致、`SPARK` = 0 で ±0.1 dB 平坦）。
-
-**この 2 つは Sparkleur のコードを 1 行も書かずに着手できる**:
-
-| | 何 | なぜ先か |
+| 何 | 今の値 | 聴きどころ |
 |---|---|---|
-| `SPK-10` | `nxe_ui::band::Band` の `reduction` → 符号付き `delta` | 上げコンプが半分の製品で、絵が上げを描けない |
-| `SPK-11` | `param_bind` を新クレートに共通化 | Doubler と Velour で同内容が 2 つ。**3 個目が要求した** |
+| 既定値 33 個 | `params.rs` | **プリセットが無いので既定値が製品の顔** |
+| `T_down` / `T_up` | −18 / −36 dB | 普通のミックス素材でどちらも動くか |
+| `CHARACTER` の表 10 項目 | `character.rs` | POLISH と CRUSH が別の質感か。中間が使えるか |
+| `CHARACTER` のレベルトリム | 0 / 0 / 0 | **実測 0.98 dB でまだ要らなかった**。素材を変えれば動く |
+| `FLOOR_DB` / `LIFT` | −60 dB → −90 | 無音で呼吸しないか。開放すると OTT らしくなるか |
+| `SNAP_RANGE_DB` | 6 dB | 子音とハットで光り、パッドで光らないか |
+| `sparkle::DRIVE` | 4.0 | 艶が足りるか。折り返しは −60 dB 以下に収まるか |
+| De-Harsh のしきい値 | −8 dB | 普通の素材で**動かない**のが正 |
+| 境界 4 点 | 120 / 400 / 1.5k / 6k | 声とベースとシンセで足りるか |
 
-**設計で解いた一番大きい問題は v1 の線引き。** 概念文書は 4 製品ぶん
-（OTT / Exciter / Widener / Transient）あって、`roadmap.md` 自身が「v1 の
-線引き自体が難問」と書いていた。WIDTH と PUNCH を v2 に置いた理由は
-`REQ-SPK-019` / `REQ-SPK-020` にある。
+**`SPK-18` に持ち越した宿題**: `CHARACTER` の既定 0.27 は読み値が
+「**GLOSS 27 %**」になる。`REQ-SPK-006` は既定を「POLISH 寄り（0.25〜0.30）」と
+決め、`ui.md` は読み値を「一番近いアンカー名 + %」と決めた。0.27 に近いのは
+GLOSS（0.23）で POLISH（0.27）ではないので**名前が大きく出る**。どちらも仕様
+どおりで、別々に決められたためにぶつかった。**既定を 0.25 未満にするか、読み値の
+規則を変えるか。**
 
 ## 仮のまま残してある定数
 
-**動かす理由が出てから触る。** 既定値は `VEL-17` で決めた（`DRIVE` 80 /
+**動かす理由が出てから触る。** Velour の既定値は `VEL-17` で決めた（`DRIVE` 80 /
 `BODY` 40 / `PRESENCE` 60 / `AIR` 40 / `TEXTURE` 50 / `DENSITY` 50 / `MIX` 80）。
+**Sparkleur の 33 個はまだ仮**（`SPK-18`、上の表）。
 
 | 何 | 聴きどころ |
 |---|---|
@@ -115,8 +106,10 @@
 
 ## Sparkleur で踏んだ罠
 
-**ここまで落ちたテストは 4 本とも「実装ではなく期待値」が間違っていた。**
-落ちたら先に実測を並べて理論値と突き合わせるほうが速い。
+**DSP で落ちたテストは 6 本中 4 本が「実装ではなく期待値」の間違いだった。**
+落ちたら先に実測を並べて理論値と突き合わせるほうが速い。**逆に UI の欠陥は
+テストが 1 本も落ちない** — 実機で見るまで 3 つとも分からなかった（下の
+`SPK-15` の 3 つ）。
 
 **分割の裾は 24 dB/oct とは限らない**（`SPK-2`）。木構造なので各帯域は自分の
 境界だけでなく**上流の全部のハイパス**を通っている。band 5 の 6 kHz より
@@ -210,6 +203,7 @@
 | `DBL-13` 既定値の詰め | `doubler-plan.md` | **耳が要る** |
 | Velour の `SOLO` が保存される | `params.rs` | nih-plug に逃げ道が無い。**画面には出るようにした** — Advanced の `ON` と、`BandField` が他の区画を落とすこと（`band.rs` の `soloing`）。図はタブに関係なく常に見えるので、ラッチしたまま開いても分かる |
 | 値の直接入力 | `crates/nxe-ui/src/entry.rs` | gallery では動くがプラグインに載せると editor の表示が止まる。**原因未特定** |
+| Velour の軸ラベルの右端が切れる | `velour/src/ui/field.rs` | 最後の目盛りを `left: 100%` で置いているので「20k」が「20」になる。Sparkleur は `left: 1s; right: 0px` で直した（`SPK-15`）。**同じ 3 行** |
 | `UI-9` `ToggleSwitch` | `nxe-ui-plan.md` | **2 個のプラグインがどちらも要らなかった。** 3 個目でも要らなければ落とす（Sparkleur の UI 仕様も `.segment` の `Label` で足りている） |
 | 混ざったコミット `f89b40c` / `68d5199` | — | それぞれフォント修正 + Dry Gain 削除、コード + 文書の一部。分けるなら push 済み履歴の書き換えが要る |
 
