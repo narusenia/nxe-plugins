@@ -11,7 +11,7 @@
 
 mod detail;
 mod field;
-mod param_bind;
+mod mirror;
 mod tone;
 
 use crate::analysis::{Analysis, BANDS, HIGH_HZ, LOW_HZ, PAN_BINS};
@@ -273,9 +273,9 @@ fn header(cx: &mut Context) {
         // host's plugin list all say the same thing.
         font::title(cx, "NXE DOUBLER");
         Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
-        param_bind::segmented(cx, Ui::params, |params| &params.voices, &["2", "4", "8"])
+        nxe_plug_ui::segmented(cx, Ui::params, |params| &params.voices, &["2", "4", "8"])
             .tooltip(|cx| theme::hint(cx, "How many voices run"));
-        param_bind::segmented(
+        nxe_plug_ui::segmented(
             cx,
             Ui::params,
             |params| &params.source,
@@ -440,7 +440,7 @@ pub(crate) fn macro_knob<P, F>(
     VStack::new(cx, |cx| {
         // The tooltip goes on the knob rather than the whole block, so it does
         // not follow the pointer around the label and the number.
-        param_bind::knob(cx, Ui::params, to_param, size).tooltip(move |cx| theme::hint(cx, hint));
+        nxe_plug_ui::knob(cx, Ui::params, to_param, size).tooltip(move |cx| theme::hint(cx, hint));
         Label::new(cx, label).class("label");
         font::value(
             cx,

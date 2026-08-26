@@ -1,0 +1,16 @@
+[package]
+name = "nxe-plug-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The adapter between nih-plug's parameters and the nxe-ui widgets"
+
+# **This is the crate that is allowed to know both**, and the reason `nxe-ui`
+# is not. Putting these bindings in `nxe-ui` would make `examples/gallery` link
+# nih-plug and stop being a standalone app, which is how UI work is iterated
+# without opening a DAW (`docs/specifications/architecture.md`).
+[dependencies]
+nxe-ui = { workspace = true }
+nih_plug = { workspace = true }
+nih_plug_vizia = { workspace = true }

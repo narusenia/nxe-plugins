@@ -11,7 +11,6 @@ mod advanced;
 mod curve;
 mod field;
 mod meters;
-mod param_bind;
 
 use crate::analysis::{Analysis, BANDS, HIGH_HZ, LOW_HZ, METERS};
 use crate::params::VelourParams;
@@ -351,7 +350,7 @@ pub(crate) fn knob_block<P, F>(
     VStack::new(cx, |cx| {
         // The tooltip goes on the knob rather than the whole block, so it does
         // not follow the pointer around the label and the number.
-        param_bind::knob(cx, Ui::params, to_param, size).tooltip(move |cx| theme::hint(cx, hint));
+        nxe_plug_ui::knob(cx, Ui::params, to_param, size).tooltip(move |cx| theme::hint(cx, hint));
         Label::new(cx, label).class("label");
         font::value(
             cx,
@@ -393,7 +392,7 @@ const ANCHORS: [(&str, f32); 3] = [("WARM", 0.0), ("CLEAR", 0.5), ("EDGE", 1.0)]
 /// one value; this one now does too.
 fn texture_knob(cx: &mut Context) {
     VStack::new(cx, |cx| {
-        param_bind::knob(cx, Ui::params, |params| &params.texture, SHAPE_KNOB)
+        nxe_plug_ui::knob(cx, Ui::params, |params| &params.texture, SHAPE_KNOB)
             .tooltip(|cx| theme::hint(cx, "Warm through Clear to Edge"));
         Label::new(cx, "TEXTURE").class("label");
         font::value(

@@ -1,17 +1,17 @@
 //! The adapter between nih-plug's parameters and `nxe-ui`'s widgets.
 //!
-//! `nxe-ui` knows nothing about parameters — widgets take a value and a gesture
-//! callback (`docs/specifications/architecture.md`). This module is the only
-//! place that knows about both.
+//! `nxe-ui` knows nothing about parameters — its widgets take a value and a
+//! gesture callback. **This crate is the only place that knows both**, and it
+//! is a separate crate rather than a module of `nxe-ui` for one reason: if
+//! `nxe-ui` linked nih-plug, `examples/gallery` would stop being a standalone
+//! desktop app, and iterating a UI without opening a DAW would go with it
+//! (`docs/specifications/architecture.md`).
 //!
-//! **The Doubler has a file with the same name and the same functions.**
-//! Deliberately not shared yet: the repository's rule is that something moves
-//! into a common crate when a *third* consumer asks for it, not when a second
-//! one could (`docs/specifications/architecture.md`). Sparkleur is the third,
-//! and a `nxe-plug-ui` crate — one that may know both nih-plug and vizia,
-//! unlike `nxe-ui` — is where these belong then. What must not happen is
-//! putting them in `nxe-ui`, which would make the gallery link nih-plug and
-//! stop being a standalone app.
+//! Doubler and Velour each carried a copy of this. **It moved here when
+//! Sparkleur asked for a third** (`SPK-11`), which is the repository's rule for
+//! when something becomes shared — not when a second consumer *could* use it.
+//! What is left in a plugin is what only that plugin means: Doubler's mirrored
+//! editing (`doubler::ui::mirror`) is the whole of it.
 //!
 //! The important part is that a widget's `Begin` and `End` become
 //! `begin_set_parameter` / `end_set_parameter`. Without them a host records a
@@ -41,7 +41,9 @@ pub fn apply(base: &ParamWidgetBase, cx: &mut EventContext, gesture: Gesture) {
         // Typing a value needs `nxe_ui::entry::ValueEntry`, which stops the
         // editor updating once it is mounted in a plugin rather than in the
         // gallery — cause not yet found (`docs/HANDOVER.md`). Until then the
-        // host's own generic view is where a value gets typed.
+        // host's own generic view is where a value gets typed. **This is the
+        // one behaviour a plugin might reasonably want to override**, and none
+        // does yet.
         Gesture::Edit => {}
     }
 }
@@ -121,8 +123,8 @@ where
     F: Fn(&Params) -> &P + Copy + 'static,
 {
     let base = ParamWidgetBase::new(cx, params, to_param);
-    // `step_count` is the number of steps *between* values, so a two-way control
-    // reports one.
+    // `step_count` is the number of steps *between* values, so a three-way
+    // control reports two.
     let steps = base.step_count().unwrap_or(1).max(1) as f32;
 
     let selected = ParamWidgetBase::make_lens(params, to_param, move |param| {

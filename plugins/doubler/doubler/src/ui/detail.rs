@@ -8,12 +8,12 @@
 //! A row whose voice is not live is dimmed but **still editable** — setting up
 //! eight voices while running four is a reasonable thing to want.
 
-use super::{Ui, param_bind};
+use super::{Ui, mirror};
 use crate::params::DoublerParams;
 use doubler_core::{MAX_VOICES, Voices, mirror_partner, pan_for};
+use mirror::Mirror;
 use nih_plug_vizia::vizia::prelude::*;
 use nxe_ui::{font, theme};
-use param_bind::Mirror;
 
 /// How much a row fades when its voice is not live.
 const DIMMED: f32 = 0.42;
@@ -107,7 +107,7 @@ fn cell(cx: &mut Context, index: usize, column: Column) {
 
     HStack::new(cx, |cx| {
         let bar = match column {
-            Column::Gain => param_bind::mirrored_bar(
+            Column::Gain => mirror::mirrored_bar(
                 cx,
                 Ui::params,
                 Ui::mirror_gain,
@@ -115,7 +115,7 @@ fn cell(cx: &mut Context, index: usize, column: Column) {
                 move |p| &p.shape[index].gain,
                 move |p| &p.shape[partner].gain,
             ),
-            Column::Delay => param_bind::mirrored_bar(
+            Column::Delay => mirror::mirrored_bar(
                 cx,
                 Ui::params,
                 Ui::mirror_delay,
@@ -123,7 +123,7 @@ fn cell(cx: &mut Context, index: usize, column: Column) {
                 move |p| &p.shape[index].delay,
                 move |p| &p.shape[partner].delay,
             ),
-            Column::Detune => param_bind::mirrored_bar(
+            Column::Detune => mirror::mirrored_bar(
                 cx,
                 Ui::params,
                 Ui::mirror_detune,
@@ -131,7 +131,7 @@ fn cell(cx: &mut Context, index: usize, column: Column) {
                 move |p| &p.shape[index].detune,
                 move |p| &p.shape[partner].detune,
             ),
-            Column::Pan => param_bind::mirrored_bar(
+            Column::Pan => mirror::mirrored_bar(
                 cx,
                 Ui::params,
                 Ui::mirror_pan,

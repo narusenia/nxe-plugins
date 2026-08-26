@@ -94,9 +94,9 @@ fn row(cx: &mut Context, index: usize) {
         // itself decides to be.
         cell(cx, BAR_WIDTH, move |cx| {
             match index {
-                0 => super::param_bind::bar(cx, Ui::params, |params| &params.bias_body, true),
-                1 => super::param_bind::bar(cx, Ui::params, |params| &params.bias_presence, true),
-                _ => super::param_bind::bar(cx, Ui::params, |params| &params.bias_air, true),
+                0 => nxe_plug_ui::bar(cx, Ui::params, |params| &params.bias_body, true),
+                1 => nxe_plug_ui::bar(cx, Ui::params, |params| &params.bias_presence, true),
+                _ => nxe_plug_ui::bar(cx, Ui::params, |params| &params.bias_air, true),
             }
             .tooltip(|cx| theme::hint(cx, "Deeper curve added quieter, or the reverse"))
             .width(Stretch(1.0))
@@ -105,11 +105,9 @@ fn row(cx: &mut Context, index: usize) {
 
         cell(cx, BAR_WIDTH, move |cx| {
             match index {
-                0 => super::param_bind::bar(cx, Ui::params, |params| &params.texture_body, true),
-                1 => {
-                    super::param_bind::bar(cx, Ui::params, |params| &params.texture_presence, true)
-                }
-                _ => super::param_bind::bar(cx, Ui::params, |params| &params.texture_air, true),
+                0 => nxe_plug_ui::bar(cx, Ui::params, |params| &params.texture_body, true),
+                1 => nxe_plug_ui::bar(cx, Ui::params, |params| &params.texture_presence, true),
+                _ => nxe_plug_ui::bar(cx, Ui::params, |params| &params.texture_air, true),
             }
             .tooltip(|cx| theme::hint(cx, "This band's deviation from TEXTURE"))
             .width(Stretch(1.0))
@@ -119,9 +117,9 @@ fn row(cx: &mut Context, index: usize) {
         cell(cx, SOLO_WIDTH, move |cx| {
             HStack::new(cx, |cx| {
                 match index {
-                    0 => super::param_bind::toggle(cx, Ui::params, |p| &p.solo_body, "ON"),
-                    1 => super::param_bind::toggle(cx, Ui::params, |p| &p.solo_presence, "ON"),
-                    _ => super::param_bind::toggle(cx, Ui::params, |p| &p.solo_air, "ON"),
+                    0 => nxe_plug_ui::toggle(cx, Ui::params, |p| &p.solo_body, "ON"),
+                    1 => nxe_plug_ui::toggle(cx, Ui::params, |p| &p.solo_presence, "ON"),
+                    _ => nxe_plug_ui::toggle(cx, Ui::params, |p| &p.solo_air, "ON"),
                 }
                 .tooltip(|cx| theme::hint(cx, "Hear this band's layer alone, dry muted"));
             })
@@ -159,16 +157,16 @@ fn side(cx: &mut Context) {
 
         VStack::new(cx, |cx| {
             labelled_bar(cx, "HARSH", "How far the harsh guard may pull", |cx| {
-                super::param_bind::bar(cx, Ui::params, |params| &params.guard_harsh, false)
+                nxe_plug_ui::bar(cx, Ui::params, |params| &params.guard_harsh, false)
             });
             labelled_bar(cx, "SIB", "How far the sibilance guard may pull", |cx| {
-                super::param_bind::bar(cx, Ui::params, |params| &params.guard_sib, false)
+                nxe_plug_ui::bar(cx, Ui::params, |params| &params.guard_sib, false)
             });
             labelled_bar(
                 cx,
                 "EMOTION",
                 "How much the singing moves the curves",
-                |cx| super::param_bind::bar(cx, Ui::params, |params| &params.emotion, false),
+                |cx| nxe_plug_ui::bar(cx, Ui::params, |params| &params.emotion, false),
             );
 
             HStack::new(cx, |cx| {
@@ -176,13 +174,8 @@ fn side(cx: &mut Context) {
                     .class("subtle")
                     .width(Pixels(SIDE_NAME_WIDTH))
                     .height(Auto);
-                super::param_bind::segmented(
-                    cx,
-                    Ui::params,
-                    |params| &params.oversample,
-                    &["2x", "4x"],
-                )
-                .tooltip(|cx| theme::hint(cx, "2x costs less and aliases about 14 dB higher"));
+                nxe_plug_ui::segmented(cx, Ui::params, |params| &params.oversample, &["2x", "4x"])
+                    .tooltip(|cx| theme::hint(cx, "2x costs less and aliases about 14 dB higher"));
             })
             .class("row")
             .height(Auto)

@@ -1030,6 +1030,7 @@ dependencies = [
  "nih_plug",
  "nih_plug_vizia",
  "nxe-dsp",
+ "nxe-plug-ui",
  "nxe-ui",
 ]
 
@@ -2148,6 +2149,15 @@ name = "nxe-dsp"
 version = "0.1.0"
 dependencies = [
  "criterion",
+]
+
+[[package]]
+name = "nxe-plug-ui"
+version = "0.1.0"
+dependencies = [
+ "nih_plug",
+ "nih_plug_vizia",
+ "nxe-ui",
 ]
 
 [[package]]
@@ -3382,6 +3392,7 @@ dependencies = [
  "nih_plug_vizia",
  "nxe-audio",
  "nxe-dsp",
+ "nxe-plug-ui",
  "nxe-ui",
  "velour-core",
 ]

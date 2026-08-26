@@ -17,7 +17,7 @@
 //! the gain range (+6 dB) and the origin is the bottom (−24 dB), so the default
 //! 0 dB puts every voice on the same ring — a symmetric figure out of the box.
 
-use super::param_bind::Mirror;
+use super::mirror::Mirror;
 use super::{Ui, UiEvent};
 use crate::params::DoublerParams;
 use doubler_core::{MAX_VOICES, Source, mirror_partner, pan_for, pan_shape_for};
