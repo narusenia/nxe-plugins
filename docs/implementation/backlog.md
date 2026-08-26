@@ -224,6 +224,17 @@ Velour で見つけたのと同じ形が、別の場所（クロスオーバー�
 `assert_process_allocs` はホストの debug ビルドの中でしか動かないので、
 `mise run check` で毎回動くほうが regression を見つける。
 
+**`SPK-14` で小窓とメーターが入った**（2026-08-27）。ダイナミクスの伝達曲線
+（入力 dB → 出力 dB、`engine::transfer_db` — 音を作るゲイン計算そのもの）と
+IN / OUT × L / R のメーター。テスト 346 本。
+
+**`nxe-ui` に `CurveViewModifiers::reference(curve)` を足した。** 対角線は
+グリッド線にできない（あれは縦線）ので、読み取りの基準線を呼び出し側から
+渡せるようにした。既定は今までどおり中央の水平線なので **Velour の窓は
+変わらない**。gallery にもパネルを 1 つ足した。**Velour の「固定天井で曲線が
+縮む」罠（`VEL-13`）は、入力と出力が同じ 1 本の写像を通る構造なので
+起こりようがない** — そして対角線が unity を意味するのもそのおかげ。
+
 **`SPK-13` で図が入った**（2026-08-27）。5 区画、unity の線、`FOCUS` のレール。
 テスト 339 本。区画の左右は **`crossover::edges_for` を公開して音と共有**し、
 `Crossover::edges()` と一致することをテストで固定した。**`Engine::gains_db()` が
@@ -295,7 +306,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| SPK-14 | **UI 小窓とメーター** — 伝達曲線と IN / OUT | `sparkleur-plan.md` |
+| SPK-15 | **UI Advanced タブ** — per-band の表と残りのノブ | `sparkleur-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 | UI-9 | `ToggleSwitch` — **3 個目の設計でも要らなかった**（`.segment` を当てた `Label` で足りる）。**落として良い** | `nxe-ui-plan.md` |
 
@@ -420,7 +431,7 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | SPK-11 | `param_bind` の共通化（行き先は `nxe-plug-ui`） | ✅ `5e05b70` |
 | SPK-12 | UI マクロ層（メインタブ） | ✅ `a9e9867` **実機確認だけ未** |
 | SPK-13 | UI Band Field（5 区画） | ✅ `2194b9b` **実機確認だけ未** |
-| SPK-14 | UI 小窓とメーター | 🟡 |
+| SPK-14 | UI 小窓とメーター | ✅ `cff28e0` **実機確認だけ未** |
 | SPK-15 | UI Advanced タブ | 🟡 |
 | SPK-16 | 解析の配線 | ✅ `bb6077c` |
 | SPK-17 | CPU 予算 | ✅ **129 µs / 予算 533** |
