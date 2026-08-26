@@ -1,9 +1,9 @@
 # 引き継ぎ
 
 **2026-08-26 時点。** Doubler は `doubler-v0.1.0` を**公開済み**、Velour は
-`velour-v0.1.0` で**一区切り**（下書き Release）。**Sparkleur は `SPK-2` まで —
-`nxe-audio` とクロスオーバーのゲートが入っている。まだ音は出ない**（ラッパは
-`SPK-8`）。
+`velour-v0.1.0` で**一区切り**（下書き Release）。**Sparkleur は `SPK-3` まで —
+`nxe-audio`、クロスオーバーのゲート、帯域ごとの検波が入っている。まだ音は出ない**
+（ラッパは `SPK-8`）。
 
 このファイルは**そのとき何が動いていて、次に触る人が最初に知るべきこと**を
 1 枚にまとめたもの。設計の正は各仕様書、状態の正は
@@ -26,24 +26,25 @@
 | `crates/nxe-audio` | 共通の**処理**（`shaper` / `oversample` / `biquad` / `envelope` / `guard` / `harmonics`）。`SPK-1` で `velour-core` から抜いた |
 | `crates/nxe-ui` | 共通ウィジェット・テーマ・アイコン。`mise run gallery` |
 | `crates/nxe-dsp` | 共通の解析（`Handoff` / `PanScope` / `Spectrum` / `Level`） |
-| `plugins/sparkleur/sparkleur-core` | **`SPK-2` まで。** 5 帯域クロスオーバー（LR4 の木 + オールパス補正、`FOCUS`）。ダイナミクスはまだ |
+| `plugins/sparkleur/sparkleur-core` | **`SPK-3` まで。** 5 帯域クロスオーバー（LR4 の木 + オールパス補正、`FOCUS`）と検波（帯域ごとのパワー、`SPEED` と帯域中心からの床）。ゲイン計算はまだ |
 | `plugins/sparkleur/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`SPK-1`〜`SPK-18`）。`sparkleur` ラッパクレートは無い |
 | CI | `check`（PR と main への push）、`release`（`<plugin>-v<version>` タグ） |
 
-テスト 253 本。CPU は予算 533 µs に対し **Doubler 85 µs / Velour 128 µs**
+テスト 265 本。CPU は予算 533 µs に対し **Doubler 85 µs / Velour 128 µs**
 （`VEL-16`。Velour の内訳はエンジン 4x が 79、`Spectrum` 48 バンド × 2 が 45、
 `Level` × 4 が 4）。
 
 ## 次にやること
 
-**`SPK-3`（検波と時定数）。** 帯域ごとのパワー追従、`SPEED` からの時定数、
-帯域の中心周波数から導いた床。材料は `nxe_audio::guard` の `Follower` と同じ形で、
-`Crossover::edges()` が帯域の境界を返す。
+**`SPK-4`（ゲイン計算、上下コンプ）。製品の核。** 下げ・上げ・上限・床・ニー。
+`Detector::decibels()` が読み値を返し、**その目盛りは帯域の RMS より
+0.05〜2.5 dB 上**（下の罠）。`SPK-3` から送られた宿題が 1 つある —
+**`SPEED` 最速・50 Hz で THD が上がらないこと**。ゲインが付いて初めて測れる。
 
-**ゲートの `SPK-2` は通った。** `sparkleur-core` の 5 帯域クロスオーバーは
-44.1 / 48 / 96 / 192 kHz と `FOCUS` 全域で和が ±0.1 dB 以内。`SPK-1` の
-`nxe-audio`（`shaper` / `oversample` / `biquad` / `envelope` / `guard` /
-`harmonics`、`guard` は `RelativeGuard<N>`）もその下にある。
+**ここまで通っている**: `SPK-1` の `nxe-audio`（`shaper` / `oversample` /
+`biquad` / `envelope` / `guard` / `harmonics`、`guard` は `RelativeGuard<N>`）、
+`SPK-2` のクロスオーバー（44.1〜192 kHz・`FOCUS` 全域で和が ±0.1 dB 以内）、
+`SPK-3` の検波（帯域ごとのパワー、`SPEED` を帯域中心の周期で下から抑える床）。
 
 **この 2 つは Sparkleur のコードを 1 行も書かずに着手できる**:
 
@@ -97,13 +98,25 @@
 
 ## Sparkleur で踏んだ罠
 
+**ここまで落ちたテストは 4 本とも「実装ではなく期待値」が間違っていた。**
+落ちたら先に実測を並べて理論値と突き合わせるほうが速い。
+
 **分割の裾は 24 dB/oct とは限らない**（`SPK-2`）。木構造なので各帯域は自分の
 境界だけでなく**上流の全部のハイパス**を通っている。band 5 の 6 kHz より
 1 オクターブ下は `HP(1500)` がまだ効いていて 30 dB/oct で落ちる。24 dB/oct を
 測るなら境界が 1 つしか効かないところ。**帯域の幾何中心も 0 dB ではない**
-（band 2 は 1.7 オクターブ幅で中心が −1.5 dB）。どちらもテストの期待値の側が
-間違っていて、**フィルタは最初から正しかった** — 落ちたテストを見たとき、
-まず実測を並べて理論値と突き合わせる方が速い。
+（band 2 は 1.7 オクターブ幅で中心が −1.5 dB）。
+
+**検波値は帯域の RMS ではない**（`SPK-3`）。非対称な 1 次追従は平均に落ち着かず、
+**RMS の +0.05〜+2.54 dB** に座る。位置を決めるのは attack/release の比だけ
+（比 4 で +0.05〜0.9、比 20 で +2.5）。素直なコンプの挙動だが、**しきい値を
+計算で出せない**ということでもある — `SPK-18` を耳でやる根拠。
+
+**定常正弦は時定数の床を測る道具として弱い**（`SPK-3`）。50 Hz では release の
+20 ms が単独で読み値を持ち上げるので、attack が 1 ms でも 33 ms でもリプルは
+1.0 dB のまま変わらない。**「対照実験が差を出さない」形の失敗**で、`VEL-10` の
+「測定が失敗できることを同じテストで確かめる」行がそれを捕まえた。差が出るのは
+**ステップ応答**（床のある帯域と無い帯域で 33 倍）。
 
 **仕様の数字は 4 回動いた。** `k` の上限 20 → 6 → 8、`bias` のレベル補正
 6 dB → 0、`DENSITY` のメイクアップの基準 full scale → `REFERENCE_DB`。
