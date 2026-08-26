@@ -125,22 +125,34 @@ pub struct VoiceShape {
 /// The default shape, ordered so that **taking the first N entries stays
 /// left-right symmetric**. That is what keeps the image from leaning when
 /// `Voices` changes (`REQ-DBL-001`).
+///
+/// **Each pair is a full mirror image**, delay included: `mirror_partner` is
+/// the neighbour with the low bit flipped, and the two differ only in sign on
+/// the axes that have one. The figure a user opens is therefore symmetric about
+/// its centre line, which is what mirror editing then preserves
+/// (`REQ-DBL-014`).
+///
+/// The cost is that density now comes from the spacing *between* pairs rather
+/// than within them: eight voices sit at four delays, not eight. With `Detune`
+/// and `Humanize` both at zero a pair collapses to one signal panned two ways —
+/// audible as a thinner double, not as a fault, and neither is zero by
+/// default.
 pub const DEFAULT_SHAPE: [VoiceShape; MAX_VOICES] = [
     VoiceShape {
         detune: -1.00,
-        delay: 1.00,
+        delay: 0.78,
         pan: -1.00,
         gain_db: 0.0,
     },
     VoiceShape {
         detune: 1.00,
-        delay: 0.62,
+        delay: 0.78,
         pan: 1.00,
         gain_db: 0.0,
     },
     VoiceShape {
         detune: -0.40,
-        delay: 0.84,
+        delay: 0.44,
         pan: -0.45,
         gain_db: 0.0,
     },
@@ -152,25 +164,25 @@ pub const DEFAULT_SHAPE: [VoiceShape; MAX_VOICES] = [
     },
     VoiceShape {
         detune: -0.70,
-        delay: 0.92,
+        delay: 0.94,
         pan: -0.75,
         gain_db: 0.0,
     },
     VoiceShape {
         detune: 0.70,
-        delay: 0.30,
+        delay: 0.94,
         pan: 0.75,
         gain_db: 0.0,
     },
     VoiceShape {
         detune: -0.25,
-        delay: 0.72,
+        delay: 0.62,
         pan: -0.20,
         gain_db: 0.0,
     },
     VoiceShape {
         detune: 0.25,
-        delay: 0.52,
+        delay: 0.62,
         pan: 0.20,
         gain_db: 0.0,
     },
@@ -590,13 +602,16 @@ mod tests {
     /// the pairing, mirroring a `Pan` would move the image instead of keeping
     /// it centred, and it would do so silently.
     #[test]
-    fn mirrored_pairs_are_equal_and_opposite() {
+    fn mirrored_pairs_are_mirror_images() {
         for (index, shape) in DEFAULT_SHAPE.iter().enumerate() {
             let partner = mirror_partner(index);
             assert_ne!(partner, index);
             assert_eq!(mirror_partner(partner), index, "pairing is not mutual");
+            // The bipolar axes invert; the ones with no sign match outright.
             assert_eq!(shape.pan, -DEFAULT_SHAPE[partner].pan);
             assert_eq!(shape.detune, -DEFAULT_SHAPE[partner].detune);
+            assert_eq!(shape.delay, DEFAULT_SHAPE[partner].delay);
+            assert_eq!(shape.gain_db, DEFAULT_SHAPE[partner].gain_db);
         }
     }
 
@@ -616,12 +631,22 @@ mod tests {
         left_in: &[f32],
         right_in: &[f32],
     ) -> (Vec<f32>, Vec<f32>) {
+        run_shape(sample_rate, macros, &DEFAULT_SHAPE, left_in, right_in)
+    }
+
+    fn run_shape(
+        sample_rate: f32,
+        macros: &Macros,
+        shape: &[VoiceShape; MAX_VOICES],
+        left_in: &[f32],
+        right_in: &[f32],
+    ) -> (Vec<f32>, Vec<f32>) {
         let mut engine = VoiceEngine::new(sample_rate);
         let mut left = Vec::with_capacity(left_in.len());
         let mut right = Vec::with_capacity(left_in.len());
 
         for (&l, &r) in left_in.iter().zip(right_in) {
-            let (out_l, out_r) = engine.process(l, r, macros, &DEFAULT_SHAPE);
+            let (out_l, out_r) = engine.process(l, r, macros, shape);
             left.push(out_l);
             right.push(out_r);
         }
@@ -665,15 +690,20 @@ mod tests {
         }
     }
 
-    /// The delays are spread out for every prefix too — two voices at the same
-    /// delay would be one voice twice as loud.
+    /// The delays are spread out for every prefix too. **Within a pair they are
+    /// equal on purpose** — that is what makes the figure a mirror image — so
+    /// this asks that every *pair* sits at its own delay. Two pairs at the same
+    /// delay would be four voices where two would do.
     #[test]
-    fn the_default_delays_are_distinct_for_every_voice_count() {
+    fn the_default_delays_are_distinct_across_pairs() {
         for voices in [Voices::Two, Voices::Four, Voices::Eight] {
             let n = voices.count();
             let live = &DEFAULT_SHAPE[..n];
             for (i, a) in live.iter().enumerate() {
                 for (j, b) in live.iter().enumerate().skip(i + 1) {
+                    if mirror_partner(i) == j {
+                        continue;
+                    }
                     let gap = (a.delay - b.delay).abs();
                     assert!(gap > 0.05, "{n} voices: {i} and {j} are only {gap} apart");
                 }
@@ -724,9 +754,12 @@ mod tests {
     }
 
     /// `Spread` at one sends voice 0 (`pan == -1`) hard left, so the left
-    /// channel has to carry more than the right — the shape is symmetric, but
-    /// the delays are not, so this checks the pan law is wired to the right
-    /// channel rather than mirrored.
+    /// channel has to carry more than the right.
+    ///
+    /// **Its own shape, not the default one.** The two voices are told apart by
+    /// where their taps land, and the default pair now shares a delay
+    /// (`DEFAULT_SHAPE`). What is under test is the pan law's wiring, which does
+    /// not care which table it is fed.
     #[test]
     fn pan_puts_the_first_voice_on_the_left() {
         let macros = Macros {
@@ -738,9 +771,13 @@ mod tests {
             ..Macros::default()
         };
 
+        let mut shape = DEFAULT_SHAPE;
+        shape[0].delay = 1.00;
+        shape[1].delay = 0.62;
+
         let mut impulse = vec![0.0; 8192];
         impulse[0] = 1.0;
-        let (left, right) = run(&macros, &impulse);
+        let (left, right) = run_shape(SR, &macros, &shape, &impulse, &impulse);
 
         // Voice 0 sits at `delay * 1.00` = 40 ms and is panned hard left;
         // voice 1 at `delay * 0.62` = 24.8 ms, hard right.
