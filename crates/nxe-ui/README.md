@@ -96,7 +96,7 @@ theme::ACCENT.css()     // 生成される CSS 用
 - 角丸は `RADIUS_CONTROL` = 2px / `RADIUS_CARD` = 3px。**角張ったデザイン。**
   丸めようとするとコンパイル時アサーションで止まる
 - 間隔は 4px グリッドの 5 段（`SPACE_1`..`SPACE_5`）。この 5 つ以外を使わない
-- 文字は 2 段（`FONT_LABEL` 12px / `FONT_VALUE` 11px）
+- 文字は 2 段（`FONT_LABEL` 12px / `FONT_VALUE` 10px）
 - **ブラー・グロー・ガラス質感は使わない。** femtovg にブラーが無く、偽装すると
   素でやるより悪くなる。深さは値のコントラストと 1px の線だけで作る
 

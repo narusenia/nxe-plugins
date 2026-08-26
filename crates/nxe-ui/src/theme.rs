@@ -124,7 +124,7 @@ pub const SPACE_5: f32 = 24.0;
 /// contrast, which already makes it the thing the eye lands on. At the label's
 /// size it read as a headline under every knob.
 pub const FONT_LABEL: f32 = 12.0;
-pub const FONT_VALUE: f32 = 11.0;
+pub const FONT_VALUE: f32 = 10.0;
 
 /// Hover and selection only. Never a value: a knob that lags the mouse feels
 /// broken.

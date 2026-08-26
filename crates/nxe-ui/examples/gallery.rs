@@ -741,7 +741,7 @@ fn spacing(cx: &mut Context) {
 fn text(cx: &mut Context) {
     panel(cx, "TEXT", |cx| {
         Label::new(cx, "LABEL — names a thing, 12 px, muted").class("label");
-        Label::new(cx, "Value — says what it is, 11 px, Geist Sans").class("value");
+        Label::new(cx, "Value — says what it is, 10 px, Geist Sans").class("value");
         Label::new(cx, "Subtle — gridlines, units, disabled rows").class("subtle");
         Element::new(cx).class("divider");
         font::value(cx, "-12.0 ct    22.0 ms    L70    0.0 dB");
