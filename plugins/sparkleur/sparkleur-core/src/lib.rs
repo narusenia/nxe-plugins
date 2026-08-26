@@ -11,6 +11,8 @@
 
 pub mod crossover;
 pub mod detector;
+pub mod dynamics;
 
 pub use crossover::{BAND_COUNT, Crossover};
 pub use detector::Detector;
+pub use dynamics::{Curve, Settings, Weights};
