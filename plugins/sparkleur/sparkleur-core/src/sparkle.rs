@@ -92,8 +92,6 @@ const DECIBELS_PER_OCTAVE_POWER: f32 = 3.010_3;
 /// Everything the layer needs that is not the signal.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Settings {
-    /// How much of the layer is added. **Zero is exactly silent.**
-    pub air: f32,
     /// How much of that is handed to the transient. `0` is static — Velour's
     /// behaviour, and the way to hear what the gate is doing by turning it off
     /// (`REQ-SPK-007`).
@@ -114,7 +112,6 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            air: 0.0,
             snap: 0.5,
             bias: 0.30,
             hardness: 0.35,
@@ -217,7 +214,12 @@ impl Sparkle {
     }
 
     /// One sample of the top band in, the layer to add out. **Audio rate.**
-    pub fn process(&mut self, band: f32) -> f32 {
+    ///
+    /// `air` is how much of the layer to add, `0..=1`. **It is an argument
+    /// rather than a setting** because it carries `SPARK`, which is smoothed
+    /// per sample — reading it once per block would step the layer on every
+    /// automation ramp (`VEL-5`).
+    pub fn process(&mut self, band: f32, air: f32) -> f32 {
         let band = finite(band, 0.0);
 
         // The gate reads the band **before** the curve: what opens it is the
@@ -234,7 +236,7 @@ impl Sparkle {
             self.opening + (raw - self.opening) * self.hold
         };
 
-        let air = finite(self.settings.air, 0.0).clamp(0.0, 1.0);
+        let air = finite(air, 0.0).clamp(0.0, 1.0);
         let snap = finite(self.settings.snap, 0.0).clamp(0.0, 1.0);
         self.gain = air * ((1.0 - snap) + snap * self.opening);
 
@@ -335,9 +337,11 @@ mod tests {
         curve_at(1.0)
     }
 
-    fn settings(air: f32, snap: f32, curve: (f32, f32)) -> Settings {
+    /// The full amount, which is what every test but the one about zero wants.
+    const AIR: f32 = 1.0;
+
+    fn settings(snap: f32, curve: (f32, f32)) -> Settings {
         Settings {
-            air,
             snap,
             bias: curve.0,
             hardness: curve.1,
@@ -349,9 +353,9 @@ mod tests {
     fn layer(sparkle: &mut Sparkle, hz: usize, amplitude: f32) -> Vec<f32> {
         let input = sine(amplitude, hz, LENGTH);
         for sample in &input {
-            sparkle.process(*sample);
+            sparkle.process(*sample, AIR);
         }
-        input.iter().map(|s| sparkle.process(*s)).collect()
+        input.iter().map(|s| sparkle.process(*s, AIR)).collect()
     }
 
     /// **Zero is exactly nothing**, not nearly (`REQ-SPK-007`).
@@ -359,10 +363,10 @@ mod tests {
     fn air_at_zero_is_exactly_silent() {
         for snap in [0.0f32, 0.5, 1.0] {
             let mut sparkle = Sparkle::new(RATE);
-            sparkle.set(settings(0.0, snap, crush()));
+            sparkle.set(settings(snap, crush()));
             for sample in sine(0.5, 9_000, 4_800) {
                 assert_eq!(
-                    sparkle.process(sample),
+                    sparkle.process(sample, 0.0),
                     0.0,
                     "snap {snap} let something through"
                 );
@@ -375,19 +379,19 @@ mod tests {
     #[test]
     fn snap_at_zero_is_static() {
         let mut sparkle = Sparkle::new(RATE);
-        sparkle.set(settings(1.0, 0.0, crush()));
+        sparkle.set(settings(0.0, crush()));
 
         // A burst: silence, then a tone. A static layer tracks the input and
         // nothing else.
         let tone = sine(0.5, 9_000, LENGTH);
         for sample in &tone {
-            sparkle.process(*sample);
+            sparkle.process(*sample, AIR);
         }
         let early: f32 = rms(&(0..2_400)
-            .map(|i| sparkle.process(tone[i]))
+            .map(|i| sparkle.process(tone[i], AIR))
             .collect::<Vec<_>>());
         let late: f32 = rms(&(2_400..4_800)
-            .map(|i| sparkle.process(tone[i]))
+            .map(|i| sparkle.process(tone[i], AIR))
             .collect::<Vec<_>>());
         assert!(
             db_ratio(late, early).abs() < 0.5,
@@ -401,25 +405,25 @@ mod tests {
     #[test]
     fn snap_at_one_opens_on_an_attack_and_closes_on_a_sustain() {
         let mut sparkle = Sparkle::new(RATE);
-        sparkle.set(settings(1.0, 1.0, crush()));
+        sparkle.set(settings(1.0, crush()));
 
         // Half a second of silence, so both followers are at rest.
         for _ in 0..(RATE * 0.5) as usize {
-            sparkle.process(0.0);
+            sparkle.process(0.0, AIR);
         }
         assert_eq!(sparkle.opening(), 0.0, "silence opened the gate");
 
         // The first 5 ms of a tone.
         let tone = sine(0.5, 9_000, LENGTH);
         for sample in tone.iter().take((RATE * 0.005) as usize) {
-            sparkle.process(*sample);
+            sparkle.process(*sample, AIR);
         }
         let attack = sparkle.opening();
         assert!(attack > 0.5, "the attack only opened it to {attack:.2}");
 
         // And a second of the same tone, which is no longer news.
         for sample in tone.iter().skip((RATE * 0.005) as usize) {
-            sparkle.process(*sample);
+            sparkle.process(*sample, AIR);
         }
         // Measured 0.008 at 9 kHz, and 0.010 at 6.5 kHz where the fast
         // follower's own ripple is largest.
@@ -454,7 +458,7 @@ mod tests {
         let four = sparkle.lid_hz();
         sparkle.set(Settings {
             factor: Factor::Two,
-            ..settings(1.0, 0.0, crush())
+            ..settings(0.0, crush())
         });
         assert_eq!(sparkle.lid_hz(), four, "the factor moved the lid");
     }
@@ -467,7 +471,7 @@ mod tests {
         sparkle.set(Settings {
             bias: BIAS_MAX,
             hardness: 1.0,
-            ..settings(1.0, 0.0, crush())
+            ..settings(0.0, crush())
         });
         let output = layer(&mut sparkle, hz, PROBE_AMPLITUDE);
 
@@ -517,7 +521,7 @@ mod tests {
     fn character_moves_the_harmonics_without_moving_the_amount() {
         let measure = |curve| {
             let mut sparkle = Sparkle::new(RATE);
-            sparkle.set(settings(1.0, 0.0, curve));
+            sparkle.set(settings(0.0, curve));
             let output = layer(&mut sparkle, 7_000, PROBE_AMPLITUDE);
             let second = amplitude(&output, 14_000);
             let third = amplitude(&output, 21_000);
@@ -544,7 +548,7 @@ mod tests {
     #[test]
     fn nothing_is_added_below_the_edge() {
         let mut sparkle = Sparkle::new(RATE);
-        sparkle.set(settings(1.0, 0.0, crush()));
+        sparkle.set(settings(0.0, crush()));
 
         // Two tones in the band, so the curve's even term makes a difference
         // tone at 2 kHz — well below the 6 kHz edge.
@@ -554,9 +558,9 @@ mod tests {
             .map(|(a, b)| a + b)
             .collect();
         for sample in &input {
-            sparkle.process(*sample);
+            sparkle.process(*sample, AIR);
         }
-        let output: Vec<f32> = input.iter().map(|s| sparkle.process(*s)).collect();
+        let output: Vec<f32> = input.iter().map(|s| sparkle.process(*s, AIR)).collect();
 
         let reference = amplitude(&output, 7_000);
         let difference = db_ratio(amplitude(&output, 2_000), reference);
@@ -572,7 +576,6 @@ mod tests {
         for value in wild {
             let mut sparkle = Sparkle::new(RATE);
             sparkle.set(Settings {
-                air: value,
                 snap: value,
                 bias: value,
                 hardness: value,
@@ -580,7 +583,7 @@ mod tests {
                 factor: Factor::Four,
             });
             for sample in sine(0.5, 9_000, 4_800) {
-                let reading = sparkle.process(sample);
+                let reading = sparkle.process(sample, value);
                 assert!(reading.is_finite(), "{value} produced {reading}");
             }
             assert!((0.0..=1.0).contains(&sparkle.opening()));
@@ -588,9 +591,9 @@ mod tests {
 
         // And a hostile sample must not poison the recursive parts.
         let mut sparkle = Sparkle::new(RATE);
-        sparkle.set(settings(1.0, 0.0, crush()));
+        sparkle.set(settings(0.0, crush()));
         for value in wild {
-            sparkle.process(value);
+            sparkle.process(value, AIR);
         }
         let output = layer(&mut sparkle, 9_000, PROBE_AMPLITUDE);
         assert!(
@@ -602,12 +605,12 @@ mod tests {
     #[test]
     fn reset_clears_it() {
         let mut sparkle = Sparkle::new(RATE);
-        sparkle.set(settings(1.0, 1.0, crush()));
+        sparkle.set(settings(1.0, crush()));
         layer(&mut sparkle, 9_000, 0.5);
         sparkle.reset();
         assert_eq!(sparkle.opening(), 0.0);
         for _ in 0..64 {
-            assert_eq!(sparkle.process(0.0), 0.0, "state survived the reset");
+            assert_eq!(sparkle.process(0.0, AIR), 0.0, "state survived the reset");
         }
     }
 }

@@ -13,6 +13,7 @@ pub mod character;
 pub mod crossover;
 pub mod detector;
 pub mod dynamics;
+pub mod engine;
 pub mod protect;
 pub mod sparkle;
 
@@ -22,5 +23,6 @@ pub use detector::Detector;
 // neither is re-exported here — the module name is what tells them apart.
 pub use character::Character;
 pub use dynamics::{Curve, Weights};
+pub use engine::{Engine, Levels, Shape};
 pub use protect::DeHarsh;
 pub use sparkle::Sparkle;

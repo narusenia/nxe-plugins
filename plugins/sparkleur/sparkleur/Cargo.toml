@@ -1,0 +1,23 @@
+[package]
+name = "sparkleur"
+# **The plugin owns its version, not the workspace.** Releases are tagged
+# `sparkleur-v<version>`, so each plugin ships on its own schedule and a fix to
+# one does not re-release the others. `sparkleur-core` moves with it: they are
+# one shipping unit.
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Five-band up-and-down dynamics with a transient-gated harmonic generator"
+
+[lib]
+# `rlib` alongside `cdylib` so the crate's own tests can link it. The plugin
+# formats only ever load the `cdylib`.
+crate-type = ["cdylib", "rlib"]
+
+# No `nih_plug_vizia`, `nxe-ui` or `nxe-plug-ui` yet: this unit is the wiring
+# and there is no editor until `SPK-12` (`sparkleur-plan.md`).
+[dependencies]
+sparkleur-core = { workspace = true }
+nxe-audio = { workspace = true }
+nih_plug = { workspace = true }

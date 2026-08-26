@@ -8,3 +8,6 @@ name = "NXE Doubler"
 
 [velour]
 name = "NXE Velour"
+
+[sparkleur]
+name = "NXE Sparkleur"

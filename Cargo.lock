@@ -3006,6 +3006,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sparkleur"
+version = "0.1.0"
+dependencies = [
+ "nih_plug",
+ "nxe-audio",
+ "sparkleur-core",
+]
+
+[[package]]
 name = "sparkleur-core"
 version = "0.1.0"
 dependencies = [

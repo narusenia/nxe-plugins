@@ -123,7 +123,6 @@ fn loudness_db(position: f32) -> f32 {
     detector.set_speed(character.speed_centre, crossover.edges());
     let mut sparkle = Sparkle::new(RATE);
     sparkle.set(sparkle::Settings {
-        air: 0.5,
         snap: 0.5,
         bias: character.bias,
         hardness: character.hardness,
@@ -152,7 +151,7 @@ fn loudness_db(position: f32) -> f32 {
                     .zip(gains)
                     .map(|(band, gain)| band * linear(gain))
                     .sum();
-                wet + sparkle.process(bands[BAND_COUNT - 1])
+                wet + sparkle.process(bands[BAND_COUNT - 1], 0.5)
             })
             .collect::<Vec<f32>>()
     };

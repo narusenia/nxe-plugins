@@ -7,6 +7,7 @@ members = [
     "crates/nxe-ui",
     "plugins/doubler/doubler-core",
     "plugins/doubler/doubler",
+    "plugins/sparkleur/sparkleur",
     "plugins/sparkleur/sparkleur-core",
     "plugins/velour/velour-core",
     "plugins/velour/velour",
@@ -81,6 +82,9 @@ opt-level = 2
 opt-level = 2
 
 [profile.dev.package.sparkleur-core]
+opt-level = 2
+
+[profile.dev.package.sparkleur]
 opt-level = 2
 
 [profile.dev.package.velour-core]
