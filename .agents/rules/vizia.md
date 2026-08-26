@@ -5,7 +5,11 @@ paths:
   - "plugins/**/*.css"
 ---
 
-# UI rules
+# vizia rules
+
+**What this toolkit does, and what it silently does not.** The design rules —
+what the windows have to look like and how they have to read — are
+[`ui.md`](ui.md).
 
 ## Widget boundaries
 
@@ -27,6 +31,9 @@ paths:
 - **No blur, no glow, no frosted glass.** femtovg has no blur, so anything that
   needs one has to be faked with layered geometry and will look worse than not
   doing it. Depth comes from value contrast and one-pixel borders.
+
+What the tokens are *for* — one accent, gradients only for quantities, rules as
+structure — is [`ui.md`](ui.md).
 
 ## Icons
 

@@ -18,7 +18,9 @@
 2. [`implementation/backlog.md`](implementation/backlog.md) の「現在地」 — 今どこか
 3. 触るプラグインの `plugins/<name>/docs/implementation/<name>-plan.md` の
    **該当単位の「決めたこと」と「踏んだ罠」** — ここに時間を溶かした記録がある
-4. [`../.agents/rules/vizia.md`](../.agents/rules/vizia.md) — **UI を触るなら先に読む**
+4. **UI を触るなら先に**: [`../.agents/rules/ui.md`](../.agents/rules/ui.md)
+   （何を守るか）と [`../.agents/rules/vizia.md`](../.agents/rules/vizia.md)
+   （この vizia が黙って何もしない箇所）
 
 ## 何ができているか
 

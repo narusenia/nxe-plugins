@@ -1,0 +1,124 @@
+---
+paths:
+  - "crates/nxe-ui/**"
+  - "plugins/**/src/ui/**"
+  - "plugins/**/docs/specifications/ui.md"
+---
+
+# Interface rules
+
+**What the windows have to look like and how they have to read.** How the
+toolkit behaves — what parses, what silently does nothing — is
+[`vizia.md`](vizia.md). How to build with the widgets is
+[`crates/nxe-ui/README.md`](../../crates/nxe-ui/README.md).
+
+Every rule here was paid for. Where one has a scar, the scar is named.
+
+## The window
+
+- **A window's height is arithmetic, never a number found by looking.** Add up
+  the parts: `theme::SPACE_*`, `header::HEIGHT`, `readout::HEIGHT`, the figure,
+  `knob_block_height(size)`, the table. Text lines have `theme::LINE_*` for
+  exactly this reason — an `Auto` label takes its height from font metrics the
+  caller does not have, and a window sized around one runs off the bottom the
+  next time a row is added. It ran off five times in one afternoon before this
+  rule (`SPK-19`).
+- **The three plugins share one width.** Opened side by side they are one
+  product; different widths make them look like three. Heights differ, because
+  the amount inside them differs.
+- **Never ask the host to resize the editor.** A disclosure that resized the
+  window wedged Ableton (`DBL-*`). A control that has to become reachable does
+  so inside a fixed window.
+- **Fixed sizes come from the parts, so a figure's height is one constant.**
+  `field::HEIGHT` is the same number in every plugin: two figures tuned
+  separately are each right on their own and wrong beside each other.
+
+## Naming a region
+
+- **A region's name is an eyebrow over a rule** (`.eyebrow` inside `.heading`),
+  not a label. A region's name is not a control's name — set at the label size
+  it joins the row of controls under it instead of reading as structure.
+- **At most one `.readout` per region.** A panel where every figure is the
+  headline size has no subject.
+- **Rules are the structural device.** This design has no shadows and no
+  rounding, so the grid is drawn with lines. Per-side borders
+  (`border-bottom-width`) are how.
+
+## Colour
+
+- **One accent, and no second hue anywhere.** Things of the same kind are told
+  apart along the accent's own ramp (`ACCENT_DEEP` → `ACCENT_BRIGHT`), never by
+  introducing a colour.
+- **A gradient means a quantity.** Use `theme::accent_paint` where the fill
+  measures something: how far a bar got, how loud a meter is, how far a knob
+  turned. Pass **the whole track**, not the filled part, so two controls at
+  different values are the same colour where they overlap.
+- **A state is flat.** On/off has no "further" for the pale end to mean, and a
+  word sitting on a ramp changes contrast across its own width — a selected
+  segment read badly, which is how this rule got written (`SPK-19`). Traces and
+  rules are flat too: neither is a quantity.
+- **The window is painted by `.class("root")`.** Forget it and the ground is
+  the host's black while every `.panel` sits at `BACKGROUND`, so the panels read
+  as lighter boxes. The theme's "two levels, not three" needs the window to be
+  one of them.
+
+## Type
+
+- **Hierarchy comes from size, weight, colour and rules.** Not from tracking:
+  `letter-spacing` and `line-height` do not exist in this vizia revision, so a
+  design that needs them cannot be built here.
+- **Figures are set in the mono face** (`font::value`). A proportional face
+  changes width between a `1` and an `8`, and a value that jitters under a drag
+  is what fixing the decimal count was meant to prevent.
+- **Corners are square.** `RADIUS_CONTROL` and `RADIUS_CARD` are zero and a
+  compile-time assertion keeps them near it. A grid is drawn with straight
+  lines.
+
+## Readings
+
+- **Fixed width, right aligned** (`nxe_ui::readout`). A reading that changes
+  length moves everything laid out after it, three ways: the sign appears
+  crossing zero, a digit appears crossing ten, and a dash replaces the whole
+  thing in silence. Always printing the sign fixes the first; only a fixed box
+  fixes the others.
+- **Print the sign even when it carries nothing.** Gain reduction only ever goes
+  one way, so `-0.0` at rest is not information — but a minus that appears the
+  moment a band starts working makes the figure twitch, which reads as the
+  plugin being unsure.
+- **Silence is a dash, not a number.** `-142.0 dB` is six characters of noise
+  where a glance expects a level.
+- **Cells of different content are the same height.** A strip with a bar in it
+  and one without came out different heights, and every window below them
+  stopped lining up (`SPK-19`).
+
+## What is on screen
+
+- **Every parameter has a control.** A parameter reachable only through the
+  host's generic view compiles, saves, automates, and is never mentioned by the
+  window — nothing notices. Each plugin has a test that scans `params.rs` for
+  `#[id]` fields and fails if one has no mention in the views. Two controls were
+  lost to a header rewrite in the one crate that lacked it (`SPK-19`).
+- **Anything the audio thread already publishes is already paid for.** Two of
+  Sparkleur's handoffs were written every block and read by nothing. Before
+  adding an analyser, check what is already in `analysis.rs`.
+- **A protection that works invisibly is a control that does nothing.** If the
+  plugin holds something back, the window says so — and says *how far*, because
+  "it is being held back" does not tell anyone whether the setting is wrong or
+  the material is.
+- **Tabs are for controls that are not asked about together, not for saving
+  space.** Sparkleur's thirty-three and Velour's twenty-two are asked band by
+  band and cannot be asked of half a panel, so neither has tabs. Doubler's
+  fifteen are fewer and it keeps them: all of them at once is more choice than
+  "how wide, and how far apart" needs. **The count is not what decides it.**
+
+## Judging it
+
+- **Every widget in `nxe-ui` is in `examples/gallery.rs` in the same change.** A
+  widget not in the gallery cannot be reviewed without opening a DAW, so it will
+  not be.
+- **Dimensions are only settled in a host.** Velour went 580 → 528, Sparkleur's
+  figure 236 → 176 → 200. Expect the number written first to be wrong.
+- **UI defects do not fail tests.** Every one found by looking at a host in
+  `SPK-15` and `SPK-19` passed the whole suite. When something looks wrong,
+  **measure the screenshot's pixels** — it turned "the panel background looks
+  off" into "panels 0x0A, window 0x00" in one step.

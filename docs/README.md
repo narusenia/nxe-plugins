@@ -19,6 +19,7 @@
 | **どの順でやるか、なぜその順か** | [implementation/roadmap.md](implementation/roadmap.md) |
 | **共通ウィジェットの使い方**（契約・トークン・アイコン） | [`../crates/nxe-ui/README.md`](../crates/nxe-ui/README.md) |
 | **守るべき規約**（Rust / UI / 文書） | [`../.agents/rules/`](../.agents/rules/) |
+| **画面の規則**（グリッド、色、読み値、何を出すか） | [`../.agents/rules/ui.md`](../.agents/rules/ui.md) |
 | **踏んだ罠**（vizia の挙動、検証の抜け） | [`../.agents/rules/vizia.md`](../.agents/rules/vizia.md) / [`../.agents/rules/rust.md`](../.agents/rules/rust.md) |
 | **プラグイン固有の要件・仕様・計画** | `plugins/<name>/docs/` |
 

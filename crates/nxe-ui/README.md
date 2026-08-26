@@ -15,6 +15,10 @@ mise run gallery
 **このリビジョンの vizia で何ができて何ができないか**もそこに書いてある（先に
 読むと時間が節約できる）。
 
+**規則は [`.agents/rules/ui.md`](../../.agents/rules/ui.md)**（何を守るか）と
+[`.agents/rules/vizia.md`](../../.agents/rules/vizia.md)（この vizia が何をして
+何をしないか）。ここは**どう使うか**。
+
 ## 使いはじめ
 
 ウィンドウを組むとき最初に 1 回、テーマとアイコンフォントを入れる。
