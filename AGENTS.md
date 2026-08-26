@@ -17,6 +17,10 @@ with the code, and fix the document in the same change.
 
 ## Repository map
 
+- `crates/nxe-audio`: shared audio **processing** — the harmonic curve, the
+  oversampler, biquads, envelope followers, the relative guard. Host-agnostic
+  and interface-agnostic. **Separate from `nxe-dsp` on purpose**: a bug here
+  breaks the sound, a bug there breaks a picture
 - `crates/nxe-ui`: shared Vizia widgets, theme tokens, and the embedded Lucide
   icon font. **Depends on Vizia only, never on nih-plug** — widgets take a
   value plus a callback, and each plugin owns the thin adapter that binds them
@@ -30,8 +34,12 @@ with the code, and fix the document in the same change.
 - `plugins/velour/velour-core`: the Velour DSP. Host-agnostic, allocation-free
   on the audio path. `shaper`, `oversample` and `biquad` are written to know
   nothing about Velour, because Sparkleur will want them
-- `plugins/velour/velour`: the Velour nih-plug wrapper. **No interface yet** —
-  it makes sound through the host's generated parameter view
+- `plugins/velour/velour`: the Velour nih-plug wrapper — parameter
+  declarations, the Vizia UI, and the binding between them
+- `plugins/sparkleur/docs`: Sparkleur's requirements, specifications and plan.
+  **Designed, not built** — five-band multiband dynamics with a transient-gated
+  harmonic generator. Its first implementation unit is the one that creates
+  `crates/nxe-audio`
 - `docs/`: monorepo-wide documents (architecture, cross-plugin backlog and
   roadmap). Indexed by `docs/README.md`
 - `plugins/<name>/docs/`: that plugin's own requirements, specifications, and

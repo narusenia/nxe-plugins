@@ -9,9 +9,12 @@ Cargo.toml                        ワークスペース（依存のピンはこ�
 bundler.toml                      バンドルの表示名（パッケージ名でセクション分け）
 .cargo/config.toml                `cargo xtask` のエイリアス
 crates/
+  nxe-audio/                      共通の音声処理（カーブ・オーバーサンプラ・
+                                  biquad・エンベロープ・相対検出器）
   nxe-dsp/                        共通の解析（レベル・ステレオ像・スペクトラム）
   nxe-ui/                         共通 Vizia ウィジェット・テーマ・Lucide アイコン
     examples/gallery.rs           ウィジェット一覧を単体アプリとして起動
+  nxe-plug-ui/                    nih-plug のパラメータと nxe-ui の結線
 plugins/
   doubler/
     doubler-core/                 DSP のみ（ホスト非依存）
@@ -26,6 +29,29 @@ xtask/                            nih_plug_xtask のバンドラ
 `nxe-*` は共通クレートの接頭辞。プラグイン側のクレートは接頭辞を付けず
 プラグイン名そのもの（`doubler`、`doubler-core`）とする。共通か固有かが
 名前で判別できることを優先している。
+
+### `nxe-audio` と `nxe-dsp` を分けている理由
+
+どちらもホスト非依存・確保なし・音声スレッドで動く。分けているのは**リスクの
+階級が違う**から。
+
+- **`nxe-dsp` は音を変えない。** doc に「None of it changes the audio」と
+  書いてあるのが契約。ここのバグは**絵が壊れるだけ**
+- **`nxe-audio` は音そのもの。** ここのバグは**音が壊れる**
+
+同じ箱に入れると、その差が消えて「どっちに入れるのか」を毎回考えることになる。
+`Handoff` を挟んで解析が音声スレッドを止められない構造にしたのと同じ理由。
+
+### `nxe-plug-ui` が別クレートである理由
+
+`nxe-ui` は**nih-plug を知らない**（下の「依存の向き」）。パラメータとの結線は
+nih-plug と vizia の両方を知る必要があるので、**3 つ目のクレート**になる。
+`nxe-ui` に入れると `examples/gallery` が nih-plug をリンクして単体起動できなく
+なり、**DAW を開かずに UI を反復する**という土台が消える。
+
+Doubler と Velour は同内容の `param_bind.rs` をそれぞれ持っていた。
+**3 個目（Sparkleur）が要求した時点で上げる**（下の「共通クレートに上げる
+タイミング」）。
 
 ## 依存の向き
 
@@ -177,6 +203,8 @@ Windows・Linux でバンドルし、プラットフォームごとの zip を G
    backlog に無い単位は着手対象として見つけられない
 6. 順序に影響するなら `docs/implementation/roadmap.md` を直す
 7. `docs/README.md` と `README.md` のプラグイン表に行を足す
+8. **共通クレートに上げるものがあれば、その単位を計画の最初に置く。**
+   `nxe-audio` は Sparkleur が要求して生まれた（`REQ-SPK-015`）
 
 共通ウィジェットが足りなければ `nxe-ui` に足す。そのとき
 `examples/gallery.rs` にも同じ変更で追加する（`.agents/rules/vizia.md`）。

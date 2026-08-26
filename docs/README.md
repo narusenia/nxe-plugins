@@ -44,3 +44,4 @@
 |---|---|---|
 | Doubler | マルチボイスダブラー（2/4/8 ボイス） | [要件](../plugins/doubler/docs/requirements/REQ-DBL.md) / [DSP 仕様](../plugins/doubler/docs/specifications/dsp.md) / [UI 仕様](../plugins/doubler/docs/specifications/ui.md) / [計画](../plugins/doubler/docs/implementation/doubler-plan.md) |
 | Velour | ボーカルの存在感を生成するサチュレータ（並列 3 帯域） | [要件](../plugins/velour/docs/requirements/REQ-VEL.md) / [DSP 仕様](../plugins/velour/docs/specifications/dsp.md) / [UI 仕様](../plugins/velour/docs/specifications/ui.md) / [計画](../plugins/velour/docs/implementation/velour-plan.md) |
+| Sparkleur | マルチバンドダイナミクス + 動的な倍音生成（分割 5 帯域）**設計のみ** | [要件](../plugins/sparkleur/docs/requirements/REQ-SPK.md) / [DSP 仕様](../plugins/sparkleur/docs/specifications/dsp.md) / [UI 仕様](../plugins/sparkleur/docs/specifications/ui.md) / [計画](../plugins/sparkleur/docs/implementation/sparkleur-plan.md) |

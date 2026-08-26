@@ -82,6 +82,31 @@
 **Velour は `velour-v0.1.0` で一区切り。** トリム 9 個と Guard のしきい値、
 `REFERENCE_DB` は仮のまま残してある（触る理由が出てから動かす）。
 
+**3 個目 Sparkleur の設計が済んだ**（2026-08-26）。要件
+（[`REQ-SPK`](../../plugins/sparkleur/docs/requirements/REQ-SPK.md)）と
+[DSP 仕様](../../plugins/sparkleur/docs/specifications/dsp.md)、
+[UI 仕様](../../plugins/sparkleur/docs/specifications/ui.md)、
+[実装計画](../../plugins/sparkleur/docs/implementation/sparkleur-plan.md)まで。
+**実装は 1 行も書いていない。**
+
+方向は「**VO-TT の代わり + 手軽に綺麗**」。5 帯域の上下コンプ（分割型 —
+Velour の並列生成の裏返し）に、トランジェントでゲートした倍音生成を足す。
+WIDTH と PUNCH は v2（`REQ-SPK-019` / `REQ-SPK-020`）。
+
+設計で決めた主なもの:
+
+- **分割は LR4 の木 + オールパス補正。** 「全部 unity で和が ±0.1 dB 以内に
+  平坦」が `SPK-2` のゲート
+- **per-band の Attack / Release を出さない。** `SPEED` 1 本 + 帯域の中心
+  周波数から導出。100 Hz の 1 波長は 10 ms で、それより速い attack は波形を
+  変調する — **「LOW だけ速く」はできてはいけない操作**
+- **上げコンプに床と上限を機構として持つ。** 概念文書の Sub Protect は
+  「LOW の上限だけ小さい」で済む
+- **`SPARK` は「マクロのマクロ」にしない**（`REQ-VEL-019` が却下されたのと
+  同じ形）。量そのものに落とし、質は `CHARACTER` の 1 軸
+- **`MIX` = 0 だけがビット一致。** `SPARK` = 0 は振幅平坦・位相は回る
+  （分割型の帰結を正直に要件に書いた）
+
 `VEL-10` で**バグを 1 個潰した**: 非有限のサンプル 1 個で Guard がそのセッション
 の間ずっと無効になる（検波器の状態が再帰的なので NaN が抜けない）。音は出続ける
 ので他のテストに引っかからない類い。
@@ -100,9 +125,11 @@ Velour が共通クレートに要求したものは 3 つとも入っている�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| SPK-* | **Sparkleur の設計**（3 個目。マルチバンドダイナミクス + Harmonic Sparkle） | `roadmap.md` の「Velour の後」 |
+| SPK-1 | **共有クレート `nxe-audio` を作る**（`velour-core` から 5 モジュール移動 + `guard` の一般化） | `sparkleur-plan.md` |
+| SPK-10 | `nxe_ui::band::Band` の `reduction` を符号付き `delta` に（上げコンプが描けない） | `sparkleur-plan.md` |
+| SPK-11 | `param_bind` の共通化（3 個目が要求した。行き先は `nxe-ui` ではない） | `sparkleur-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
-| UI-9 | `ToggleSwitch`（**Doubler も Velour も使わない**。3 個目でも要らなければ落とす） | `nxe-ui-plan.md` |
+| UI-9 | `ToggleSwitch` — **3 個目の設計でも要らなかった**（`.segment` を当てた `Label` で足りる）。**落として良い** | `nxe-ui-plan.md` |
 
 Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`）は完了。
 **gallery で見る**（`mise run gallery`）。

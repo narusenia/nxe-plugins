@@ -195,3 +195,25 @@ Sparkleur（マルチバンドダイナミクス + Harmonic Sparkle）を **Velo
 （`architecture.md` の「2 個目が必要とするまで」）。ただし**パラメータ構造体を
 知らない自立したモジュールとして書き**、移動がファイルの移動だけで済む状態に
 する（`REQ-VEL-015`）。
+
+**この賭けは当たった**（2026-08-26）。Sparkleur の設計が済んだ時点で要求された
+のは `shaper` / `oversample` / `biquad` / `envelope` / `guard` の 5 つで、
+どれも Velour を知らないように書いてあるので**ファイルの移動で済む**
+（`guard` だけ、Velour 語彙のしきい値を引数に出す一般化が要る）。
+`density` / `texture` / `bands` は要求されなかったので `velour-core` に残る。
+移動は Sparkleur の最初の単位（`SPK-1`）で、行き先は新クレート
+**`nxe-audio`**（`REQ-SPK-015`、理由は `architecture.md`）。
+
+### Sparkleur の中での順序
+
+**v1 の線引きは設計で解いた**（`REQ-SPK-019` / `REQ-SPK-020`）。WIDTH と PUNCH を
+v2 に置き、核をマルチバンドダイナミクス + 動的な倍音生成に絞った。理由:
+
+- **WIDTH はモノ互換の約束を壊す唯一の機能**で、テストの道具立てが全部新規
+- **PUNCH は「効いたか」が一番耳頼み**。しかも Sparkle の検出器が既に
+  トランジェントを見ているので、**それを 1 個作って納得してから**足すほうが安全
+
+実装単位の順序は `plugins/sparkleur/docs/implementation/sparkleur-plan.md`。
+**ゲートは `SPK-2`（分割の和が ±0.1 dB 以内で平坦）** — ここが通らないと
+「全部 0 で何もしない」が成立せず、その上の全部が意味を持たない。
+Velour の `VEL-1` と同じ位置。

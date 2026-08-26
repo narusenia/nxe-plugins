@@ -1,7 +1,8 @@
 # 引き継ぎ
 
 **2026-08-26 時点。** Doubler は `doubler-v0.1.0` を**公開済み**、Velour は
-`velour-v0.1.0` で**一区切り**（下書き Release）。次は 3 個目の Sparkleur。
+`velour-v0.1.0` で**一区切り**（下書き Release）。**Sparkleur は設計書だけ
+書き終わって、実装は 1 行も無い。**
 
 このファイルは**そのとき何が動いていて、次に触る人が最初に知るべきこと**を
 1 枚にまとめたもの。設計の正は各仕様書、状態の正は
@@ -23,6 +24,7 @@
 | `plugins/velour` | NXE Velour。CLAP + VST3。パラメータ 22 個。UI・解析・既定値まで完了。`velour-v0.1.0` |
 | `crates/nxe-ui` | 共通ウィジェット・テーマ・アイコン。`mise run gallery` |
 | `crates/nxe-dsp` | 共通の解析（`Handoff` / `PanScope` / `Spectrum` / `Level`） |
+| `plugins/sparkleur` | **文書だけ。** 要件・DSP 仕様・UI 仕様・実装計画（`SPK-1`〜`SPK-18`）。クレートは無い |
 | CI | `check`（PR と main への push）、`release`（`<plugin>-v<version>` タグ） |
 
 テスト 241 本。CPU は予算 533 µs に対し **Doubler 85 µs / Velour 128 µs**
@@ -31,19 +33,25 @@
 
 ## 次にやること
 
-**3 個目の Sparkleur**（マルチバンドダイナミクス + Harmonic Sparkle）。
-順序の根拠は [`implementation/roadmap.md`](implementation/roadmap.md) の
-「Velour の後」、手順は `docs/specifications/architecture.md` の
-「新しいプラグインを足す」。
+**`SPK-1`（共有クレート `nxe-audio` を作る）。** Sparkleur の設計は済んでいて、
+[実装計画](../plugins/sparkleur/docs/implementation/sparkleur-plan.md)に
+`SPK-1`〜`SPK-18` が並んでいる。**最初の 3 つは Sparkleur のコードを 1 行も
+書かずに着手できる**:
 
-**`velour-core` の移動候補が Sparkleur の材料**（`shaper` / `oversample` /
-`biquad` / `guard` / `envelope` / `density`）。どれも Velour を知らないように
-書いてあるので、移動はファイルの移動で済む。**共通クレートに上げるのは
-Sparkleur が実際に要求してから。**
+| | 何 | なぜ先か |
+|---|---|---|
+| `SPK-1` | `velour-core` から `shaper` / `oversample` / `biquad` / `envelope` / `guard` を新クレート `nxe-audio` に移す（`guard` は一般化） | これが無いと Sparkleur が何も書けない。**Velour のテストが全部通ることが完了条件** |
+| `SPK-10` | `nxe_ui::band::Band` の `reduction` → 符号付き `delta` | 上げコンプが半分の製品で、絵が上げを描けない |
+| `SPK-11` | `param_bind` を新クレートに共通化 | Doubler と Velour で同内容が 2 つ。**3 個目が要求した** |
 
-`param_bind.rs` は Doubler と Velour で**同じ内容が 2 つある**。3 個目が要求
-したら共通化する — 置き場は `nxe-ui` ではなく **nih-plug と vizia の両方を
-知ってよい別クレート**（`nxe-ui` に入れると gallery が単体起動できなくなる）。
+**ゲートは `SPK-2`**（分割の和が ±0.1 dB 以内で平坦）。ここが通らないと
+「全部 0 で何もしない」が成立せず、その上の全部が意味を持たない。Velour の
+`VEL-1` と同じ位置。
+
+**設計で解いた一番大きい問題は v1 の線引き。** 概念文書は 4 製品ぶん
+（OTT / Exciter / Widener / Transient）あって、`roadmap.md` 自身が「v1 の
+線引き自体が難問」と書いていた。WIDTH と PUNCH を v2 に置いた理由は
+`REQ-SPK-019` / `REQ-SPK-020` にある。
 
 ## 仮のまま残してある定数
 
