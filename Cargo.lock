@@ -2139,6 +2139,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "nxe-dsp"
+version = "0.1.0"
+
+[[package]]
 name = "nxe-ui"
 version = "0.1.0"
 dependencies = [

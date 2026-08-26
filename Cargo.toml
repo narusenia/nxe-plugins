@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/nxe-dsp",
     "crates/nxe-ui",
     "plugins/doubler/doubler-core",
     "plugins/doubler/doubler",
