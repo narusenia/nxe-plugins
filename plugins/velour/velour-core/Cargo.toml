@@ -1,0 +1,12 @@
+[package]
+name = "velour-core"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The Velour DSP, independent of any plugin host"
+
+# Deliberately empty. This crate must not depend on nih-plug, Vizia, or any
+# host API: that is what keeps a future AU wrapper possible and what lets the
+# DSP be tested without a host (`.agents/rules/rust.md`, `REQ-VEL-015`).
+[dependencies]

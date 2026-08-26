@@ -3364,6 +3364,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "velour-core"
+version = "0.1.0"
+
+[[package]]
 name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"

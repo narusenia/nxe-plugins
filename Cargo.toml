@@ -5,6 +5,7 @@ members = [
     "crates/nxe-ui",
     "plugins/doubler/doubler-core",
     "plugins/doubler/doubler",
+    "plugins/velour/velour-core",
     "xtask",
 ]
 
@@ -18,6 +19,7 @@ repository = "https://github.com/narusenia/nxe-plugins"
 nxe-dsp = { path = "crates/nxe-dsp" }
 nxe-ui = { path = "crates/nxe-ui" }
 doubler-core = { path = "plugins/doubler/doubler-core" }
+velour-core = { path = "plugins/velour/velour-core" }
 
 # nih-plug is not on crates.io. All three crates come from one repository, so
 # they must stay on the same revision — `nih_plug_vizia` and `nih_plug_xtask`
@@ -66,4 +68,7 @@ lto = "thin"
 opt-level = 2
 
 [profile.dev.package.doubler]
+opt-level = 2
+
+[profile.dev.package.velour-core]
 opt-level = 2
