@@ -10,5 +10,7 @@
 //! with Velour live in [`nxe_audio`].
 
 pub mod crossover;
+pub mod detector;
 
 pub use crossover::{BAND_COUNT, Crossover};
+pub use detector::Detector;
