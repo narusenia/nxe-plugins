@@ -320,6 +320,7 @@ fn main() {
                 font::title(cx, "nxe-ui");
                 Label::new(cx, "tokens and widgets").class("subtle");
 
+                grid(cx);
                 colours(cx);
                 knobs(cx);
                 bars(cx);
@@ -369,6 +370,81 @@ fn swatch(cx: &mut Context, name: &str, token: theme::Token) {
     .width(Auto)
     .height(Auto)
     .row_between(Pixels(theme::SPACE_1));
+}
+
+/// The Swiss layer: eyebrows over rules, one readout per region, and the accent
+/// as a gradient rather than a block.
+///
+/// **This panel is the design, not a widget.** Everything below it is a control
+/// that happens to be styled; this is the grid those controls sit on, shown on
+/// its own so it can be judged without a knob in the way.
+fn grid(cx: &mut Context) {
+    panel(cx, "SWISS LAYER", |cx| {
+        HStack::new(cx, |cx| {
+            for (name, readout, unit) in [
+                ("DETECTION", "-18.4", "dB"),
+                ("REDUCTION", "-6.2", "dB"),
+                ("OUTPUT", "-0.3", "dB"),
+            ] {
+                VStack::new(cx, |cx| {
+                    VStack::new(cx, |cx| {
+                        Label::new(cx, name).class("eyebrow");
+                    })
+                    .class("heading");
+
+                    HStack::new(cx, |cx| {
+                        font::value(cx, readout).class("readout");
+                        Label::new(cx, unit).class("subtle");
+                    })
+                    .height(Auto)
+                    .width(Auto)
+                    .col_between(Pixels(theme::SPACE_1))
+                    .child_top(Stretch(1.0));
+                })
+                .width(Stretch(1.0))
+                .height(Auto)
+                .row_between(Pixels(theme::SPACE_2));
+            }
+        })
+        .height(Auto)
+        .col_between(Pixels(theme::SPACE_4));
+
+        Element::new(cx).class("rule-accent");
+
+        // The two rules, side by side, so the weight difference is visible.
+        VStack::new(cx, |cx| {
+            Label::new(cx, "rule").class("subtle");
+            Element::new(cx).class("rule");
+            Label::new(cx, "rule-accent").class("subtle");
+            Element::new(cx).class("rule-accent");
+        })
+        .height(Auto)
+        .row_between(Pixels(theme::SPACE_2));
+
+        // The gradient fill, horizontal and vertical.
+        HStack::new(cx, |cx| {
+            VStack::new(cx, |cx| {
+                Label::new(cx, "accent").class("subtle");
+                Element::new(cx).class("accent").height(Pixels(10.0));
+            })
+            .width(Stretch(1.0))
+            .height(Auto)
+            .row_between(Pixels(theme::SPACE_1));
+
+            VStack::new(cx, |cx| {
+                Label::new(cx, "accent-up").class("subtle");
+                Element::new(cx)
+                    .class("accent-up")
+                    .width(Pixels(10.0))
+                    .height(Pixels(48.0));
+            })
+            .width(Auto)
+            .height(Auto)
+            .row_between(Pixels(theme::SPACE_1));
+        })
+        .height(Auto)
+        .col_between(Pixels(theme::SPACE_4));
+    });
 }
 
 fn colours(cx: &mut Context) {

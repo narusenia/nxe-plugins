@@ -121,10 +121,32 @@ pub const ACCENT_BRIGHT: Token = Token::rgb(0x7D, 0xD3, 0xFC);
 /// second hue**, which is the one thing this palette does not allow.
 pub const ACCENT_DEEP: Token = Token::rgb(0x03, 0x69, 0xA1);
 pub const ACCENT_DIM: Token = Token::rgba(0x38, 0xBD, 0xF8, 0.18);
+/// The pale end of the accent — blue so light it reads as white.
+///
+/// **The far stop of every accent gradient.** Still the same hue, so the
+/// "one accent and no other" rule holds: what changes along a filled bar is
+/// lightness, not colour.
+pub const ACCENT_WASH: Token = Token::rgb(0xE0, 0xF2, 0xFE);
 
-/// Corner radii. **Zero — the corners are square.** They were 2 and 3 px, on the
-/// theory that a hair of radius keeps a one-pixel border from looking chipped;
-/// on screen the hard corner simply looked better, and the shapes are the design.
+/// A two-stop linear gradient, for `background-image`.
+///
+/// **`background-image`, not `background-color`** — vizia parses
+/// `linear-gradient` only there, and a rule that sets both draws the colour
+/// under the gradient rather than instead of it. Only linear gradients exist in
+/// this revision; there is no radial.
+pub fn gradient(direction: &str, from: Token, to: Token) -> String {
+    format!(
+        "linear-gradient(to {direction}, {}, {})",
+        from.css(),
+        to.css()
+    )
+}
+
+/// Corner radii. **Zero — the corners are square**, and they stay that way.
+/// They were 2 and 3 px, on the theory that a hair of radius keeps a one-pixel
+/// border from looking chipped; on screen the hard corner simply looked better,
+/// and the shapes are the design. The Swiss direction the interface took later
+/// only made the case stronger — a grid is drawn with straight lines.
 ///
 /// They stay as named constants rather than being deleted: every rounded shape
 /// reads them, so a change of mind is one line rather than a sweep.
@@ -142,6 +164,21 @@ pub const SPACE_2: f32 = 8.0;
 pub const SPACE_3: f32 = 12.0;
 pub const SPACE_4: f32 = 16.0;
 pub const SPACE_5: f32 = 24.0;
+
+/// The eyebrow: the smallest thing on screen, naming a region rather than a
+/// control.
+///
+/// **A region's name is not a control's name.** Set small, in [`SUBTLE`], over
+/// a hairline, it reads as structure — the grid saying what this part of the
+/// window is — instead of joining the row of labels underneath it.
+pub const FONT_EYEBROW: f32 = 9.0;
+
+/// The one figure that is the answer rather than a setting.
+///
+/// A panel whose numbers are all the same size has no subject. This is for the
+/// number a region exists to show — the gain reduction, the output level —
+/// and there should be **at most one per region**.
+pub const FONT_READOUT: f32 = 15.0;
 
 /// Two text sizes. Labels name things, values say what they are.
 ///
@@ -174,6 +211,9 @@ pub fn stylesheet() -> String {
     let subtle = SUBTLE.css();
     let accent = ACCENT.css();
     let accent_dim = ACCENT_DIM.css();
+    let accent_fill = gradient("right", ACCENT, ACCENT_WASH);
+    let accent_fill_up = gradient("top", ACCENT, ACCENT_WASH);
+    let rule_accent = gradient("right", ACCENT, ACCENT.at(0.0));
 
     format!(
         "
@@ -256,9 +296,61 @@ label {{
     border-radius: {RADIUS_CONTROL}px;
 }}
 
+/* A filled part of a control. **A gradient along the fill, not a flat block**:
+   the pale end marks where the value got to, so a bar reads as a quantity with
+   a direction rather than as a coloured rectangle. Still one hue — what moves
+   is lightness. */
 .accent {{
-    background-color: {accent};
+    background-image: {accent_fill};
     border-radius: {RADIUS_CONTROL}px;
+}}
+
+/* The same fill for something that grows upward rather than rightward. */
+.accent-up {{
+    background-image: {accent_fill_up};
+    border-radius: {RADIUS_CONTROL}px;
+}}
+
+/* Rules. **The structural device of this design** — the grid made visible, in
+   place of the boxes and shadows a rounder interface would use. A rule sits
+   under the thing it belongs to and runs the full width of the column, so the
+   eye reads columns before it reads controls. */
+.rule {{
+    height: 1px;
+    width: 1s;
+    background-color: {border};
+}}
+
+/* A rule that marks the subject of a region. Fades out along its length, so it
+   reads as a start rather than as one side of a box. */
+.rule-accent {{
+    height: 2px;
+    width: 1s;
+    background-image: {rule_accent};
+}}
+
+/* A region's name, over its rule. `.eyebrow` is the text, `.heading` is the
+   pair — put `.heading` on the container and `.eyebrow` on the label. */
+.eyebrow {{
+    color: {subtle};
+    font-size: {FONT_EYEBROW};
+}}
+
+.heading {{
+    layout-type: column;
+    height: auto;
+    width: 1s;
+    row-between: {SPACE_1}px;
+    border-bottom-width: 1px;
+    border-bottom-color: {border};
+    child-bottom: {SPACE_1}px;
+}}
+
+/* The one number a region exists to show. At most one per region: a panel where
+   every figure is this size has no subject. */
+.readout {{
+    color: {foreground};
+    font-size: {FONT_READOUT};
 }}
 
 /* A row of choices. The container holds the groove; the segments sit inside it
@@ -292,7 +384,7 @@ label {{
 
 .segment:checked {{
     color: {background};
-    background-color: {accent};
+    background-image: {accent_fill};
 }}
 
 /* A number that can be typed into. It looks like any other value until the
