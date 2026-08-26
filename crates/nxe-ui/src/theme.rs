@@ -100,16 +100,19 @@ pub const ACCENT: Token = Token::rgb(0x38, 0xBD, 0xF8);
 pub const ACCENT_BRIGHT: Token = Token::rgb(0x7D, 0xD3, 0xFC);
 pub const ACCENT_DIM: Token = Token::rgba(0x38, 0xBD, 0xF8, 0.18);
 
-/// Corner radii. Deliberately small: the design is angular, and the corners are
-/// there to stop a one-pixel border from looking chipped, not to soften
-/// anything. Set both to zero for hard corners — nothing else has to change.
-pub const RADIUS_CONTROL: f32 = 2.0;
-pub const RADIUS_CARD: f32 = 3.0;
+/// Corner radii. **Zero — the corners are square.** They were 2 and 3 px, on the
+/// theory that a hair of radius keeps a one-pixel border from looking chipped;
+/// on screen the hard corner simply looked better, and the shapes are the design.
+///
+/// They stay as named constants rather than being deleted: every rounded shape
+/// reads them, so a change of mind is one line rather than a sweep.
+pub const RADIUS_CONTROL: f32 = 0.0;
+pub const RADIUS_CARD: f32 = 0.0;
 
 // Guards, not tests: someone reaching for a comfortable radius later should be
 // stopped by the compiler rather than by a test they might not run.
-const _: () = assert!(RADIUS_CONTROL <= 3.0, "controls are getting round");
-const _: () = assert!(RADIUS_CARD <= 4.0, "surfaces are getting round");
+const _: () = assert!(RADIUS_CONTROL <= 2.0, "controls are getting round");
+const _: () = assert!(RADIUS_CARD <= 2.0, "surfaces are getting round");
 
 /// The spacing scale. Five steps on a four-pixel grid; nothing between them.
 pub const SPACE_1: f32 = 4.0;

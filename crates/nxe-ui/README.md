@@ -93,8 +93,8 @@ theme::ACCENT.css()     // 生成される CSS 用
   16 進の色が含まれないことをテストで固定してある
 - **面と文字はニュートラル**（RGB の 3 チャネルが等しい）。アクセントだけが色を
   持つ。これもテストで固定
-- 角丸は `RADIUS_CONTROL` = 2px / `RADIUS_CARD` = 3px。**角張ったデザイン。**
-  丸めようとするとコンパイル時アサーションで止まる
+- **角丸は無し**（`RADIUS_CONTROL` / `RADIUS_CARD` とも 0）。丸めようとすると
+  コンパイル時アサーションで止まる。定数は残してあるので、気が変われば 1 行
 - 間隔は 4px グリッドの 5 段（`SPACE_1`..`SPACE_5`）。この 5 つ以外を使わない
 - 文字は 2 段（`FONT_LABEL` 12 / `FONT_VALUE` 10）と、ワードマーク用の `FONT_TITLE` 17。**CSS には単位を書かない** — この vizia は `font-size` に `px` を受け付けず、黙って既定の 16 に落ちる
 - **ブラー・グロー・ガラス質感は使わない。** femtovg にブラーが無く、偽装すると
@@ -163,7 +163,7 @@ icon::label(cx, icon::CHEVRON_DOWN).font_size(20.0);
 1. `src/<name>.rs` に置き、`src/lib.rs` で公開する
 2. 値は `impl Res<T>`、通知はコールバック。**パラメータを知ってはいけない**
 3. 入力のふるまいは [`input`](src/input.rs) を使う。ドラッグの算術を再実装しない
-4. 描画は `View::draw` を書く前に CSS で足りないか考える。角丸の箱と文字で
+4. 描画は `View::draw` を書く前に CSS で足りないか考える。箱と文字で
    表現できるものは CSS の仕事
 5. **同じ変更で [`examples/gallery.rs`](examples/gallery.rs) に並べる。**
    gallery に無いウィジェットは DAW を開かないとレビューできないので、
