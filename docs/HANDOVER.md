@@ -1,9 +1,9 @@
 # 引き継ぎ
 
 **2026-08-27 時点。** Doubler は `doubler-v0.1.0` を**公開済み**、Velour は
-`velour-v0.1.0` で**一区切り**（下書き Release）。**Sparkleur は `SPK-1`〜`SPK-12` と `SPK-16` / `SPK-17` —
-音も解析も CPU も、UI のマクロ層も入った。残っているのは図とメーターと
-Advanced（`SPK-13`〜`SPK-15`）と既定値（`SPK-18`、耳が要る）**。
+`velour-v0.1.0` で**一区切り**（下書き Release）。**Sparkleur は `SPK-1`〜`SPK-13` と `SPK-16` / `SPK-17` —
+音も解析も CPU も、UI のマクロ層と図も入った。残っているのは小窓とメーター
+（`SPK-14`）、Advanced（`SPK-15`）、既定値（`SPK-18`、耳が要る）**。
 **実機で見ていないので、寸法も含めてまだ確認が要る。**
 
 このファイルは**そのとき何が動いていて、次に触る人が最初に知るべきこと**を
@@ -29,11 +29,11 @@ Advanced（`SPK-13`〜`SPK-15`）と既定値（`SPK-18`、耳が要る）**。
 | `crates/nxe-plug-ui` | nih-plug のパラメータと `nxe-ui` の結線。**両方を知る唯一のクレート**（`SPK-11`） |
 | `crates/nxe-dsp` | 共通の解析（`Handoff` / `PanScope` / `Spectrum` / `Level`） |
 | `plugins/sparkleur/sparkleur-core` | **DSP は全部。** 5 帯域クロスオーバー、検波、上下コンプ、Sparkle、`CHARACTER`、De-Harsh / Sub Protect、エンジン |
-| `plugins/sparkleur/sparkleur` | NXE Sparkleur。CLAP + VST3。パラメータ 33 個。解析も配線済み。**UI はマクロ層 7 ノブ + タブまで**（図・メーター・Advanced は `SPK-13`〜） |
+| `plugins/sparkleur/sparkleur` | NXE Sparkleur。CLAP + VST3。パラメータ 33 個。**UI はマクロ層 7 ノブ + タブ + Band Field**（小窓・メーター・Advanced は `SPK-14`〜） |
 | `plugins/sparkleur/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`SPK-1`〜`SPK-18`）。`sparkleur` ラッパクレートは無い |
 | CI | `check`（PR と main への push）、`release`（`<plugin>-v<version>` タグ） |
 
-テスト 332 本。CPU は予算 533 µs に対し
+テスト 339 本。CPU は予算 533 µs に対し
 **Doubler 85 µs / Velour 128 µs / Sparkleur 129 µs**
 （`VEL-16`。Velour の内訳はエンジン 4x が 79、`Spectrum` 48 バンド × 2 が 45、
 `Level` × 4 が 4）。
@@ -44,10 +44,9 @@ Advanced（`SPK-13`〜`SPK-15`）と既定値（`SPK-18`、耳が要る）**。
 `SPK-8` の完了条件で唯一残っているのがこれで、**耳と DAW が要る**。UI はまだ
 無いのでホストの汎用ビューで触ることになる。
 
-次は **`SPK-13`（Band Field、図の主役）** か **`SPK-14`（小窓とメーター）**。
-材料は全部ある — 符号付きの `Band::delta` と `.unity(y)`、`Analysis` の 6 本、
-`Engine::edges()`。その後 `SPK-15`（Advanced の 33 個ぶんの表）、
-**最後が `SPK-18`（既定値。耳が要る）。**
+次は **`SPK-14`（伝達曲線の小窓と IN / OUT メーター）** か
+**`SPK-15`（Advanced の表）**。どちらも `SPK-13` で入った `Ui` の心拍と
+`Analysis` に乗るだけ。**最後が `SPK-18`（既定値。耳が要る）。**
 
 **`SPK-18` に持ち越した宿題が 1 つ**: `CHARACTER` の既定 0.27 は読み値が
 「GLOSS 27 %」になる（一番近いアンカーが GLOSS のため）。既定を 0.25 未満に

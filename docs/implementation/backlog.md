@@ -224,6 +224,12 @@ Velour で見つけたのと同じ形が、別の場所（クロスオーバー�
 `assert_process_allocs` はホストの debug ビルドの中でしか動かないので、
 `mise run check` で毎回動くほうが regression を見つける。
 
+**`SPK-13` で図が入った**（2026-08-27）。5 区画、unity の線、`FOCUS` のレール。
+テスト 339 本。区画の左右は **`crossover::edges_for` を公開して音と共有**し、
+`Crossover::edges()` と一致することをテストで固定した。**`Engine::gains_db()` が
+De-Harsh を含むようにした** — 図が描くのは「実際に掛かっているゲイン」なので、
+保護が抜けていると**プラグインが引いているのに区画が沈まない**。
+
 **`SPK-12` で UI が始まった**（2026-08-27）。メインタブの 7 ノブとタブ。
 テスト 332 本。**図とメーターと Advanced は空のまま置いてある** — 中途半端に
 何か描くと完成品と見分けが付かない。**寸法は実機で見てから**（Velour は 580 で
@@ -289,7 +295,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| SPK-13 | **UI Band Field** — 5 区画。図の主役 | `sparkleur-plan.md` |
+| SPK-14 | **UI 小窓とメーター** — 伝達曲線と IN / OUT | `sparkleur-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 | UI-9 | `ToggleSwitch` — **3 個目の設計でも要らなかった**（`.segment` を当てた `Label` で足りる）。**落として良い** | `nxe-ui-plan.md` |
 
@@ -413,9 +419,9 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | SPK-10 | `nxe_ui::band::Band` の `reduction` を符号付き `delta` に | ✅ |
 | SPK-11 | `param_bind` の共通化（行き先は `nxe-plug-ui`） | ✅ `5e05b70` |
 | SPK-12 | UI マクロ層（メインタブ） | ✅ `a9e9867` **実機確認だけ未** |
-| SPK-13 | UI Band Field（5 区画） | 🟡 |
+| SPK-13 | UI Band Field（5 区画） | ✅ `2194b9b` **実機確認だけ未** |
 | SPK-14 | UI 小窓とメーター | 🟡 |
-| SPK-15 | UI Advanced タブ | ⬜ SPK-13 |
+| SPK-15 | UI Advanced タブ | 🟡 |
 | SPK-16 | 解析の配線 | ✅ `bb6077c` |
 | SPK-17 | CPU 予算 | ✅ **129 µs / 予算 533** |
 | SPK-18 | 既定値と耳 | ❓ **耳が要る** |
