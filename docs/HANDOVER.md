@@ -1,7 +1,7 @@
 # 引き継ぎ
 
 **2026-08-26 時点。** Doubler は `doubler-v0.1.0` を**公開済み**、Velour は
-**DSP・UI・CPU 予算まで終わって、残りは耳で詰めるだけ**。
+`velour-v0.1.0` で**一区切り**（下書き Release）。次は 3 個目の Sparkleur。
 
 このファイルは**そのとき何が動いていて、次に触る人が最初に知るべきこと**を
 1 枚にまとめたもの。設計の正は各仕様書、状態の正は
@@ -20,7 +20,7 @@
 | | |
 |---|---|
 | `plugins/doubler` | NXE Doubler。CLAP + VST3。`doubler-v0.1.0` **公開済み** |
-| `plugins/velour` | NXE Velour。CLAP + VST3。パラメータ 22 個（打ち止め）。UI あり（**実機で見ての確認が残っている**） |
+| `plugins/velour` | NXE Velour。CLAP + VST3。パラメータ 22 個。UI・解析・既定値まで完了。`velour-v0.1.0` |
 | `crates/nxe-ui` | 共通ウィジェット・テーマ・アイコン。`mise run gallery` |
 | `crates/nxe-dsp` | 共通の解析（`Handoff` / `PanScope` / `Spectrum` / `Level`） |
 | CI | `check`（PR と main への push）、`release`（`<plugin>-v<version>` タグ） |
@@ -31,26 +31,32 @@
 
 ## 次にやること
 
-**`VEL-17`（既定値と耳の定数を詰める）→ `velour-v0.1.0` のタグ。**
-**残っている単位はこれだけ。** `velour-plan.md` に一覧がある。
+**3 個目の Sparkleur**（マルチバンドダイナミクス + Harmonic Sparkle）。
+順序の根拠は [`implementation/roadmap.md`](implementation/roadmap.md) の
+「Velour の後」、手順は `docs/specifications/architecture.md` の
+「新しいプラグインを足す」。
 
-**耳の作業なので、コードだけでは終われない。** 何を聴くかは下の表。
-UI は実機で 1 周見て、4 つの罠を直してある（`velour-plan.md` の `VEL-11`〜
-`VEL-14`）。寸法は 680 × 528 に詰めた。
+**`velour-core` の移動候補が Sparkleur の材料**（`shaper` / `oversample` /
+`biquad` / `guard` / `envelope` / `density`）。どれも Velour を知らないように
+書いてあるので、移動はファイルの移動で済む。**共通クレートに上げるのは
+Sparkleur が実際に要求してから。**
 
-## 耳での確認を待っているもの
+`param_bind.rs` は Doubler と Velour で**同じ内容が 2 つある**。3 個目が要求
+したら共通化する — 置き場は `nxe-ui` ではなく **nih-plug と vizia の両方を
+知ってよい別クレート**（`nxe-ui` に入れると gallery が単体起動できなくなる）。
 
-コードは動いていて、**良し悪しの判断だけが残っている**もの。
+## 仮のまま残してある定数
+
+**動かす理由が出てから触る。** 既定値は `VEL-17` で決めた（`DRIVE` 80 /
+`BODY` 40 / `PRESENCE` 60 / `AIR` 40 / `TEXTURE` 50 / `DENSITY` 50 / `MIX` 80）。
 
 | 何 | 聴きどころ |
 |---|---|
-| `VEL-4` の `TEXTURE` | Warm と Edge が**別の質感**に聞こえるか。Warm → Edge で **−3.0 dB** レベルが動くのが気になるか |
-| `VEL-8` の Guard | 普通のボーカルで**動かない**か（動くならしきい値が厳しい）。入力ゲインを ±12 dB しても効き方が変わらないか |
-| `VEL-9` の `SOLO` | 各帯域が何を足しているか。`Air Bias` +1 の質感 |
-| `VEL-6` の `EMOTION` | 既定 0.5 で、**声量差で質感が変わるのが分かるか / 不安定でないか**。`REFERENCE_DB` −18 が普通のボーカルの位置に合っているか |
-| `VEL-7` の `DENSITY` | 振り切って「平坦だが死んでいない」か。`REFERENCE_DB` は `EMOTION` と**共有**なので、動かすと両方に効く |
-| UI 全体 | **まだ実機で見ていない。** 寸法、区画の掴みやすさ、Advanced の列の揃い、メーターの読みやすさ |
-| 既定値すべて | **全部仮。** プリセットを持たない方針（`REQ-VEL-020`）なので既定値が製品の顔。`VEL-17` でまとめて詰める |
+| `TEXTURE` のトリム 9 個 | Warm → Edge で **−3.0 dB** レベルが動く残差を吸収するためにある。一番「仮」なところ |
+| Guard のしきい値 −8 / −14 dB | 普通のボーカルで**動かない**のが正。動くなら厳しい |
+| `EMOTION` の係数 3 つ | 0.50 / 0.40 / 0.30。声量差で質感が変わるのが**分かるが不安定でない**か |
+| `REFERENCE_DB` −18 dB | `EMOTION` の軸の中心と `DENSITY` の支点を兼ねる 1 個の数。動かすと両方に効く |
+| `BIAS_LEVEL_DB` 0 | 知覚的な密度をどれだけ返すか。機構は仕様、量は耳 |
 
 ## Velour で踏んだ罠（同じ形を 3 回やった）
 
