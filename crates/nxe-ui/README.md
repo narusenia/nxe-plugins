@@ -96,7 +96,7 @@ theme::ACCENT.css()     // 生成される CSS 用
 - 角丸は `RADIUS_CONTROL` = 2px / `RADIUS_CARD` = 3px。**角張ったデザイン。**
   丸めようとするとコンパイル時アサーションで止まる
 - 間隔は 4px グリッドの 5 段（`SPACE_1`..`SPACE_5`）。この 5 つ以外を使わない
-- 文字は 2 段（`FONT_LABEL` 10px / `FONT_VALUE` 8px）
+- 文字は 2 段（`FONT_LABEL` 11 / `FONT_VALUE` 10）。**CSS には単位を書かない** — この vizia は `font-size` に `px` を受け付けず、黙って既定の 16 に落ちる
 - **ブラー・グロー・ガラス質感は使わない。** femtovg にブラーが無く、偽装すると
   素でやるより悪くなる。深さは値のコントラストと 1px の線だけで作る
 

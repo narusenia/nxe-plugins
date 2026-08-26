@@ -37,7 +37,7 @@ const HEIGHT: u32 = 572;
 const TAB_HEIGHT: f32 = 230.0;
 
 /// The Voice Field's height, and the width of the column of global controls
-/// beside it. Tall enough for three knobs stacked beside the figure.
+/// beside it.
 const FIELD_HEIGHT: f32 = 236.0;
 const SIDE_WIDTH: f32 = 96.0;
 
@@ -194,12 +194,10 @@ fn field_row(cx: &mut Context) {
     HStack::new(cx, |cx| {
         field::view(cx);
 
-        // In signal order: the dry trim, then the balance, then the last stage.
-        // `DRY` has a knob as well as the figure's ▲ for the same reason the
+        // `MIX` has a knob as well as the figure's ▲ for the same reason the
         // shape layer has both a figure and a table — one is for reading, the
         // other for setting a number.
         VStack::new(cx, |cx| {
-            macro_knob(cx, "DRY", |params| &params.dry_gain, 34.0);
             macro_knob(cx, "MIX", |params| &params.mix, 34.0);
             macro_knob(cx, "OUTPUT", |params| &params.output, 34.0);
         })

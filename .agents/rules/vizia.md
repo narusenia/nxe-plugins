@@ -104,6 +104,17 @@ away — the same CSS works when the child is a `Label`, which sets `Auto` itsel
 When a container's size comes from its content, say `.width(Auto)` on every
 level, not just the outermost.
 
+**`font-size` takes a bare number, not a length.** This revision parses it as a
+keyword (`medium`, `x-small`, …) or an `f32` and nothing else, so `font-size:
+12px` fails to parse and **the declaration is dropped silently** — the label
+renders at the 16 px default. Every other length in the stylesheet does take
+`px`, which is what makes this one easy to miss: the design simply looked large,
+and no size ever changed anything. Write `font-size: 12;`.
+
+More generally: **a CSS declaration this revision cannot parse costs nothing at
+runtime and says nothing.** When a stylesheet change appears to do nothing, check
+the value type in `vizia_style` before assuming the rule did not match.
+
 **A widget must not move its own value optimistically.** `binding_system`
 re-reads every bound lens and compares with `Data::same`, so **a write the caller
 clamps produces no update** — the value did not change. A widget that moved its

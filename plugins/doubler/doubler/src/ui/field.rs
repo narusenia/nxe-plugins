@@ -65,13 +65,19 @@ fn points_of(params: &DoublerParams) -> Vec<FieldPoint> {
 /// with no pan offset would, so raising `Spread` visibly pushes the two sources
 /// apart.
 ///
-/// **Their radius is `Dry Gain`**, read on the same axis as the dots' own level,
-/// so the dry sits in the picture with the voices rather than beside it. Both
-/// markers show one value; dragging either writes it.
+/// **Their radius is the dry level**, so the dry sits in the picture with the
+/// voices rather than beside it. Both markers show one value; dragging either
+/// writes it.
+///
+/// The level is `1 - Mix`, the dry's amplitude — **not dB like the dots**. A dB
+/// scale has no bottom, and the one thing this marker has to get right is that
+/// `Mix` = 100% puts it exactly on the origin, because that is what "the dry is
+/// gone" looks like (`REQ-DBL-006`). Both read the same way regardless: further
+/// out is louder.
 fn anchors_of(params: &DoublerParams) -> Vec<FieldPoint> {
     let source = source_of(params);
     let spread = params.spread.value();
-    let radius = params.dry_gain.unmodulated_normalized_value();
+    let radius = 1.0 - params.mix.unmodulated_normalized_value();
 
     let markers = match source {
         Source::MonoSum => 1,
@@ -134,7 +140,7 @@ pub fn view(cx: &mut Context) {
     let anchors = Ui::params.map(|params| anchors_of(params));
     let source_and_spread = Ui::params.map(|params| (source_of(params), params.spread.value()));
 
-    let dry = ParamWidgetBase::new(cx, Ui::params, |params| &params.dry_gain);
+    let mix = ParamWidgetBase::new(cx, Ui::params, |params| &params.mix);
 
     PolarField::new(cx, points, anchors, move |cx, gesture| {
         let index = match gesture {
@@ -146,24 +152,24 @@ pub fn view(cx: &mut Context) {
                 cx.emit(UiEvent::Hover(over));
                 return;
             }
-            // The source markers carry `Dry Gain`, on the same radial axis the
-            // dots use for their own level.
+            // The source markers carry the dry level, which is `Mix` read from
+            // the other end: pulling a marker in is turning the dry down.
             FieldGesture::AnchorBegin => {
-                dry.begin_set_parameter(cx);
+                mix.begin_set_parameter(cx);
                 return;
             }
             FieldGesture::AnchorChange(radius) => {
-                dry.set_normalized_value(cx, radius);
+                mix.set_normalized_value(cx, 1.0 - radius);
                 return;
             }
             FieldGesture::AnchorEnd => {
-                dry.end_set_parameter(cx);
+                mix.end_set_parameter(cx);
                 return;
             }
             FieldGesture::AnchorReset => {
-                dry.begin_set_parameter(cx);
-                dry.set_normalized_value(cx, dry.default_normalized_value());
-                dry.end_set_parameter(cx);
+                mix.begin_set_parameter(cx);
+                mix.set_normalized_value(cx, mix.default_normalized_value());
+                mix.end_set_parameter(cx);
                 return;
             }
         };

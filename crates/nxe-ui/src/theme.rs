@@ -123,8 +123,13 @@ pub const SPACE_5: f32 = 24.0;
 /// The value is the *smaller* of the two on purpose: it is set in mono at full
 /// contrast, which already makes it the thing the eye lands on. At the label's
 /// size it read as a headline under every knob.
-pub const FONT_LABEL: f32 = 10.0;
-pub const FONT_VALUE: f32 = 8.0;
+///
+/// **Written without a unit.** This vizia revision parses `font-size` as a
+/// keyword or a bare number and nothing else, so `10px` fails to parse and the
+/// declaration is dropped — silently, leaving every label at the 16 px default.
+/// The test below is what keeps a `px` from creeping back in.
+pub const FONT_LABEL: f32 = 11.0;
+pub const FONT_VALUE: f32 = 10.0;
 
 /// Hover and selection only. Never a value: a knob that lags the mouse feels
 /// broken.
@@ -150,7 +155,7 @@ pub fn stylesheet() -> String {
    The classes below then only have to say what is *different*. */
 label {{
     color: {foreground};
-    font-size: {FONT_VALUE}px;
+    font-size: {FONT_VALUE};
 }}
 
 .root {{
@@ -196,17 +201,17 @@ label {{
 
 .label {{
     color: {muted};
-    font-size: {FONT_LABEL}px;
+    font-size: {FONT_LABEL};
 }}
 
 .value {{
     color: {foreground};
-    font-size: {FONT_VALUE}px;
+    font-size: {FONT_VALUE};
 }}
 
 .subtle {{
     color: {subtle};
-    font-size: {FONT_LABEL}px;
+    font-size: {FONT_LABEL};
 }}
 
 /* Colour only. The family is set by `icon::label`, because `font-family` in a
@@ -247,7 +252,7 @@ label {{
 
 .segment {{
     color: {muted};
-    font-size: {FONT_LABEL}px;
+    font-size: {FONT_LABEL};
     child-space: 1s;
     child-left: {SPACE_2}px;
     child-right: {SPACE_2}px;
@@ -383,6 +388,23 @@ mod tests {
             assert!(
                 css.contains(class),
                 "{class} is missing from the stylesheet"
+            );
+        }
+    }
+
+    /// `font-size` takes a keyword or a bare number in this vizia revision, and
+    /// a value it cannot parse is dropped without a word — every label then
+    /// renders at the 16 px default. That looked like "the design is just big"
+    /// for as long as it took to notice the sizes never moved.
+    #[test]
+    fn font_sizes_carry_no_unit() {
+        let css = stylesheet();
+        for declaration in css.match_indices("font-size:") {
+            let rest = &css[declaration.0 + "font-size:".len()..];
+            let value = rest.split(';').next().unwrap_or("").trim();
+            assert!(
+                value.parse::<f32>().is_ok(),
+                "`font-size: {value}` will not parse — write the number alone"
             );
         }
     }
