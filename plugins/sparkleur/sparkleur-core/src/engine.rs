@@ -230,23 +230,29 @@ impl Engine {
         for (band, (left, right)) in bands[0].into_iter().zip(bands[1]).enumerate() {
             // Computed even for a band that is not being heard, so the picture
             // keeps moving while something is soloed.
-            let gain_db = dynamics::band_gain_db(
+            let mut gain_db = dynamics::band_gain_db(
                 self.detector.decibels(band),
                 &self.curve,
                 &self.weights[band],
                 spark_for(band, levels),
                 self.floor_db,
             );
+            // **What is reported is what is applied**, De-Harsh included
+            // (`REQ-SPK-018`): the figure draws the gain a band is actually
+            // running at, and a protection missing from it would be a region
+            // that does not sink when the plugin holds it back. How far
+            // De-Harsh is pulling is published separately so the interface can
+            // also say *why* (`analysis.rs`).
+            if band == GUARDED_BAND {
+                gain_db += self.de_harsh.reduction_db();
+            }
             self.gains_db[band] = gain_db;
 
             if soloing && !self.solo[band] {
                 continue;
             }
 
-            let mut gain = linear(gain_db);
-            if band == GUARDED_BAND {
-                gain *= self.de_harsh.gain();
-            }
+            let gain = linear(gain_db);
             wet.0 += left * gain;
             wet.1 += right * gain;
         }
@@ -272,7 +278,8 @@ impl Engine {
         )
     }
 
-    /// What was applied to each band, in dB. Positive is upward compression.
+    /// What was applied to each band, in dB — **De-Harsh included**. Positive
+    /// is upward compression.
     pub fn gains_db(&self) -> [f32; BAND_COUNT] {
         self.gains_db
     }
@@ -836,6 +843,48 @@ mod tests {
         }
         let seconds = silent as f32 / RATE;
         assert!(seconds < 3.0, "it took {seconds:.2} s to empty");
+    }
+
+    /// **De-Harsh is in the number the figure draws** (`REQ-SPK-018`). A
+    /// protection missing from it would be a region that does not sink while
+    /// the plugin is holding it back.
+    #[test]
+    fn the_reported_gain_includes_what_de_harsh_took() {
+        // A tone in the painful band and little else: the guard's whole reason
+        // to exist.
+        let harsh: Vec<f32> = tone(0.3, 400.0, RATE, RATE as usize)
+            .iter()
+            .zip(tone(0.7, 2_800.0, RATE, RATE as usize))
+            .map(|(body, edge)| body + edge)
+            .collect();
+
+        let settle = |de_harsh: f32| {
+            let mut engine = Engine::new(RATE);
+            engine.set_shape(&Shape {
+                de_harsh,
+                ..Shape::default()
+            });
+            let levels = working();
+            for sample in &harsh {
+                engine.process((*sample, *sample), &levels);
+            }
+            (engine.gains_db()[GUARDED_BAND], engine.de_harsh_db())
+        };
+
+        // Turned all the way down, the guard is exactly off.
+        let (without, reduction) = settle(-1.0);
+        assert_eq!(reduction, 0.0, "the guard fired with the amount at zero");
+
+        // Left on the axis it pulls, and the reported gain moves with it.
+        let (with, reduction) = settle(0.0);
+        assert!(
+            reduction < -1.0,
+            "the guard barely reacted: {reduction:.2} dB"
+        );
+        assert!(
+            (with - (without + reduction)).abs() < 0.5,
+            "the reported gain {with:.2} is not {without:.2} plus {reduction:.2}"
+        );
     }
 
     #[test]

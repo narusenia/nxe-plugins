@@ -31,6 +31,10 @@ struct Sparkleur {
     analysis: Arc<Analysis>,
     /// The window's size and position, which the host saves with the project.
     editor_state: Arc<nih_plug_vizia::ViziaState>,
+    /// The rate the host committed to, for the editor to read. An atomic
+    /// because `initialize` runs on the host's thread and the editor is built
+    /// on another; `f32` bits because there is no `AtomicF32`.
+    sample_rate_hint: Arc<std::sync::atomic::AtomicU32>,
     dry_spectrum: Spectrum<BANDS>,
     /// IN L, IN R, OUT L, OUT R.
     meters: [Level; METERS],
@@ -47,6 +51,9 @@ impl Default for Sparkleur {
             engine: Engine::new(FALLBACK_SAMPLE_RATE),
             analysis: Arc::new(Analysis::default()),
             editor_state: ui::default_state(),
+            sample_rate_hint: Arc::new(std::sync::atomic::AtomicU32::new(
+                FALLBACK_SAMPLE_RATE.to_bits(),
+            )),
             dry_spectrum: Spectrum::new(FALLBACK_SAMPLE_RATE, LOW_HZ, HIGH_HZ),
             meters: std::array::from_fn(|_| Level::new(FALLBACK_SAMPLE_RATE)),
             sample_rate: FALLBACK_SAMPLE_RATE,
@@ -85,7 +92,12 @@ impl Plugin for Sparkleur {
     }
 
     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
-        ui::create(self.params.clone(), self.editor_state.clone())
+        ui::create(
+            self.params.clone(),
+            self.editor_state.clone(),
+            self.sample_rate_hint.clone(),
+            self.analysis.clone(),
+        )
     }
 
     /// The only place that allocates. Everything the audio thread touches is
@@ -100,6 +112,11 @@ impl Plugin for Sparkleur {
         self.input_channels = audio_io_layout
             .main_input_channels
             .map_or(0, |channels| channels.get() as usize);
+
+        self.sample_rate_hint.store(
+            buffer_config.sample_rate.to_bits(),
+            std::sync::atomic::Ordering::Relaxed,
+        );
 
         if buffer_config.sample_rate != self.sample_rate {
             self.sample_rate = buffer_config.sample_rate;

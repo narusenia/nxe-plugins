@@ -151,7 +151,7 @@ impl Crossover {
             return;
         }
         self.shift = shift;
-        self.edges = edges_at(shift, self.sample_rate);
+        self.edges = edges_for(focus, self.sample_rate);
 
         for (split, hz) in self.splits.iter_mut().zip(self.edges) {
             split.set(hz, self.sample_rate);
@@ -241,6 +241,15 @@ fn shift_of(focus: f32) -> f32 {
         0.0
     };
     (focus * FOCUS_OCTAVES).exp2()
+}
+
+/// The four boundaries at a `FOCUS` position, in Hz.
+///
+/// **Public because the picture needs the same numbers the filters are tuned
+/// from** (`SPK-13`). An interface that mapped `FOCUS` to positions on its own
+/// would be a second copy of this arithmetic, and the two would drift.
+pub fn edges_for(focus: f32, sample_rate: f32) -> [f32; BAND_COUNT - 1] {
+    edges_at(shift_of(focus), sample_rate)
 }
 
 /// The four boundaries after a shift, held under the ceiling.
@@ -420,6 +429,24 @@ mod tests {
 
     /// The top edge fully open is 17 kHz, so at 44.1 kHz and above the ceiling
     /// never bites — and below it, it has to.
+    /// **The picture and the sound come from one function** (`SPK-13`). An
+    /// interface that mapped `FOCUS` to positions of its own would drift from
+    /// the filters the first time either changed.
+    #[test]
+    fn the_public_edges_are_the_ones_the_filters_use() {
+        for rate in [44_100.0f32, 48_000.0, 96_000.0] {
+            let mut crossover = Crossover::new(rate);
+            for focus in [-1.0f32, -0.5, 0.0, 0.27, 1.0] {
+                crossover.set_focus(focus);
+                assert_eq!(
+                    crossover.edges(),
+                    edges_for(focus, rate),
+                    "{rate} Hz at focus {focus}"
+                );
+            }
+        }
+    }
+
     #[test]
     fn focus_cannot_push_an_edge_past_nyquist() {
         for rate in [22_050.0f32, 44_100.0, 48_000.0, 96_000.0, 192_000.0] {

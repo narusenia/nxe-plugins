@@ -7,19 +7,24 @@
 //! wedged it in Ableton. Tabs need nothing from the host for a control to
 //! become reachable.
 //!
-//! **`SPK-12` is the macro layer only.** The Band Field, the transfer window
-//! and the meters arrive in `SPK-13` and `SPK-14`, and the Advanced table in
-//! `SPK-15`; until then the space above the tabs is empty rather than filled
-//! with something that pretends to be them.
+//! The transfer window and the meters arrive in `SPK-14` and the Advanced
+//! table in `SPK-15`; until then their space is empty rather than filled with
+//! something that pretends to be them.
 
+mod field;
+
+use crate::analysis::{Analysis, BANDS, HIGH_HZ, LOW_HZ};
 use crate::params::SparkleurParams;
 use nih_plug::prelude::Editor;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
 use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
+use nxe_ui::curve::Curve;
 use nxe_ui::segmented::SegmentedControl;
 use nxe_ui::{font, theme};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::time::Duration;
 
 /// Velour's window, which `ui.md` says to start from. **Confirmed on real
 /// hardware, not here** — Velour began at 580 tall and came down to 528 once
@@ -61,39 +66,133 @@ pub(crate) struct Ui {
     /// the sound, so it is not worth an id in the saved state — reopening on
     /// MAIN is the right default anyway.
     tab: usize,
+    /// Which band the pointer is over, so the Advanced row and the region can
+    /// mark each other. One value, both directions.
+    hovered: Option<usize>,
+    /// What the audio thread has published. Read on a heartbeat rather than
+    /// mapped from the `Arc`: the handoff's identity never changes, so nothing
+    /// would tell the binding system to look again.
+    analysis: Arc<Analysis>,
+    /// The reactive copies. Updating these is what makes the display move.
+    dry: Curve,
+    /// **Always empty.** The widget takes two curves because Velour has two;
+    /// a split topology has no separable added layer, and the per-band gains
+    /// are what say what happened (`REQ-SPK-018`).
+    wet: Curve,
 }
 
 pub(crate) enum UiEvent {
     SelectTab(usize),
+    Hover(Option<usize>),
+    /// The heartbeat asking the model to re-read what the audio thread
+    /// published.
+    Poll,
 }
 
 impl Model for Ui {
     fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
         event.map(|ui_event: &UiEvent, _| match ui_event {
             UiEvent::SelectTab(tab) => self.tab = *tab,
+            UiEvent::Hover(index) => self.hovered = *index,
+            UiEvent::Poll => {
+                self.dry = spectrum_curve(&self.analysis.dry.read());
+                // The gains are **not** copied here. The figure reads them
+                // inside its own lens, because a region carries what it is set
+                // to and what it is doing in one value and a lens can only map
+                // one field (`.agents/rules/vizia.md`). Any change to this
+                // model — this heartbeat included — re-evaluates that lens,
+                // which is what makes the regions move in time.
+            }
         });
     }
 }
 
-pub fn create(params: Arc<SparkleurParams>, state: Arc<ViziaState>) -> Option<Box<dyn Editor>> {
+/// How often the display re-reads the analysis. 30 Hz is as fast as a figure
+/// needs to look alive, and half the work of matching the frame rate.
+const ANALYSIS_INTERVAL: Duration = Duration::from_millis(33);
+
+/// Why this is a thread and not `cx.add_timer`.
+///
+/// **vizia's timers never fire here.** `process_timers` is called by
+/// `vizia_winit` and by nothing else; the baseview backend — the one every
+/// plugin and the gallery run on — does not call it (`.agents/rules/vizia.md`).
+/// `cx.spawn` hands out a `ContextProxy`, which baseview *does* support, and
+/// emitting through it fails once the window is gone, which is the thread's
+/// signal to stop.
+fn start_heartbeat(cx: &mut Context) {
+    cx.spawn(|proxy| {
+        while proxy.emit(UiEvent::Poll).is_ok() {
+            std::thread::sleep(ANALYSIS_INTERVAL);
+        }
+    });
+}
+
+/// The floor of the spectrum curve. Below this a band is drawn as silence —
+/// without a floor the curve sits on the noise of an idle track.
+const SPECTRUM_FLOOR_DB: f32 = -72.0;
+
+/// One published band frame as a curve across the figure's axis.
+///
+/// **Both mappings live on this side of the widget**, which is the same split
+/// as everywhere else: `nxe-ui` knows nothing about hertz or decibels, and
+/// `nxe-dsp` knows nothing about the view it ends up in.
+fn spectrum_curve(levels: &[f32; BANDS]) -> Curve {
+    let span = (HIGH_HZ / LOW_HZ).log10();
+
+    levels
+        .iter()
+        .enumerate()
+        .map(|(index, level)| {
+            let hz = LOW_HZ * (HIGH_HZ / LOW_HZ).powf(index as f32 / (BANDS - 1) as f32);
+            let x = (hz / LOW_HZ).log10() / span;
+            let db = 20.0 * level.max(1e-9).log10();
+            let y = ((db - SPECTRUM_FLOOR_DB) / -SPECTRUM_FLOOR_DB).clamp(0.0, 1.0);
+            (x, y)
+        })
+        .collect()
+}
+
+pub fn create(
+    params: Arc<SparkleurParams>,
+    state: Arc<ViziaState>,
+    sample_rate: Arc<AtomicU32>,
+    analysis: Arc<Analysis>,
+) -> Option<Box<dyn Editor>> {
     // `ViziaTheming::None`: the plugin brings its own stylesheet and wants none
     // of vizia's defaults leaking into it.
     create_vizia_editor(state, ViziaTheming::None, move |cx, _| {
         theme::install(cx);
 
+        // **Read once, when the window opens.** The rate decides where the top
+        // boundary is capped (`sparkleur_core::crossover`), and that is the
+        // only thing on screen that depends on it. A host that changes rate
+        // with the editor open leaves the figure a little out at the very top
+        // until it is reopened; polling for it every frame would be work for a
+        // case that does not happen mid-session.
+        let host_rate = f32::from_bits(sample_rate.load(Ordering::Relaxed));
+
         Ui {
             params: params.clone(),
             tab: TAB_MAIN,
+            hovered: None,
+            analysis: analysis.clone(),
+            dry: Curve::new(),
+            wet: Curve::new(),
         }
         .build(cx);
+
+        // Parameter changes wake the binding system on their own; an idle
+        // window with audio running does not. The display needs its own
+        // heartbeat.
+        start_heartbeat(cx);
 
         VStack::new(cx, |cx| {
             header(cx);
 
-            // Where the figure goes (`SPK-13`, `SPK-14`). Left empty on
-            // purpose: a placeholder that draws something is a picture nobody
-            // can tell from a finished one.
-            Element::new(cx).width(Stretch(1.0)).height(Stretch(1.0));
+            // The figure stays put above the tabs. It is what the plugin
+            // *is* — hiding it behind a tab would leave the window with
+            // nothing to look at (`ui.md`).
+            field::view(cx, host_rate, analysis.clone());
 
             tab_strip(cx);
 
