@@ -591,12 +591,12 @@ mod tests {
     /// it centred, and it would do so silently.
     #[test]
     fn mirrored_pairs_are_equal_and_opposite() {
-        for index in 0..MAX_VOICES {
+        for (index, shape) in DEFAULT_SHAPE.iter().enumerate() {
             let partner = mirror_partner(index);
             assert_ne!(partner, index);
             assert_eq!(mirror_partner(partner), index, "pairing is not mutual");
-            assert_eq!(DEFAULT_SHAPE[index].pan, -DEFAULT_SHAPE[partner].pan);
-            assert_eq!(DEFAULT_SHAPE[index].detune, -DEFAULT_SHAPE[partner].detune);
+            assert_eq!(shape.pan, -DEFAULT_SHAPE[partner].pan);
+            assert_eq!(shape.detune, -DEFAULT_SHAPE[partner].detune);
         }
     }
 

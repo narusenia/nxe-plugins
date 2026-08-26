@@ -12,9 +12,9 @@
 //! **The radius is the shape value directly.** The outer arc *is* the `Delay`
 //! macro, so a voice at `Delay_i` = 1 sits on it whatever the macro says.
 
-use super::{Ui, UiEvent};
+use super::{Ui, UiEvent, param_bind};
 use crate::params::DoublerParams;
-use doubler_core::{MAX_VOICES, Source, pan_for, pan_shape_for};
+use doubler_core::{MAX_VOICES, Source, mirror_partner, pan_for, pan_shape_for};
 use nih_plug::prelude::Param;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
@@ -75,10 +75,27 @@ fn anchors_of(params: &DoublerParams) -> Vec<FieldPoint> {
     }
 }
 
-/// The two parameters a dragged point writes.
+/// The parameters a dragged point writes.
 struct VoiceHandles {
     pan: ParamWidgetBase,
     delay: ParamWidgetBase,
+    /// The paired voice's `Pan`, written alongside `pan` while mirroring is on
+    /// (`REQ-DBL-014`). **`Delay` has no counterpart here** — the radius is left
+    /// asymmetric on purpose.
+    mirror_pan: ParamWidgetBase,
+}
+
+impl VoiceHandles {
+    /// The parameters this drag spans, so a gesture's boundaries cover exactly
+    /// the ones it writes. A host that is told a gesture began on a parameter
+    /// nothing then writes shows an edit that did not happen.
+    fn written(&self, cx: &mut EventContext) -> Vec<&ParamWidgetBase> {
+        let mut bases = vec![&self.pan, &self.delay];
+        if Ui::mirror.get(cx) {
+            bases.push(&self.mirror_pan);
+        }
+        bases
+    }
 }
 
 pub fn view(cx: &mut Context) {
@@ -86,6 +103,9 @@ pub fn view(cx: &mut Context) {
         .map(|index| VoiceHandles {
             pan: ParamWidgetBase::new(cx, Ui::params, move |params| &params.shape[index].pan),
             delay: ParamWidgetBase::new(cx, Ui::params, move |params| &params.shape[index].delay),
+            mirror_pan: ParamWidgetBase::new(cx, Ui::params, move |params| {
+                &params.shape[mirror_partner(index)].pan
+            }),
         })
         .collect();
 
@@ -112,15 +132,17 @@ pub fn view(cx: &mut Context) {
 
         match gesture {
             FieldGesture::Begin(_) => {
-                voice.pan.begin_set_parameter(cx);
-                voice.delay.begin_set_parameter(cx);
+                for base in voice.written(cx) {
+                    base.begin_set_parameter(cx);
+                }
             }
             FieldGesture::End(_) => {
-                voice.pan.end_set_parameter(cx);
-                voice.delay.end_set_parameter(cx);
+                for base in voice.written(cx) {
+                    base.end_set_parameter(cx);
+                }
             }
             FieldGesture::Reset(_) => {
-                for base in [&voice.pan, &voice.delay] {
+                for base in voice.written(cx) {
                     base.begin_set_parameter(cx);
                     base.set_normalized_value(cx, base.default_normalized_value());
                     base.end_set_parameter(cx);
@@ -135,7 +157,13 @@ pub fn view(cx: &mut Context) {
                 if let Some(shape) = pan_shape_for(source, spread, angle, index) {
                     // `Pan_i` runs `-1..=1`, so its normalized value is the
                     // shape mapped onto `0..=1`.
-                    voice.pan.set_normalized_value(cx, (shape + 1.0) * 0.5);
+                    let normalized = (shape + 1.0) * 0.5;
+                    voice.pan.set_normalized_value(cx, normalized);
+                    if Ui::mirror.get(cx) {
+                        voice
+                            .mirror_pan
+                            .set_normalized_value(cx, param_bind::reflect(normalized));
+                    }
                 }
                 voice.delay.set_normalized_value(cx, radius);
             }
