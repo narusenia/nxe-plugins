@@ -37,7 +37,15 @@ const MARKS: [(f32, &str); 6] = [
 ];
 
 /// The height of the figure. It is what the plugin *is*, so it gets the room.
-pub const HEIGHT: f32 = 236.0;
+///
+/// **The same number in every plugin** (`SPK-19`). Velour tuned it to 236 for a
+/// figure whose regions grow from the floor, Sparkleur to 176 for one whose
+/// content gathers around a centre line — each right on its own, and together
+/// they meant two windows on the same grid whose sections stopped lining up
+/// where the figures ended. Opened side by side that is the first thing that
+/// reads as sloppy. Two hundred is the shared number: Velour's regions still
+/// have room to grow into, and Sparkleur is no longer mostly black.
+pub const HEIGHT: f32 = 200.0;
 
 /// Hz onto `0..=1` across the view, logarithmically.
 fn axis_x(hz: f32) -> f32 {

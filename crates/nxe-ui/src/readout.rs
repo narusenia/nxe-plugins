@@ -31,6 +31,15 @@ pub const VALUE_WIDTH: f32 = 44.0;
 /// its own.
 pub const GATE_HEIGHT: f32 = 8.0;
 
+/// How tall a cell's content is, whatever the content is.
+///
+/// **A figure and a bar do not measure the same**, so left to themselves the two
+/// kinds of cell come out different heights — and a strip with one of each is
+/// then a different height from a strip with none, which moves everything below
+/// it. Two windows meant to sit on the same grid stopped lining up over exactly
+/// this (`SPK-19`). One number, both kinds.
+const CONTENT_HEIGHT: f32 = 20.0;
+
 /// The row. Give it the cells.
 pub fn strip(cx: &mut Context, content: impl Fn(&mut Context)) {
     HStack::new(cx, |cx| content(cx))
@@ -58,9 +67,11 @@ pub fn cell(
                 .text_align(TextAlign::Right);
             Label::new(cx, unit).class("subtle").top(Stretch(1.0));
         })
-        .height(Auto)
+        .height(Pixels(CONTENT_HEIGHT))
         .width(Auto)
-        .col_between(Pixels(theme::SPACE_1));
+        .col_between(Pixels(theme::SPACE_1))
+        .child_top(Stretch(1.0))
+        .child_bottom(Pixels(0.0));
     });
 }
 
@@ -71,11 +82,17 @@ pub fn cell(
 /// left behind would answer the wrong question after it stopped.
 pub fn meter_cell(cx: &mut Context, name: &'static str, level: impl Res<f32> + Clone + 'static) {
     body(cx, name, move |cx| {
-        Meter::horizontal(cx, level.clone(), 0.0, Vec::new())
-            .width(Stretch(1.0))
-            .height(Pixels(GATE_HEIGHT))
-            .top(Stretch(1.0))
-            .bottom(Pixels(theme::SPACE_1));
+        // Wrapped in a box of the same height as a figure's, so a strip with a
+        // bar in it is the same height as one without.
+        HStack::new(cx, |cx| {
+            Meter::horizontal(cx, level.clone(), 0.0, Vec::new())
+                .width(Stretch(1.0))
+                .height(Pixels(GATE_HEIGHT));
+        })
+        .height(Pixels(CONTENT_HEIGHT))
+        .width(Stretch(1.0))
+        .child_top(Stretch(1.0))
+        .child_bottom(Pixels(theme::SPACE_1));
     });
 }
 

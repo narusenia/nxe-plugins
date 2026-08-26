@@ -36,14 +36,16 @@ const MARKS: [(f32, &str); 6] = [
     (20_000.0, "20k"),
 ];
 
-/// The height of the figure.
+/// The height of the figure. It is what the plugin *is*, so it gets the room.
 ///
-/// **Not Velour's 236.** Velour's regions grow from the floor, so its figure is
-/// full of something whatever is happening; these grow from a line through the
-/// middle, so at rest the box holds one line. Looked at in a host, 236 was a
-/// lot of black around it (`SPK-15`). This still leaves 88 px for the ±12 dB a
-/// region can swing, which is more than the swing ever uses.
-pub const HEIGHT: f32 = 176.0;
+/// **The same number in every plugin** (`SPK-19`). Velour tuned it to 236 for a
+/// figure whose regions grow from the floor, Sparkleur to 176 for one whose
+/// content gathers around a centre line — each right on its own, and together
+/// they meant two windows on the same grid whose sections stopped lining up
+/// where the figures ended. Opened side by side that is the first thing that
+/// reads as sloppy. Two hundred is the shared number: Velour's regions still
+/// have room to grow into, and Sparkleur is no longer mostly black.
+pub const HEIGHT: f32 = 200.0;
 
 /// Where "no change" sits: the middle, because `GAIN` is bipolar.
 const UNITY: f32 = 0.5;

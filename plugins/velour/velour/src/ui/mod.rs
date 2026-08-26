@@ -36,7 +36,7 @@ use std::time::Duration;
 /// table. Set too tall — it started at 580 — the window ends in a band of
 /// nothing, because everything inside is a fixed height and piles at the top.
 const WIDTH: u32 = 720;
-const HEIGHT: u32 = 624;
+const HEIGHT: u32 = 588;
 
 pub fn default_state() -> Arc<ViziaState> {
     ViziaState::new(|| (WIDTH, HEIGHT))
