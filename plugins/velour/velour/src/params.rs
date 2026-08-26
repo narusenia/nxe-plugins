@@ -141,22 +141,31 @@ pub struct VelourParams {
 impl Default for VelourParams {
     fn default() -> Self {
         Self {
-            // **Every default here is provisional.** The plugin has no presets
-            // (`REQ-VEL-020`), so these *are* the product's face, and they are
-            // settled by ear in `VEL-17` — not now.
-            drive: percentage("Drive", 0.40),
-            body: percentage("Body", 0.50),
+            // **Settled by ear on real material** (`VEL-17`). The plugin has no
+            // presets (`REQ-VEL-020`), so these *are* the product's face: what
+            // it sounds like the moment it is dropped on a vocal.
+            //
+            // The set leans further in than the placeholders did — drive 0.40 →
+            // 0.80, mix 0.50 → 0.80 — because a saturator that does almost
+            // nothing out of the box reads as broken rather than as tasteful,
+            // and everything here is safe to push: the dry path is untouched
+            // (`REQ-VEL-001`) and the guards are on (`REQ-VEL-006`).
+            drive: percentage("Drive", 0.80),
+            body: percentage("Body", 0.40),
             presence: percentage("Presence", 0.60),
             air: percentage("Air", 0.40),
 
-            // Clear, the middle. Which of the three is the right default is a
-            // `VEL-17` question.
+            // Clear, the middle of the axis.
             texture: percentage("Texture", 0.50),
 
-            // Off: how much to flatten the performance is a choice, and a
-            // compressor nobody asked for is the thing this plugin is trying
-            // not to be.
-            density: percentage("Density", 0.0),
+            // Half way, not off. **This is the ear reversing an argument made
+            // from the structure**: off was chosen because "a compressor nobody
+            // asked for" is what this plugin is trying not to be, and that
+            // reasoning was sound and wrong — `DENSITY` is not on the voice, it
+            // is on the texture being added, so a resting amount of it makes the
+            // texture even rather than making the performance flat
+            // (`REQ-VEL-007`).
+            density: percentage("Density", 0.50),
 
             focus: FloatParam::new(
                 "Focus",
@@ -173,7 +182,7 @@ impl Default for VelourParams {
             .with_smoother(SmoothingStyle::Linear(50.0))
             .with_value_to_string(formatters::v2s_f32_rounded(2)),
 
-            mix: percentage("Mix", 0.50),
+            mix: percentage("Mix", 0.80),
 
             output: FloatParam::new(
                 "Output",
