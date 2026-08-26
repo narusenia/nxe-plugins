@@ -115,10 +115,17 @@ More generally: **a CSS declaration this revision cannot parse costs nothing at
 runtime and says nothing.** When a stylesheet change appears to do nothing, check
 the value type in `vizia_style` before assuming the rule did not match.
 
-**`TimerAction::Tick` carries the elapsed time, not the interval.** Comparing it
-with the `Duration` the timer was created with — `action == TimerAction::Tick(interval)`
-— compiles, reads as correct, and is false on essentially every tick. Match on
-the shape: `matches!(action, TimerAction::Tick(_))`.
+**`cx.add_timer` never fires on baseview.** `process_timers` — and
+`emit_scheduled_events` with it — is called by `vizia_winit` and by nothing else.
+Every plugin editor and the gallery run on baseview, so a timer compiles, starts,
+and does nothing at all. For a periodic update use `cx.spawn`, which hands out a
+`ContextProxy`; baseview does install an event proxy, and `proxy.emit` returns
+`Err` once the window is gone, which is the thread's cue to stop.
+
+(If a timer is ever used on a backend that does run them: **`TimerAction::Tick`
+carries the elapsed time, not the interval**, so `action == TimerAction::Tick(interval)`
+compiles, reads as correct, and is false on essentially every tick. Match on the
+shape.)
 
 **A tooltip's content is hit-testable even though the tooltip is not.**
 `.tooltip(…)` builds the view as a child of the anchor with `hoverable(false)`

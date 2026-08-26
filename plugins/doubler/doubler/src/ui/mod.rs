@@ -81,6 +81,22 @@ pub(crate) struct Ui {
 /// needs to look alive, and half the work of matching the frame rate.
 const ANALYSIS_INTERVAL: Duration = Duration::from_millis(33);
 
+/// Why this is a thread and not `cx.add_timer`.
+///
+/// **vizia's timers never fire here.** `process_timers` is called by
+/// `vizia_winit` and by nothing else; the baseview backend — the one every
+/// plugin and the gallery run on — does not call it (`.agents/rules/vizia.md`).
+/// `cx.spawn` hands out a `ContextProxy`, which baseview *does* support, and
+/// emitting through it fails once the window is gone, which is the thread's
+/// signal to stop.
+fn start_heartbeat(cx: &mut Context) {
+    cx.spawn(|proxy| {
+        while proxy.emit(UiEvent::Poll).is_ok() {
+            std::thread::sleep(ANALYSIS_INTERVAL);
+        }
+    });
+}
+
 /// The floor of the spectrum display. Below this a band is drawn as silence —
 /// without a floor the curve sits on the noise of an idle track.
 const SPECTRUM_FLOOR_DB: f32 = -72.0;
@@ -205,15 +221,7 @@ pub fn create(
 
         // Parameter changes wake the binding system on their own; an idle
         // window with audio running does not. The meter needs its own heartbeat.
-        let timer = cx.add_timer(ANALYSIS_INTERVAL, None, |cx, action| {
-            // `Tick` carries how long actually elapsed, not the interval it was
-            // asked for, so it is matched on shape rather than compared with
-            // one (`.agents/rules/vizia.md`).
-            if matches!(action, TimerAction::Tick(_)) {
-                cx.emit(UiEvent::Poll);
-            }
-        });
-        cx.start_timer(timer);
+        start_heartbeat(cx);
 
         VStack::new(cx, |cx| {
             header(cx);
