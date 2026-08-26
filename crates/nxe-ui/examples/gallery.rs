@@ -10,11 +10,11 @@
 //! Run it with `mise run gallery`.
 
 use nxe_ui::bar::Bar;
-use nxe_ui::curve::{Curve, CurveView, Grip, Span};
+use nxe_ui::curve::{Curve, CurveView, CurveViewModifiers, Grip, Span};
 use nxe_ui::entry::ValueEntry;
 use nxe_ui::input::Gesture;
 use nxe_ui::knob::Knob;
-use nxe_ui::polar::{FieldGesture, FieldPoint, PolarField};
+use nxe_ui::polar::{FieldGesture, FieldPoint, PolarField, PolarFieldModifiers};
 use nxe_ui::segmented::SegmentedControl;
 use nxe_ui::{font, icon, theme};
 use vizia::prelude::*;
@@ -40,6 +40,11 @@ struct Demo {
     /// Derived from `source` and `anchor_radius`, for the same reason `curves`
     /// is derived: a lens can only map one field.
     anchors: Vec<FieldPoint>,
+    /// Stand-ins for what `nxe-dsp` measures. A gallery has no audio, so these
+    /// are a fixed shape — enough to see that the layers stack in the right
+    /// order and read as "the signal" rather than as another setting.
+    density: Vec<f32>,
+    analysis: Curve,
     /// Shelf gains and scatter, normalized with 0.5 as flat.
     tone_lo: f32,
     tone_hi: f32,
@@ -199,6 +204,8 @@ fn main() {
             field: default_field(),
             anchor_radius: 0.10,
             anchors: anchors_of(0, 0.10),
+            density: sample_density(),
+            analysis: sample_analysis(),
             tone_lo: 0.62,
             tone_hi: 0.44,
             tone_spread: 0.5,
@@ -419,6 +426,27 @@ fn segments(cx: &mut Context) {
     });
 }
 
+/// A plausible stereo picture: energy either side of centre, less in between.
+fn sample_density() -> Vec<f32> {
+    (0..24)
+        .map(|bin| {
+            let x = bin as f32 / 23.0 * 2.0 - 1.0;
+            (1.0 - (x.abs() - 0.6).abs() * 2.5).max(0.05)
+        })
+        .collect()
+}
+
+/// A plausible spectrum: full low end, rolling off above the middle.
+fn sample_analysis() -> Curve {
+    (0..=48)
+        .map(|step| {
+            let x = step as f32 / 48.0;
+            let level = (1.0 - x).powf(1.6) * 0.45 + 0.05;
+            (x, level)
+        })
+        .collect()
+}
+
 /// One source marker in the middle, or two either side of it. All of them sit
 /// at the same radius, which is what the anchor drag moves.
 fn anchors_of(source: usize, radius: f32) -> Vec<FieldPoint> {
@@ -474,12 +502,13 @@ fn field(cx: &mut Context) {
                 FieldGesture::AnchorEnd => cx.emit(DemoEvent::Gesture("anchor end")),
             },
         )
+        .density(Demo::density)
         .height(Pixels(180.0))
         .width(Stretch(1.0));
 
         Label::new(
             cx,
-            "drag a dot to move both axes · shift = fine · VOICES dims the unused              ones · SOURCE splits the anchor",
+            "drag a dot to move both axes · shift = fine · SOURCE splits the anchor · the wedges behind are what is arriving",
         )
         .class("subtle");
     });
@@ -559,6 +588,7 @@ fn curves(cx: &mut Context) {
                 cx.emit(DemoEvent::Gesture(name_of(gesture)));
             },
         )
+        .analysis(Demo::analysis)
         .height(Pixels(120.0))
         .width(Stretch(1.0));
 

@@ -35,9 +35,9 @@ Application::new(|cx| {
 | [`knob::Knob`](src/knob.rs) | 回転コントロール | `impl Res<f32>` | `Fn(&mut EventContext, Gesture)` |
 | [`bar::Bar`](src/bar.rs) | 横方向の細いスライダ。`new` は左端から、`bipolar` は中央から伸びる | `impl Res<f32>` | 同上 |
 | [`segmented::SegmentedControl`](src/segmented.rs) | 排他選択のボタン列 | `Lens<Target = usize>` | `Fn(&mut EventContext, usize)` |
-| [`polar::PolarField`](src/polar.rs) | 半円上の点をドラッグする 2 軸フィールド。基準点（アンカー）も半径方向にドラッグできる。`.highlight(lens)` で外から 1 点を指せる（`PolarFieldModifiers`） | `impl Res<Vec<FieldPoint>>` ×2（点と基準点） | `Fn(&mut EventContext, FieldGesture)` |
+| [`polar::PolarField`](src/polar.rs) | 半円上の点をドラッグする 2 軸フィールド。基準点（アンカー）も半径方向にドラッグできる。`PolarFieldModifiers` で `.highlight(lens)`（外から 1 点を指す）と `.density(lens)`（方向ごとの信号量を扇形で背後に敷く） | `impl Res<Vec<FieldPoint>>` ×2（点と基準点） | `Fn(&mut EventContext, FieldGesture)` |
 | [`entry::ValueEntry`](src/entry.rs) | クリックで打ち込める数値 | `impl Lens<Target = String>`（表示文字列） | `Fn(&mut EventContext, &str)` |
-| [`curve::CurveView`](src/curve.rs) | 曲線・帯・縦ドラッグのハンドル | `impl Res<...>` ×3（曲線・帯・ハンドル） | `Fn(&mut EventContext, usize, Gesture)` |
+| [`curve::CurveView`](src/curve.rs) | 曲線・帯・縦ドラッグのハンドル。`CurveViewModifiers` の `.analysis(lens)` で信号のカーブを背後に塗る | `impl Res<...>` ×3（曲線・帯・ハンドル） | `Fn(&mut EventContext, usize, Gesture)` |
 
 値はすべて**正規化**（`0..=1`。双極のものは `0.5` が中央）。単位の写像は
 呼び出し側が持つ。
@@ -94,6 +94,9 @@ theme::ACCENT.css()     // 生成される CSS 用
   16 進の色が含まれないことをテストで固定してある
 - **面と文字はニュートラル**（RGB の 3 チャネルが等しい）。アクセントだけが色を
   持つ。これもテストで固定
+- **設定はアクセント、信号はニュートラル。** 解析の重ね描き（`.density` /
+  `.analysis`）は `BORDER` で塗る。何を設定したかと何が鳴っているかは、
+  一目で区別できないと重ねる意味が無い
 - 同種のものの組を見分けたいときは**色相を増やさず** `ACCENT_DEEP` と
   `ACCENT_BRIGHT` の間を `Token::mix` で刻む（`PolarField` の `FieldPoint::tint`）
 - **角丸は無し**（`RADIUS_CONTROL` / `RADIUS_CARD` とも 0）。丸めようとすると

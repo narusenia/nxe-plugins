@@ -113,6 +113,7 @@ enum FieldEvent {
     Points(Vec<FieldPoint>),
     Anchors(Vec<FieldPoint>),
     Highlight(Option<usize>),
+    Density(Vec<f32>),
 }
 
 /// Where the field sits inside its bounds. The origin is the bottom centre, so
@@ -169,6 +170,9 @@ pub struct PolarField {
     /// A point the caller wants marked, whatever the pointer is doing. What
     /// makes the field and a table beside it point at the same voice.
     highlighted: Option<usize>,
+    /// How much there is in each direction across the arc, left to right.
+    /// **The signal, behind the settings.** Empty unless a caller supplies it.
+    density: Vec<f32>,
     /// Where the pointer was when the drag started, and what the point was, so
     /// a fine drag can scale the travel rather than jumping to the pointer.
     grab: (f32, f32),
@@ -192,6 +196,7 @@ impl PolarField {
             dragging: None,
             hovered: None,
             highlighted: None,
+            density: Vec::new(),
             grab: (0.0, 0.0),
             grab_value: (0.0, 0.0),
             on_gesture: Box::new(on_gesture),
@@ -263,6 +268,12 @@ pub trait PolarFieldModifiers {
     /// voice a mirrored edit just moved. Optional: a field with nothing to mark
     /// simply does not call this.
     fn highlight(self, index: impl Res<Option<usize>> + 'static) -> Self;
+
+    /// How much signal is arriving from each direction, left to right, drawn as
+    /// wedges under the points. Any length; the values are **normalized by the
+    /// widget against their own largest**, because "full" is a display decision
+    /// and no caller should have to work it out twice.
+    fn density(self, bins: impl Res<Vec<f32>> + 'static) -> Self;
 }
 
 impl PolarFieldModifiers for Handle<'_, PolarField> {
@@ -270,6 +281,14 @@ impl PolarFieldModifiers for Handle<'_, PolarField> {
         let entity = self.entity();
         index.set_or_bind(self.context(), entity, move |cx, value| {
             cx.emit_to(entity, FieldEvent::Highlight(value));
+        });
+        self
+    }
+
+    fn density(mut self, bins: impl Res<Vec<f32>> + 'static) -> Self {
+        let entity = self.entity();
+        bins.set_or_bind(self.context(), entity, move |cx, value| {
+            cx.emit_to(entity, FieldEvent::Density(value));
         });
         self
     }
@@ -292,6 +311,10 @@ impl View for PolarField {
             }
             FieldEvent::Highlight(index) => {
                 self.highlighted = *index;
+                cx.needs_redraw();
+            }
+            FieldEvent::Density(bins) => {
+                self.density = bins.clone();
                 cx.needs_redraw();
             }
         });
@@ -391,6 +414,41 @@ impl View for PolarField {
         let scale = cx.scale_factor();
         let geometry = Geometry::of(cx.bounds(), MARGIN * scale);
         let line = (1.0 * scale).max(1.0);
+
+        // The signal, as a wedge per direction, under everything else. Neutral
+        // rather than accent: the accent says what the plugin is *set* to, and
+        // a reader has to be able to tell the setting from the result.
+        //
+        // Normalized against the loudest bin, so the shape is readable at any
+        // level — an absolute scale would show nothing on a quiet track and
+        // saturate on a loud one.
+        let loudest = self
+            .density
+            .iter()
+            .copied()
+            .fold(0.0f32, f32::max)
+            .max(f32::MIN_POSITIVE);
+
+        for (index, value) in self.density.iter().enumerate() {
+            let share = (value / loudest).clamp(0.0, 1.0);
+            if share <= 0.0 {
+                continue;
+            }
+
+            // Bin `i` covers the slice of the arc from `i` to `i + 1`.
+            let bins = self.density.len() as f32;
+            let from = index as f32 / bins * 2.0 - 1.0;
+            let to = (index + 1) as f32 / bins * 2.0 - 1.0;
+
+            let mut wedge = vg::Path::new();
+            wedge.move_to(geometry.origin_x, geometry.origin_y);
+            let (x1, y1) = geometry.position(from, 1.0);
+            let (x2, y2) = geometry.position(to, 1.0);
+            wedge.line_to(x1, y1);
+            wedge.line_to(x2, y2);
+            wedge.close();
+            canvas.fill_path(&wedge, &vg::Paint::color(theme::BORDER.at(share).vg()));
+        }
 
         // The outer arc and the baseline: the frame the values are read against.
         let mut frame = vg::Path::new();

@@ -36,12 +36,16 @@ enum CurveEvent {
     Curves(Vec<Curve>),
     Spans(Vec<Span>),
     Grips(Vec<Grip>),
+    Analysis(Curve),
 }
 
 pub struct CurveView {
     curves: Vec<Curve>,
     spans: Vec<Span>,
     grips: Vec<Grip>,
+    /// A filled area behind everything: **what is going through**, as opposed to
+    /// what the curves are set to. Empty unless a caller supplies one.
+    analysis: Curve,
     /// Gridline positions in normalized `x`. Fixed for the life of the view —
     /// the caller knows where its own axis marks go.
     grid: Vec<f32>,
@@ -67,6 +71,7 @@ impl CurveView {
             curves: initial_curves,
             spans: initial_spans,
             grips: initial_grips,
+            analysis: Curve::new(),
             grid,
             drag: Drag::default(),
             dragging: None,
@@ -108,6 +113,23 @@ impl CurveView {
     }
 }
 
+/// `Handle` belongs to vizia, so a modifier for it has to arrive as a trait.
+pub trait CurveViewModifiers {
+    /// A filled area drawn behind the curves — the signal going through, on the
+    /// same axes as the curves. Optional; without it nothing is drawn there.
+    fn analysis(self, curve: impl Res<Curve> + 'static) -> Self;
+}
+
+impl CurveViewModifiers for Handle<'_, CurveView> {
+    fn analysis(mut self, curve: impl Res<Curve> + 'static) -> Self {
+        let entity = self.entity();
+        curve.set_or_bind(self.context(), entity, move |cx, value| {
+            cx.emit_to(entity, CurveEvent::Analysis(value));
+        });
+        self
+    }
+}
+
 impl View for CurveView {
     fn element(&self) -> Option<&'static str> {
         Some("nxecurveview")
@@ -119,6 +141,7 @@ impl View for CurveView {
                 CurveEvent::Curves(curves) => self.curves = curves.clone(),
                 CurveEvent::Spans(spans) => self.spans = spans.clone(),
                 CurveEvent::Grips(grips) => self.grips = grips.clone(),
+                CurveEvent::Analysis(analysis) => self.analysis = analysis.clone(),
             }
             cx.needs_redraw();
         });
@@ -165,6 +188,24 @@ impl View for CurveView {
                 bounds.y + (1.0 - y.clamp(0.0, 1.0)) * bounds.h,
             )
         };
+
+        // The signal, filled from the floor. Behind everything and in a
+        // neutral, because the accent belongs to what the plugin is *set* to —
+        // a reader has to be able to tell the setting from the result at a
+        // glance.
+        if self.analysis.len() > 1 {
+            let mut path = vg::Path::new();
+            let (first_x, _) = at(self.analysis[0].0, 0.0);
+            path.move_to(first_x, bounds.y + bounds.h);
+            for (x, y) in &self.analysis {
+                let (px, py) = at(*x, *y);
+                path.line_to(px, py);
+            }
+            let (last_x, _) = at(self.analysis[self.analysis.len() - 1].0, 0.0);
+            path.line_to(last_x, bounds.y + bounds.h);
+            path.close();
+            canvas.fill_path(&path, &vg::Paint::color(theme::BORDER.vg()));
+        }
 
         // Shaded ranges go behind everything: they are context, not data.
         for (start, end) in &self.spans {
@@ -237,6 +278,7 @@ mod tests {
             curves: Vec::new(),
             spans: Vec::new(),
             grips,
+            analysis: Curve::new(),
             grid: Vec::new(),
             drag: Drag::default(),
             dragging: None,
