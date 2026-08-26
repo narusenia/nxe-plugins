@@ -8,6 +8,7 @@ use std::sync::Arc;
 use velour_core::Engine;
 
 mod params;
+mod ui;
 
 use params::VelourParams;
 
@@ -17,6 +18,8 @@ const FALLBACK_SAMPLE_RATE: f32 = 48_000.0;
 
 struct Velour {
     params: Arc<VelourParams>,
+    /// The window's size and position, which the host saves with the project.
+    editor_state: Arc<nih_plug_vizia::ViziaState>,
     engine: Engine,
     sample_rate: f32,
     /// How many input channels the host actually negotiated. Under the mono
@@ -28,6 +31,7 @@ impl Default for Velour {
     fn default() -> Self {
         Self {
             params: Arc::new(VelourParams::default()),
+            editor_state: ui::default_state(),
             engine: Engine::new(FALLBACK_SAMPLE_RATE),
             sample_rate: FALLBACK_SAMPLE_RATE,
             input_channels: 2,
@@ -65,11 +69,8 @@ impl Plugin for Velour {
         self.params.clone()
     }
 
-    /// No editor yet. `VEL-5` exists to get sound out of the plugin, and the
-    /// host's generated parameter view is enough to judge that
-    /// (`velour-plan.md`). The interface lands in `VEL-11` onward.
     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
-        None
+        ui::create(self.params.clone(), self.editor_state.clone())
     }
 
     /// The only place that allocates. Everything the audio thread touches is

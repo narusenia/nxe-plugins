@@ -17,4 +17,6 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 velour-core = { workspace = true }
+nxe-ui = { workspace = true }
 nih_plug = { workspace = true }
+nih_plug_vizia = { workspace = true }
