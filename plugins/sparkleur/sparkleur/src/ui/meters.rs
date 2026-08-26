@@ -41,7 +41,12 @@ pub fn view(cx: &mut Context) {
 /// that differ mean the source did.
 fn pair(cx: &mut Context, label: &'static str, first: usize) {
     VStack::new(cx, |cx| {
-        Label::new(cx, label).class("subtle");
+        // The region's name, over its rule — the same pairing every named
+        // region in this design uses (`crates/nxe-ui/README.md`).
+        VStack::new(cx, |cx| {
+            Label::new(cx, label).class("eyebrow");
+        })
+        .class("heading");
 
         HStack::new(cx, |cx| {
             for offset in 0..2 {

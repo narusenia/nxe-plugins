@@ -74,8 +74,11 @@ fn table(cx: &mut Context) {
 }
 
 fn heading(cx: &mut Context, text: &'static str, width: f32) {
+    // **A column's name is not a control's name** (`crates/nxe-ui/README.md`):
+    // set as an eyebrow it reads as the table's structure instead of joining
+    // the row of labels under it.
     Label::new(cx, text)
-        .class("subtle")
+        .class("eyebrow")
         .width(Pixels(width))
         .height(Auto);
 }

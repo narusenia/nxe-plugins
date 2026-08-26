@@ -261,13 +261,14 @@ fn figure_row(cx: &mut Context, host_rate: f32, analysis: Arc<Analysis>) {
 }
 
 fn header(cx: &mut Context) {
-    HStack::new(cx, |cx| {
-        // The shipped name, in full — `NAME` in `lib.rs`, the bundle, and the
-        // host's plugin list all say the same thing.
-        font::title(cx, "NXE SPARKLEUR");
-    })
-    .class("row")
-    .height(Auto);
+    // The shipped name, in full — `NAME` in `lib.rs`, the bundle, and the
+    // host's plugin list all say the same thing — with the one line that says
+    // what the window is for, and the rule under both (`nxe_ui::header`).
+    //
+    // **No wrapping row.** `.class("row")` centres its children vertically, and
+    // the header wants the whole of the height it asks for
+    // (`.agents/rules/vizia.md`).
+    nxe_ui::header::header(cx, "NXE SPARKLEUR", "five-band dynamics + sparkle");
 }
 
 /// The tab strip is a segmented control: the same "one of these" choice as

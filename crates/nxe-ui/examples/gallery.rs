@@ -317,8 +317,7 @@ fn main() {
         // the start rather than when someone notices it has stopped fitting.
         ScrollView::new(cx, 0.0, 0.0, false, true, |cx| {
             VStack::new(cx, |cx| {
-                font::title(cx, "nxe-ui");
-                Label::new(cx, "tokens and widgets").class("subtle");
+                nxe_ui::header::header(cx, "nxe-ui", "tokens and widgets");
 
                 grid(cx);
                 colours(cx);
@@ -346,10 +345,14 @@ fn main() {
     .run();
 }
 
-/// A titled surface, with the one-pixel top highlight the theme calls for.
+/// A titled surface. The title is an eyebrow over a rule, which is how a region
+/// is named everywhere in this design (`crates/nxe-ui/README.md`).
 fn panel(cx: &mut Context, title: &str, content: impl Fn(&mut Context)) {
     VStack::new(cx, |cx| {
-        Label::new(cx, title).class("label");
+        VStack::new(cx, |cx| {
+            Label::new(cx, title).class("eyebrow");
+        })
+        .class("heading");
         content(cx);
     })
     .class("panel")

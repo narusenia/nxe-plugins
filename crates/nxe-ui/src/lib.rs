@@ -12,6 +12,7 @@ pub mod bar;
 pub mod curve;
 pub mod entry;
 pub mod font;
+pub mod header;
 pub mod icon;
 pub mod input;
 pub mod knob;

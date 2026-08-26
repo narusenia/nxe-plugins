@@ -268,29 +268,14 @@ pub fn create(
 }
 
 fn header(cx: &mut Context) {
-    HStack::new(cx, |cx| {
-        // The shipped name, in full — `NAME` in `lib.rs`, the bundle, and the
-        // host's plugin list all say the same thing.
-        font::title(cx, "NXE DOUBLER");
-        Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
-        nxe_plug_ui::segmented(cx, Ui::params, |params| &params.voices, &["2", "4", "8"])
-            .tooltip(|cx| theme::hint(cx, "How many voices run"));
-        nxe_plug_ui::segmented(
-            cx,
-            Ui::params,
-            |params| &params.source,
-            &["Mono Sum", "True Stereo"],
-        )
-        .class("hint-left")
-        .tooltip(|cx| {
-            theme::hint(
-                cx,
-                "Mono Sum: every voice doubles L+R. True Stereo: each doubles one side",
-            )
-        });
-    })
-    .class("row")
-    .height(Auto);
+    // The shipped name, in full — `NAME` in `lib.rs`, the bundle, and the
+    // host's plugin list all say the same thing — with the one line that says
+    // what the window is for, and the rule under both (`nxe_ui::header`).
+    //
+    // **No wrapping row.** `.class("row")` centres its children vertically, and
+    // the header wants the whole of the height it asks for
+    // (`.agents/rules/vizia.md`).
+    nxe_ui::header::header(cx, "NXE DOUBLER", "multi-voice doubler");
 }
 
 /// The figure, with the two controls that apply to everything stacked beside
