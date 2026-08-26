@@ -11,6 +11,7 @@
 
 use nxe_ui::bar::Bar;
 use nxe_ui::curve::{Curve, CurveView, Grip, Span};
+use nxe_ui::entry::ValueEntry;
 use nxe_ui::input::Gesture;
 use nxe_ui::knob::Knob;
 use nxe_ui::polar::{FieldGesture, FieldPoint, PolarField};
@@ -50,6 +51,9 @@ struct Demo {
     spans: Vec<Span>,
     grips: Vec<Grip>,
     last_gesture: String,
+    /// What the typed-into value reads. Whatever comes back is kept verbatim:
+    /// the gallery has no units to parse.
+    typed: String,
     /// Mirrors the Doubler's Detail disclosure, so the show/hide of a tall
     /// table can be exercised without a host.
     detail_open: bool,
@@ -69,6 +73,7 @@ enum DemoEvent {
     MoveAnchors(f32),
     SetTone(usize, f32),
     Gesture(&'static str),
+    Typed(String),
     ToggleDetail,
 }
 
@@ -113,6 +118,7 @@ impl Model for Demo {
             DemoEvent::ResetPoint(index) => {
                 self.field[*index] = default_field()[*index];
             }
+            DemoEvent::Typed(text) => self.typed = text.clone(),
             DemoEvent::MoveAnchors(radius) => {
                 self.anchor_radius = *radius;
                 self.anchors = anchors_of(self.source, self.anchor_radius);
@@ -198,6 +204,7 @@ fn main() {
             spans: Vec::new(),
             grips: Vec::new(),
             last_gesture: "—".to_owned(),
+            typed: "22.0 ms".to_owned(),
             detail_open: false,
         };
         demo.refresh();
@@ -749,6 +756,16 @@ fn text(cx: &mut Context) {
         Label::new(
             cx,
             "figures are Geist Mono: a digit changing does not shift the rest",
+        )
+        .class("subtle");
+
+        Element::new(cx).class("divider");
+        ValueEntry::new(cx, Demo::typed, |cx, typed| {
+            cx.emit(DemoEvent::Typed(typed.to_owned()));
+        });
+        Label::new(
+            cx,
+            "click a value to type into it; Enter commits, Escape cancels",
         )
         .class("subtle");
     });

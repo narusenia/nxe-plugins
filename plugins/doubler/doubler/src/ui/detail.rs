@@ -142,6 +142,9 @@ fn cell(cx: &mut Context, index: usize, column: Column) {
         };
         bar.height(Pixels(BAR_HEIGHT)).width(Stretch(1.0));
 
+        // The table's numbers are the **effective** values — the macro times the
+        // shape — and nothing owns that product, so there is nothing to type
+        // into. Editing happens on the bar beside it.
         font::value(
             cx,
             Ui::params.map(move |params| effective_text(params, index, column)),

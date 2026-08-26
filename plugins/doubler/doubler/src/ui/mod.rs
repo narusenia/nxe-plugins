@@ -19,7 +19,7 @@ use nih_plug::prelude::Editor;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
 use nxe_ui::segmented::SegmentedControl;
-use nxe_ui::{font, icon, theme};
+use nxe_ui::{icon, theme};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
@@ -353,14 +353,7 @@ pub(crate) fn macro_knob<P, F>(
             Label::new(cx, hint);
         });
         Label::new(cx, label).class("label");
-        font::value(
-            cx,
-            nih_plug_vizia::widgets::param_base::ParamWidgetBase::make_lens(
-                Ui::params,
-                to_param,
-                |param| param.to_string(),
-            ),
-        );
+        param_bind::value_entry(cx, Ui::params, to_param);
     })
     .width(Stretch(1.0))
     .height(Auto)

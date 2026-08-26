@@ -283,6 +283,27 @@ label {{
     background-color: {accent};
 }}
 
+/* A number that can be typed into. It looks like any other value until the
+   pointer is over it, which is the whole hint — a box drawn around every figure
+   would turn a panel into a form. */
+.editable:hover {{
+    background-color: {elevated};
+}}
+
+/* The field that replaces it. Same size and family as the number, so nothing
+   jumps when it appears. */
+textbox {{
+    background-color: {elevated};
+    border-width: 1px;
+    border-color: {accent};
+    border-radius: {RADIUS_CONTROL}px;
+    color: {foreground};
+    caret-color: {accent};
+    selection-color: {accent_dim};
+    child-left: {SPACE_1}px;
+    child-right: {SPACE_1}px;
+}}
+
 /* Keyboard focus. Only ever from a keyboard: vizia sets `:focus-visible` when
    focus arrived by `Tab` rather than by a click, so a pointer user never sees a
    ring (`plugins/doubler/docs/specifications/ui.md`). Outline rather than
@@ -426,6 +447,8 @@ mod tests {
             ".title",
             "tooltip",
             ":focus-visible",
+            ".editable",
+            "textbox",
             ".subtle",
             ".disabled",
             ".icon",
