@@ -57,7 +57,7 @@ Voice Field と `MIX` / `OUTPUT` が常時表示、タブが「4 ノブ + Filter
 | Detail 表 → Voice Field のハイライト | `DBL-11`。`PolarField` に外からハイライトを指定する入力が無い |
 | 見た目の最終調整（フォントサイズ、寸法、余白） | ユーザーの指示で最後にまとめる |
 
-## 全単位## 全単位
+## 全単位
 
 ### インフラ — `infra-plan.md`
 
