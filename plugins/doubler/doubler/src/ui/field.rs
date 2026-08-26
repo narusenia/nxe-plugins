@@ -142,6 +142,6 @@ pub fn view(cx: &mut Context) {
             FieldGesture::Hover(_) => {}
         }
     })
-    .height(Pixels(170.0))
+    .height(Stretch(1.0))
     .width(Stretch(1.0));
 }

@@ -26,11 +26,16 @@ use std::sync::atomic::Ordering;
 /// One size, tall enough for whichever tab needs the most room. Measured
 /// against the built layout rather than estimated.
 const WIDTH: u32 = 620;
-const HEIGHT: u32 = 584;
+const HEIGHT: u32 = 572;
 
-/// How tall the swapped region is. Fixed, so the two tabs do not move the
-/// footer under the pointer when you switch.
-const TAB_HEIGHT: f32 = 386.0;
+/// How tall the swapped region is. Fixed, so switching tabs does not move
+/// anything above it.
+const TAB_HEIGHT: f32 = 296.0;
+
+/// The Voice Field's height, and the width of the column of global controls
+/// beside it.
+const FIELD_HEIGHT: f32 = 170.0;
+const SIDE_WIDTH: f32 = 96.0;
 
 pub fn default_state() -> Arc<ViziaState> {
     ViziaState::new(|| (WIDTH, HEIGHT))
@@ -90,6 +95,10 @@ pub fn create(params: Arc<DoublerParams>, state: Arc<ViziaState>) -> Option<Box<
 
         VStack::new(cx, |cx| {
             header(cx);
+            // The figure stays put. It is what the plugin *is* — hiding it
+            // behind a tab would leave the window with nothing to look at.
+            field_row(cx);
+            tab_strip(cx);
 
             // Both tabs are built and one is hidden. Rebuilding on every switch
             // would drop the widgets' own state — a drag in progress, a hover —
@@ -100,8 +109,6 @@ pub fn create(params: Arc<DoublerParams>, state: Arc<ViziaState>) -> Option<Box<
             })
             .height(Pixels(TAB_HEIGHT))
             .width(Stretch(1.0));
-
-            footer(cx);
         })
         .class("root")
         .child_space(Pixels(theme::SPACE_3))
@@ -110,38 +117,56 @@ pub fn create(params: Arc<DoublerParams>, state: Arc<ViziaState>) -> Option<Box<
 }
 
 fn header(cx: &mut Context) {
-    VStack::new(cx, |cx| {
-        HStack::new(cx, |cx| {
-            Label::new(cx, "DOUBLER").class("value");
-            Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
-            param_bind::segmented(cx, Ui::params, |params| &params.voices, &["2", "4", "8"]);
-            param_bind::segmented(
-                cx,
-                Ui::params,
-                |params| &params.source,
-                &["Mono Sum", "True Stereo"],
-            );
-        })
-        .class("row")
-        .height(Auto);
-
-        // The tab strip is a segmented control: exactly the same "one of these"
-        // choice as `Voices`, so it is the same widget rather than a new one.
-        HStack::new(cx, |cx| {
-            SegmentedControl::new(cx, Ui::tab, &["MAIN", "DETAIL"], |cx, tab| {
-                cx.emit(UiEvent::SelectTab(tab));
-            });
-        })
-        .class("row")
-        .height(Auto);
+    HStack::new(cx, |cx| {
+        Label::new(cx, "DOUBLER").class("value");
+        Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
+        param_bind::segmented(cx, Ui::params, |params| &params.voices, &["2", "4", "8"]);
+        param_bind::segmented(
+            cx,
+            Ui::params,
+            |params| &params.source,
+            &["Mono Sum", "True Stereo"],
+        );
     })
-    .height(Auto)
-    .row_between(Pixels(theme::SPACE_2));
+    .class("row")
+    .height(Auto);
+}
+
+/// The figure, with the two controls that apply to everything stacked beside
+/// it. `Mix` and `Output` belong next to what they act on, not under a tab.
+fn field_row(cx: &mut Context) {
+    HStack::new(cx, |cx| {
+        field::view(cx);
+
+        VStack::new(cx, |cx| {
+            macro_knob(cx, "MIX", |params| &params.mix, 34.0);
+            macro_knob(cx, "OUTPUT", |params| &params.output, 34.0);
+        })
+        .width(Pixels(SIDE_WIDTH))
+        .height(Stretch(1.0))
+        .row_between(Pixels(theme::SPACE_3))
+        .child_top(Stretch(1.0))
+        .child_bottom(Stretch(1.0));
+    })
+    .height(Pixels(FIELD_HEIGHT))
+    .width(Stretch(1.0))
+    .col_between(Pixels(theme::SPACE_3));
+}
+
+/// The tab strip is a segmented control: exactly the same "one of these" choice
+/// as `Voices`, so it is the same widget rather than a new one.
+fn tab_strip(cx: &mut Context) {
+    HStack::new(cx, |cx| {
+        SegmentedControl::new(cx, Ui::tab, &["MAIN", "DETAIL"], |cx, tab| {
+            cx.emit(UiEvent::SelectTab(tab));
+        });
+    })
+    .class("row")
+    .height(Auto);
 }
 
 fn main_tab(cx: &mut Context) {
     VStack::new(cx, |cx| {
-        field::view(cx);
         macros(cx);
         tone::view(cx);
     })
@@ -183,18 +208,6 @@ fn macros(cx: &mut Context) {
         macro_knob(cx, "DELAY", |params| &params.delay, 56.0);
         macro_knob(cx, "SPREAD", |params| &params.spread, 56.0);
         macro_knob(cx, "HUMANIZE", |params| &params.humanize, 56.0);
-    })
-    .class("row")
-    .height(Auto);
-}
-
-/// `Mix` and `Output` apply to everything, so they stay put rather than hiding
-/// behind a tab.
-fn footer(cx: &mut Context) {
-    HStack::new(cx, |cx| {
-        Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
-        macro_knob(cx, "MIX", |params| &params.mix, 34.0);
-        macro_knob(cx, "OUTPUT", |params| &params.output, 34.0);
     })
     .class("row")
     .height(Auto);
