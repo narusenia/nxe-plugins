@@ -1,9 +1,9 @@
 # 引き継ぎ
 
-**2026-08-26 時点。** Doubler は `doubler-v0.1.0` を**公開済み**、Velour は
-`velour-v0.1.0` で**一区切り**（下書き Release）。**Sparkleur は `SPK-1`〜`SPK-9` と `SPK-11` —
-DSP は詰めまで終わった。UI はまだ無い**（ホストの汎用ビューで触る）。
-**実機で読み込んで音を出すのだけ未確認。**
+**2026-08-27 時点。** Doubler は `doubler-v0.1.0` を**公開済み**、Velour は
+`velour-v0.1.0` で**一区切り**（下書き Release）。**Sparkleur は `SPK-1`〜`SPK-11` と `SPK-16` —
+DSP も解析も終わった。残っているのは UI と CPU 予算と既定値**。UI が無いので
+ホストの汎用ビューで触る。**実機で読み込んで音を出すのだけ未確認。**
 
 このファイルは**そのとき何が動いていて、次に触る人が最初に知るべきこと**を
 1 枚にまとめたもの。設計の正は各仕様書、状態の正は
@@ -28,11 +28,11 @@ DSP は詰めまで終わった。UI はまだ無い**（ホストの汎用ビ�
 | `crates/nxe-plug-ui` | nih-plug のパラメータと `nxe-ui` の結線。**両方を知る唯一のクレート**（`SPK-11`） |
 | `crates/nxe-dsp` | 共通の解析（`Handoff` / `PanScope` / `Spectrum` / `Level`） |
 | `plugins/sparkleur/sparkleur-core` | **DSP は全部。** 5 帯域クロスオーバー、検波、上下コンプ、Sparkle、`CHARACTER`、De-Harsh / Sub Protect、エンジン |
-| `plugins/sparkleur/sparkleur` | NXE Sparkleur。CLAP + VST3。**パラメータ 33 個。UI はまだ無い**（`SPK-12` から） |
+| `plugins/sparkleur/sparkleur` | NXE Sparkleur。CLAP + VST3。パラメータ 33 個。解析も配線済み。**UI はまだ無い**（`SPK-12` から） |
 | `plugins/sparkleur/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`SPK-1`〜`SPK-18`）。`sparkleur` ラッパクレートは無い |
 | CI | `check`（PR と main への push）、`release`（`<plugin>-v<version>` タグ） |
 
-テスト 326 本。CPU は予算 533 µs に対し **Doubler 85 µs / Velour 128 µs**
+テスト 329 本。CPU は予算 533 µs に対し **Doubler 85 µs / Velour 128 µs**
 （`VEL-16`。Velour の内訳はエンジン 4x が 79、`Spectrum` 48 バンド × 2 が 45、
 `Level` × 4 が 4）。
 
@@ -42,9 +42,11 @@ DSP は詰めまで終わった。UI はまだ無い**（ホストの汎用ビ�
 `SPK-8` の完了条件で唯一残っているのがこれで、**耳と DAW が要る**。UI はまだ
 無いのでホストの汎用ビューで触ることになる。
 
-その後は UI。**`SPK-12`（マクロ層）**か **`SPK-16`（解析の配線）**。
-`SPK-10`（`Band` の符号付き化）は済んでいるので、`SPK-13` は `SPK-12` と
-`SPK-16` だけを待っている。`SPK-17`（CPU 予算）は `SPK-16` の後。
+その後は **`SPK-12`（UI マクロ層）** か **`SPK-17`（CPU 予算）**。
+解析（`SPK-16`）と `Band` の符号付き化（`SPK-10`）は済んでいるので、
+`SPK-13` / `SPK-14` は `SPK-12` だけを待っている。`SPK-17` は先にやると
+**`Spectrum` を 32 バンドのままにするか**と**デノーマルを掃除するか**が
+決まるので、UI より先でもよい。
 
 **ここまで通っている**: `SPK-1` の `nxe-audio`（`shaper` / `oversample` /
 `biquad` / `envelope` / `guard` / `harmonics`、`guard` は `RelativeGuard<N>`）、
@@ -116,6 +118,11 @@ DSP は詰めまで終わった。UI はまだ無い**（ホストの汎用ビ�
 1 オクターブ下は `HP(1500)` がまだ効いていて 30 dB/oct で落ちる。24 dB/oct を
 測るなら境界が 1 つしか効かないところ。**帯域の幾何中心も 0 dB ではない**
 （band 2 は 1.7 オクターブ幅で中心が −1.5 dB）。
+
+**1 次のフィルタは 0 に到達しない**（`SPK-16`）。無音が続くと Sparkle の
+ゲートが **1.3e-42** に落ち着いた。画面上は「閉じきらないゲート」、CPU に
+よってはデノーマルの乗算が遅い。**描けない大きさを切ったら 0 にする。**
+同じ形が検波器と Guard のエネルギーにも残っている（積み残し）。
 
 **NaN 1 個で全部止まる場所は 1 つとは限らない**（`SPK-9`）。Velour の
 `VEL-10` は検波器で見つけたので Sparkleur も検波器は守っていたが、**分割その
