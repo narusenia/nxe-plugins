@@ -14,3 +14,11 @@ description = "The Sparkleur DSP, independent of any plugin host"
 # rule, so depending on it does not weaken this.
 [dependencies]
 nxe-audio.workspace = true
+
+# criterion is a dev dependency, so it never reaches a plugin binary.
+[dev-dependencies]
+criterion = { version = "0.5", default-features = false }
+
+[[bench]]
+name = "engine"
+harness = false

@@ -99,9 +99,13 @@ const ENERGY_FLOOR: f32 = 1e-10;
 
 /// Below this the gate counts as shut.
 ///
-/// A one-pole never reaches its target, so without a floor the gate settles on
-/// a **denormal** — a number no picture can draw, and one some CPUs multiply
-/// slowly (`SPK-16`).
+/// A one-pole never reaches its target, so without a floor the gate creeps down
+/// through numbers no picture can draw and never arrives at nothing.
+///
+/// **Not about denormals.** nih-plug turns flush-to-zero on around `process`
+/// on x86 and aarch64 alike, so inside a host the tail would be flushed anyway
+/// (`SPK-17`). This is so that "shut" is a value that means something — and so
+/// that it is the same value outside a host, where the tests run.
 const CLOSED: f32 = 1e-6;
 /// `10·log10(x)` is `10/log2(10)` times `log2(x)`.
 const DECIBELS_PER_OCTAVE_POWER: f32 = 3.010_3;
