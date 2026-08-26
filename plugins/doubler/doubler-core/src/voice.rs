@@ -55,6 +55,16 @@ const SPREAD_LOWPASS_HZ: f32 = 20_000.0;
 const SPREAD_HIGHPASS_OCTAVES: f32 = 3.5;
 const SPREAD_LOWPASS_OCTAVES: f32 = 2.5;
 
+/// The ranges a host's values are held to (`REQ-DBL-011`). They are the
+/// parameter ranges in `dsp.md`; the DSP owns them because it is the thing that
+/// stops making sense outside them, not the wrapper.
+const DETUNE_CENTS_MAX: f32 = 50.0;
+const DELAY_MS_MAX: f32 = 80.0;
+const TONE_DB_MIN: f32 = -12.0;
+const TONE_DB_MAX: f32 = 12.0;
+const GAIN_DB_MIN: f32 = -24.0;
+const GAIN_DB_MAX: f32 = 6.0;
+
 /// How far each voice's two cutoffs are pushed, as a fraction of the octave
 /// ranges above. `(highpass, lowpass)`; the lowpass factor is used as a
 /// magnitude, so its sign carries nothing.
@@ -389,12 +399,24 @@ impl VoiceEngine {
         self.source_blend = approach(self.source_blend, source_target, self.source_step);
         let blend = self.source_blend;
 
+        // Everything a host can hand us is clamped to the range `dsp.md` gives
+        // it (`REQ-DBL-011`). A host is free to send a parameter any value at
+        // all — an automation curve overshooting, a project written by another
+        // build — and unclamped these overflow to infinity rather than merely
+        // sounding wrong: `10^(1e9/20)` and `2^(1e9/1200)` are both `inf`, and
+        // one non-finite sample poisons everything downstream of the plugin.
         let tone_spread = macros.tone_spread.clamp(0.0, 1.0);
-        self.update_filters(macros.tone_lo, macros.tone_hi, tone_spread);
+        self.update_filters(
+            macros.tone_lo.clamp(TONE_DB_MIN, TONE_DB_MAX),
+            macros.tone_hi.clamp(TONE_DB_MIN, TONE_DB_MAX),
+            tone_spread,
+        );
 
         let ms_to_samples = self.sample_rate / 1000.0;
         let humanize = macros.humanize.clamp(0.0, 1.0);
         let spread = macros.spread.clamp(0.0, 1.0);
+        let macro_detune = macros.detune.clamp(0.0, DETUNE_CENTS_MAX);
+        let macro_delay = macros.delay.clamp(0.0, DELAY_MS_MAX);
         let mut left = 0.0;
         let mut right = 0.0;
         let mut energy = 0.0;
@@ -420,13 +442,14 @@ impl VoiceEngine {
             // The fade level goes into the energy sum too, so the compensation
             // tracks the fade and the wet level does not dip or jump partway
             // through a `Voices` change.
-            let gain = db_to_gain(shape.gain_db) * level;
+            let gain = db_to_gain(shape.gain_db.clamp(GAIN_DB_MIN, GAIN_DB_MAX)) * level;
             energy += gain * gain;
 
-            let cents =
-                macros.detune * shape.detune + humanize * HUMANIZE_DETUNE_CENTS * detune_wobble;
-            let delay_ms =
-                (macros.delay * shape.delay + humanize * HUMANIZE_DELAY_MS * delay_wobble).max(0.0);
+            let cents = macro_detune * shape.detune.clamp(-1.0, 1.0)
+                + humanize * HUMANIZE_DETUNE_CENTS * detune_wobble;
+            let delay_ms = (macro_delay * shape.delay.clamp(0.0, 1.0)
+                + humanize * HUMANIZE_DELAY_MS * delay_wobble)
+                .max(0.0);
 
             let own_is_left = voice_index % 2 == 0;
             let line_left = &self.line_left;
@@ -597,6 +620,45 @@ mod tests {
     use super::*;
 
     const SR: f32 = 48_000.0;
+
+    /// `REQ-DBL-011`: a host can hand any parameter any value — an automation
+    /// curve overshooting, a project saved by a different build, a generic UI
+    /// with no range checks. Nothing here may panic, and nothing may leave a
+    /// non-finite sample in the buffer for the rest of the chain to inherit.
+    #[test]
+    fn absurd_values_neither_panic_nor_produce_nonsense() {
+        let extremes = [f32::MIN, -1e9, -1.0, 0.0, 1.0, 1e9, f32::MAX];
+        let input = noise(256);
+
+        for &value in &extremes {
+            for voices in [Voices::Two, Voices::Eight] {
+                let macros = Macros {
+                    voices,
+                    source: Source::TrueStereo,
+                    detune: value,
+                    delay: value,
+                    spread: value,
+                    humanize: value,
+                    tone_lo: value,
+                    tone_hi: value,
+                    tone_spread: value,
+                };
+                let shape = [VoiceShape {
+                    delay: value,
+                    detune: value,
+                    pan: value,
+                    gain_db: value,
+                }; MAX_VOICES];
+
+                let mut engine = VoiceEngine::new(SR);
+                for &sample in &input {
+                    let (l, r) = engine.process(sample, -sample, &macros, &shape);
+                    assert!(l.is_finite(), "left went non-finite at {value}");
+                    assert!(r.is_finite(), "right went non-finite at {value}");
+                }
+            }
+        }
+    }
 
     /// What mirror editing assumes about the table. If a future shape breaks
     /// the pairing, mirroring a `Pan` would move the image instead of keeping
