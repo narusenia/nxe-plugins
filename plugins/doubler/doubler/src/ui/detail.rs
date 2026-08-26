@@ -10,8 +10,7 @@
 
 use super::{Ui, param_bind};
 use crate::params::DoublerParams;
-use doubler_core::{MAX_VOICES, Voices, pan_for};
-use nih_plug::prelude::Param;
+use doubler_core::{MAX_VOICES, Voices, mirror_partner, pan_for};
 use nih_plug_vizia::vizia::prelude::*;
 use nxe_ui::{font, theme};
 
@@ -46,20 +45,85 @@ fn pan_text(pan: f32) -> String {
     }
 }
 
+/// One column of the table.
+///
+/// Data rather than a pair of accessor closures: each accessor is its own
+/// anonymous type, so passing "the parameter and its partner, or neither"
+/// generically needs a type nobody can name. Matching here keeps every closure
+/// concrete.
+#[derive(Clone, Copy)]
+enum Column {
+    Delay,
+    Detune,
+    Pan,
+    Gain,
+}
+
+const COLUMNS: [Column; 4] = [Column::Delay, Column::Detune, Column::Pan, Column::Gain];
+
+impl Column {
+    fn label(self) -> &'static str {
+        match self {
+            Column::Delay => "DELAY",
+            Column::Detune => "DETUNE",
+            Column::Pan => "PAN",
+            Column::Gain => "GAIN",
+        }
+    }
+}
+
+/// What the number under a bar reads: the macro applied to the shape, which is
+/// the value the DSP is actually using.
+fn effective_text(params: &std::sync::Arc<DoublerParams>, index: usize, column: Column) -> String {
+    let shape = &params.shape[index];
+    match column {
+        Column::Delay => format!("{:.1}", params.delay.value() * shape.delay.value()),
+        Column::Detune => format!("{:+.1}", params.detune.value() * shape.detune.value()),
+        Column::Pan => pan_text(pan_for(
+            params.source.value().into(),
+            params.spread.value(),
+            shape.pan.value(),
+            index,
+        )),
+        Column::Gain => format!("{:+.1}", shape.gain.value()),
+    }
+}
+
 /// One cell: the bar, and the effective value under it.
-fn cell<P, F, V>(cx: &mut Context, to_param: F, centred: bool, effective: V)
-where
-    P: Param + 'static,
-    F: Fn(&std::sync::Arc<DoublerParams>) -> &P + Copy + 'static,
-    V: Fn(&std::sync::Arc<DoublerParams>) -> String + 'static,
-{
+///
+/// **`Delay` and `Gain` are deliberately not mirrored** — an asymmetric delay is
+/// what a doubler *is*, and pulling one voice down to lean the image is a real
+/// thing to want (`REQ-DBL-014`).
+fn cell(cx: &mut Context, index: usize, column: Column) {
+    let partner = mirror_partner(index);
+
     HStack::new(cx, |cx| {
-        param_bind::bar(cx, Ui::params, to_param, centred)
-            .height(Pixels(BAR_HEIGHT))
-            .width(Stretch(1.0));
-        font::value(cx, Ui::params.map(effective))
-            .width(Pixels(VALUE_WIDTH))
-            .child_left(Stretch(1.0));
+        let bar = match column {
+            Column::Delay => param_bind::bar(cx, Ui::params, move |p| &p.shape[index].delay, false),
+            Column::Gain => param_bind::bar(cx, Ui::params, move |p| &p.shape[index].gain, false),
+            Column::Detune => param_bind::mirrored_bar(
+                cx,
+                Ui::params,
+                Ui::mirror,
+                move |p| &p.shape[index].detune,
+                move |p| &p.shape[partner].detune,
+            ),
+            Column::Pan => param_bind::mirrored_bar(
+                cx,
+                Ui::params,
+                Ui::mirror,
+                move |p| &p.shape[index].pan,
+                move |p| &p.shape[partner].pan,
+            ),
+        };
+        bar.height(Pixels(BAR_HEIGHT)).width(Stretch(1.0));
+
+        font::value(
+            cx,
+            Ui::params.map(move |params| effective_text(params, index, column)),
+        )
+        .width(Pixels(VALUE_WIDTH))
+        .child_left(Stretch(1.0));
     })
     .width(Stretch(1.0))
     .height(Stretch(1.0))
@@ -72,47 +136,9 @@ fn row(cx: &mut Context, index: usize) {
             .class("subtle")
             .width(Pixels(INDEX_WIDTH));
 
-        cell(
-            cx,
-            move |params| &params.shape[index].delay,
-            false,
-            move |params| {
-                format!(
-                    "{:.1}",
-                    params.delay.value() * params.shape[index].delay.value()
-                )
-            },
-        );
-        cell(
-            cx,
-            move |params| &params.shape[index].detune,
-            true,
-            move |params| {
-                format!(
-                    "{:+.1}",
-                    params.detune.value() * params.shape[index].detune.value()
-                )
-            },
-        );
-        cell(
-            cx,
-            move |params| &params.shape[index].pan,
-            true,
-            move |params| {
-                pan_text(pan_for(
-                    params.source.value().into(),
-                    params.spread.value(),
-                    params.shape[index].pan.value(),
-                    index,
-                ))
-            },
-        );
-        cell(
-            cx,
-            move |params| &params.shape[index].gain,
-            false,
-            move |params| format!("{:+.1}", params.shape[index].gain.value()),
-        );
+        for column in COLUMNS {
+            cell(cx, index, column);
+        }
     })
     .class("row")
     .height(Pixels(ROW_HEIGHT))
@@ -142,8 +168,10 @@ pub fn view(cx: &mut Context) {
 
         HStack::new(cx, |cx| {
             Label::new(cx, "").class("label").width(Pixels(INDEX_WIDTH));
-            for name in ["DELAY", "DETUNE", "PAN", "GAIN"] {
-                Label::new(cx, name).class("label").width(Stretch(1.0));
+            for column in COLUMNS {
+                Label::new(cx, column.label())
+                    .class("label")
+                    .width(Stretch(1.0));
             }
         })
         .class("row")

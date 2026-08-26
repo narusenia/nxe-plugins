@@ -36,6 +36,23 @@ fn apply(base: &ParamWidgetBase, cx: &mut EventContext, gesture: Gesture) {
     }
 }
 
+/// A mirrored value: the two mirrored axes both run symmetrically about zero,
+/// so inverting the sign is the same as reflecting the normalized value about
+/// the middle (`REQ-DBL-014`).
+pub fn reflect(normalized: f32) -> f32 {
+    1.0 - normalized
+}
+
+/// The same gesture as it applies to the mirror partner. Only the value moves;
+/// the boundaries and the reset are the partner's too, so the host sees one
+/// gesture per parameter rather than a stray write between someone else's.
+fn reflected(gesture: Gesture) -> Gesture {
+    match gesture {
+        Gesture::Change(value) => Gesture::Change(reflect(value)),
+        other => other,
+    }
+}
+
 /// A knob bound to a parameter.
 pub fn knob<'a, L, Params, P, F>(
     cx: &'a mut Context,
@@ -82,6 +99,41 @@ where
     } else {
         Bar::new(cx, value, handler)
     }
+}
+
+/// A bar that also writes its mirror partner while `mirror` is on.
+///
+/// Always bipolar: the only axes this is used for are the ones that run either
+/// side of zero, which is what makes reflecting them meaningful.
+pub fn mirrored_bar<'a, L, M, Params, P, F, G>(
+    cx: &'a mut Context,
+    params: L,
+    mirror: M,
+    to_param: F,
+    to_partner: G,
+) -> Handle<'a, Bar>
+where
+    L: Lens<Target = Params> + Copy,
+    M: Lens<Target = bool> + Copy,
+    Params: 'static,
+    P: Param + 'static,
+    F: Fn(&Params) -> &P + Copy + 'static,
+    G: Fn(&Params) -> &P + Copy + 'static,
+{
+    let base = ParamWidgetBase::new(cx, params, to_param);
+    let partner = ParamWidgetBase::new(cx, params, to_partner);
+    let value = ParamWidgetBase::make_lens(params, to_param, |param| {
+        param.unmodulated_normalized_value()
+    });
+
+    Bar::bipolar(cx, value, move |cx, gesture| {
+        apply(&base, cx, gesture);
+        // Read per gesture rather than latched at `Begin`: the toggle cannot be
+        // reached mid-drag with one pointer, so there is no state to keep.
+        if mirror.get(cx) {
+            apply(&partner, cx, reflected(gesture));
+        }
+    })
 }
 
 /// A segmented control bound to a stepped parameter.
