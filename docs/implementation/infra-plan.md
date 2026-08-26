@@ -76,6 +76,6 @@ GitHub Actions で `mise run check`（fmt + clippy + test）。macOS で回す�
   捨てると、原因の当たりを付けにくい
 - **決めたこと**: zip は Windows だけ `Compress-Archive`、他は `zip`。
   `zip` は Windows ランナーに無く、`Compress-Archive` は他に無い
-- **未検証**: 初回タグまでこのワークフローは一度も走っていない。
-  最初のタグで確認する項目 — 3 つの zip が付くか、macOS の bundle が
-  `lipo -info` で universal か、README の Gatekeeper 手順が実際の添付物に効くか
+- **検証済み**（2026-08-26、`doubler-v0.1.0`）: 3 つの zip が下書き Release に
+  付いた。macOS は `lipo -info` で `x86_64 arm64` の 2 アーキテクチャ。
+  残るは README の Gatekeeper 手順が実際の添付物に効くかの確認（実機）

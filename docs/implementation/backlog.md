@@ -31,7 +31,8 @@
 - UI: Voice Field・Filter View・Detail 表・ミラー編集・ツールチップ・
   キーボード操作・解析の重ね描き
 - CPU: エンジン 70 µs + 解析 15 µs = **85 µs / 予算 533 µs**（1 コアの 0.8%）
-- CI: `check`（PR と main への push）は動作中。`release` は**タグ未実行**
+- CI: `check`（PR と main への push）と `release`（`<plugin>-v<version>` タグ）
+  の両方が動作確認済み。`doubler-v0.1.0` が下書き Release として出ている
 - 共通クレート: `nxe-ui`（ウィジェット）と `nxe-dsp`（解析）。他プラグインで
   そのまま使える状態
 
@@ -61,7 +62,7 @@
 |---|---|---|
 | INFRA-1 | ワークスペース骨格 | ✅ `3f98dce` |
 | INFRA-2 | プルリクエストの CI（`mise run check`） | ✅ |
-| INFRA-3 | リリースの CI（タグ → 3 OS bundle → Release） | ✅ ❓ タグ未実行 |
+| INFRA-3 | リリースの CI（タグ → 3 OS bundle → Release） | ✅ `doubler-v0.1.0` で実行済み |
 
 ### 共通の解析 — `nxe-dsp-plan.md`
 
