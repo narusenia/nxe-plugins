@@ -26,15 +26,23 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 
-/// The starting point from `ui.md`: the Doubler's 620 × 572 plus the width of
-/// the meter strip. **Settled by looking at it in a host**, the way the
-/// Doubler's was.
+/// `ui.md` started from the Doubler's 620 × 572 plus the meter strip, and this
+/// is what looking at it in a host settled it to.
+///
+/// **The height is the sum of the parts, not a round number**: 12 of padding,
+/// the wordmark, the figure, the tab strip, [`TAB_HEIGHT`], and 12 again. Set
+/// too tall — it started at 580 — the window ends in a band of nothing, because
+/// everything inside is a fixed height and piles at the top.
 const WIDTH: u32 = 680;
-const HEIGHT: u32 = 580;
+const HEIGHT: u32 = 528;
 
 /// How tall the swapped region is. Fixed, so switching tabs does not move
 /// anything above it.
-const TAB_HEIGHT: f32 = 190.0;
+///
+/// Sized to MAIN, which is the taller of the two: a 52 px knob with its label
+/// and value is 88, the second row of smaller knobs is 74, and 12 between them.
+/// ADVANCED needs about 130 and simply leaves the rest empty.
+const TAB_HEIGHT: f32 = 180.0;
 
 pub fn default_state() -> Arc<ViziaState> {
     ViziaState::new(|| (WIDTH, HEIGHT))

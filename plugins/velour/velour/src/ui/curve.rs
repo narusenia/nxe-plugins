@@ -23,12 +23,9 @@ use velour_core::engine::curve_for;
 /// curve rather than a corner.
 const RESOLUTION: usize = 96;
 
-/// The output the window's top and bottom stand for.
-///
-/// **Not 1.0.** The curve is normalised for level at a quarter of full scale
-/// (`velour_core::shaper::PROBE_AMPLITUDE`), so a hard setting drawn against ±1
-/// would run off the top of the window and read as a flat clip.
-const CEILING: f32 = 2.0;
+/// The floor under the curve's own peak, so a curve of all zeros — which
+/// nothing produces, but a hostile parameter could — divides by something.
+const PEAK_FLOOR: f32 = 1e-6;
 
 const NAMES: [&str; BAND_COUNT] = ["BODY", "PRESENCE", "AIR"];
 
@@ -52,20 +49,41 @@ fn shown(params: &VelourParams, hovered: Option<usize>) -> usize {
 }
 
 /// The curve, as points across the window.
+///
+/// **Scaled by its own peak, not by a fixed ceiling.** The shaper is normalised
+/// for *level* at a quarter of full scale (`velour_core::shaper`), so a harder
+/// curve returns *less* at full input than a soft one does — it is saturating.
+/// Drawn against a fixed ceiling that meant the curve **shrank as `DRIVE` went
+/// up**, collapsing to a tenth of the window at the top of the range: a squiggle
+/// in the middle of an empty box, which is exactly backwards from what a
+/// transfer curve is for.
+///
+/// Scaling by the peak makes the window show the **shape** — the asymmetry that
+/// is `bias`, and the roundness of the ends that is the knee — which is what
+/// this window was specified to show and nothing else (`ui.md`). How much is
+/// being added is `DRIVE`'s own readout and the upper curve in the figure.
 fn curve_of(params: &VelourParams, hovered: Option<usize>) -> Vec<Curve> {
     let shaper = curve_for(&params.display_shape(), shown(params, hovered), 0.0).shaper();
 
+    // The horizontal axis is the input, −1 to +1, so the middle of the window is
+    // silence and the curve's asymmetry about it is what `bias` looks like.
+    let sampled: Vec<(f32, f32)> = (0..=RESOLUTION)
+        .map(|step| {
+            let x = step as f32 / RESOLUTION as f32;
+            (x, shaper.shape(x * 2.0 - 1.0))
+        })
+        .collect();
+
+    let peak = sampled
+        .iter()
+        .map(|(_, output)| output.abs())
+        .fold(0.0f32, f32::max)
+        .max(PEAK_FLOOR);
+
     vec![
-        (0..=RESOLUTION)
-            .map(|step| {
-                let x = step as f32 / RESOLUTION as f32;
-                // The horizontal axis is the input, −1 to +1, so the middle of
-                // the window is silence and the asymmetry of the curve about it
-                // is what `bias` looks like.
-                let input = x * 2.0 - 1.0;
-                let output = (shaper.shape(input) / CEILING).clamp(-1.0, 1.0);
-                (x, (output + 1.0) * 0.5)
-            })
+        sampled
+            .into_iter()
+            .map(|(x, output)| (x, ((output / peak).clamp(-1.0, 1.0) + 1.0) * 0.5))
             .collect(),
     ]
 }
@@ -89,17 +107,23 @@ pub fn view(cx: &mut Context, width: f32) {
         .height(Stretch(1.0))
         .width(Stretch(1.0));
 
+        // Centred on the label itself, **not with stretch on the column**:
+        // `child-left: 1s` and `child-right: 1s` on the parent are two more
+        // stretches for the curve's own `Stretch(1.0)` width to share, which
+        // left it drawn a third of the width it was given
+        // (`.agents/rules/vizia.md`).
         Label::new(
             cx,
             Ui::params.map(|params| NAMES[shown(params, None)].to_string()),
         )
-        .class("subtle");
+        .class("subtle")
+        .width(Stretch(1.0))
+        .child_left(Stretch(1.0))
+        .child_right(Stretch(1.0));
     })
     .width(Pixels(width))
     .height(Stretch(1.0))
-    .row_between(Pixels(theme::SPACE_1))
-    .child_left(Stretch(1.0))
-    .child_right(Stretch(1.0));
+    .row_between(Pixels(theme::SPACE_1));
 }
 
 #[cfg(test)]
@@ -139,5 +163,55 @@ mod tests {
         // And it rises left to right, or it is not a transfer curve.
         assert!(points[0].1 < middle.1);
         assert!(points[RESOLUTION].1 > middle.1);
+    }
+
+    /// **The bug this window shipped with**: drawn against a fixed ceiling, a
+    /// harder curve came out *smaller*, because the shaper is normalised for
+    /// level and a saturating curve returns less at full input. At the top of
+    /// the drive range the curve collapsed to a tenth of the window — a squiggle
+    /// in an empty box, exactly where there is most shape to look at.
+    #[test]
+    fn the_curve_fills_the_window_at_every_drive() {
+        for drive in [0.0f32, 0.2, 0.4, 0.6, 0.8, 1.0] {
+            let params = VelourParams::default();
+            // The parameter cannot be moved without a host, so the shape is
+            // built directly — the same one `curve_of` resolves.
+            let mut shape = params.display_shape();
+            shape.drive = drive;
+            let shaper = curve_for(&shape, DEFAULT_BAND, 0.0).shaper();
+
+            let sampled: Vec<f32> = (0..=RESOLUTION)
+                .map(|step| shaper.shape(step as f32 / RESOLUTION as f32 * 2.0 - 1.0))
+                .collect();
+            let peak = sampled
+                .iter()
+                .map(|output| output.abs())
+                .fold(0.0f32, f32::max)
+                .max(PEAK_FLOOR);
+            let drawn: Vec<f32> = sampled
+                .iter()
+                .map(|output| ((output / peak).clamp(-1.0, 1.0) + 1.0) * 0.5)
+                .collect();
+
+            let low = drawn.iter().copied().fold(1.0f32, f32::min);
+            let high = drawn.iter().copied().fold(0.0f32, f32::max);
+
+            // One edge is touched exactly and the other falls short by however
+            // asymmetric the curve is — **that gap is the reading**, it is what
+            // `bias` looks like. So the claim is that the curve spans nearly the
+            // whole window, not that it touches both edges.
+            assert!(
+                low < 0.02 || high > 0.98,
+                "drive {drive}: neither edge reached ({low:.3}..{high:.3})"
+            );
+            // Measured across the range: 0.99 at the bottom down to 0.75 at the
+            // top, where the curve saturates one way well before the other. The
+            // fixed-ceiling version this replaces reached 0.10.
+            assert!(
+                high - low > 0.7,
+                "drive {drive}: the curve spans only {:.2} of the window",
+                high - low
+            );
+        }
     }
 }

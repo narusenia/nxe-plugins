@@ -21,6 +21,20 @@ const NAME_WIDTH: f32 = 64.0;
 const BAR_WIDTH: f32 = 104.0;
 const SOLO_WIDTH: f32 = 44.0;
 
+/// **A bar has no default height** — an unset one is `Stretch(1.0)`, and a
+/// stretching child of an `Auto`-sized parent resolves to nothing
+/// (`.agents/rules/vizia.md`). Every bar here was a hairline, and a hairline
+/// cannot be grabbed: the rows read as controls that did nothing. The gallery
+/// sets this on every bar it shows, which is where the number comes from.
+const BAR_HEIGHT: f32 = 10.0;
+
+/// The right-hand column's own widths. `OVERSAMPLE` does not fit in
+/// [`NAME_WIDTH`] — it was clipped to `OVERSAMPL` — and the sixteen pixels come
+/// out of the bar rather than out of the window, so the column's total is
+/// unchanged and the bars stay aligned with the segmented control under them.
+const SIDE_NAME_WIDTH: f32 = 80.0;
+const SIDE_BAR_WIDTH: f32 = 88.0;
+
 /// The right column, which holds what is global rather than per band.
 const SIDE_WIDTH: f32 = 232.0;
 
@@ -85,7 +99,8 @@ fn row(cx: &mut Context, index: usize) {
                 _ => super::param_bind::bar(cx, Ui::params, |params| &params.bias_air, true),
             }
             .tooltip(|cx| theme::hint(cx, "Deeper curve added quieter, or the reverse"))
-            .width(Stretch(1.0));
+            .width(Stretch(1.0))
+            .height(Pixels(BAR_HEIGHT));
         });
 
         cell(cx, BAR_WIDTH, move |cx| {
@@ -97,7 +112,8 @@ fn row(cx: &mut Context, index: usize) {
                 _ => super::param_bind::bar(cx, Ui::params, |params| &params.texture_air, true),
             }
             .tooltip(|cx| theme::hint(cx, "This band's deviation from TEXTURE"))
-            .width(Stretch(1.0));
+            .width(Stretch(1.0))
+            .height(Pixels(BAR_HEIGHT));
         });
 
         cell(cx, SOLO_WIDTH, move |cx| {
@@ -158,7 +174,7 @@ fn side(cx: &mut Context) {
             HStack::new(cx, |cx| {
                 Label::new(cx, "OVERSAMPLE")
                     .class("subtle")
-                    .width(Pixels(NAME_WIDTH))
+                    .width(Pixels(SIDE_NAME_WIDTH))
                     .height(Auto);
                 super::param_bind::segmented(
                     cx,
@@ -192,11 +208,12 @@ fn labelled_bar(
     HStack::new(cx, |cx| {
         Label::new(cx, label)
             .class("subtle")
-            .width(Pixels(NAME_WIDTH))
+            .width(Pixels(SIDE_NAME_WIDTH))
             .height(Auto);
         content(cx)
             .tooltip(move |cx| theme::hint(cx, hint))
-            .width(Pixels(BAR_WIDTH));
+            .width(Pixels(SIDE_BAR_WIDTH))
+            .height(Pixels(BAR_HEIGHT));
     })
     .class("row")
     .height(Auto)
