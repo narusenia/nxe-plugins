@@ -135,6 +135,12 @@ pub const ACCENT_WASH: Token = Token::rgb(0xE0, 0xF2, 0xFE);
 /// two flat, one with a gradient across its bounding box. A filled control now
 /// looks the same whichever of them it is.
 ///
+/// **A gradient means a quantity.** Use it where the fill measures something —
+/// how far a bar got, how loud a meter is, how far a knob has turned. A state
+/// that is simply on stays [`ACCENT`] flat: there is no "further" for the pale
+/// end to mean, and a word sitting on a ramp changes contrast across its own
+/// width (a selected segment read badly, which is how the rule got written).
+///
 /// The coordinates are the **span of the fill**, not the widget's bounds — the
 /// gradient runs from where the fill starts to where it could reach, so a
 /// quarter-full bar shows the first quarter of the ramp rather than the whole
@@ -397,9 +403,13 @@ label {{
     color: {foreground};
 }}
 
+/* **Flat, not the gradient fill.** A segment is a state, not a quantity: the
+   pale end would have nothing to mean, and a label sitting on a ramp changes
+   contrast across its own width — the word is harder to read at one end than at
+   the other. The gradient belongs to things that measure something. */
 .segment:checked {{
     color: {background};
-    background-image: {accent_fill};
+    background-color: {accent};
 }}
 
 /* A number that can be typed into. It looks like any other value until the
