@@ -13,6 +13,7 @@ use crate::params::DoublerParams;
 use doubler_core::{MAX_VOICES, Voices, mirror_partner, pan_for};
 use nih_plug_vizia::vizia::prelude::*;
 use nxe_ui::{font, theme};
+use param_bind::Mirror;
 
 /// How much a row fades when its voice is not live.
 const DIMMED: f32 = 0.42;
@@ -91,20 +92,27 @@ fn effective_text(params: &std::sync::Arc<DoublerParams>, index: usize, column: 
 
 /// One cell: the bar, and the effective value under it.
 ///
-/// **`Delay` and `Gain` are deliberately not mirrored** — an asymmetric delay is
-/// what a doubler *is*, and pulling one voice down to lean the image is a real
-/// thing to want (`REQ-DBL-014`).
+/// **`Gain` is the one column that is not mirrored** — pulling one voice down to
+/// lean the image is a real thing to want (`REQ-DBL-014`).
 fn cell(cx: &mut Context, index: usize, column: Column) {
     let partner = mirror_partner(index);
 
     HStack::new(cx, |cx| {
         let bar = match column {
-            Column::Delay => param_bind::bar(cx, Ui::params, move |p| &p.shape[index].delay, false),
             Column::Gain => param_bind::bar(cx, Ui::params, move |p| &p.shape[index].gain, false),
+            Column::Delay => param_bind::mirrored_bar(
+                cx,
+                Ui::params,
+                Ui::mirror,
+                Mirror::Same,
+                move |p| &p.shape[index].delay,
+                move |p| &p.shape[partner].delay,
+            ),
             Column::Detune => param_bind::mirrored_bar(
                 cx,
                 Ui::params,
                 Ui::mirror,
+                Mirror::Opposite,
                 move |p| &p.shape[index].detune,
                 move |p| &p.shape[partner].detune,
             ),
@@ -112,6 +120,7 @@ fn cell(cx: &mut Context, index: usize, column: Column) {
                 cx,
                 Ui::params,
                 Ui::mirror,
+                Mirror::Opposite,
                 move |p| &p.shape[index].pan,
                 move |p| &p.shape[partner].pan,
             ),

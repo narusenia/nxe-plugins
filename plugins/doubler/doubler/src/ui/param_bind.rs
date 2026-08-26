@@ -36,20 +36,39 @@ fn apply(base: &ParamWidgetBase, cx: &mut EventContext, gesture: Gesture) {
     }
 }
 
-/// A mirrored value: the two mirrored axes both run symmetrically about zero,
-/// so inverting the sign is the same as reflecting the normalized value about
-/// the middle (`REQ-DBL-014`).
-pub fn reflect(normalized: f32) -> f32 {
-    1.0 - normalized
+/// How an axis reaches its mirror partner (`REQ-DBL-014`).
+///
+/// The two cases follow from the axis, not from taste: an axis that runs either
+/// side of zero mirrors by changing sign, and one that only runs upward has no
+/// sign to change, so its mirror image is the same distance out. The bar's own
+/// shape follows the same split, which is why this decides that too.
+#[derive(Clone, Copy)]
+pub enum Mirror {
+    /// Bipolar: the partner takes the opposite sign. `Pan`, `Detune`.
+    Opposite,
+    /// Unipolar: the partner takes the same value. `Delay`.
+    Same,
 }
 
-/// The same gesture as it applies to the mirror partner. Only the value moves;
-/// the boundaries and the reset are the partner's too, so the host sees one
-/// gesture per parameter rather than a stray write between someone else's.
-fn reflected(gesture: Gesture) -> Gesture {
-    match gesture {
-        Gesture::Change(value) => Gesture::Change(reflect(value)),
-        other => other,
+impl Mirror {
+    /// The partner's normalized value. Both mirrored bipolar axes run
+    /// `-1..=1`, so flipping the sign is reflecting the normalized value about
+    /// the middle.
+    pub fn apply(self, normalized: f32) -> f32 {
+        match self {
+            Mirror::Opposite => 1.0 - normalized,
+            Mirror::Same => normalized,
+        }
+    }
+
+    /// The same gesture as it applies to the partner. Only the value moves; the
+    /// boundaries and the reset are the partner's too, so the host sees one
+    /// gesture per parameter rather than a stray write between someone else's.
+    fn applied(self, gesture: Gesture) -> Gesture {
+        match gesture {
+            Gesture::Change(value) => Gesture::Change(self.apply(value)),
+            other => other,
+        }
     }
 }
 
@@ -102,13 +121,11 @@ where
 }
 
 /// A bar that also writes its mirror partner while `mirror` is on.
-///
-/// Always bipolar: the only axes this is used for are the ones that run either
-/// side of zero, which is what makes reflecting them meaningful.
 pub fn mirrored_bar<'a, L, M, Params, P, F, G>(
     cx: &'a mut Context,
     params: L,
     mirror: M,
+    kind: Mirror,
     to_param: F,
     to_partner: G,
 ) -> Handle<'a, Bar>
@@ -126,14 +143,19 @@ where
         param.unmodulated_normalized_value()
     });
 
-    Bar::bipolar(cx, value, move |cx, gesture| {
+    let handler = move |cx: &mut EventContext, gesture: Gesture| {
         apply(&base, cx, gesture);
         // Read per gesture rather than latched at `Begin`: the toggle cannot be
         // reached mid-drag with one pointer, so there is no state to keep.
         if mirror.get(cx) {
-            apply(&partner, cx, reflected(gesture));
+            apply(&partner, cx, kind.applied(gesture));
         }
-    })
+    };
+
+    match kind {
+        Mirror::Opposite => Bar::bipolar(cx, value, handler),
+        Mirror::Same => Bar::new(cx, value, handler),
+    }
 }
 
 /// A segmented control bound to a stepped parameter.

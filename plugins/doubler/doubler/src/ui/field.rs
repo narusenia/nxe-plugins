@@ -12,7 +12,8 @@
 //! **The radius is the shape value directly.** The outer arc *is* the `Delay`
 //! macro, so a voice at `Delay_i` = 1 sits on it whatever the macro says.
 
-use super::{Ui, UiEvent, param_bind};
+use super::param_bind::Mirror;
+use super::{Ui, UiEvent};
 use crate::params::DoublerParams;
 use doubler_core::{MAX_VOICES, Source, mirror_partner, pan_for, pan_shape_for};
 use nih_plug::prelude::Param;
@@ -79,10 +80,11 @@ fn anchors_of(params: &DoublerParams) -> Vec<FieldPoint> {
 struct VoiceHandles {
     pan: ParamWidgetBase,
     delay: ParamWidgetBase,
-    /// The paired voice's `Pan`, written alongside `pan` while mirroring is on
-    /// (`REQ-DBL-014`). **`Delay` has no counterpart here** — the radius is left
-    /// asymmetric on purpose.
+    /// The paired voice's parameters, written alongside the dragged voice's
+    /// while mirroring is on (`REQ-DBL-014`). The angle inverts and the radius
+    /// matches, so the partner point tracks the dragged one as its reflection.
     mirror_pan: ParamWidgetBase,
+    mirror_delay: ParamWidgetBase,
 }
 
 impl VoiceHandles {
@@ -93,6 +95,7 @@ impl VoiceHandles {
         let mut bases = vec![&self.pan, &self.delay];
         if Ui::mirror.get(cx) {
             bases.push(&self.mirror_pan);
+            bases.push(&self.mirror_delay);
         }
         bases
     }
@@ -105,6 +108,9 @@ pub fn view(cx: &mut Context) {
             delay: ParamWidgetBase::new(cx, Ui::params, move |params| &params.shape[index].delay),
             mirror_pan: ParamWidgetBase::new(cx, Ui::params, move |params| {
                 &params.shape[mirror_partner(index)].pan
+            }),
+            mirror_delay: ParamWidgetBase::new(cx, Ui::params, move |params| {
+                &params.shape[mirror_partner(index)].delay
             }),
         })
         .collect();
@@ -154,18 +160,26 @@ pub fn view(cx: &mut Context) {
                 // A sideways drag has nothing to write when the mode and spread
                 // leave the voices with no pan to give — every voice is centred
                 // regardless of its shape. The radius still moves.
+                let mirroring = Ui::mirror.get(cx);
+
                 if let Some(shape) = pan_shape_for(source, spread, angle, index) {
                     // `Pan_i` runs `-1..=1`, so its normalized value is the
                     // shape mapped onto `0..=1`.
                     let normalized = (shape + 1.0) * 0.5;
                     voice.pan.set_normalized_value(cx, normalized);
-                    if Ui::mirror.get(cx) {
+                    if mirroring {
                         voice
                             .mirror_pan
-                            .set_normalized_value(cx, param_bind::reflect(normalized));
+                            .set_normalized_value(cx, Mirror::Opposite.apply(normalized));
                     }
                 }
+
                 voice.delay.set_normalized_value(cx, radius);
+                if mirroring {
+                    voice
+                        .mirror_delay
+                        .set_normalized_value(cx, Mirror::Same.apply(radius));
+                }
             }
             FieldGesture::Hover(_) => {}
         }
