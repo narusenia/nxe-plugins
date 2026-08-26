@@ -34,7 +34,7 @@ use std::time::Duration;
 /// [`field::HEIGHT`] and [`TAB_HEIGHT`], and it moves when either of those
 /// does.
 const WIDTH: u32 = 720;
-const HEIGHT: u32 = 588;
+const HEIGHT: u32 = 636;
 
 /// The knob sizes. The five that shape the sound are the large ones; the two
 /// that decide how much of it arrives are smaller and sit apart, because they

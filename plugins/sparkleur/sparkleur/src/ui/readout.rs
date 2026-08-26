@@ -21,8 +21,6 @@
 use super::{METER_FLOOR_DB, Ui};
 use crate::analysis::Analysis;
 use nih_plug_vizia::vizia::prelude::*;
-use nxe_ui::meter::Meter;
-use nxe_ui::{font, theme};
 use sparkleur_core::crossover::BAND_COUNT;
 use std::sync::Arc;
 
@@ -30,14 +28,6 @@ use std::sync::Arc;
 /// silence is worse than saying nothing: it is six characters of noise where a
 /// glance expects a level.
 const SILENT_DB: f32 = METER_FLOOR_DB;
-
-/// Room for the widest reading — a sign, two digits, a point and a decimal — in
-/// the mono face at [`theme::FONT_READOUT`].
-const VALUE_WIDTH: f32 = 44.0;
-
-/// The gate's bar. Short enough to read as a readout rather than as a meter of
-/// its own — the meter strip beside the window is what levels are read on.
-const GATE_HEIGHT: f32 = 8.0;
 
 /// A level in dBFS, or a dash when there is nothing there.
 ///
@@ -71,120 +61,64 @@ fn reduction(gains: &[f32; BAND_COUNT]) -> String {
 }
 
 pub fn view(cx: &mut Context, analysis: Arc<Analysis>) {
-    let peaks = analysis.clone();
-    let gains = analysis;
-
-    HStack::new(cx, |cx| {
+    nxe_ui::readout::strip(cx, move |cx| {
         // **Read inside the lens, not copied into the model.** The handoff's
         // identity never changes, so mapping the `Arc` would tell the binding
         // system nothing; any change to the model re-evaluates this, and the
         // heartbeat is a change to the model thirty times a second
         // (`ui/field.rs` does the same).
-        let input = peaks.clone();
-        cell(
+        let input = analysis.clone();
+        nxe_ui::readout::cell(
             cx,
             "IN",
             Ui::params.map(move |_| {
                 let frame = input.peaks.read();
                 level(frame[0].max(frame[1]))
             }),
+            "dB",
         );
 
-        let output = peaks;
-        cell(
+        let output = analysis.clone();
+        nxe_ui::readout::cell(
             cx,
             "OUT",
             Ui::params.map(move |_| {
                 let frame = output.peaks.read();
                 level(frame[2].max(frame[3]))
             }),
+            "dB",
         );
 
-        let deepest = gains.clone();
-        cell(
+        let deepest = analysis.clone();
+        nxe_ui::readout::cell(
             cx,
             "REDUCTION",
             Ui::params.map(move |_| reduction(&deepest.gains.read())),
+            "dB",
         );
 
         // **The gate, as a bar rather than a number.** What is asked of it is
         // "is it lighting up on this material", which a moving bar answers at a
         // glance and a figure flickering between 0 and 100 does not.
-        let gate = gains.clone();
-        meter_cell(
+        let gate = analysis.clone();
+        nxe_ui::readout::meter_cell(
             cx,
             "SPARKLE",
             Ui::params.map(move |_| gate.sparkle.read()[0]),
         );
 
-        cell(
+        let guard = analysis.clone();
+        nxe_ui::readout::cell(
             cx,
             "DE-HARSH",
             // Always signed, for the same reason `reduction` is — and more so:
             // this one sits at zero on ordinary material by design (`SPK-18`),
             // so the sign would otherwise appear only on the rare occasion it
             // has something to say.
-            Ui::params.map(move |_| format!("-{:.1}", gains.de_harsh.read()[0].abs())),
+            Ui::params.map(move |_| format!("-{:.1}", guard.de_harsh.read()[0].abs())),
+            "dB",
         );
-    })
-    .height(Auto)
-    .width(Stretch(1.0))
-    .col_between(Pixels(theme::SPACE_4));
-}
-
-/// A cell whose content is a bar rather than a figure.
-fn meter_cell(cx: &mut Context, name: &'static str, level: impl Res<f32> + 'static) {
-    VStack::new(cx, |cx| {
-        VStack::new(cx, |cx| {
-            Label::new(cx, name).class("eyebrow");
-        })
-        .class("heading");
-
-        // **No hold and no marks.** A held peak answers "how loud did it get",
-        // and the question here is "is it open right now" — a mark left behind
-        // would say the gate is still doing something after it shut.
-        Meter::horizontal(cx, level, 0.0, Vec::new())
-            .width(Stretch(1.0))
-            .height(Pixels(GATE_HEIGHT))
-            .top(Stretch(1.0))
-            .bottom(Pixels(theme::SPACE_1));
-    })
-    .width(Stretch(1.0))
-    .height(Auto)
-    .row_between(Pixels(theme::SPACE_1));
-}
-
-/// One figure under its own eyebrow and rule — the same shape every named
-/// region in this design takes (`crates/nxe-ui/README.md`).
-fn cell(cx: &mut Context, name: &'static str, value: impl Res<String> + Clone) {
-    VStack::new(cx, |cx| {
-        VStack::new(cx, |cx| {
-            Label::new(cx, name).class("eyebrow");
-        })
-        .class("heading");
-
-        HStack::new(cx, |cx| {
-            // **A fixed box, not an auto one.** The dash for silence is one
-            // character and a level is five; without a width the unit beside it
-            // walks left and right as the signal comes and goes.
-            font::value(cx, value)
-                .class("readout")
-                .width(Pixels(VALUE_WIDTH))
-                .height(Auto)
-                // **Right, not left.** The box is fixed so the unit beside it
-                // cannot move, but the reading still gains a digit crossing ten
-                // decibels — right-aligned, that digit grows into the padding
-                // and the decimal point stays where the eye left it.
-                .text_align(TextAlign::Right);
-            Label::new(cx, "dB").class("subtle").top(Stretch(1.0));
-        })
-        .height(Auto)
-        .width(Auto)
-        .col_between(Pixels(theme::SPACE_1));
-    })
-    .width(Stretch(1.0))
-    .height(Auto)
-    .row_between(Pixels(theme::SPACE_1));
+    });
 }
 
 #[cfg(test)]

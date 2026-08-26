@@ -2,15 +2,19 @@
 //!
 //! Layout follows `plugins/velour/docs/specifications/ui.md`.
 //!
-//! **One fixed window size, and tabs inside it.** The Doubler learned this the
-//! expensive way: asking a host to resize the editor on a disclosure toggle
-//! wedged it in Ableton (`plugins/doubler/docs/implementation/doubler-plan.md`).
-//! Tabs need nothing from the host for a control to become reachable.
+//! **One fixed window size, and everything inside it.** The Doubler learned the
+//! first half the expensive way: asking a host to resize the editor on a
+//! disclosure toggle wedged it in Ableton
+//! (`plugins/doubler/docs/implementation/doubler-plan.md`). Tabs were the answer
+//! to the second half and turned out to be a worse one — twenty-four controls
+//! is few enough to show at once, and "which band is that harshness in" cannot
+//! be asked of half a panel.
 
 mod advanced;
 mod curve;
 mod field;
 mod meters;
+mod readout;
 
 use crate::analysis::{Analysis, BANDS, HIGH_HZ, LOW_HZ, METERS};
 use crate::params::VelourParams;
@@ -19,7 +23,6 @@ use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
 use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
 use nxe_ui::curve::Curve;
-use nxe_ui::segmented::SegmentedControl;
 use nxe_ui::{font, theme};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -29,36 +32,19 @@ use std::time::Duration;
 /// is what looking at it in a host settled it to.
 ///
 /// **The height is the sum of the parts, not a round number**: 12 of padding,
-/// the wordmark, the figure, the tab strip, [`TAB_HEIGHT`], and 12 again. Set
-/// too tall — it started at 580 — the window ends in a band of nothing, because
-/// everything inside is a fixed height and piles at the top.
-const WIDTH: u32 = 680;
-const HEIGHT: u32 = 528;
-
-/// How tall the swapped region is. Fixed, so switching tabs does not move
-/// anything above it.
-///
-/// Sized to MAIN, which is the taller of the two: a 52 px knob with its label
-/// and value is 88, the second row of smaller knobs is 74, and 12 between them.
-/// ADVANCED needs about 130 and simply leaves the rest empty.
-const TAB_HEIGHT: f32 = 180.0;
+/// the wordmark, the readout strip, the figure, the shape row and the per-band
+/// table. Set too tall — it started at 580 — the window ends in a band of
+/// nothing, because everything inside is a fixed height and piles at the top.
+const WIDTH: u32 = 720;
+const HEIGHT: u32 = 624;
 
 pub fn default_state() -> Arc<ViziaState> {
     ViziaState::new(|| (WIDTH, HEIGHT))
 }
 
-const TAB_MAIN: usize = 0;
-const TAB_ADVANCED: usize = 1;
-
 #[derive(Lens)]
 pub(crate) struct Ui {
     params: Arc<VelourParams>,
-    /// Which tab is showing.
-    ///
-    /// **Interface state, not a parameter.** Which tab was open does not change
-    /// the sound, so it is not worth an id in the saved state — reopening on
-    /// MAIN is the right default anyway.
-    tab: usize,
     /// Which band the pointer is over, so the Advanced row and the region can
     /// mark each other. One value, both directions — the Doubler's
     /// `Ui::hovered` (`plugins/doubler/docs/specifications/ui.md`).
@@ -105,7 +91,7 @@ const SPECTRUM_FLOOR_DB: f32 = -72.0;
 /// The floor of the meters. Shallower than the spectrum's: a meter is read for
 /// "how close to clipping", and 60 dB of travel puts a working vocal in the top
 /// third where it can be read.
-const METER_FLOOR_DB: f32 = -60.0;
+pub(crate) const METER_FLOOR_DB: f32 = -60.0;
 
 /// One published band frame as a curve across the figure's axis.
 ///
@@ -135,7 +121,6 @@ fn meter_position(amplitude: f32) -> f32 {
 }
 
 pub(crate) enum UiEvent {
-    SelectTab(usize),
     Hover(Option<usize>),
     /// The heartbeat asking the model to re-read what the audio thread
     /// published.
@@ -145,7 +130,6 @@ pub(crate) enum UiEvent {
 impl Model for Ui {
     fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
         event.map(|ui_event: &UiEvent, _| match ui_event {
-            UiEvent::SelectTab(tab) => self.tab = *tab,
             UiEvent::Hover(index) => self.hovered = *index,
             UiEvent::Poll => {
                 self.dry = spectrum_curve(&self.analysis.dry.read());
@@ -185,7 +169,6 @@ pub fn create(
         let host_rate = f32::from_bits(sample_rate.load(Ordering::Relaxed));
 
         Ui {
-            tab: TAB_MAIN,
             hovered: None,
             analysis: analysis.clone(),
             dry: Curve::new(),
@@ -203,28 +186,27 @@ pub fn create(
         HStack::new(cx, |cx| {
             VStack::new(cx, |cx| {
                 header(cx);
-                // The figure stays put above the tabs. It is what the plugin
-                // *is* — hiding it behind a tab would leave the window with
-                // nothing to look at (`ui.md`).
-                figure_row(cx, host_rate, analysis.clone());
-                tab_strip(cx);
 
-                // Both tabs are built and one is hidden. Rebuilding on a switch
-                // would drop the widgets' own state — a drag in progress, a
-                // hover — for nothing.
-                VStack::new(cx, |cx| {
-                    main_tab(cx);
-                    advanced_tab(cx);
-                })
-                .height(Pixels(TAB_HEIGHT))
-                .width(Stretch(1.0));
+                // **What is happening right now**, above everything and never
+                // hidden (`SPK-19`).
+                readout::view(cx, analysis.clone());
+
+                // The figure. It is what the plugin *is* (`ui.md`).
+                figure_row(cx, host_rate, analysis.clone());
+
+                // **No tabs.** They hid the per-band layer behind a click, and
+                // "which band is that harshness in" cannot be asked of half a
+                // panel. Everything is on screen.
+                shape_row(cx);
+                Element::new(cx).class("rule");
+                advanced::view(cx);
             })
             .width(Stretch(1.0))
             .height(Stretch(1.0))
             .row_between(Pixels(theme::SPACE_3));
 
-            // **Outside the tabs**, because "is this louder or better" is a
-            // question asked while looking at either of them (`ui.md`).
+            // **Outside the column**, because "is this louder or better" is a
+            // question asked while looking at any of it (`ui.md`).
             meters::view(cx);
         })
         .class("root")
@@ -261,79 +243,51 @@ fn header(cx: &mut Context) {
     nxe_ui::header::header(cx, "NXE VELOUR", "vocal presence saturator");
 }
 
-/// The tab strip is a segmented control: the same "one of these" choice as
-/// everywhere else in this design, so it is the same widget.
-fn tab_strip(cx: &mut Context) {
-    HStack::new(cx, |cx| {
-        SegmentedControl::new(cx, Ui::tab, &["MAIN", "ADVANCED"], |cx, tab| {
-            cx.emit(UiEvent::SelectTab(tab));
-        });
-    })
-    .class("row")
-    .height(Auto);
-}
-
 /// The knob sizes. The six that shape the sound are the large ones; the two
 /// that decide how much of it arrives are smaller and sit apart, because they
 /// are a different question (`ui.md`).
 const SHAPE_KNOB: f32 = 52.0;
 const OUTPUT_KNOB: f32 = 38.0;
 
-fn main_tab(cx: &mut Context) {
-    VStack::new(cx, |cx| {
-        HStack::new(cx, |cx| {
-            macro_knob(cx, "DRIVE", "How hard the curves are driven", |params| {
-                &params.drive
-            });
-            macro_knob(cx, "BODY", "Weight, low harmonics", |params| &params.body);
-            macro_knob(cx, "PRESENCE", "Forward, midrange harmonics", |params| {
-                &params.presence
-            });
-            macro_knob(cx, "AIR", "Sheen, top harmonics", |params| &params.air);
-            texture_knob(cx);
-            macro_knob(
-                cx,
-                "DENSITY",
-                "Levels the texture, not the voice",
-                |params| &params.density,
-            );
-        })
-        .class("row")
-        .height(Auto);
+/// The eight controls that shape the sound, on one line.
+///
+/// `MIX` and `OUTPUT` are not part of the shape — one decides how much of it is
+/// heard and the other how loud the result is — so they are smaller and sit
+/// apart, past a stretch (`ui.md`).
+fn shape_row(cx: &mut Context) {
+    HStack::new(cx, |cx| {
+        macro_knob(cx, "DRIVE", "How hard the curves are driven", |params| {
+            &params.drive
+        });
+        macro_knob(cx, "BODY", "Weight, low harmonics", |params| &params.body);
+        macro_knob(cx, "PRESENCE", "Forward, midrange harmonics", |params| {
+            &params.presence
+        });
+        macro_knob(cx, "AIR", "Sheen, top harmonics", |params| &params.air);
+        texture_knob(cx);
+        macro_knob(
+            cx,
+            "DENSITY",
+            "Levels the texture, not the voice",
+            |params| &params.density,
+        );
 
-        // `MIX` and `OUTPUT` are not part of the shape: one decides how much of
-        // it is heard and the other how loud the result is. Centred and smaller,
-        // so the row above reads as the instrument and this one as the tap.
-        HStack::new(cx, |cx| {
-            Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
-            knob_block(
-                cx,
-                "MIX",
-                "Dry against the added texture",
-                OUTPUT_KNOB,
-                |params| &params.mix,
-            );
-            knob_block(cx, "OUTPUT", "Level out", OUTPUT_KNOB, |params| {
-                &params.output
-            });
-            Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
-        })
-        .class("row")
-        .height(Auto);
-    })
-    .height(Auto)
-    .width(Stretch(1.0))
-    .row_between(Pixels(theme::SPACE_3))
-    .display(Ui::tab.map(|tab| *tab == TAB_MAIN));
-}
+        Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
 
-fn advanced_tab(cx: &mut Context) {
-    VStack::new(cx, |cx| {
-        advanced::view(cx);
+        knob_block(
+            cx,
+            "MIX",
+            "Dry against the added texture",
+            OUTPUT_KNOB,
+            |params| &params.mix,
+        );
+        knob_block(cx, "OUTPUT", "Level out", OUTPUT_KNOB, |params| {
+            &params.output
+        });
     })
+    .class("row")
     .height(Auto)
-    .width(Stretch(1.0))
-    .display(Ui::tab.map(|tab| *tab == TAB_ADVANCED));
+    .width(Stretch(1.0));
 }
 
 /// One labelled knob with its value underneath: the shape every macro control
