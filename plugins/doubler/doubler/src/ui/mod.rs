@@ -188,14 +188,7 @@ fn header(cx: &mut Context) {
 /// it. `Mix` and `Output` belong next to what they act on, not under a tab.
 fn field_row(cx: &mut Context) {
     HStack::new(cx, |cx| {
-        // The toggle sits over the figure's top corner rather than in the flow,
-        // so turning mirroring on does not cost the figure any height.
-        HStack::new(cx, |cx| {
-            field::view(cx);
-            mirror_switches(cx);
-        })
-        .width(Stretch(1.0))
-        .height(Stretch(1.0));
+        field::view(cx);
 
         VStack::new(cx, |cx| {
             macro_knob(cx, "MIX", |params| &params.mix, 34.0);
@@ -235,7 +228,7 @@ fn mirror_switch(
     .class("segmented");
 }
 
-/// The three mirror switches, over the figure's empty top corner.
+/// The four mirror switches.
 ///
 /// **One pill per axis, not a master switch with exceptions.** A master plus a
 /// per-axis opt-out would mean two pieces of state deciding one write, and
@@ -244,20 +237,22 @@ fn mirror_switch(
 ///
 /// They are separate `.segmented` groups rather than one, because one group is
 /// how this interface says "pick exactly one of these" everywhere else.
+///
+/// **They live in the tab strip, not over the figure.** Four pills laid over the
+/// top corner covered the outer dots, and the alternatives — icons without
+/// tooltips, or a column that narrows the figure — both cost more than the row
+/// of empty space that was already sitting here.
 fn mirror_switches(cx: &mut Context) {
     HStack::new(cx, |cx| {
         icon::label(cx, icon::FLIP_HORIZONTAL_2);
+        Label::new(cx, "MIRROR").class("label");
         mirror_switch(cx, "PAN", Ui::mirror_pan, MirrorAxis::Pan);
         mirror_switch(cx, "DETUNE", Ui::mirror_detune, MirrorAxis::Detune);
         mirror_switch(cx, "DELAY", Ui::mirror_delay, MirrorAxis::Delay);
         mirror_switch(cx, "GAIN", Ui::mirror_gain, MirrorAxis::Gain);
     })
-    .position_type(PositionType::SelfDirected)
-    // Stretching the space to its left is how Morphorm right-aligns something
-    // that sizes to its content. Both axes need saying: an unset size is
-    // `Stretch(1.0)`, not "size to content" (`.agents/rules/vizia.md`).
-    .left(Stretch(1.0))
-    .top(Pixels(0.0))
+    // An unset size is `Stretch(1.0)`, not "size to content"
+    // (`.agents/rules/vizia.md`).
     .width(Auto)
     .height(Auto)
     .col_between(Pixels(theme::SPACE_1))
@@ -272,6 +267,8 @@ fn tab_strip(cx: &mut Context) {
         SegmentedControl::new(cx, Ui::tab, &["MAIN", "DETAIL"], |cx, tab| {
             cx.emit(UiEvent::SelectTab(tab));
         });
+        Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
+        mirror_switches(cx);
     })
     .class("row")
     .height(Auto);
