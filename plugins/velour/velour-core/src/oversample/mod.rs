@@ -397,34 +397,35 @@ mod tests {
         }
     }
 
-    /// **The reason the oversampler exists** (`REQ-VEL-005`).
+    /// **What the two factors are worth** — the oversampler's own figure, not
+    /// the plugin's.
     ///
-    /// 10 kHz through a hard curve makes harmonics at 20, 30, 40 kHz and up. Only
-    /// the one at 20 kHz belongs in a 48 kHz output; everything above 24 kHz has
-    /// to be gone, not folded.
+    /// A raw curve on a bare 10 kHz tone, with none of the band-limiting the
+    /// plugin puts in front of it. The number `REQ-VEL-005` is about is measured
+    /// through a real generator instead (`crate::bands`); this is here to say
+    /// what choosing between 2x and 4x actually buys.
     ///
-    /// Measured at the worst case the controls allow — the hard knee at
-    /// `DRIVE_MAX`: **4x leaves aliasing at −68 dB, 2x at −44 dB.**
+    /// Measured at the hard knee and full drive: **4x −58 dB, 2x −44 dB.**
     ///
     /// The 2x figure is not a filter failure. At 96 kHz internally the curve's
     /// own harmonics already run past Nyquist as they are created, and nothing
-    /// downstream can undo that. It is why 4x is the default, and why 2x is
-    /// offered as a cost saving rather than as an equal.
-    ///
-    /// **`DRIVE_MAX` is set from this measurement**, not the other way round:
-    /// drive 8 would leave 4x at −58 dB and drive 20 at −44 dB
-    /// (`crate::shaper::DRIVE_MAX`, `REQ-VEL-020`).
+    /// downstream can undo that. It is why 4x is the default, and why 2x is a
+    /// cost saving rather than an equal.
     #[test]
-    fn aliasing_is_pushed_below_the_target() {
+    fn four_times_is_worth_about_fourteen_decibels() {
         let worst_four = worst_alias(Factor::Four);
         let worst_two = worst_alias(Factor::Two);
 
-        assert!(worst_four < -60.0, "4x left aliasing at {worst_four:.1} dB");
+        assert!(worst_four < -50.0, "4x left aliasing at {worst_four:.1} dB");
         assert!(
-            worst_two < -35.0 && worst_two > -60.0,
+            worst_two < -35.0 && worst_two > -55.0,
             "2x measured {worst_two:.1} dB, which is not the expected shape"
         );
-        assert!(worst_four < worst_two, "4x was no better than 2x");
+        assert!(
+            worst_four < worst_two - 8.0,
+            "4x bought only {:.1} dB over 2x",
+            worst_two - worst_four
+        );
     }
 
     /// The loudest non-harmonic component, in dB below the fundamental.
@@ -481,7 +482,11 @@ mod tests {
     /// Where `hz` ends up after sampling at `rate`.
     fn fold(hz: usize, rate: usize) -> usize {
         let wrapped = hz % rate;
-        if wrapped > rate / 2 { rate - wrapped } else { wrapped }
+        if wrapped > rate / 2 {
+            rate - wrapped
+        } else {
+            wrapped
+        }
     }
 
     /// A quality switch that puts a step in the signal is worse than no switch.
@@ -559,7 +564,10 @@ mod tests {
             }
             // A coefficient this close to 1 is a pole at |z| = 0.995. The script
             // spends a section to avoid it; this makes sure it stays spent.
-            assert!(stage.iter().all(|value| *value < 0.95), "{stage:?} is marginal");
+            assert!(
+                stage.iter().all(|value| *value < 0.95),
+                "{stage:?} is marginal"
+            );
         }
     }
 

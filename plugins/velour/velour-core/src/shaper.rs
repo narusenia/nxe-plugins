@@ -34,8 +34,8 @@
 //! the problem it solves.
 //!
 //! **The trade is that it is only exact at the reference amplitude.** Four times
-//! louder and drive costs 9.8 dB across its range; four times quieter and it
-//! gains 2.9 dB. Both are pinned by tests rather than left to be discovered.
+//! louder and drive costs 10.7 dB across its range; four times quieter and it
+//! gains 4.3 dB. Both are pinned by tests rather than left to be discovered.
 //! The reference sits where a mixed vocal sits, so the exactness is where the
 //! plugin is used, and `DENSITY` narrows what is left by bringing the bus
 //! toward a consistent level before the curve sees it (`REQ-VEL-007`).
@@ -54,18 +54,23 @@ use std::f32::consts::TAU;
 /// its input through with unity gain (`REQ-VEL-009`).
 pub const DRIVE_MIN: f32 = 0.05;
 
-/// **The ceiling is set by aliasing, not by taste.**
+/// **The ceiling is set by aliasing, not by taste** (`REQ-VEL-005`,
+/// `REQ-VEL-020`).
 ///
-/// A 10 kHz sine — the top of AIR's range — through the hard knee at 4x leaves
-/// aliasing at −68 dB here, −58 dB at drive 8, and −44 dB at drive 20
-/// (measured in `crate::oversample`'s tests). `REQ-VEL-005` asks for −60 dB, and
-/// `REQ-VEL-020` says to reconsider this number before reaching for a higher
-/// oversampling factor. So it is 6, and the useful sound sits under it: at the
-/// reference amplitude the hard knee is already clipping the top third of the
-/// waveform.
+/// Measured through the real AIR generator at the hard knee, worst case an
+/// 11 kHz tone: −77 dB at drive 6, **−63 dB at 8**, −57 dB at 10.
 ///
-/// `VEL-17` may want it moved. Moving it means re-reading the aliasing table.
-pub const DRIVE_MAX: f32 = 6.0;
+/// It sits above the useful range rather than inside it. At the reference
+/// amplitude, drive 8 puts `k·A` at 2, and the hard knee clips everything above
+/// half amplitude — two thirds of the waveform flat-topped. Drive 20 would clip
+/// seven eighths of it, which sounds almost the same and aliases 20 dB worse.
+///
+/// **This number moved twice.** It was 20 in the specification, came down to 6
+/// when `VEL-2` measured the folding, and went back up to 8 once `VEL-3` put a
+/// ceiling on what reaches AIR's curve (`crate::bands::AIR_INPUT_CEILING`) — the
+/// order `REQ-VEL-020` asks for: tighten the input, then the drive, and only
+/// then reach for a higher oversampling factor.
+pub const DRIVE_MAX: f32 = 8.0;
 
 /// How far the bias can push the curve off centre.
 ///
@@ -252,7 +257,7 @@ mod tests {
 
     /// The controls, sampled across their ranges. Every claim below is checked
     /// against the whole grid, not against one flattering point.
-    const DRIVES: [f32; 6] = [0.05, 0.5, 1.5, 3.0, 4.5, 6.0];
+    const DRIVES: [f32; 6] = [0.05, 0.5, 1.5, 3.0, 5.0, 8.0];
     const BIASES: [f32; 4] = [0.0, 0.25, 0.5, 0.8];
     const HARDNESSES: [f32; 3] = [0.0, 0.5, 1.0];
 
@@ -296,7 +301,7 @@ mod tests {
     ///
     /// The normalisation is exact at one amplitude. Four times that peaks at
     /// full scale, and there the curve really is saturating — which is what it
-    /// is for. **Measured: −9.8 dB from the bottom of the drive range to the
+    /// is for. **Measured: −10.7 dB from the bottom of the drive range to the
     /// top.** That is the price of a fixed reference, and the alternatives are
     /// worse: normalising against the signal would make `DRIVE` behave
     /// differently on every source.
@@ -309,19 +314,34 @@ mod tests {
         let input = sine(PROBE_AMPLITUDE * 4.0, CYCLES, LENGTH);
         let reference = rms(&input);
 
-        let quiet_drive = db_ratio(rms(&run(&shaper_at(DRIVE_MIN, 0.0, 0.0), &input)), reference);
-        let loud_drive = db_ratio(rms(&run(&shaper_at(DRIVE_MAX, 0.0, 0.0), &input)), reference);
+        let quiet_drive = db_ratio(
+            rms(&run(&shaper_at(DRIVE_MIN, 0.0, 0.0), &input)),
+            reference,
+        );
+        let loud_drive = db_ratio(
+            rms(&run(&shaper_at(DRIVE_MAX, 0.0, 0.0), &input)),
+            reference,
+        );
 
-        assert!(quiet_drive.abs() < 0.3, "{quiet_drive:+.2} dB at the bottom");
-        assert!(loud_drive < quiet_drive, "it did not fall: {loud_drive:+.2} dB");
-        assert!(loud_drive > -12.0, "it fell further than expected: {loud_drive:+.2} dB");
+        assert!(
+            quiet_drive.abs() < 0.3,
+            "{quiet_drive:+.2} dB at the bottom"
+        );
+        assert!(
+            loud_drive < quiet_drive,
+            "it did not fall: {loud_drive:+.2} dB"
+        );
+        assert!(
+            loud_drive > -12.0,
+            "it fell further than expected: {loud_drive:+.2} dB"
+        );
     }
 
     /// And the same reading from the other side. Material *quieter* than the
     /// reference drifts the other way: the compensation was computed for a
     /// curve that saturates, and down here it barely does, so it over-corrects.
-    /// **Measured: +2.9 dB** — much less than the loud side, because a quiet
-    /// signal stays on the part of the curve that is nearly straight.
+    /// **Measured: +4.3 dB** — less than the loud side, because a quiet signal
+    /// stays on the part of the curve that is nearly straight.
     ///
     /// Taken together with the test above, the reference amplitude is not a
     /// detail — it is where the plugin's central claim is exactly true, and it
@@ -332,9 +352,15 @@ mod tests {
         let input = sine(PROBE_AMPLITUDE * 0.25, CYCLES, LENGTH);
         let reference = rms(&input);
 
-        let loud_drive = db_ratio(rms(&run(&shaper_at(DRIVE_MAX, 0.0, 0.0), &input)), reference);
+        let loud_drive = db_ratio(
+            rms(&run(&shaper_at(DRIVE_MAX, 0.0, 0.0), &input)),
+            reference,
+        );
         assert!(loud_drive > 0.0, "it did not rise: {loud_drive:+.2} dB");
-        assert!(loud_drive < 5.0, "it rose further than expected: {loud_drive:+.2} dB");
+        assert!(
+            loud_drive < 5.0,
+            "it rose further than expected: {loud_drive:+.2} dB"
+        );
     }
 
     /// The bottom of the drive range is the "no harmonics" setting, and that has
@@ -360,7 +386,10 @@ mod tests {
         for bias in BIASES {
             let output = run(&shaper_at(3.0, bias, 0.0), &input);
             let ratio = amplitude(&output, CYCLES * 2) / amplitude(&output, CYCLES);
-            assert!(ratio > previous, "bias {bias} gave H2/H1 {ratio}, was {previous}");
+            assert!(
+                ratio > previous,
+                "bias {bias} gave H2/H1 {ratio}, was {previous}"
+            );
             previous = ratio;
         }
 
@@ -377,7 +406,10 @@ mod tests {
         for drive in DRIVES {
             let output = run(&shaper_at(drive, 0.0, 0.0), &input);
             let ratio = amplitude(&output, CYCLES * 3) / amplitude(&output, CYCLES);
-            assert!(ratio > previous, "drive {drive} gave H3/H1 {ratio}, was {previous}");
+            assert!(
+                ratio > previous,
+                "drive {drive} gave H3/H1 {ratio}, was {previous}"
+            );
             previous = ratio;
         }
     }

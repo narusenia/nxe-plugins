@@ -11,9 +11,12 @@
 //! Velour**, because Sparkleur will want them. They stay here until it does
 //! (`docs/specifications/architecture.md`).
 
+pub mod bands;
+pub mod biquad;
 pub mod harmonics;
 pub mod oversample;
 pub mod shaper;
 
+pub use bands::{Band, Generator};
 pub use oversample::{Factor, Oversampler};
 pub use shaper::Shaper;

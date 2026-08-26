@@ -19,8 +19,4 @@ pub const STAGE_ONE: [f32; 7] = [
 
 /// The 96 kHz <-> 192 kHz halfband: **78.6 dB** in the stopband
 /// (from 0.7083 of pi), passband ripple 6.0e-08 dB.
-pub const STAGE_TWO: [f32; 3] = [
-    0.079232104,
-    0.3097851,
-    0.7050574,
-];
+pub const STAGE_TWO: [f32; 3] = [0.079232104, 0.3097851, 0.7050574];
