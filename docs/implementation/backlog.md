@@ -22,23 +22,42 @@
 | ❓ | 前提条件の判断待ち（耳での確認・測定など） |
 | ❌ | 判断の結果やらないことにした（根拠は計画書に記録） |
 
+## 現在地
+
+**フェーズ 3（UI）はほぼ完了。** `nxe-ui` のウィジェットは Doubler が使うものが
+全部揃い、プラグイン側も Voice Field・Filter View・Detail 表まで載っている。
+
+最後に確認待ちなのは**タブ式レイアウトの見た目**（2026-08-26 時点）。窓 620 × 572、
+Voice Field と `MIX` / `OUTPUT` が常時表示、タブが「4 ノブ + Filter View」と
+「8 行の表」を入れ替える。寸法は `plugins/doubler/doubler/src/ui/mod.rs` の
+`FIELD_HEIGHT` / `SIDE_WIDTH` / `TAB_HEIGHT` で調整できる。
+
 ## 今すぐ着手できるもの
 
 依存が無いか、依存がすべて解決している単位。
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| UI-8 / UI-9 | `Meter` / `ToggleSwitch`（Doubler は使わない。フェーズ 5） | `nxe-ui-plan.md` |
+| DBL-15 | UI ミラー編集（フェーズ 3 の最後） | `doubler-plan.md` |
 | INFRA-2 | プルリクエストの CI（フェーズ 4） | `infra-plan.md` |
+| INFRA-3 | リリースの CI（フェーズ 4） | `infra-plan.md` |
+| DBL-12 | CPU 予算の確認（フェーズ 4） | `doubler-plan.md` |
+| DBL-13 | 既定値の詰めと実機確認（フェーズ 4） | `doubler-plan.md` |
+| UI-8 / UI-9 | `Meter` / `ToggleSwitch`（Doubler は使わない。フェーズ 5） | `nxe-ui-plan.md` |
 
-順序は [`roadmap.md`](roadmap.md) が決める。**Doubler が使うウィジェットは
-揃った**ので、次は `DBL-9` 以降のプラグイン側 UI。その前に `nxe-ui` の
-README を用意する（他プラグインから使うための契約とトークンの使い方）。
+## 積み残し（どれも単位を持っていない小物）
 
-`UI-3` はツールチップを残している（`✅ ❓`）。vizia に `Tooltip` view はあるので
-最初に必要になった単位で入れる。
+`✅ ❓` が付いている単位の未完了部分。まとめて 1 単位にしてもよい。
 
-## 全単位
+| 何 | どこ |
+|---|---|
+| ツールチップ | `UI-3`。vizia に `Tooltip` view はある |
+| `SegmentedControl` のキーボード左右移動 | `UI-6` |
+| 値の直接入力（`Gesture::Edit` が無反応） | `UI-3`。インラインのテキスト入力が要る |
+| Detail 表 → Voice Field のハイライト | `DBL-11`。`PolarField` に外からハイライトを指定する入力が無い |
+| 見た目の最終調整（フォントサイズ、寸法、余白） | ユーザーの指示で最後にまとめる |
+
+## 全単位## 全単位
 
 ### インフラ — `infra-plan.md`
 
@@ -75,10 +94,10 @@ README を用意する（他プラグインから使うための契約とトー�
 | DBL-6 | Source モード（Mono Sum / True Stereo） | ✅ |
 | DBL-7 | Tone と Tone Spread | ✅ |
 | DBL-8 | スムージングとサンプルレート／ブロックサイズ非依存の詰め | ✅ |
-| DBL-9 | UI マクロ層（ノブとセグメント） | ⬜ DBL-4, UI-4, UI-6, UI-2 |
-| DBL-10 | UI Voice Field | ⬜ DBL-9, DBL-5, DBL-6, UI-7 |
-| DBL-11 | UI Detail 層（ボイス表） | ⬜ DBL-10, UI-5 |
-| DBL-14 | UI Filter View | ⬜ DBL-9, UI-10 |
-| DBL-15 | UI ミラー編集（`REQ-DBL-014`） | ⬜ DBL-10, DBL-11 |
+| DBL-9 | UI マクロ層（ノブとセグメント） | ✅ |
+| DBL-10 | UI Voice Field | ✅ |
+| DBL-11 | UI Detail 層（ボイス表） | ✅ ❓ 表→図のハイライト未 |
+| DBL-14 | UI Filter View | ✅ |
+| DBL-15 | UI ミラー編集（`REQ-DBL-014`） | 🟡 |
 | DBL-12 | CPU 予算の確認（criterion） | ⬜ DBL-8 |
 | DBL-13 | 既定値の詰めと実機確認 | ⬜ DBL-12, DBL-11 |
