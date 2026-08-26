@@ -29,14 +29,18 @@ Label / Divider / Disclosure は CSS のクラスと Vizia 組み込みの `Butt
 | `Bar` | UI-5 | Doubler の Detail 表 |
 | `SegmentedControl` | UI-6 | Doubler の `Voices` / `Source` |
 | `PolarField` | UI-7 | Doubler の Voice Field |
-| `CurveView` | UI-10 | Doubler の Filter View |
-| `Meter` | UI-8 | まだ誰も使わない（下記） |
-| `ToggleSwitch` | UI-9 | まだ誰も使わない（下記） |
+| `CurveView` | UI-10 | Doubler の Filter View / Velour の伝達曲線 |
+| `BandField` | UI-13 | Velour の Band Field |
+| `Meter` | UI-8 | Velour の IN / OUT |
+| `ToggleSwitch` | UI-9 | **まだ誰も使わない**（下記） |
 
-`Meter` と `ToggleSwitch` は Doubler が使わない。それでも先に作るのは、
-レベルメーターと on/off トグルはダイナミクス系・ディストーション系・bypass を
-持つ何かで必ず必要になるため。**代償として実戦で検証されないまま gallery に
-並ぶ**ので、最初に使うプラグインが出た時点で仕様を見直す前提で置く。
+`Meter` は Doubler が使わないので `UI-8` は着手していなかった。**Velour で
+使う相手が現れた**（2026-08-26、`REQ-VEL-013`）。実戦で検証されないまま
+gallery に並ぶ心配が消えたので、Velour の要求に合わせて作る。
+
+`ToggleSwitch`（`UI-9`）は**2 個目のプラグインでも要らなかった**。Velour の
+`SOLO` は `.segment` を当てた `Label` に `checked` と `on_press` で足りる
+（`crates/nxe-ui/README.md`）。**3 個目でも要らなければ計画から落とす。**
 
 ## 実装単位
 
@@ -281,15 +285,41 @@ Label / Divider / Disclosure は CSS のクラスと Vizia 組み込みの `Butt
 
 ### UI-8 — Meter
 
-レベルメーター。**Doubler は使わない**（上記）。縦・横の両方向、ピークホールド
-付き。値は呼び出し側が dB で渡す。
+レベルメーター。**Velour の IN / OUT が使う**（`REQ-VEL-013`）。縦・横の
+両方向、ピークホールド付き。値は呼び出し側が dB で渡す。
 
 - **完了条件**: gallery で値を動かすと追随し、ピークホールドが減衰する
+- **決めること**: 1 つの view が 1 本か、L / R の 2 本を持つか。Velour は
+  IN と OUT で計 4 本並べる。**1 本 = 1 view にして呼び出し側が並べる**方が
+  ウィジェットが単純だが、L / R の間隔を毎回呼び出し側が決めることになる
+- **決めること**: 目盛り（−60 / −18 / 0 dB）を誰が描くか。`CurveView` と
+  `BandField` は「位置だけ受け取り、文字は呼び出し側が `Label` を絶対配置」で
+  揃えてある。同じにする
 - **依存**: UI-1
 
 ### UI-9 — ToggleSwitch
 
-on/off。**Doubler は使わない**（上記）。
+on/off。**Doubler も Velour も使わない**（上記）。`.segment` を当てた `Label` で
+足りている。**3 個目のプラグインでも要らなければ計画から落とす。**
 
 - **完了条件**: gallery でクリックで切り替わり、状態が見て分かる
 - **依存**: UI-1
+
+### UI-13 — BandField
+
+Velour の主役の図（`plugins/velour/docs/specifications/ui.md`）。対数周波数の
+パネルに、掴める帯域の区画と解析カーブ 2 本を重ねる。**領域知識を持たない** —
+Hz も dB も知らず、正規化した x と 0..=1 の高さだけを受け取る。
+
+契約（`Band` / `BandGesture` の定義）は Velour の UI 仕様が正。
+
+- **完了条件**: gallery で 3 区画を縦にドラッグでき、外側の横ドラッグが別の
+  ジェスチャーとして通知され、解析カーブ 2 本が別の色で重なる
+- **`CurveView` を拡張しないと決めた理由**: 掴める区画・横ドラッグ・Guard の
+  状態・解析 2 本を足すと `CurveView` の表面積が倍になり、Doubler の
+  Filter View がその複雑さを何の見返りも無く払う。**主役の図は製品ごとに違う**
+  というのが `PolarField` と合わせて 2 回とも正しい
+- **`PolarField` から持ち越す罠**: **楽観的なローカル更新をしない。**
+  ウィジェットが値を先に動かすと、呼び出し側がクランプしたときに
+  `Data::same` が「変化なし」と見て修正が戻らない（`.agents/rules/vizia.md`）
+- **依存**: UI-1, UI-3
