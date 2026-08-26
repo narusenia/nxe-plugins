@@ -176,6 +176,16 @@ pub const DEFAULT_SHAPE: [VoiceShape; MAX_VOICES] = [
     },
 ];
 
+/// The voice a mirrored edit writes alongside `index`.
+///
+/// The shape table is laid out in pairs whose `pan` and `detune` are equal and
+/// opposite, so the partner is the neighbour with the low bit flipped. That is
+/// the whole basis of mirror editing (`REQ-DBL-014`); the test below is what
+/// keeps the table from drifting out from under it.
+pub fn mirror_partner(index: usize) -> usize {
+    index ^ 1
+}
+
 /// The macro layer, in the units the parameters are displayed in.
 #[derive(Clone, Copy, Debug)]
 pub struct Macros {
@@ -575,6 +585,20 @@ mod tests {
     use super::*;
 
     const SR: f32 = 48_000.0;
+
+    /// What mirror editing assumes about the table. If a future shape breaks
+    /// the pairing, mirroring a `Pan` would move the image instead of keeping
+    /// it centred, and it would do so silently.
+    #[test]
+    fn mirrored_pairs_are_equal_and_opposite() {
+        for index in 0..MAX_VOICES {
+            let partner = mirror_partner(index);
+            assert_ne!(partner, index);
+            assert_eq!(mirror_partner(partner), index, "pairing is not mutual");
+            assert_eq!(DEFAULT_SHAPE[index].pan, -DEFAULT_SHAPE[partner].pan);
+            assert_eq!(DEFAULT_SHAPE[index].detune, -DEFAULT_SHAPE[partner].detune);
+        }
+    }
 
     /// Runs a mono signal through the engine (both inputs fed the same sample)
     /// and returns the stereo output.
