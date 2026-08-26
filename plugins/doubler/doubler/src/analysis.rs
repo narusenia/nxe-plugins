@@ -1,6 +1,6 @@
 //! What the editor is told about the sound going through.
 //!
-//! Two `Handoff`s shared between the audio thread and the editor: the audio
+//! `Handoff`s shared between the audio thread and the editor: the audio
 //! thread publishes a frame per block, the editor reads whatever is there when
 //! it redraws. Held in an `Arc` so closing the window disturbs nothing
 //! (`docs/specifications/architecture.md`).
@@ -9,6 +9,10 @@
 //! thread state and nothing else may touch them.
 
 use nxe_dsp::Handoff;
+
+/// IN left, IN right, OUT left, OUT right — in that order, which the readout
+/// depends on.
+pub const METERS: usize = 4;
 
 /// Directions across the arc. Enough for the shape of a stereo image to read at
 /// the width the figure is drawn; more would be a finer picture of noise.
@@ -30,4 +34,16 @@ pub struct Analysis {
     /// Level per band, from the **wet bus**: `Tone` is what the Filter View
     /// draws, and the wet bus is what `Tone` acts on.
     pub spectrum: Handoff<BANDS>,
+    /// Peak per meter, and the held peak beside it.
+    pub peaks: Handoff<METERS>,
+    pub holds: Handoff<METERS>,
+    /// **How alike the two output channels are**, `-1..=1`
+    /// (`nxe_dsp::Correlation`).
+    ///
+    /// The one number a widener owes its user. Every way this plugin makes an
+    /// image — detuning a copy, delaying it, panning the pair apart — works by
+    /// making the channels differ, and the far end of that is a pair that
+    /// cancels when summed to mono. The Voice Field says the image is wide; it
+    /// cannot say whether the width survives a fold.
+    pub correlation: Handoff<1>,
 }

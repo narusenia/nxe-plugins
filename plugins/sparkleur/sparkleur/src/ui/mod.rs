@@ -420,6 +420,7 @@ mod tests {
     #[test]
     fn every_parameter_has_a_control() {
         const PARAMS: &str = include_str!("../params.rs");
+        const COUNT: usize = 33;
         const SOURCES: [&str; 4] = [
             include_str!("mod.rs"),
             include_str!("advanced.rs"),
@@ -427,15 +428,18 @@ mod tests {
             include_str!("curve.rs"),
         ];
 
-        // Proof the scan can fail rather than passing on an empty list.
+        // **Only the fields carrying an `#[id]`.** A `params.rs` also holds
+        // editor state and persisted switches, and those are not parameters —
+        // the attribute is what makes one, so it is what the scan looks for.
         let fields: Vec<&str> = PARAMS
             .lines()
-            .filter_map(|line| line.trim().strip_prefix("pub "))
+            .zip(PARAMS.lines().skip(1))
+            .filter(|(line, _)| line.trim().starts_with("#[id"))
+            .filter_map(|(_, next)| next.trim().strip_prefix("pub "))
             .filter_map(|rest| rest.split_once(':'))
             .map(|(name, _)| name)
-            .filter(|name| !name.contains(' '))
             .collect();
-        assert_eq!(fields.len(), 33, "the parameter list moved: {fields:?}");
+        assert_eq!(fields.len(), COUNT, "the parameter list moved: {fields:?}");
 
         for field in fields {
             let access = format!(".{field}");

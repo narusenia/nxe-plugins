@@ -381,6 +381,50 @@ fn nearest(position: f32) -> &'static str {
 
 #[cfg(test)]
 mod tests {
+
+    /// **Every parameter has somewhere to be touched.**
+    ///
+    /// A parameter with no control is one a user can only reach through the
+    /// host's generic view, and **nothing else notices** — it compiles, it
+    /// saves, it automates, and the window simply never mentions it.
+    ///
+    /// This crate did not have this test, and lost two controls to a header
+    /// rewrite without a thing going red (`SPK-19`). Sparkleur had it and did
+    /// not lose any.
+    #[test]
+    fn every_parameter_has_a_control() {
+        const PARAMS: &str = include_str!("../params.rs");
+        const COUNT: usize = 22;
+        const SOURCES: [&str; 6] = [
+            include_str!("mod.rs"),
+            include_str!("advanced.rs"),
+            include_str!("curve.rs"),
+            include_str!("field.rs"),
+            include_str!("meters.rs"),
+            include_str!("readout.rs"),
+        ];
+
+        // **Only the fields carrying an `#[id]`.** A `params.rs` also holds
+        // editor state and persisted switches, and those are not parameters —
+        // the attribute is what makes one, so it is what the scan looks for.
+        let fields: Vec<&str> = PARAMS
+            .lines()
+            .zip(PARAMS.lines().skip(1))
+            .filter(|(line, _)| line.trim().starts_with("#[id"))
+            .filter_map(|(_, next)| next.trim().strip_prefix("pub "))
+            .filter_map(|rest| rest.split_once(':'))
+            .map(|(name, _)| name)
+            .collect();
+        assert_eq!(fields.len(), COUNT, "the parameter list moved: {fields:?}");
+
+        for field in fields {
+            let access = format!(".{field}");
+            assert!(
+                SOURCES.iter().any(|source| source.contains(&access)),
+                "{field} has no control"
+            );
+        }
+    }
     use super::*;
 
     #[test]

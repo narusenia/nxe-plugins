@@ -3,10 +3,10 @@
 //!
 //! No DSP lives here (`.agents/rules/rust.md`).
 
-use analysis::{Analysis, BANDS, HIGH_HZ, LOW_HZ, PAN_BINS};
+use analysis::{Analysis, BANDS, HIGH_HZ, LOW_HZ, METERS, PAN_BINS};
 use doubler_core::VoiceEngine;
 use nih_plug::prelude::*;
-use nxe_dsp::{PanScope, Spectrum};
+use nxe_dsp::{Correlation, Level, PanScope, Spectrum};
 use std::sync::Arc;
 
 mod analysis;
@@ -33,6 +33,9 @@ struct Doubler {
     analysis: Arc<Analysis>,
     pan_scope: PanScope<PAN_BINS>,
     spectrum: Spectrum<BANDS>,
+    /// IN left, IN right, OUT left, OUT right.
+    meters: [Level; METERS],
+    correlation: Correlation,
 }
 
 impl Default for Doubler {
@@ -45,6 +48,8 @@ impl Default for Doubler {
             analysis: Arc::new(Analysis::default()),
             pan_scope: PanScope::new(FALLBACK_SAMPLE_RATE),
             spectrum: Spectrum::new(FALLBACK_SAMPLE_RATE, LOW_HZ, HIGH_HZ),
+            meters: std::array::from_fn(|_| Level::new(FALLBACK_SAMPLE_RATE)),
+            correlation: Correlation::new(FALLBACK_SAMPLE_RATE),
         }
     }
 }
@@ -108,6 +113,8 @@ impl Plugin for Doubler {
             // corrected afterwards.
             self.pan_scope = PanScope::new(self.sample_rate);
             self.spectrum = Spectrum::new(self.sample_rate, LOW_HZ, HIGH_HZ);
+            self.meters = std::array::from_fn(|_| Level::new(self.sample_rate));
+            self.correlation = Correlation::new(self.sample_rate);
         }
         true
     }
@@ -159,6 +166,17 @@ impl Plugin for Doubler {
             left[sample] = (dry_left * (1.0 - mix) + wet_left * mix) * output;
             right[sample] = (dry_right * (1.0 - mix) + wet_right * mix) * output;
 
+            // **The meters straddle the plugin**, so "is this louder or is it
+            // better" can be asked of the two ends of the same comparison
+            // (`nxe_dsp::Level`).
+            self.meters[0].push(dry_left);
+            self.meters[1].push(dry_right);
+            self.meters[2].push(left[sample]);
+            self.meters[3].push(right[sample]);
+            // Of the output, because what a fold would do to it is what the
+            // reading is for.
+            self.correlation.push(left[sample], right[sample]);
+
             // The picture is of the output — where the sound *is*, under the
             // dots that say where it was asked to be.
             self.pan_scope.push(left[sample], right[sample]);
@@ -172,6 +190,13 @@ impl Plugin for Doubler {
         // are stores to shared atomics.
         self.analysis.pan.write(&self.pan_scope.levels());
         self.analysis.spectrum.write(&self.spectrum.levels());
+        self.analysis
+            .peaks
+            .write(&std::array::from_fn(|index| self.meters[index].peak()));
+        self.analysis
+            .holds
+            .write(&std::array::from_fn(|index| self.meters[index].hold()));
+        self.analysis.correlation.write(&[self.correlation.value()]);
 
         ProcessStatus::Normal
     }

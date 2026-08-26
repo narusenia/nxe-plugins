@@ -12,6 +12,7 @@
 mod detail;
 mod field;
 mod mirror;
+mod readout;
 mod tone;
 
 use crate::analysis::{Analysis, BANDS, HIGH_HZ, LOW_HZ, PAN_BINS};
@@ -27,8 +28,8 @@ use std::time::Duration;
 
 /// One size, tall enough for whichever tab needs the most room. Measured
 /// against the built layout rather than estimated.
-const WIDTH: u32 = 620;
-const HEIGHT: u32 = 572;
+const WIDTH: u32 = 720;
+const HEIGHT: u32 = 624;
 
 /// How tall the swapped region is. Fixed, so switching tabs does not move
 /// anything above it.
@@ -246,6 +247,11 @@ pub fn create(
 
         VStack::new(cx, |cx| {
             header(cx);
+
+            // **What is happening right now**, above everything and never
+            // hidden by a tab (`SPK-19`).
+            readout::view(cx, analysis.clone());
+
             // The figure stays put. It is what the plugin *is* — hiding it
             // behind a tab would leave the window with nothing to look at.
             field_row(cx);
@@ -267,6 +273,10 @@ pub fn create(
     })
 }
 
+/// Where the in/out readings bottom out. Below this a number is a floor rather
+/// than a level (`ui/readout.rs`).
+pub(crate) const METER_FLOOR_DB: f32 = -60.0;
+
 fn header(cx: &mut Context) {
     // The shipped name, in full — `NAME` in `lib.rs`, the bundle, and the
     // host's plugin list all say the same thing — with the one line that says
@@ -276,6 +286,32 @@ fn header(cx: &mut Context) {
     // the header wants the whole of the height it asks for
     // (`.agents/rules/vizia.md`).
     nxe_ui::header::header(cx, "NXE DOUBLER", "multi-voice doubler");
+
+    // **How many voices and what they double**, under the rule rather than on
+    // the wordmark's line. They sat beside the name until the shared header
+    // took that side for the plugin's role; they are the two choices that
+    // change what every other control means, so they stay at the top.
+    HStack::new(cx, |cx| {
+        nxe_plug_ui::segmented(cx, Ui::params, |params| &params.voices, &["2", "4", "8"])
+            .tooltip(|cx| theme::hint(cx, "How many voices run"));
+        nxe_plug_ui::segmented(
+            cx,
+            Ui::params,
+            |params| &params.source,
+            &["Mono Sum", "True Stereo"],
+        )
+        .tooltip(|cx| {
+            theme::hint(
+                cx,
+                "Mono Sum: every voice doubles L+R. True Stereo: each doubles one side",
+            )
+        });
+
+        Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
+    })
+    .class("row")
+    .height(Auto)
+    .width(Stretch(1.0));
 }
 
 /// The figure, with the two controls that apply to everything stacked beside
@@ -464,4 +500,51 @@ fn macros(cx: &mut Context) {
     })
     .class("row")
     .height(Auto);
+}
+
+#[cfg(test)]
+mod tests {
+
+    /// **Every parameter has somewhere to be touched.**
+    ///
+    /// A parameter with no control is one a user can only reach through the
+    /// host's generic view, and **nothing else notices** — it compiles, it
+    /// saves, it automates, and the window simply never mentions it.
+    ///
+    /// This crate did not have this test, and lost two controls to a header
+    /// rewrite without a thing going red (`SPK-19`). Sparkleur had it and did
+    /// not lose any.
+    #[test]
+    fn every_parameter_has_a_control() {
+        const PARAMS: &str = include_str!("../params.rs");
+        const COUNT: usize = 15;
+        const SOURCES: [&str; 5] = [
+            include_str!("mod.rs"),
+            include_str!("detail.rs"),
+            include_str!("field.rs"),
+            include_str!("mirror.rs"),
+            include_str!("tone.rs"),
+        ];
+
+        // **Only the fields carrying an `#[id]`.** A `params.rs` also holds
+        // editor state and persisted switches, and those are not parameters —
+        // the attribute is what makes one, so it is what the scan looks for.
+        let fields: Vec<&str> = PARAMS
+            .lines()
+            .zip(PARAMS.lines().skip(1))
+            .filter(|(line, _)| line.trim().starts_with("#[id"))
+            .filter_map(|(_, next)| next.trim().strip_prefix("pub "))
+            .filter_map(|rest| rest.split_once(':'))
+            .map(|(name, _)| name)
+            .collect();
+        assert_eq!(fields.len(), COUNT, "the parameter list moved: {fields:?}");
+
+        for field in fields {
+            let access = format!(".{field}");
+            assert!(
+                SOURCES.iter().any(|source| source.contains(&access)),
+                "{field} has no control"
+            );
+        }
+    }
 }

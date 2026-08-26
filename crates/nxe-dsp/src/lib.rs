@@ -13,11 +13,13 @@
 //! construction from the sample rate; nothing on the analysis path allocates,
 //! locks, or blocks (`.agents/rules/rust.md`).
 
+mod correlation;
 mod handoff;
 mod level;
 mod pan;
 mod spectrum;
 
+pub use correlation::Correlation;
 pub use handoff::Handoff;
 pub use level::Level;
 pub use pan::PanScope;
