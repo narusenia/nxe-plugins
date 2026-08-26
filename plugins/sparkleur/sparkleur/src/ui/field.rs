@@ -202,11 +202,21 @@ pub fn view(cx: &mut Context, host_rate: f32, analysis: Arc<Analysis>) {
 
         // The labels are placed with the same mapping the widget was given.
         HStack::new(cx, |cx| {
-            for (hz, text) in MARKS {
-                Label::new(cx, text)
+            for (index, (hz, text)) in MARKS.iter().enumerate() {
+                let label = Label::new(cx, *text)
                     .class("subtle")
-                    .position_type(PositionType::SelfDirected)
-                    .left(Percentage(axis_x(hz) * 100.0));
+                    .position_type(PositionType::SelfDirected);
+
+                // **The last one is hung off the right edge**, not placed at
+                // 100 % of the width. A label positioned at the far edge starts
+                // there and runs past it, so "20k" was drawn as "20" with the
+                // rest outside the box — the same absence of placement logic
+                // tooltips have (`.agents/rules/vizia.md`).
+                if index == MARKS.len() - 1 {
+                    label.left(Stretch(1.0)).right(Pixels(0.0));
+                } else {
+                    label.left(Percentage(axis_x(*hz) * 100.0));
+                }
             }
         })
         .height(Pixels(14.0))

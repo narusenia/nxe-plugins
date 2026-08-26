@@ -151,6 +151,12 @@ inside a 132 px column for exactly this reason (`VEL-13`). Centre the thing that
 needs centring — put the stretch on the `Label`, not on the column that also
 holds a full-width view.
 
+**An absolutely-positioned label at the far edge runs off it.** A caller
+placing axis marks with `left: Percentage(…)` puts the last one at 100 %, which
+is where it *starts* — "20k" renders as "20" with the rest outside the box. Hang
+the last one off the other side instead: `left: 1s; right: 0px`. Same absence of
+placement logic as the tooltip above.
+
 **`.class("row")` does this vertically to everything in it.** The class carries
 `child-top: 1s` and `child-bottom: 1s`, so a `Stretch(1.0)` child of a 176 px
 row is 58 px tall and whatever is inside it hangs out of the bottom. Sparkleur's

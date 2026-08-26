@@ -340,6 +340,7 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 
 | 何 | どこ |
 |---|---|
+| 軸ラベルの右端が切れる（Velour） | `velour/src/ui/field.rs`。最後の目盛りを `left: 100%` で置いているので「20k」が「20」に切れる。Sparkleur は `left: 1s; right: 0px` で直した（`SPK-15`）。**同じ 3 行** |
 | 値の直接入力を戻す | `UI-3`。`ValueEntry` は `nxe-ui` にあり gallery では動く。プラグインに載せると editor の表示が更新されなくなる（原因未特定） |
 | 見た目の最終調整（フォントサイズ、寸法、余白） | ユーザーの指示で最後にまとめる |
 | パワーフォロワの共通化 | **3 個目が来た**（`nxe_audio::guard::Follower` / `sparkleur_core::Detector` / `sparkleur_core::Sparkle`）。ただし形が 3 つとも違う（帯域通過込み / 配列 / 単体）ので、上げるなら何を共通にするかを決めてから |
