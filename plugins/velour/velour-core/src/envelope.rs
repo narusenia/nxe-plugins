@@ -32,6 +32,15 @@
 const ATTACK_SECONDS: f32 = 0.005;
 const RELEASE_SECONDS: f32 = 0.150;
 
+/// Where a vocal sits when it is not being pushed, in dBFS.
+///
+/// **Both consumers measure from here** — `EMOTION` centres its axis on it
+/// (`crate::emotion`) and `DENSITY` references its makeup to it
+/// (`crate::density`) — so it lives with the detector rather than in either of
+/// them. One number to settle by ear (`VEL-17`) instead of two that could drift
+/// apart.
+pub const REFERENCE_DB: f32 = -18.0;
+
 /// The quietest level worth reporting. `20·log10` of zero is `-inf`, and an
 /// infinity multiplied by a knob is a NaN in the coefficients.
 const FLOOR: f32 = 1e-6;

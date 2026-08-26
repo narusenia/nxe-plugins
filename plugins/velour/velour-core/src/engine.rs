@@ -12,6 +12,7 @@
 //! smoothing to block boundaries.
 
 use crate::bands::{BANDS, Band, Generator};
+use crate::density::Density;
 use crate::emotion;
 use crate::envelope::Envelope;
 use crate::guard::{GUARDS, Guarded, Guards};
@@ -78,6 +79,9 @@ pub struct Shape {
     /// How much the envelope is allowed to move the curves, `0..=1`
     /// (`crate::emotion`). **Zero is exactly static** (`REQ-VEL-008`).
     pub emotion: f32,
+    /// How hard the generator bus's input is compressed, `0..=1`
+    /// (`crate::density`). **The dry path never sees this** (`REQ-VEL-007`).
+    pub density: f32,
     /// `-1..=1`, sliding every band edge together.
     pub focus: f32,
     pub factor: Factor,
@@ -99,6 +103,9 @@ impl Default for Shape {
             // feature nobody switched on is a feature nobody heard
             // (`REQ-VEL-008`).
             emotion: 0.5,
+            // Off: `DENSITY` decides how much the plugin ignores the
+            // performance, and that is a choice rather than a default.
+            density: 0.0,
             focus: 0.0,
             factor: Factor::default(),
         }
@@ -192,6 +199,9 @@ pub struct Engine {
     /// **One detector, fed the mono sum, read before anything else touches the
     /// signal** — shared with `DENSITY` (`crate::envelope`).
     envelope: Envelope,
+    /// **One for both channels**, driven by the shared detector — a compressor
+    /// per channel would move the image (`REQ-VEL-011`).
+    density: Density,
 }
 
 /// Everything `set_shape` has to notice a change in before rebuilding the
@@ -233,6 +243,7 @@ impl Engine {
             guards: Guards::new(host_rate),
             guard_amounts: [1.0; 2],
             envelope: Envelope::new(host_rate),
+            density: Density::new(),
         }
     }
 
@@ -266,6 +277,13 @@ impl Engine {
         // (`crate::emotion`).
         let amount = clamp_or(shape.emotion, 0.0, 1.0, 0.0);
         let motion = amount * emotion::deflection(self.envelope.decibels());
+
+        // Its own state, not part of `CurveState`: `DENSITY` moves a gain in
+        // front of the bands and leaves the curves alone. That is the same
+        // orthogonality the detector's placement buys — `DENSITY` levels how
+        // *much* texture is made, `EMOTION` chooses *which*
+        // (`REQ-VEL-007`, `REQ-VEL-008`).
+        self.density.set(shape.density);
 
         let curve = CurveState {
             drive: shape.drive,
@@ -318,8 +336,16 @@ impl Engine {
             solo,
             soloing,
             guards,
+            envelope,
+            density,
             ..
         } = self;
+
+        // One reading per sample, shared by both channels. Computed out here
+        // rather than inside the oversampled closure: the level does not change
+        // between a sample's phases, and computing it there would pay for the
+        // two transcendentals two or four times over.
+        let compression = density.gain(envelope.level());
 
         let dry = [input.0, input.1];
         let mut output = [0.0f32; 2];
@@ -348,6 +374,10 @@ impl Engine {
             // them outside would mean carrying three signals through three
             // downsamplers instead of one.
             let wet = oversampler.process(dry[index], |value| {
+                // **`DENSITY` is applied here**: after the oversampling, before
+                // the split, and on nothing else. The dry path below is a
+                // separate addition and never sees it (`REQ-VEL-007`).
+                let value = value * compression;
                 let mut sum = 0.0;
                 for band in 0..BAND_COUNT {
                     sum += generators[band].process(value, &shapers[band])
@@ -822,6 +852,7 @@ mod tests {
                 solo: [true, false, true],
                 guards: [value; 2],
                 emotion: value,
+                density: value,
                 focus: value,
                 factor: Factor::Four,
             });
@@ -1005,6 +1036,104 @@ mod tests {
         assert!(
             difference > crate::harmonics::rms(&off) * 0.02,
             "a one-sided signal left the curves alone"
+        );
+    }
+
+    /// **The structural promise** (`REQ-VEL-007`): `DENSITY` is on the
+    /// generator bus, so the dry path cannot feel it however far it is pushed.
+    #[test]
+    fn density_cannot_reach_the_dry_path() {
+        let input = tone(0.6, 220.0, RATE, 24_000);
+        let shape = Shape {
+            drive: 0.6,
+            density: 1.0,
+            ..Shape::default()
+        };
+
+        // Mix closed, and separately every fader down: two different ways for
+        // the wet to be absent, and both have to leave the input exactly.
+        for levels in [levels(0.8, 0.0), levels(0.0, 1.0)] {
+            assert_eq!(
+                blocked(&shape, &levels, &input, 64),
+                input,
+                "the dry path moved"
+            );
+        }
+    }
+
+    /// **What the control is for** (`REQ-VEL-007`): the difference in how much
+    /// texture a quiet phrase and a loud one get, gets smaller.
+    ///
+    /// Measured on the soloed layer, so the reading is the texture rather than
+    /// the dry it would otherwise be buried in.
+    #[test]
+    fn density_narrows_the_gap_between_a_quiet_phrase_and_a_loud_one() {
+        let hertz = 293.0;
+        let quiet = tone(0.05, hertz, RATE, 24_000);
+        let loud = tone(0.8, hertz, RATE, 24_000);
+
+        let gap = |density: f32| {
+            let shape = Shape {
+                drive: 0.6,
+                density,
+                // `EMOTION` off: it also changes with level, and this is a
+                // measurement of `DENSITY`.
+                emotion: 0.0,
+                solo: [true, false, false],
+                ..Shape::default()
+            };
+            let layer = |input: &[f32]| {
+                let wet = blocked(&shape, &levels(0.8, 1.0), input, 64);
+                crate::harmonics::rms(&wet[12_000..])
+            };
+            crate::harmonics::db_ratio(layer(&loud), layer(&quiet))
+        };
+
+        let open = gap(0.0);
+        let compressed = gap(1.0);
+        // Measured: **23.7 dB -> 6.0 dB** on a 24 dB span of input.
+        assert!(
+            compressed < open - 6.0,
+            "the gap went {open:.1} dB -> {compressed:.1} dB"
+        );
+    }
+
+    /// **The proof that the detector is pre-compression** (`REQ-VEL-008`).
+    ///
+    /// Not measured through the sound — `DENSITY` changes the level going into
+    /// the curves, so the harmonics move whatever `EMOTION` does. What has to
+    /// hold is that the curves themselves come out identical: the deflection is
+    /// a function of the input, and `DENSITY` is downstream of where it is read.
+    #[test]
+    fn density_does_not_change_what_emotion_does() {
+        let input = tone(0.7, 293.0, RATE, 24_000);
+        let open = levels(0.8, 1.0);
+
+        let curves = |density: f32| {
+            let shape = Shape {
+                drive: 0.6,
+                emotion: 1.0,
+                density,
+                ..Shape::default()
+            };
+            let mut engine = Engine::new(RATE);
+            for chunk in input.chunks(64) {
+                engine.set_shape(&shape);
+                for sample in chunk {
+                    engine.process((*sample, *sample), &open);
+                }
+            }
+            engine
+                .shapers
+                .iter()
+                .map(|shaper| (shaper.drive(), shaper.bias(), shaper.hardness()))
+                .collect::<Vec<_>>()
+        };
+
+        assert_eq!(
+            curves(0.0),
+            curves(1.0),
+            "`DENSITY` moved the detector `EMOTION` reads"
         );
     }
 

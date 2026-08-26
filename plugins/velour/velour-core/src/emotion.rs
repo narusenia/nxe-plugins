@@ -15,11 +15,7 @@
 //! would mean recomputing the normalisation for every sample
 //! (`crate::shaper::Shaper::set`).
 
-/// Where the axis is centred: the level a vocal sits at when it is not being
-/// pushed. **Ear-tuned** (`dsp.md`, `VEL-17`).
-pub const REF_DB: f32 = -18.0;
-
-/// And how far from there counts as all the way. 12 dB is about the span
+/// How far from [`crate::envelope::REFERENCE_DB`] counts as all the way. 12 dB is about the span
 /// between a held note and a belted one.
 pub const RANGE_DB: f32 = 12.0;
 
@@ -32,12 +28,13 @@ const HARDNESS_FOLLOW: f32 = 0.40;
 const DRIVE_FOLLOW: f32 = 0.30;
 
 /// Where the envelope sits on the axis, `-1..=1`. Zero is a vocal at
-/// [`REF_DB`].
+/// [`crate::envelope::REFERENCE_DB`], which is also what `DENSITY` references
+/// its makeup to — the two controls share the one anchor.
 pub fn deflection(env_db: f32) -> f32 {
     if !env_db.is_finite() {
         return 0.0;
     }
-    ((env_db - REF_DB) / RANGE_DB).clamp(-1.0, 1.0)
+    ((env_db - crate::envelope::REFERENCE_DB) / RANGE_DB).clamp(-1.0, 1.0)
 }
 
 /// Moves one band's curve by `motion` — the deflection already multiplied by
@@ -61,11 +58,13 @@ pub fn modulate(bias: f32, hardness: f32, drive: f32, motion: f32) -> (f32, f32,
 mod tests {
     use super::*;
 
+    use crate::envelope::REFERENCE_DB;
+
     #[test]
     fn the_axis_is_centred_on_a_resting_vocal() {
-        assert_eq!(deflection(REF_DB), 0.0);
-        assert_eq!(deflection(REF_DB + RANGE_DB), 1.0);
-        assert_eq!(deflection(REF_DB - RANGE_DB), -1.0);
+        assert_eq!(deflection(REFERENCE_DB), 0.0);
+        assert_eq!(deflection(REFERENCE_DB + RANGE_DB), 1.0);
+        assert_eq!(deflection(REFERENCE_DB - RANGE_DB), -1.0);
         // And it saturates rather than running away.
         assert_eq!(deflection(0.0), 1.0);
         assert_eq!(deflection(-120.0), -1.0);

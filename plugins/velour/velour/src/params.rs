@@ -59,6 +59,16 @@ pub struct VelourParams {
     #[id = "texture"]
     pub texture: FloatParam,
 
+    /// How hard the generator bus's input is compressed
+    /// (`velour_core::density`).
+    ///
+    /// **A main knob, not an Advanced one.** It is safe to push — the dry path
+    /// is not in the compressor — so it is the control that decides how much
+    /// the texture ignores the performance, and that is a mixing decision
+    /// (`REQ-VEL-007`).
+    #[id = "density"]
+    pub density: FloatParam,
+
     #[id = "focus"]
     pub focus: FloatParam,
     #[id = "mix"]
@@ -142,6 +152,11 @@ impl Default for VelourParams {
             // Clear, the middle. Which of the three is the right default is a
             // `VEL-17` question.
             texture: percentage("Texture", 0.50),
+
+            // Off: how much to flatten the performance is a choice, and a
+            // compressor nobody asked for is the thing this plugin is trying
+            // not to be.
+            density: percentage("Density", 0.0),
 
             focus: FloatParam::new("Focus", 0.0, FloatRange::Linear { min: -1.0, max: 1.0 })
                 .with_unit(" oct")
@@ -254,6 +269,7 @@ impl VelourParams {
                 self.guard_sib.smoothed.next_step(samples),
             ],
             emotion: self.emotion.smoothed.next_step(samples),
+            density: self.density.smoothed.next_step(samples),
             focus: self.focus.smoothed.next_step(samples),
             factor: self.oversample.value().into(),
         }

@@ -13,6 +13,7 @@
 
 pub mod bands;
 pub mod biquad;
+pub mod density;
 pub mod emotion;
 pub mod engine;
 pub mod envelope;
@@ -23,6 +24,7 @@ pub mod shaper;
 pub mod texture;
 
 pub use bands::{BANDS, Band, Generator};
+pub use density::Density;
 pub use engine::{BAND_COUNT, Engine, Levels, Shape};
 pub use envelope::Envelope;
 pub use guard::{Guarded, Guards};
