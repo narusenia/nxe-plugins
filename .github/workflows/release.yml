@@ -1,21 +1,24 @@
 # Cuts a release from a tag.
 #
-# Builds the bundles on each platform's own runner — the plugins link a native
-# UI stack, so there is no cross-compiling here beyond macOS's two architectures
-# — zips what `cargo xtask bundle` produced, and attaches one zip per platform
-# to the GitHub Release.
+# **One plugin per tag: `<plugin>-v<version>`**, matching the crate directory
+# (`doubler-v0.1.0`). Each plugin ships on its own schedule, so fixing one does
+# not re-release the others — which is the same reason a plugin is self-contained
+# enough to be split into its own repository (`AGENTS.md`).
+#
+# Builds on each platform's own runner: the plugins link a native UI stack, so
+# there is no cross-compiling here beyond macOS's two architectures. One zip per
+# platform is attached to a **draft** release.
 #
 # **Nothing is signed or notarized.** Until there is an Apple Developer Program
-# membership, macOS users clear the quarantine attribute by hand; the README
-# says how, and that section comes out when signing lands (`INFRA-3`).
+# membership, macOS users clear the quarantine attribute by hand; the README says
+# how, and that section comes out when signing lands (`INFRA-3`).
 
 name: release
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["*-v*"]
 
-# Creating the release and uploading to it is a write.
 permissions:
   contents: write
 
@@ -37,6 +40,32 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+
+      # `doubler-v0.1.0` names both what to build and what to call it. Split
+      # once, in bash, so every later step reads the same two values.
+      - name: Read the tag
+        id: tag
+        shell: bash
+        run: |
+          tag="${{ github.ref_name }}"
+          plugin="${tag%-v*}"
+          version="${tag##*-v}"
+          echo "plugin=$plugin" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "archive=nxe-$plugin-$version-${{ matrix.name }}" >> "$GITHUB_OUTPUT"
+
+      # A tag that disagrees with the crate would ship the wrong thing under the
+      # right name, and the artefacts would look correct while being wrong.
+      - name: Check the tag against the crate version
+        shell: bash
+        run: |
+          plugin="${{ steps.tag.outputs.plugin }}"
+          manifest="plugins/$plugin/$plugin/Cargo.toml"
+          crate=$(grep -m1 '^version = ' "$manifest" | cut -d'"' -f2)
+          if [ "$crate" != "${{ steps.tag.outputs.version }}" ]; then
+            echo "::error::$manifest says $crate but the tag says ${{ steps.tag.outputs.version }}"
+            exit 1
+          fi
 
       # The list comes from nih-plug's own CI. Without them the baseview window
       # and the audio backends do not build.
@@ -64,11 +93,11 @@ jobs:
 
       - name: Bundle
         if: matrix.name == 'macos'
-        run: cargo xtask bundle-universal doubler --release
+        run: cargo xtask bundle-universal ${{ steps.tag.outputs.plugin }} --release
 
       - name: Bundle
         if: matrix.name != 'macos'
-        run: cargo xtask bundle doubler --release
+        run: cargo xtask bundle ${{ steps.tag.outputs.plugin }} --release
 
       # `zip` is not on the Windows runners and `Compress-Archive` is not
       # anywhere else, so this is two steps rather than one clever one.
@@ -76,18 +105,18 @@ jobs:
         if: matrix.name != 'windows'
         run: |
           cd target/bundled
-          zip -r "../../nxe-plugins-${{ github.ref_name }}-${{ matrix.name }}.zip" .
+          zip -r "../../${{ steps.tag.outputs.archive }}.zip" .
 
       - name: Zip
         if: matrix.name == 'windows'
         shell: pwsh
         run: |
-          Compress-Archive -Path target/bundled/* -DestinationPath "nxe-plugins-${{ github.ref_name }}-${{ matrix.name }}.zip"
+          Compress-Archive -Path target/bundled/* -DestinationPath "${{ steps.tag.outputs.archive }}.zip"
 
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
-          path: nxe-plugins-*.zip
+          path: nxe-*.zip
           if-no-files-found: error
 
   release:
