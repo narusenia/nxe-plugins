@@ -40,11 +40,12 @@
 （[`REQ-VEL`](../../plugins/velour/docs/requirements/REQ-VEL.md)）と
 [DSP 仕様](../../plugins/velour/docs/specifications/dsp.md) と
 [UI 仕様](../../plugins/velour/docs/specifications/ui.md)は書けている。
-**実装計画は未作成**なので、`VEL-*` の実装単位はまだこの表に無い。
+[実装計画](../../plugins/velour/docs/implementation/velour-plan.md)も書けている。
+**次は `VEL-1`**（シェイパ。ゲート）。
 
 Velour が共通クレートに要求したものは 3 つとも入っている（`UI-13` `BandField` /
-`UI-8` `Meter` / `DSP-4` `Level`）。Velour のクレートは 1 行も無い状態で作れた
-ので、**次は実装計画**。テスト 124 本。
+`UI-8` `Meter` / `DSP-4` `Level`）。**Velour のクレートは 1 行も無い状態で
+作れた** — 主役の図が Hz も dB も知らないから。テスト 124 本。
 
 ## 今すぐ着手できるもの
 
@@ -52,6 +53,7 @@ Velour が共通クレートに要求したものは 3 つとも入っている�
 
 | ID | 単位 | 計画 |
 |---|---|---|
+| VEL-1 | シェイパ（Velour の**ゲート**） | `velour-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 | UI-9 | `ToggleSwitch`（**Doubler も Velour も使わない**。3 個目でも要らなければ落とす） | `nxe-ui-plan.md` |
 
@@ -125,15 +127,28 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | DBL-16 | 通っている音の表示（`REQ-DBL-015`） | ✅ |
 | DBL-13 | 既定値の詰めと実機確認 | 🟡 |
 
-### Velour — 実装計画 未作成
+### Velour — `../../plugins/velour/docs/implementation/velour-plan.md`
 
-要件・DSP 仕様・UI 仕様はある。**単位を起こすには
-`implementation/velour-plan.md` が要る**（`architecture.md` の「新しい
-プラグインを足す」の手順 5）。
-
-ゲートは `REQ-VEL-003` の「`k` を振っても基音が ±0.1 dB 以内」。ここが崩れると
-4 層の直交（`REQ-VEL-009`）が成立せず、パラメータの意味づけごとやり直しになる。
+**ゲートは `VEL-1`**（`k` を振っても基音が ±0.1 dB 以内）。ここが崩れると
+4 層の直交（`REQ-VEL-009`）が成立せず、パラメータの意味づけと UI が全部
+書き直しになる。ただし**耳ではなく単体テストで通る**。
 
 | ID | 単位 | 状態 |
 |---|---|---|
-| VEL-* | 未起票 | ⬜ velour-plan.md 待ち |
+| VEL-1 | シェイパ（**ゲート**。`velour-core` クレートもここで作る） | 🟡 |
+| VEL-2 | オーバーサンプラ（2 段 halfband、2x / 4x） | ⬜ VEL-1 |
+| VEL-3 | 帯域生成器 3 本と `FOCUS` | ⬜ VEL-2 |
+| VEL-5 | nih-plug ラッパと配線（**ここで音が出る**。UI 無し） | ⬜ VEL-3 |
+| VEL-4 | TEXTURE モーフ（Warm / Clear / Edge） | ⬜ VEL-5 |
+| VEL-6 | エンベロープ検波と EMOTION | ⬜ VEL-4 |
+| VEL-7 | DENSITY（生成バスの圧縮） | ⬜ VEL-6 |
+| VEL-8 | Guard（Harsh / Sib） | ⬜ VEL-3 |
+| VEL-9 | Bias と SOLO | ⬜ VEL-4 |
+| VEL-10 | スムージングと非依存性の詰め | ⬜ VEL-7 / VEL-8 / VEL-9 |
+| VEL-11 | UI マクロ層（メインタブ 8 ノブ） | ⬜ VEL-10 |
+| VEL-12 | UI Band Field | ⬜ VEL-11 |
+| VEL-15 | 通っている音の表示（解析の配線） | ⬜ VEL-8 |
+| VEL-13 | UI 伝達曲線の小窓と I/O メーター | ⬜ VEL-11 / VEL-15 |
+| VEL-14 | UI Advanced タブ | ⬜ VEL-12 |
+| VEL-16 | CPU 予算の確認（criterion） | ⬜ VEL-15 |
+| VEL-17 | 既定値の詰めと実機確認（**耳が要る**） | ⬜ VEL-16 |

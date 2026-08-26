@@ -28,8 +28,8 @@ with the code, and fix the document in the same change.
 - `plugins/doubler/doubler`: the Doubler nih-plug wrapper — parameter
   declarations, the Vizia UI, and the binding between them
 - `plugins/velour/docs`: Velour — the second plugin. **Documents only so far**;
-  no crates yet. Requirements and the DSP and UI specifications are written,
-  the implementation plan is not
+  no crates yet. Requirements, both specifications, and the implementation plan
+  are written; `VEL-1` is where the code starts
 - `docs/`: monorepo-wide documents (architecture, cross-plugin backlog and
   roadmap). Indexed by `docs/README.md`
 - `plugins/<name>/docs/`: that plugin's own requirements, specifications, and
