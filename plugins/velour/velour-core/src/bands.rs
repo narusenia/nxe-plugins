@@ -14,7 +14,7 @@
 //! at rest only removes the standing part of it (`Shaper`'s tests say so
 //! directly). Without it the dry path gets a slow DC wander added to it.
 
-use crate::biquad::{BUTTERWORTH_Q, Biquad, Coefficients};
+use crate::biquad::BandPass;
 use crate::oversample::Factor;
 use crate::shaper::Shaper;
 
@@ -103,38 +103,6 @@ impl Band {
             Band::Presence => (1.0, 1.0),
             Band::Air => (0.5, 1.6),
         }
-    }
-}
-
-/// A band-pass built from two second-order sections.
-#[derive(Clone, Copy)]
-struct BandPass {
-    high: Biquad,
-    low: Biquad,
-}
-
-impl BandPass {
-    fn new(low_hz: f32, high_hz: f32, sample_rate: f32) -> Self {
-        Self {
-            high: Biquad::new(Coefficients::highpass(low_hz, BUTTERWORTH_Q, sample_rate)),
-            low: Biquad::new(Coefficients::lowpass(high_hz, BUTTERWORTH_Q, sample_rate)),
-        }
-    }
-
-    fn retune(&mut self, low_hz: f32, high_hz: f32, sample_rate: f32) {
-        self.high
-            .set(Coefficients::highpass(low_hz, BUTTERWORTH_Q, sample_rate));
-        self.low
-            .set(Coefficients::lowpass(high_hz, BUTTERWORTH_Q, sample_rate));
-    }
-
-    fn process(&mut self, input: f32) -> f32 {
-        self.low.process(self.high.process(input))
-    }
-
-    fn reset(&mut self) {
-        self.high.reset();
-        self.low.reset();
     }
 }
 

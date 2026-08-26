@@ -12,6 +12,7 @@
 //! smoothing to block boundaries.
 
 use crate::bands::{BANDS, Band, Generator};
+use crate::guard::{GUARDS, Guarded, Guards};
 use crate::oversample::{Factor, Oversampler};
 use crate::shaper::{DRIVE_MAX, DRIVE_MIN, Shaper};
 use crate::texture;
@@ -69,6 +70,9 @@ pub struct Shape {
     /// split dry band; here it is the layer being added, by itself
     /// (`REQ-VEL-010`).
     pub solo: [bool; BAND_COUNT],
+    /// How much each guard is allowed to pull, `0..=1`, in the order of
+    /// [`crate::guard::GUARDS`]. Zero is exactly off (`REQ-VEL-006`).
+    pub guards: [f32; 2],
     /// `-1..=1`, sliding every band edge together.
     pub focus: f32,
     pub factor: Factor,
@@ -83,6 +87,9 @@ impl Default for Shape {
             texture_offsets: [0.0; BAND_COUNT],
             bias: [0.0; BAND_COUNT],
             solo: [false; BAND_COUNT],
+            // On by default: the plugin's promise is that it does not get
+            // painful, and a protection nobody switched on does not keep it.
+            guards: [1.0; 2],
             focus: 0.0,
             factor: Factor::default(),
         }
@@ -169,6 +176,10 @@ pub struct Engine {
     /// Which bands are soloed, and whether any is.
     solo: [bool; BAND_COUNT],
     soloing: bool,
+    /// **One set for both channels**, fed the mono sum: a guard that fired on
+    /// one side only would move the voice sideways (`REQ-VEL-011`).
+    guards: Guards,
+    guard_amounts: [f32; 2],
 }
 
 /// Everything `set_shape` has to notice a change in before rebuilding the
@@ -201,6 +212,8 @@ impl Engine {
             },
             solo: [false; BAND_COUNT],
             soloing: false,
+            guards: Guards::new(host_rate),
+            guard_amounts: [1.0; 2],
         }
     }
 
@@ -227,6 +240,7 @@ impl Engine {
 
         self.solo = shape.solo;
         self.soloing = shape.solo.iter().any(|band| *band);
+        self.guard_amounts = shape.guards;
 
         let curve = CurveState {
             drive: shape.drive,
@@ -260,12 +274,18 @@ impl Engine {
     pub fn process(&mut self, input: (f32, f32), levels: &Levels) -> (f32, f32) {
         // Destructured so the shapers can be read while the channels are
         // written; borrowing through `self` inside the closure would not.
+        // The guards run **before** the split, at the host rate, on the mono
+        // sum — one detector for two channels and for both bands.
+        self.guards
+            .push((input.0 + input.1) * 0.5, self.guard_amounts);
+
         let Self {
             shapers,
             trims,
             channels,
             solo,
             soloing,
+            guards,
             ..
         } = self;
 
@@ -282,10 +302,12 @@ impl Engine {
             // no makeup. How little it is *is* the reading.
             let bands: [f32; BAND_COUNT] = std::array::from_fn(|band| {
                 if *soloing && !solo[band] {
-                    0.0
-                } else {
-                    levels.bands[band]
+                    return 0.0;
                 }
+                // A guard multiplies the generator's output gain and nothing
+                // else, so it belongs here with the levels rather than in the
+                // curve (`crate::guard`).
+                levels.bands[band] * guard_gain(guards, band)
             });
             let dry_gain = if *soloing { 0.0 } else { 1.0 };
 
@@ -309,17 +331,38 @@ impl Engine {
         (output[0], output[1])
     }
 
+    /// How far each guard is pulling right now, in dB, in the order of
+    /// [`crate::guard::GUARDS`] — for the display (`REQ-VEL-018`).
+    pub fn guard_reductions(&self) -> [f32; 2] {
+        std::array::from_fn(|index| self.guards.reduction_db(GUARDS[index]))
+    }
+
     pub fn reset(&mut self) {
         for channel in &mut self.channels {
             channel.reset();
         }
+        // Otherwise a guard that was pulling when the transport stopped is
+        // still pulling when it starts again.
+        self.guards.reset();
+    }
+}
+
+/// Which guard, if any, watches a band. **BODY has none**: a muddy low end is
+/// solved by `FOCUS` and by that band's own fader, and a detector there would
+/// only add a way for it to be unclear whether the plugin is working
+/// (`dsp.md`).
+fn guard_gain(guards: &Guards, band: usize) -> f32 {
+    match BANDS[band] {
+        Band::Body => 1.0,
+        Band::Presence => guards.gain(Guarded::Presence),
+        Band::Air => guards.gain(Guarded::Air),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::harmonics::sine;
+    use crate::harmonics::{sine, tone};
 
     const RATE: f32 = 48_000.0;
 
@@ -628,6 +671,88 @@ mod tests {
         assert_eq!(output, input);
     }
 
+    /// A signal that is mostly presence band — what a guard is there for.
+    ///
+    /// Frequencies rather than cycle counts, because writing 3 kHz as "1500
+    /// cycles" is only true for one buffer length (`crate::harmonics::tone`).
+    fn harsh(length: usize) -> Vec<f32> {
+        let body = tone(0.10, 200.0, RATE, length);
+        let bite = tone(0.45, 3_000.0, RATE, length);
+        body.iter().zip(&bite).map(|(a, b)| a + b).collect()
+    }
+
+    /// **The promise being kept where it can be seen** (`REQ-VEL-006`): the
+    /// guard reaches the generator, not just the detector.
+    #[test]
+    fn a_guard_pulls_its_band_back() {
+        let input = harsh(24_000);
+        let open = levels(0.8, 1.0);
+        // Soloed, so the reading is the layer the guard acts on rather than the
+        // dry it is buried in.
+        let base = Shape {
+            drive: 0.6,
+            solo: [false, true, false],
+            ..Shape::default()
+        };
+
+        let unguarded = rendered(
+            &Shape {
+                guards: [0.0; 2],
+                ..base
+            },
+            &open,
+            &input,
+        );
+        let guarded = rendered(&base, &open, &input);
+
+        let settled = input.len() / 2;
+        let loud = crate::harmonics::rms(&unguarded[settled..]);
+        let held = crate::harmonics::rms(&guarded[settled..]);
+        let difference = crate::harmonics::db_ratio(held, loud);
+
+        assert!(difference < -2.0, "the guard changed nothing: {difference:+.1} dB");
+    }
+
+    /// And with the amount at zero it must be **exactly** absent, not nearly.
+    #[test]
+    fn a_guard_at_zero_reports_and_does_nothing() {
+        let input = harsh(24_000);
+        let open = levels(0.8, 1.0);
+        let mut engine = Engine::new(RATE);
+        engine.set_shape(&Shape {
+            drive: 0.6,
+            guards: [0.0; 2],
+            ..Shape::default()
+        });
+
+        for sample in &input {
+            engine.process((*sample, *sample), &open);
+            assert_eq!(engine.guard_reductions(), [0.0, 0.0]);
+        }
+    }
+
+    /// The guard is fed the mono sum, which is the whole reason it cannot move
+    /// the image (`REQ-VEL-011`). Worth its own check, because a per-channel
+    /// detector would pass every other test here.
+    #[test]
+    fn a_guard_does_not_move_the_image() {
+        let input = harsh(24_000);
+        let open = levels(0.8, 1.0);
+        let mut engine = Engine::new(RATE);
+        engine.set_shape(&Shape {
+            drive: 0.6,
+            ..Shape::default()
+        });
+
+        // Hard left: the guard still sees it through the sum, and both channels
+        // get the same treatment.
+        for sample in &input {
+            let (left, right) = engine.process((*sample, 0.0), &open);
+            assert_eq!(right, 0.0, "silence on the right stopped being silent");
+            assert!(left.is_finite());
+        }
+    }
+
     #[test]
     fn hostile_values_neither_panic_nor_produce_nonsense() {
         let wild = [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, -1e9, 1e9];
@@ -640,6 +765,7 @@ mod tests {
                 texture_offsets: [value; BAND_COUNT],
                 bias: [value; BAND_COUNT],
                 solo: [true, false, true],
+                guards: [value; 2],
                 focus: value,
                 factor: Factor::Four,
             });

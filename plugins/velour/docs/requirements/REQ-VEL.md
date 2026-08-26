@@ -45,7 +45,7 @@ Logic Pro と GarageBand では読み込めない（`REQ-VEL-014`）。
 | REQ-VEL-003 | 倍音生成カーブ | Must | **実装済み**（`VEL-1`） |
 | REQ-VEL-004 | TEXTURE モーフ（Warm / Clear / Edge） | Must | **実装済み**（`VEL-4`） |
 | REQ-VEL-005 | オーバーサンプリング | Must | **実装済み**（`VEL-2`） |
-| REQ-VEL-006 | 保護検出器（Harsh Guard / Sib Guard） | Must | Draft |
+| REQ-VEL-006 | 保護検出器（Harsh Guard / Sib Guard） | Must | **実装済み**（`VEL-8`） |
 | REQ-VEL-007 | DENSITY | Should | Draft |
 | REQ-VEL-008 | EMOTION | Should | Draft |
 | REQ-VEL-009 | 4 層の直交 | Must | Draft |
@@ -273,10 +273,11 @@ Logic Pro と GarageBand では読み込めない（`REQ-VEL-014`）。
   隠すと「AIR を上げたのに効かない」の原因がユーザーから見えなくなる。
 - **L/R でリンクする**（`REQ-VEL-011`）。
 - **受入条件**:
-  - [ ] 入力ゲインを ±12 dB 変えても Guard の動作量が変わらない
-  - [ ] 2–5 kHz を持ち上げた素材で PRESENCE の生成器が引っ込む
-  - [ ] `amount` = 0 で完全に無効（リダクションが 0 dB のまま）
-  - [ ] 片チャネルだけに sibilance がある素材で像が横に飛ばない
+  - [x] 入力ゲインを ±12 dB 変えても動作量が **0.2 dB 以内** — `VEL-8`
+  - [x] 2–5 kHz を持ち上げた素材で PRESENCE の生成器が 2 dB 以上引っ込む — `VEL-8`
+  - [x] `amount` = 0 で完全に無効（リダクションがちょうど 0）— `VEL-8`
+  - [x] 片側に寄った入力で無音のチャネルが無音のまま — `VEL-8`
+  - [x] 引きが `MAX_REDUCTION_DB` を超えない — `VEL-8`
 - **依存**: REQ-VEL-002
 
 ## REQ-VEL-007: DENSITY

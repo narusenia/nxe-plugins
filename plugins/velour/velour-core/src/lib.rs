@@ -14,6 +14,7 @@
 pub mod bands;
 pub mod biquad;
 pub mod engine;
+pub mod guard;
 pub mod harmonics;
 pub mod oversample;
 pub mod shaper;
@@ -21,5 +22,6 @@ pub mod texture;
 
 pub use bands::{BANDS, Band, Generator};
 pub use engine::{BAND_COUNT, Engine, Levels, Shape};
+pub use guard::{Guarded, Guards};
 pub use oversample::{Factor, Oversampler};
 pub use shaper::Shaper;

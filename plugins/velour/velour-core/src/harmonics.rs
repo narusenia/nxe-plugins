@@ -24,6 +24,30 @@ pub fn sine(amplitude: f32, cycles: usize, length: usize) -> Vec<f32> {
         .collect()
 }
 
+/// A sine at `hz`, rounded to the nearest whole number of cycles in `length`.
+///
+/// **This exists because [`sine`] has caused the same bug three times.** Its
+/// `cycles` argument is periods *per buffer*, so a frequency written as a cycle
+/// count silently changes when the buffer length or the sample rate does — and
+/// the failure is not a crash, it is a harmonic ratio that leaks between bins
+/// and comes out with the wrong sign. Say the frequency, and let the arithmetic
+/// happen once here.
+///
+/// Pair it with [`bin_of`] so the measurement lands on the same place the tone
+/// was put.
+pub fn tone(amplitude: f32, hz: f32, sample_rate: f32, length: usize) -> Vec<f32> {
+    sine(amplitude, cycles_of(hz, sample_rate, length), length)
+}
+
+/// Which DFT bin `hz` lands in, for a buffer of `length` at `sample_rate`.
+pub fn bin_of(hz: f32, sample_rate: f32, length: usize) -> usize {
+    cycles_of(hz, sample_rate, length)
+}
+
+fn cycles_of(hz: f32, sample_rate: f32, length: usize) -> usize {
+    ((hz * length as f32 / sample_rate).round() as usize).max(1)
+}
+
 /// The amplitude of the component at `cycles` periods over the buffer.
 pub fn amplitude(signal: &[f32], cycles: usize) -> f32 {
     if signal.is_empty() {
@@ -96,6 +120,27 @@ mod tests {
     #[test]
     fn a_sine_has_no_mean() {
         assert!(mean(&sine(1.0, 4, 1024)).abs() < 1e-5);
+    }
+
+    /// The whole point of [`tone`]: the same frequency at every rate and length.
+    #[test]
+    fn a_tone_is_the_frequency_it_says_it_is() {
+        for (rate, length) in [
+            (48_000.0f32, 4_800usize),
+            (48_000.0, 9_600),
+            (44_100.0, 4_410),
+            (96_000.0, 9_600),
+        ] {
+            let signal = tone(1.0, 3_000.0, rate, length);
+            let bin = bin_of(3_000.0, rate, length);
+            assert!(
+                (amplitude(&signal, bin) - 1.0).abs() < 1e-3,
+                "{rate}/{length} put it somewhere else"
+            );
+            // And nowhere near a neighbouring bin, which is what leaks when the
+            // cycle count is not whole.
+            assert!(amplitude(&signal, bin + 1) < 1e-3);
+        }
     }
 
     #[test]

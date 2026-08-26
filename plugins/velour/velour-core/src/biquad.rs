@@ -144,6 +144,44 @@ impl Biquad {
     }
 }
 
+/// A band-pass built from two second-order sections.
+///
+/// Shared because both the generators and the guards want the same thing: keep a
+/// range, and be able to move its edges without a step
+/// (`crate::bands`, `crate::guard`).
+#[derive(Clone, Copy)]
+pub struct BandPass {
+    high: Biquad,
+    low: Biquad,
+}
+
+impl BandPass {
+    pub fn new(low_hz: f32, high_hz: f32, sample_rate: f32) -> Self {
+        Self {
+            high: Biquad::new(Coefficients::highpass(low_hz, BUTTERWORTH_Q, sample_rate)),
+            low: Biquad::new(Coefficients::lowpass(high_hz, BUTTERWORTH_Q, sample_rate)),
+        }
+    }
+
+    /// Replaces both sets of coefficients and **keeps the state**, so an edge
+    /// can be moved while signal is running through it.
+    pub fn retune(&mut self, low_hz: f32, high_hz: f32, sample_rate: f32) {
+        self.high
+            .set(Coefficients::highpass(low_hz, BUTTERWORTH_Q, sample_rate));
+        self.low
+            .set(Coefficients::lowpass(high_hz, BUTTERWORTH_Q, sample_rate));
+    }
+
+    pub fn process(&mut self, input: f32) -> f32 {
+        self.low.process(self.high.process(input))
+    }
+
+    pub fn reset(&mut self) {
+        self.high.reset();
+        self.low.reset();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

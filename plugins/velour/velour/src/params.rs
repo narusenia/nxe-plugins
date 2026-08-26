@@ -88,6 +88,16 @@ pub struct VelourParams {
     #[id = "bias_air"]
     pub bias_air: FloatParam,
 
+    /// How far each guard may pull its generator back (`REQ-VEL-006`).
+    ///
+    /// **Exposed rather than hidden.** Fully automatic protection means a user
+    /// who turns AIR up and hears nothing has no way to find out why. Zero is
+    /// exactly off.
+    #[id = "guard_harsh"]
+    pub guard_harsh: FloatParam,
+    #[id = "guard_sib"]
+    pub guard_sib: FloatParam,
+
     /// Listen to one generator alone, with the dry muted.
     ///
     /// **A parameter, reluctantly.** It changes the sound, so it is not the kind
@@ -156,6 +166,11 @@ impl Default for VelourParams {
             bias_presence: bipolar("Presence Bias"),
             bias_air: bipolar("Air Bias"),
 
+            // On, and most of the way up: the plugin promises not to get
+            // painful, and a protection nobody switched on does not keep it.
+            guard_harsh: percentage("Harsh Guard", 0.75),
+            guard_sib: percentage("Sib Guard", 0.75),
+
             solo_body: listen("Body Solo"),
             solo_presence: listen("Presence Solo"),
             solo_air: listen("Air Solo"),
@@ -218,6 +233,10 @@ impl VelourParams {
                 self.solo_presence.value(),
                 self.solo_air.value(),
             ],
+            guards: [
+                self.guard_harsh.smoothed.next_step(samples),
+                self.guard_sib.smoothed.next_step(samples),
+            ],
             focus: self.focus.smoothed.next_step(samples),
             factor: self.oversample.value().into(),
         }
@@ -268,6 +287,8 @@ mod tests {
             ("air", params.air.default_plain_value()),
             ("texture", params.texture.default_plain_value()),
             ("mix", params.mix.default_plain_value()),
+            ("harsh guard", params.guard_harsh.default_plain_value()),
+            ("sib guard", params.guard_sib.default_plain_value()),
         ] {
             assert!((0.0..=1.0).contains(&value), "{name} defaults to {value}");
         }

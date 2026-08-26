@@ -53,8 +53,10 @@
 **`VEL-5` で音が出て、Live で確認済み**（2026-08-26）。`VEL-4` で `TEXTURE`、
 `VEL-9` で `Bias_i` / `Texture_i` / `Solo_i` が入り、**パラメータは 18 個**。
 
+`VEL-8` で Guard が入り、**パラメータは 20 個**。
+
 **`SOLO` が使えるようになった** — 並列生成でしか提供できない「足している層だけを
-聴く」。次は `VEL-6`（EMOTION）か `VEL-8`（Guard）。
+聴く」。次は `VEL-6`（EMOTION）→ `VEL-7`（DENSITY）。
 
 Velour が共通クレートに要求したものは 3 つとも入っている（`UI-13` `BandField` /
 `UI-8` `Meter` / `DSP-4` `Level`）。**Velour のクレートは 1 行も無い状態で
@@ -67,8 +69,6 @@ Velour が共通クレートに要求したものは 3 つとも入っている�
 | ID | 単位 | 計画 |
 |---|---|---|
 | VEL-6 | エンベロープ検波と EMOTION | `velour-plan.md` |
-| VEL-8 | Guard（Harsh / Sib） | `velour-plan.md` |
-| VEL-9 | Bias と SOLO | `velour-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 | UI-9 | `ToggleSwitch`（**Doubler も Velour も使わない**。3 個目でも要らなければ落とす） | `nxe-ui-plan.md` |
 
@@ -157,7 +157,7 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | VEL-4 | TEXTURE モーフ（Warm / Clear / Edge） | ✅ |
 | VEL-6 | エンベロープ検波と EMOTION | 🟡 |
 | VEL-7 | DENSITY（生成バスの圧縮） | ⬜ VEL-6 |
-| VEL-8 | Guard（Harsh / Sib） | 🟡 |
+| VEL-8 | Guard（Harsh / Sib） | ✅ |
 | VEL-9 | Bias と SOLO | ✅ |
 | VEL-10 | スムージングと非依存性の詰め | ⬜ VEL-7 / VEL-8 / VEL-9 |
 | VEL-11 | UI マクロ層（メインタブ 8 ノブ） | ⬜ VEL-10 |
