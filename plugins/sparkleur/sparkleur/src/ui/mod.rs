@@ -7,9 +7,7 @@
 //! wedged it in Ableton. Tabs need nothing from the host for a control to
 //! become reachable.
 //!
-//! The Advanced table arrives in `SPK-15`; until then its space is empty
-//! rather than filled with something that pretends to be it.
-
+mod advanced;
 mod curve;
 mod field;
 mod meters;
@@ -330,9 +328,7 @@ fn main_tab(cx: &mut Context) {
 
 fn advanced_tab(cx: &mut Context) {
     VStack::new(cx, |cx| {
-        // `SPK-15`. Empty rather than stubbed, for the same reason as the
-        // figure.
-        Label::new(cx, "ADVANCED").class("label");
+        advanced::view(cx);
     })
     .height(Auto)
     .width(Stretch(1.0))
@@ -420,6 +416,41 @@ fn nearest(position: f32) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **Every parameter has somewhere to be touched.**
+    ///
+    /// A parameter with no control is one a user can only reach through the
+    /// host's generic view, and **nothing else would notice** — it compiles, it
+    /// saves, it automates, and the window simply never mentions it. Thirty-three
+    /// is enough of them for one to go missing quietly.
+    #[test]
+    fn every_parameter_has_a_control() {
+        const PARAMS: &str = include_str!("../params.rs");
+        const SOURCES: [&str; 4] = [
+            include_str!("mod.rs"),
+            include_str!("advanced.rs"),
+            include_str!("field.rs"),
+            include_str!("curve.rs"),
+        ];
+
+        // Proof the scan can fail rather than passing on an empty list.
+        let fields: Vec<&str> = PARAMS
+            .lines()
+            .filter_map(|line| line.trim().strip_prefix("pub "))
+            .filter_map(|rest| rest.split_once(':'))
+            .map(|(name, _)| name)
+            .filter(|name| !name.contains(' '))
+            .collect();
+        assert_eq!(fields.len(), 33, "the parameter list moved: {fields:?}");
+
+        for field in fields {
+            let access = format!(".{field}");
+            assert!(
+                SOURCES.iter().any(|source| source.contains(&access)),
+                "{field} has no control"
+            );
+        }
+    }
 
     #[test]
     fn the_nearest_anchor_is_the_nearest_one() {
