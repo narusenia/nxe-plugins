@@ -20,6 +20,10 @@ struct Velour {
     params: Arc<VelourParams>,
     /// The window's size and position, which the host saves with the project.
     editor_state: Arc<nih_plug_vizia::ViziaState>,
+    /// The rate the host committed to, for the editor to read. An atomic
+    /// because `initialize` runs on the host's thread and the editor is built on
+    /// another; `f32` bits because there is no `AtomicF32`.
+    sample_rate_hint: Arc<std::sync::atomic::AtomicU32>,
     engine: Engine,
     sample_rate: f32,
     /// How many input channels the host actually negotiated. Under the mono
@@ -32,6 +36,9 @@ impl Default for Velour {
         Self {
             params: Arc::new(VelourParams::default()),
             editor_state: ui::default_state(),
+            sample_rate_hint: Arc::new(std::sync::atomic::AtomicU32::new(
+                FALLBACK_SAMPLE_RATE.to_bits(),
+            )),
             engine: Engine::new(FALLBACK_SAMPLE_RATE),
             sample_rate: FALLBACK_SAMPLE_RATE,
             input_channels: 2,
@@ -70,7 +77,11 @@ impl Plugin for Velour {
     }
 
     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
-        ui::create(self.params.clone(), self.editor_state.clone())
+        ui::create(
+            self.params.clone(),
+            self.editor_state.clone(),
+            self.sample_rate_hint.clone(),
+        )
     }
 
     /// The only place that allocates. Everything the audio thread touches is
@@ -85,6 +96,11 @@ impl Plugin for Velour {
         self.input_channels = audio_io_layout
             .main_input_channels
             .map_or(0, |channels| channels.get() as usize);
+
+        self.sample_rate_hint.store(
+            buffer_config.sample_rate.to_bits(),
+            std::sync::atomic::Ordering::Relaxed,
+        );
 
         if buffer_config.sample_rate != self.sample_rate {
             self.sample_rate = buffer_config.sample_rate;

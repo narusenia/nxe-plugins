@@ -145,6 +145,29 @@ impl Generator {
             }
     }
 
+    /// The span of the input this generator listens to, at a given `FOCUS`.
+    ///
+    /// **Public because the interface draws it** (`REQ-VEL-013`), and it comes
+    /// from the same place the filters are tuned from — a picture built from a
+    /// second copy of these numbers would drift from the sound the first time
+    /// one of them moved.
+    pub fn input_range(band: Band, focus: f32, host_rate: f32) -> (f32, f32) {
+        let focus = if focus.is_finite() {
+            focus.clamp(-1.0, 1.0)
+        } else {
+            0.0
+        };
+        let shift = (focus * FOCUS_OCTAVES).exp2();
+        let edges = band.edges();
+        let high = match band {
+            // Capped, and the cap does not move with `FOCUS`: it belongs to the
+            // sample rate, not to the voice's range.
+            Band::Air => (edges.input_high * shift).min(host_rate * AIR_INPUT_CEILING),
+            _ => edges.input_high * shift,
+        };
+        (edges.input_low * shift, high)
+    }
+
     /// Slides every edge together. **Block rate**, and it returns without
     /// recomputing when nothing moved — holding the knob still has to be free,
     /// and building four sets of coefficients per sample would not be.
@@ -180,14 +203,9 @@ impl Generator {
         let shift = (focus * FOCUS_OCTAVES).exp2();
         let edges = self.band.edges();
 
-        let input_high = match self.band {
-            // Capped, and the cap does not move with `FOCUS`: it belongs to the
-            // sample rate, not to the voice's range.
-            Band::Air => (edges.input_high * shift).min(self.host_rate * AIR_INPUT_CEILING),
-            _ => edges.input_high * shift,
-        };
+        let (input_low, input_high) = Generator::input_range(self.band, focus, self.host_rate);
 
-        self.input.retune(edges.input_low * shift, input_high, rate);
+        self.input.retune(input_low, input_high, rate);
         self.output
             .retune(edges.output_low * shift, edges.output_high * shift, rate);
     }
@@ -221,6 +239,33 @@ impl Generator {
 mod tests {
     use super::*;
     use crate::harmonics::{amplitude, db_ratio, mean, sine};
+
+    /// The range the interface draws has to be the range the filters got
+    /// (`REQ-VEL-013`). Checked through the generator's own state rather than by
+    /// repeating the formula.
+    #[test]
+    fn the_drawn_range_is_the_tuned_range() {
+        for band in BANDS {
+            for focus in [-1.0f32, -0.5, 0.0, 0.5, 1.0] {
+                let mut generator = Generator::new(band, 48_000.0, Factor::Four);
+                generator.set_focus(focus);
+                assert_eq!(generator.focus(), focus);
+
+                let (low, high) = Generator::input_range(band, focus, 48_000.0);
+                assert!(low < high, "{band:?} at {focus}: {low}..{high}");
+                // AIR's ceiling is the only cap, and it is the host rate's
+                // quarter — never above it whatever `FOCUS` does.
+                assert!(high <= 48_000.0 * AIR_INPUT_CEILING || band != Band::Air);
+            }
+        }
+
+        // A hostile focus draws the resting range rather than nothing.
+        assert_eq!(
+            Generator::input_range(Band::Body, f32::NAN, 48_000.0),
+            Generator::input_range(Band::Body, 0.0, 48_000.0)
+        );
+    }
+
     use crate::oversample::{Factor, Oversampler};
     use crate::shaper::{DRIVE_MAX, PROBE_AMPLITUDE, Shaper};
 

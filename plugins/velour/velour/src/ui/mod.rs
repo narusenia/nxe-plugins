@@ -7,6 +7,7 @@
 //! wedged it in Ableton (`plugins/doubler/docs/implementation/doubler-plan.md`).
 //! Tabs need nothing from the host for a control to become reachable.
 
+mod field;
 mod param_bind;
 
 use crate::params::VelourParams;
@@ -14,9 +15,11 @@ use nih_plug::prelude::Editor;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
 use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
+use nxe_ui::curve::Curve;
 use nxe_ui::segmented::SegmentedControl;
 use nxe_ui::{font, theme};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 /// The starting point from `ui.md`: the Doubler's 620 × 572 plus the width of
 /// the meter strip. **Settled by looking at it in a host**, the way the
@@ -44,34 +47,63 @@ pub(crate) struct Ui {
     /// the sound, so it is not worth an id in the saved state — reopening on
     /// MAIN is the right default anyway.
     tab: usize,
+    /// Which band the pointer is over, so the Advanced row and the region can
+    /// mark each other. One value, both directions — the Doubler's
+    /// `Ui::hovered` (`plugins/doubler/docs/specifications/ui.md`).
+    hovered: Option<usize>,
+    /// The two analysis layers the figure draws behind the regions. Empty until
+    /// `VEL-15` fills them, which is also what an idle track looks like.
+    dry: Curve,
+    wet: Curve,
 }
 
 pub(crate) enum UiEvent {
     SelectTab(usize),
+    Hover(Option<usize>),
 }
 
 impl Model for Ui {
     fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
         event.map(|ui_event: &UiEvent, _| match ui_event {
             UiEvent::SelectTab(tab) => self.tab = *tab,
+            UiEvent::Hover(index) => self.hovered = *index,
         });
     }
 }
 
-pub fn create(params: Arc<VelourParams>, state: Arc<ViziaState>) -> Option<Box<dyn Editor>> {
+pub fn create(
+    params: Arc<VelourParams>,
+    state: Arc<ViziaState>,
+    sample_rate: Arc<AtomicU32>,
+) -> Option<Box<dyn Editor>> {
     // `ViziaTheming::None`: the plugin brings its own stylesheet and wants none
     // of vizia's defaults leaking into it.
     create_vizia_editor(state, ViziaTheming::None, move |cx, _| {
         theme::install(cx);
 
+        // **Read once, when the window opens.** The rate decides where AIR's
+        // upper edge is capped (`velour_core::bands::AIR_INPUT_CEILING`), and
+        // that is the only thing on screen that depends on it. A host that
+        // changes rate with the editor open leaves the figure an octave out at
+        // the very top until it is reopened; polling for it every frame would be
+        // work for a case that does not happen mid-session.
+        let host_rate = f32::from_bits(sample_rate.load(Ordering::Relaxed));
+
         Ui {
             tab: TAB_MAIN,
+            hovered: None,
+            dry: Curve::new(),
+            wet: Curve::new(),
             params: params.clone(),
         }
         .build(cx);
 
         VStack::new(cx, |cx| {
             header(cx);
+            // The figure stays put above the tabs. It is what the plugin *is* —
+            // hiding it behind a tab would leave the window with nothing to look
+            // at (`ui.md`).
+            field::view(cx, host_rate);
             tab_strip(cx);
 
             // Both tabs are built and one is hidden. Rebuilding on a switch
