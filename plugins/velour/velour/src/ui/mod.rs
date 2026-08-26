@@ -36,7 +36,7 @@ use std::time::Duration;
 /// table. Set too tall — it started at 580 — the window ends in a band of
 /// nothing, because everything inside is a fixed height and piles at the top.
 const WIDTH: u32 = 720;
-const HEIGHT: u32 = 528;
+const HEIGHT: u32 = 568;
 
 pub fn default_state() -> Arc<ViziaState> {
     ViziaState::new(|| (WIDTH, HEIGHT))
@@ -221,16 +221,16 @@ pub fn create(
 fn figure_row(cx: &mut Context, host_rate: f32, analysis: Arc<Analysis>) {
     HStack::new(cx, |cx| {
         field::view(cx, host_rate, analysis);
-        curve::view(cx, CURVE_WIDTH);
+        curve::view(cx);
     })
+    // **Not `.class("row")`.** That centres its children vertically, and
+    // `child-top: 1s` / `child-bottom: 1s` are two more stretches for the
+    // height to be divided among (`.agents/rules/vizia.md`). Both children here
+    // are given an explicit height and want the whole of it.
     .height(Pixels(field::HEIGHT))
     .width(Stretch(1.0))
     .col_between(Pixels(theme::SPACE_3));
 }
-
-/// The transfer-curve window's width. Square-ish: it is a curve read for its
-/// shape, and a wide one flattens the very thing being read.
-const CURVE_WIDTH: f32 = 132.0;
 
 fn header(cx: &mut Context) {
     // The shipped name, in full — `NAME` in `lib.rs`, the bundle, and the

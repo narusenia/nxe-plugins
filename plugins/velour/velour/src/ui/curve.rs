@@ -88,7 +88,20 @@ fn curve_of(params: &VelourParams, hovered: Option<usize>) -> Vec<Curve> {
     ]
 }
 
-pub fn view(cx: &mut Context, width: f32) {
+/// The plot is **square**, and the panel is the figure's height.
+///
+/// `SPK-15` found both of these by looking at Sparkleur in a host, and Velour
+/// was left as it was: a curve with no frame reads as something that escaped
+/// rather than as a panel of its own, and **a diagonal is only 45° when the two
+/// axes are the same length** — in a tall box "below the line is compressed"
+/// cannot be read off the shape. Opened beside Sparkleur the difference is the
+/// first thing that shows.
+const LABEL: f32 = 16.0;
+const PLOT: f32 = super::field::HEIGHT - theme::SPACE_4 * 2.0 - theme::SPACE_1 - LABEL;
+pub const WIDTH: f32 = PLOT + theme::SPACE_4 * 2.0;
+const _: () = assert!(PLOT > 0.0);
+
+pub fn view(cx: &mut Context) {
     VStack::new(cx, |cx| {
         CurveView::new(
             cx,
@@ -104,8 +117,11 @@ pub fn view(cx: &mut Context, width: f32) {
             vec![0.5],
             |_cx, _index, _gesture| {},
         )
-        .height(Stretch(1.0))
-        .width(Stretch(1.0));
+        // **Both sides given, not stretched.** A stretching plot takes the
+        // height the row hands it and the width the panel hands it, and those
+        // are not the same number.
+        .width(Pixels(PLOT))
+        .height(Pixels(PLOT));
 
         // Centred on the label itself, **not with stretch on the column**:
         // `child-left: 1s` and `child-right: 1s` on the parent are two more
@@ -118,11 +134,14 @@ pub fn view(cx: &mut Context, width: f32) {
         )
         .class("subtle")
         .width(Stretch(1.0))
+        .height(Pixels(LABEL))
         .child_left(Stretch(1.0))
         .child_right(Stretch(1.0));
     })
-    .width(Pixels(width))
-    .height(Stretch(1.0))
+    // **A frame, like the meter strip's** (`SPK-15`).
+    .class("panel")
+    .width(Pixels(WIDTH))
+    .height(Pixels(super::field::HEIGHT))
     .row_between(Pixels(theme::SPACE_1));
 }
 
