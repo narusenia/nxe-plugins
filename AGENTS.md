@@ -35,6 +35,8 @@ with the code, and fix the document in the same change.
 
 Important references:
 
+- `docs/HANDOVER.md` — **start here.** What is working, what is not, and which
+  traps cost the most time
 - `docs/README.md` — documentation index (which document plays which role)
 - `docs/specifications/architecture.md` — crate layout, dependency direction,
   build and release, how to add a new plugin
