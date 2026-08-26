@@ -5,10 +5,11 @@
 //! distort it** (`REQ-SPK-005`). `SPK-3` could not measure it — there was no
 //! gain to apply yet — so it was sent here.
 
-use nxe_audio::harmonics::{amplitude, bin_of, tone};
+use nxe_audio::harmonics::{amplitude, bin_of, rms, tone};
 use sparkleur_core::crossover::{BAND_COUNT, Crossover, EDGES};
 use sparkleur_core::detector::Detector;
 use sparkleur_core::dynamics::{self, Settings, linear};
+use sparkleur_core::sparkle::{self, Sparkle};
 
 const RATE: f32 = 48_000.0;
 const HZ: f32 = 50.0;
@@ -101,4 +102,86 @@ fn a_fast_speed_does_not_distort_a_low_tone() {
         unfloored > floored * 5.0,
         "an unfloored detector distorted {unfloored:.5}, no worse than {floored:.5}"
     );
+}
+
+/// A tone in every band, so moving `CHARACTER` moves all five at once.
+fn material(length: usize) -> Vec<f32> {
+    let mut mixed = vec![0.0f32; length];
+    for hz in [60.0f32, 220.0, 800.0, 3_000.0, 12_000.0] {
+        for (sample, value) in mixed.iter_mut().zip(tone(0.2, hz, RATE, length)) {
+            *sample += value;
+        }
+    }
+    mixed
+}
+
+/// The output level with the axis at `position`, in dB.
+fn loudness_db(position: f32) -> f32 {
+    let character = sparkleur_core::character::at(position);
+    let mut crossover = Crossover::new(RATE);
+    let mut detector = Detector::new(RATE, crossover.edges());
+    detector.set_speed(character.speed_centre, crossover.edges());
+    let mut sparkle = Sparkle::new(RATE);
+    sparkle.set(sparkle::Settings {
+        air: 0.5,
+        snap: 0.5,
+        bias: character.bias,
+        hardness: character.hardness,
+        ..sparkle::Settings::default()
+    });
+    let settings = Settings {
+        curve: character.curve,
+        spark: 1.0,
+        ..Settings::default()
+    };
+
+    let input = material(RATE as usize);
+    let mut run = || {
+        input
+            .iter()
+            .map(|sample| {
+                let bands = crossover.split(*sample);
+                detector.push(bands);
+                let mut levels = [0.0f32; BAND_COUNT];
+                for (band, level) in levels.iter_mut().enumerate() {
+                    *level = detector.decibels(band);
+                }
+                let gains = dynamics::gains_db(&settings, levels);
+                let wet: f32 = bands
+                    .iter()
+                    .zip(gains)
+                    .map(|(band, gain)| band * linear(gain))
+                    .sum();
+                wet + sparkle.process(bands[BAND_COUNT - 1])
+            })
+            .collect::<Vec<f32>>()
+    };
+    run();
+    let output = run();
+    20.0 * rms(&output).log10() + character.trim_db
+}
+
+/// **The axis must not double as a volume knob** (`REQ-SPK-006`,
+/// `REQ-SPK-010`). Turning it changes what the processing sounds like; how loud
+/// the result is belongs to `OUTPUT`.
+///
+/// Measured end to end on a tone in every band: **0.98 dB** across the whole
+/// axis, so the trim column is still zero. It exists anyway — Velour found the
+/// same drift at 3.0 dB after `TEXTURE` was finished and had to fit nine trims
+/// into it afterwards (`VEL-17`), and `SPK-18` will listen to material this
+/// test does not have.
+#[test]
+fn moving_the_character_axis_keeps_the_loudness_within_one_and_a_half_db() {
+    let readings: Vec<f32> = (0..=4).map(|step| loudness_db(step as f32 / 4.0)).collect();
+    let highest = readings.iter().copied().fold(f32::MIN, f32::max);
+    let lowest = readings.iter().copied().fold(f32::MAX, f32::min);
+    assert!(
+        highest - lowest < 1.5,
+        "the axis moved the level {:.2} dB: {readings:?}",
+        highest - lowest
+    );
+
+    // And the chain is doing something, or the bound above is a bound on
+    // silence.
+    assert!(lowest > -40.0, "the chain produced nothing: {readings:?}");
 }

@@ -9,6 +9,7 @@
 //! `plugins/sparkleur/docs/implementation/sparkleur-plan.md`. Blocks shared
 //! with Velour live in [`nxe_audio`].
 
+pub mod character;
 pub mod crossover;
 pub mod detector;
 pub mod dynamics;
@@ -18,5 +19,6 @@ pub use crossover::{BAND_COUNT, Crossover};
 pub use detector::Detector;
 // `dynamics::Settings` and `sparkle::Settings` are different things, so
 // neither is re-exported here — the module name is what tells them apart.
+pub use character::Character;
 pub use dynamics::{Curve, Weights};
 pub use sparkle::Sparkle;

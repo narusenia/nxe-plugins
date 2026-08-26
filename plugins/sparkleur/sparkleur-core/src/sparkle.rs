@@ -320,8 +320,20 @@ mod tests {
     const RATE: f32 = 48_000.0;
     const LENGTH: usize = 48_000;
 
-    const POLISH: (f32, f32) = (0.50, 0.15);
-    const CRUSH: (f32, f32) = (0.10, 0.80);
+    /// The curve at one end of the `CHARACTER` axis, taken from the axis
+    /// itself rather than copied — the numbers move in `SPK-18`.
+    fn curve_at(position: f32) -> (f32, f32) {
+        let character = crate::character::at(position);
+        (character.bias, character.hardness)
+    }
+
+    fn polish() -> (f32, f32) {
+        curve_at(0.0)
+    }
+
+    fn crush() -> (f32, f32) {
+        curve_at(1.0)
+    }
 
     fn settings(air: f32, snap: f32, curve: (f32, f32)) -> Settings {
         Settings {
@@ -347,7 +359,7 @@ mod tests {
     fn air_at_zero_is_exactly_silent() {
         for snap in [0.0f32, 0.5, 1.0] {
             let mut sparkle = Sparkle::new(RATE);
-            sparkle.set(settings(0.0, snap, CRUSH));
+            sparkle.set(settings(0.0, snap, crush()));
             for sample in sine(0.5, 9_000, 4_800) {
                 assert_eq!(
                     sparkle.process(sample),
@@ -363,7 +375,7 @@ mod tests {
     #[test]
     fn snap_at_zero_is_static() {
         let mut sparkle = Sparkle::new(RATE);
-        sparkle.set(settings(1.0, 0.0, CRUSH));
+        sparkle.set(settings(1.0, 0.0, crush()));
 
         // A burst: silence, then a tone. A static layer tracks the input and
         // nothing else.
@@ -389,7 +401,7 @@ mod tests {
     #[test]
     fn snap_at_one_opens_on_an_attack_and_closes_on_a_sustain() {
         let mut sparkle = Sparkle::new(RATE);
-        sparkle.set(settings(1.0, 1.0, CRUSH));
+        sparkle.set(settings(1.0, 1.0, crush()));
 
         // Half a second of silence, so both followers are at rest.
         for _ in 0..(RATE * 0.5) as usize {
@@ -442,7 +454,7 @@ mod tests {
         let four = sparkle.lid_hz();
         sparkle.set(Settings {
             factor: Factor::Two,
-            ..settings(1.0, 0.0, CRUSH)
+            ..settings(1.0, 0.0, crush())
         });
         assert_eq!(sparkle.lid_hz(), four, "the factor moved the lid");
     }
@@ -455,7 +467,7 @@ mod tests {
         sparkle.set(Settings {
             bias: BIAS_MAX,
             hardness: 1.0,
-            ..settings(1.0, 0.0, CRUSH)
+            ..settings(1.0, 0.0, crush())
         });
         let output = layer(&mut sparkle, hz, PROBE_AMPLITUDE);
 
@@ -497,8 +509,10 @@ mod tests {
     }
 
     /// **`CHARACTER` changes what the harmonics are, not how much is added**
-    /// (`REQ-SPK-010`). The curve is normalised for RMS at a reference
-    /// amplitude, and this is the property that rests on it.
+    /// (`REQ-SPK-010`, `REQ-SPK-006`). The curve is normalised for RMS at a
+    /// reference amplitude, and this is the property that rests on it. The two
+    /// ends are read off the axis rather than written here, so this is a test
+    /// of the axis and not of two numbers.
     #[test]
     fn character_moves_the_harmonics_without_moving_the_amount() {
         let measure = |curve| {
@@ -510,8 +524,8 @@ mod tests {
             (rms(&output), second / third)
         };
 
-        let (polish_level, polish_ratio) = measure(POLISH);
-        let (crush_level, crush_ratio) = measure(CRUSH);
+        let (polish_level, polish_ratio) = measure(polish());
+        let (crush_level, crush_ratio) = measure(crush());
 
         assert!(
             polish_ratio > crush_ratio * 1.5,
@@ -530,7 +544,7 @@ mod tests {
     #[test]
     fn nothing_is_added_below_the_edge() {
         let mut sparkle = Sparkle::new(RATE);
-        sparkle.set(settings(1.0, 0.0, CRUSH));
+        sparkle.set(settings(1.0, 0.0, crush()));
 
         // Two tones in the band, so the curve's even term makes a difference
         // tone at 2 kHz — well below the 6 kHz edge.
@@ -574,7 +588,7 @@ mod tests {
 
         // And a hostile sample must not poison the recursive parts.
         let mut sparkle = Sparkle::new(RATE);
-        sparkle.set(settings(1.0, 0.0, CRUSH));
+        sparkle.set(settings(1.0, 0.0, crush()));
         for value in wild {
             sparkle.process(value);
         }
@@ -588,7 +602,7 @@ mod tests {
     #[test]
     fn reset_clears_it() {
         let mut sparkle = Sparkle::new(RATE);
-        sparkle.set(settings(1.0, 1.0, CRUSH));
+        sparkle.set(settings(1.0, 1.0, crush()));
         layer(&mut sparkle, 9_000, 0.5);
         sparkle.reset();
         assert_eq!(sparkle.opening(), 0.0);
