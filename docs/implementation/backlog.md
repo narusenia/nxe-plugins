@@ -184,13 +184,22 @@ HPF に通し、速い/遅いフォロワの比で作ったゲートで出力を
 だけが残った**形。**しきい値は軸に乗せなかった** — 乗せると軸が「何が起きて
 いるか」と「どれくらい起きているか」の両方を動かしてしまう（`REQ-SPK-010`）。
 
+**`SPK-7`（De-Harsh / Sub Protect）も入った**（2026-08-26）。テスト 305 本。
+**DSP は全部揃った。次は `SPK-8` で、ここで初めて音が出る。**
+
+`SPK-1` で `RelativeGuard` を一般化した甲斐がここで出た。**De-Harsh の実装は
+設定の `const` 1 個と 4 行のラッパ**で、入力ゲイン非依存（±12 dB で 0.2 dB
+以内）は Velour と同じコードの同じ性質を 2 つの製品が別々に測っている状態。
+Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、ゲイン計算は
+1 本のまま — **「専用の処理を足さない」がコードの形にそのまま出ている。**
+
 ## 今すぐ着手できるもの
 
 依存が無いか、依存がすべて解決している単位。
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| SPK-7 | **De-Harsh / Sub Protect** — `RelativeGuard` 1 個 + `CEILING` の値違い | `sparkleur-plan.md` |
+| SPK-8 | **ラッパとパラメータ** — パラメータ 33 個。**ここで初めて音が出る** | `sparkleur-plan.md` |
 | SPK-10 | `nxe_ui::band::Band` の `reduction` を符号付き `delta` に（上げコンプが描けない） | `sparkleur-plan.md` |
 | SPK-11 | `param_bind` の共通化（3 個目が要求した。行き先は `nxe-ui` ではない） | `sparkleur-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
@@ -310,8 +319,8 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | SPK-4 | ゲイン計算（上下コンプ。**製品の核**） | ✅ `351f55a` |
 | SPK-5 | CHARACTER（POLISH ↔ CRUSH の 1 軸） | ✅ `6401de9` |
 | SPK-6 | Sparkle（トランジェントでゲートした倍音生成） | ✅ `0117e1e` |
-| SPK-7 | De-Harsh / Sub Protect | 🟡 |
-| SPK-8 | ラッパとパラメータ（**ここで音が出る**） | ⬜ SPK-4 / SPK-5 / SPK-6 / SPK-7 |
+| SPK-7 | De-Harsh / Sub Protect | ✅ `1fc7366` |
+| SPK-8 | ラッパとパラメータ（**ここで音が出る**） | 🟡 |
 | SPK-9 | 詰め（レート・ブロック・極端値） | ⬜ SPK-8 |
 | SPK-10 | `nxe_ui::band::Band` の `reduction` を符号付き `delta` に | 🟡 |
 | SPK-11 | `param_bind` の共通化（行き先は `nxe-ui` ではない） | 🟡 |
