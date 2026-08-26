@@ -104,6 +104,12 @@ away — the same CSS works when the child is a `Label`, which sets `Auto` itsel
 When a container's size comes from its content, say `.width(Auto)` on every
 level, not just the outermost.
 
+**A widget must not move its own value optimistically.** `binding_system`
+re-reads every bound lens and compares with `Data::same`, so **a write the caller
+clamps produces no update** — the value did not change. A widget that moved its
+local copy first is then left showing something nobody accepted, and nothing ever
+corrects it. Report the gesture and redraw from what comes back.
+
 **Bind inside `build`'s closure.** `Res::set_or_bind` needs `cx`, and the handle
 `build` returns holds it, so binding after the build does not compile. Inside the
 closure, `cx.current()` is the new view.

@@ -9,6 +9,14 @@
 //! travel into one value, and a point here moves in two at once. The fine-drag
 //! factor is shared, so both behave the same under `Shift`.
 //!
+//! **Nothing moves until the caller says so.** A drag reports where the pointer
+//! went; the points redraw when the bound value changes. Moving the local copy
+//! first looked more responsive and lied: a caller that clamps what it was
+//! handed — a pan beyond what the spread allows, say — writes a value that does
+//! not change, so no update comes back and the dot stays where it was dragged
+//! rather than where it landed. A caller with nothing to write simply has a
+//! field that does not move.
+//!
 //! **The points carry no labels.** Vizia's `draw_text` renders the entity's own
 //! text, so one view cannot put eight numbers at eight positions. Instead the
 //! field reports which point the pointer is over, which lets the caller
@@ -339,28 +347,6 @@ impl View for PolarField {
         });
 
         if let Some(gesture) = gesture {
-            // Move the local copy so the drag looks live even before the caller
-            // writes anything back.
-            match gesture {
-                FieldGesture::Change {
-                    index,
-                    angle,
-                    radius,
-                } => {
-                    if let Some(point) = self.points.get_mut(index) {
-                        point.angle = angle;
-                        point.radius = radius;
-                    }
-                    cx.needs_redraw();
-                }
-                FieldGesture::AnchorChange(radius) => {
-                    for anchor in &mut self.anchors {
-                        anchor.radius = radius;
-                    }
-                    cx.needs_redraw();
-                }
-                _ => {}
-            }
             (self.on_gesture)(cx, gesture);
         }
     }
