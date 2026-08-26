@@ -101,8 +101,9 @@ pub enum FieldGesture {
 type FieldCallback = Box<dyn Fn(&mut EventContext, FieldGesture)>;
 
 enum FieldEvent {
-    SetPoints(Vec<FieldPoint>),
-    SetAnchors(Vec<FieldPoint>),
+    Points(Vec<FieldPoint>),
+    Anchors(Vec<FieldPoint>),
+    Highlight(Option<usize>),
 }
 
 /// Where the field sits inside its bounds. The origin is the bottom centre, so
@@ -156,6 +157,9 @@ pub struct PolarField {
     anchors: Vec<FieldPoint>,
     dragging: Option<Grabbed>,
     hovered: Option<usize>,
+    /// A point the caller wants marked, whatever the pointer is doing. What
+    /// makes the field and a table beside it point at the same voice.
+    highlighted: Option<usize>,
     /// Where the pointer was when the drag started, and what the point was, so
     /// a fine drag can scale the travel rather than jumping to the pointer.
     grab: (f32, f32),
@@ -178,6 +182,7 @@ impl PolarField {
             anchors: initial_anchors,
             dragging: None,
             hovered: None,
+            highlighted: None,
             grab: (0.0, 0.0),
             grab_value: (0.0, 0.0),
             on_gesture: Box::new(on_gesture),
@@ -185,10 +190,10 @@ impl PolarField {
         .build(cx, move |cx| {
             let entity = cx.current();
             points.set_or_bind(cx, entity, move |cx, value| {
-                cx.emit_to(entity, FieldEvent::SetPoints(value));
+                cx.emit_to(entity, FieldEvent::Points(value));
             });
             anchors.set_or_bind(cx, entity, move |cx, value| {
-                cx.emit_to(entity, FieldEvent::SetAnchors(value));
+                cx.emit_to(entity, FieldEvent::Anchors(value));
             });
         })
     }
@@ -243,6 +248,24 @@ impl PolarField {
     }
 }
 
+/// `Handle` belongs to vizia, so a modifier for it has to arrive as a trait.
+pub trait PolarFieldModifiers {
+    /// Marks one point from outside — the row a pointer is over in a table, the
+    /// voice a mirrored edit just moved. Optional: a field with nothing to mark
+    /// simply does not call this.
+    fn highlight(self, index: impl Res<Option<usize>> + 'static) -> Self;
+}
+
+impl PolarFieldModifiers for Handle<'_, PolarField> {
+    fn highlight(mut self, index: impl Res<Option<usize>> + 'static) -> Self {
+        let entity = self.entity();
+        index.set_or_bind(self.context(), entity, move |cx, value| {
+            cx.emit_to(entity, FieldEvent::Highlight(value));
+        });
+        self
+    }
+}
+
 impl View for PolarField {
     fn element(&self) -> Option<&'static str> {
         Some("nxepolarfield")
@@ -250,12 +273,16 @@ impl View for PolarField {
 
     fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
         event.map(|field_event: &FieldEvent, _| match field_event {
-            FieldEvent::SetPoints(points) => {
+            FieldEvent::Points(points) => {
                 self.points = points.clone();
                 cx.needs_redraw();
             }
-            FieldEvent::SetAnchors(anchors) => {
+            FieldEvent::Anchors(anchors) => {
                 self.anchors = anchors.clone();
+                cx.needs_redraw();
+            }
+            FieldEvent::Highlight(index) => {
+                self.highlighted = *index;
                 cx.needs_redraw();
             }
         });
@@ -420,7 +447,10 @@ impl View for PolarField {
             let (x, y) = geometry.position(point.angle, point.radius);
             let dot = (DOT_MIN + (DOT_MAX - DOT_MIN) * point.size.clamp(0.0, 1.0)) * scale;
 
-            if self.hovered == Some(index) || self.dragging == Some(Grabbed::Point(index)) {
+            let marked = self.hovered == Some(index)
+                || self.highlighted == Some(index)
+                || self.dragging == Some(Grabbed::Point(index));
+            if marked {
                 let mut ring = vg::Path::new();
                 ring.circle(x, y, dot + 3.0 * scale);
                 canvas.fill_path(&ring, &vg::Paint::color(theme::ACCENT_DIM.vg()));

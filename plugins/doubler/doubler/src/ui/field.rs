@@ -24,7 +24,7 @@ use doubler_core::{MAX_VOICES, Source, mirror_partner, pan_for, pan_shape_for};
 use nih_plug::prelude::Param;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
-use nxe_ui::polar::{FieldGesture, FieldPoint, PolarField};
+use nxe_ui::polar::{FieldGesture, FieldPoint, PolarField, PolarFieldModifiers};
 
 /// Reads the discrete source mode out of its parameter.
 fn source_of(params: &DoublerParams) -> Source {
@@ -182,11 +182,19 @@ pub fn view(cx: &mut Context) {
                 for base in voice.written(cx) {
                     base.begin_set_parameter(cx);
                 }
+                // Mark the paired voice for as long as the drag lasts. A point
+                // moving on its own looks like the plugin doing something
+                // behind your back; a ring on it says what is connected to what
+                // (`plugins/doubler/docs/specifications/ui.md`).
+                if Ui::mirror_pan.get(cx) || Ui::mirror_gain.get(cx) {
+                    cx.emit(UiEvent::Hover(Some(mirror_partner(index))));
+                }
             }
             FieldGesture::End(_) => {
                 for base in voice.written(cx) {
                     base.end_set_parameter(cx);
                 }
+                cx.emit(UiEvent::Hover(None));
             }
             FieldGesture::Reset(_) => {
                 for base in voice.written(cx) {
@@ -223,6 +231,9 @@ pub fn view(cx: &mut Context) {
             _ => {}
         }
     })
+    // Whatever the model says is under the pointer — a dot, or a row in the
+    // Detail table — gets a ring here.
+    .highlight(Ui::hovered)
     .height(Stretch(1.0))
     .width(Stretch(1.0));
 }

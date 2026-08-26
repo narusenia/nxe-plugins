@@ -177,8 +177,11 @@ fn row(cx: &mut Context, index: usize) {
             DIMMED
         }
     }))
-    // The Voice Field reports which dot the pointer is over; this is the other
-    // half of that, and what replaced numbering the dots.
+    // Both directions run through the same piece of state: whoever the pointer
+    // is over sets it, and both the table and the figure read it. That is what
+    // ties a row to a dot without numbering the dots.
+    .on_hover(move |cx| cx.emit(super::UiEvent::Hover(Some(index))))
+    .on_hover_out(|cx| cx.emit(super::UiEvent::Hover(None)))
     .background_color(Ui::hovered.map(move |hovered| {
         if *hovered == Some(index) {
             theme::ELEVATED.vizia()
