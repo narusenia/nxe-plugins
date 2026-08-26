@@ -260,7 +260,6 @@ p50 / p95 / max を並べたらしきい値を置くべき場所が変わった�
 | `DBL-13` 既定値の詰め | `doubler-plan.md` | **耳が要る** |
 | Velour の `SOLO` が保存される | `params.rs` | nih-plug に逃げ道が無い。**画面には出るようにした** — Advanced の `ON` と、`BandField` が他の区画を落とすこと（`band.rs` の `soloing`）。図はタブに関係なく常に見えるので、ラッチしたまま開いても分かる |
 | 値の直接入力 | `crates/nxe-ui/src/entry.rs` | gallery では動くがプラグインに載せると editor の表示が止まる。**原因未特定** |
-| Velour の軸ラベルの右端が切れる | `velour/src/ui/field.rs` | 最後の目盛りを `left: 100%` で置いているので「20k」が「20」になる。Sparkleur は `left: 1s; right: 0px` で直した（`SPK-15`）。**同じ 3 行** |
 | `UI-9` `ToggleSwitch` | `nxe-ui-plan.md` | **2 個のプラグインがどちらも要らなかった。** 3 個目でも要らなければ落とす（Sparkleur の UI 仕様も `.segment` の `Label` で足りている） |
 | 混ざったコミット `f89b40c` / `68d5199` | — | それぞれフォント修正 + Dry Gain 削除、コード + 文書の一部。分けるなら push 済み履歴の書き換えが要る |
 

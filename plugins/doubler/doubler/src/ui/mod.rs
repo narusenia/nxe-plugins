@@ -29,7 +29,7 @@ use std::time::Duration;
 /// One size, tall enough for whichever tab needs the most room. Measured
 /// against the built layout rather than estimated.
 const WIDTH: u32 = 720;
-const HEIGHT: u32 = 624;
+const HEIGHT: u32 = 684;
 
 /// How tall the swapped region is. Fixed, so switching tabs does not move
 /// anything above it.

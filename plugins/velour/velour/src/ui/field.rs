@@ -190,11 +190,23 @@ pub fn view(cx: &mut Context, host_rate: f32, analysis: Arc<Analysis>) {
 
         // The labels are placed with the same mapping the widget was given.
         HStack::new(cx, |cx| {
-            for (hz, text) in MARKS {
-                Label::new(cx, text)
+            for (index, (hz, text)) in MARKS.iter().enumerate() {
+                let label = Label::new(cx, *text)
                     .class("subtle")
-                    .position_type(PositionType::SelfDirected)
-                    .left(Percentage(axis_x(hz) * 100.0));
+                    .position_type(PositionType::SelfDirected);
+
+                // **An absolutely-positioned label at the far edge runs off
+                // it.** `left: 100%` puts the label's *start* at the right-hand
+                // edge, so `20k` grew out of the box — it read as `20` with the
+                // curve panel beside it, and as `20` clipped without one. Hang
+                // the last one off the other side instead (`SPK-15` fixed the
+                // same three lines in Sparkleur; this is the copy the backlog
+                // was holding).
+                if index == MARKS.len() - 1 {
+                    label.left(Stretch(1.0)).right(Pixels(0.0));
+                } else {
+                    label.left(Percentage(axis_x(*hz) * 100.0));
+                }
             }
         })
         .height(Pixels(14.0))
