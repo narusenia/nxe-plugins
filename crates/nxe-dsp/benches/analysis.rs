@@ -35,7 +35,7 @@ fn analysis(criterion: &mut Criterion) {
                 for &sample in &input {
                     scope.push(sample, -sample);
                 }
-                black_box(scope.bins());
+                black_box(scope.levels());
             },
             criterion::BatchSize::SmallInput,
         );

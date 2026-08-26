@@ -170,7 +170,7 @@ impl Plugin for Doubler {
 
         // Once per block, not per sample: the editor redraws at 30 Hz and these
         // are stores to shared atomics.
-        self.analysis.pan.write(self.pan_scope.bins());
+        self.analysis.pan.write(&self.pan_scope.levels());
         self.analysis.spectrum.write(&self.spectrum.levels());
 
         ProcessStatus::Normal

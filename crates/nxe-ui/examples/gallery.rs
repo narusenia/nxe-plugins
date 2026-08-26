@@ -427,11 +427,12 @@ fn segments(cx: &mut Context) {
 }
 
 /// A plausible stereo picture: energy either side of centre, less in between.
+/// Absolute — `0` draws nothing, which is what silence looks like.
 fn sample_density() -> Vec<f32> {
     (0..24)
         .map(|bin| {
             let x = bin as f32 / 23.0 * 2.0 - 1.0;
-            (1.0 - (x.abs() - 0.6).abs() * 2.5).max(0.05)
+            (1.0 - (x.abs() - 0.6).abs() * 2.5).clamp(0.0, 1.0)
         })
         .collect()
 }

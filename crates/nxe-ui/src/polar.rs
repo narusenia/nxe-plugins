@@ -270,9 +270,13 @@ pub trait PolarFieldModifiers {
     fn highlight(self, index: impl Res<Option<usize>> + 'static) -> Self;
 
     /// How much signal is arriving from each direction, left to right, drawn as
-    /// wedges under the points. Any length; the values are **normalized by the
-    /// widget against their own largest**, because "full" is a display decision
-    /// and no caller should have to work it out twice.
+    /// wedges under the points. Any length; **`0` is nothing and `1` is as much
+    /// as the view can show**.
+    ///
+    /// Absolute, not normalized against the largest value. Normalizing was the
+    /// first version and it kept the picture of a sound that had stopped on
+    /// screen for ever: every direction fades at the same rate, so the ratios
+    /// between them never change.
     fn density(self, bins: impl Res<Vec<f32>> + 'static) -> Self;
 }
 
@@ -419,18 +423,10 @@ impl View for PolarField {
         // rather than accent: the accent says what the plugin is *set* to, and
         // a reader has to be able to tell the setting from the result.
         //
-        // Normalized against the loudest bin, so the shape is readable at any
-        // level — an absolute scale would show nothing on a quiet track and
-        // saturate on a loud one.
-        let loudest = self
-            .density
-            .iter()
-            .copied()
-            .fold(0.0f32, f32::max)
-            .max(f32::MIN_POSITIVE);
-
+        // The values arrive on an absolute scale, so a wedge fades as the sound
+        // does and silence draws nothing at all.
         for (index, value) in self.density.iter().enumerate() {
-            let share = (value / loudest).clamp(0.0, 1.0);
+            let share = value.clamp(0.0, 1.0);
             if share <= 0.0 {
                 continue;
             }

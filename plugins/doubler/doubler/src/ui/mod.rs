@@ -101,6 +101,11 @@ fn start_heartbeat(cx: &mut Context) {
 /// without a floor the curve sits on the noise of an idle track.
 const SPECTRUM_FLOOR_DB: f32 = -72.0;
 
+/// The floor of the stereo shading. Shallower than the spectrum's: this is one
+/// flat colour rather than a curve, so a wide range would leave everything the
+/// same shade of grey.
+const DENSITY_FLOOR_DB: f32 = -48.0;
+
 /// Which axis a mirror switch controls — one per shape axis.
 ///
 /// `Gain` is here because the figure's radius *is* the gain: without it,
@@ -134,7 +139,7 @@ impl Model for Ui {
             }
             UiEvent::Hover(index) => self.hovered = *index,
             UiEvent::Poll => {
-                self.density = self.analysis.pan.read().to_vec();
+                self.density = density_curve(&self.analysis.pan.read());
                 self.spectrum = spectrum_curve(&self.analysis.spectrum.read());
             }
             UiEvent::ToggleMirror(axis) => match axis {
@@ -165,6 +170,22 @@ impl Model for Ui {
             },
         });
     }
+}
+
+/// The published pan energies as something to shade with: `0` nothing, `1` as
+/// dark as the field goes.
+///
+/// **On a dB scale**, because a linear one shows almost nothing until a signal
+/// is loud — and because it is what makes the picture fade out as the sound
+/// does rather than only when it stops.
+fn density_curve(levels: &[f32; PAN_BINS]) -> Vec<f32> {
+    levels
+        .iter()
+        .map(|energy| {
+            let db = 10.0 * energy.max(1e-9).log10();
+            ((db - DENSITY_FLOOR_DB) / -DENSITY_FLOOR_DB).clamp(0.0, 1.0)
+        })
+        .collect()
 }
 
 /// The published band levels as a curve for the Filter View: `x` across the log

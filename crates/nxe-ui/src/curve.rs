@@ -189,10 +189,24 @@ impl View for CurveView {
             )
         };
 
-        // The signal, filled from the floor. Behind everything and in a
-        // neutral, because the accent belongs to what the plugin is *set* to —
-        // a reader has to be able to tell the setting from the result at a
-        // glance.
+        // Shaded ranges go behind everything: they are context, not data. Light
+        // enough that eight of them overlapping still read as shading.
+        for (start, end) in &self.spans {
+            let (left, _) = at(start.min(*end), 0.0);
+            let (right, _) = at(start.max(*end), 0.0);
+            let mut path = vg::Path::new();
+            path.rect(left, bounds.y, (right - left).max(0.0), bounds.h);
+            canvas.fill_path(&path, &vg::Paint::color(theme::ACCENT_DIM.at(0.06).vg()));
+        }
+
+        // The signal, filled from the floor. Neutral, because the accent
+        // belongs to what the plugin is *set* to — a reader has to be able to
+        // tell the setting from the result at a glance.
+        //
+        // **Above the shaded ranges, below everything else.** Underneath them it
+        // was buried: eight overlapping bands of translucent accent stack up to
+        // near-opaque, and what the plugin is doing to the sound matters more
+        // than which voice covers which octave.
         if self.analysis.len() > 1 {
             let mut path = vg::Path::new();
             let (first_x, _) = at(self.analysis[0].0, 0.0);
@@ -205,15 +219,6 @@ impl View for CurveView {
             path.line_to(last_x, bounds.y + bounds.h);
             path.close();
             canvas.fill_path(&path, &vg::Paint::color(theme::BORDER.vg()));
-        }
-
-        // Shaded ranges go behind everything: they are context, not data.
-        for (start, end) in &self.spans {
-            let (left, _) = at(start.min(*end), 0.0);
-            let (right, _) = at(start.max(*end), 0.0);
-            let mut path = vg::Path::new();
-            path.rect(left, bounds.y, (right - left).max(0.0), bounds.h);
-            canvas.fill_path(&path, &vg::Paint::color(theme::ACCENT_DIM.vg()));
         }
 
         let mut grid = vg::Path::new();

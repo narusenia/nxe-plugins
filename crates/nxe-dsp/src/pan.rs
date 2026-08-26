@@ -33,6 +33,9 @@ pub struct PanScope<const BINS: usize> {
     filled: usize,
     /// What every bin is multiplied by when a window completes.
     decay: f32,
+    /// Turns an accumulated bin into a level a caller can read on an absolute
+    /// scale — see [`PanScope::levels`].
+    scale: f32,
 }
 
 impl<const BINS: usize> PanScope<BINS> {
@@ -42,12 +45,23 @@ impl<const BINS: usize> PanScope<BINS> {
         let windows_per_second = sample_rate / WINDOW as f32;
         let decay = (-1.0 / (DECAY_SECONDS * windows_per_second)).exp();
 
+        // A bin accumulates one window's energy per window and loses `decay` of
+        // itself each time, so a steady signal settles at `energy / (1 - decay)`.
+        // Dividing that out is what makes the reading mean something on its own
+        // rather than only relative to the other bins.
+        // "Full scale" is both channels at one, so a window's energy is twice
+        // its length. A signal hard to one side therefore reads half — which is
+        // right: half the pair is silent.
+        let full_scale_window = 2.0 * WINDOW as f32;
+        let steady_state = full_scale_window / (1.0 - decay);
+
         Self {
             bins: [0.0; BINS],
             left_energy: 0.0,
             right_energy: 0.0,
             filled: 0,
             decay,
+            scale: 1.0 / steady_state,
         }
     }
 
@@ -62,11 +76,16 @@ impl<const BINS: usize> PanScope<BINS> {
         }
     }
 
-    /// The bins, hard left first. Feeding is unnormalized — the caller scales to
-    /// whatever it is drawing into, which is also the only place that knows what
-    /// "full" should look like.
-    pub fn bins(&self) -> &[f32; BINS] {
-        &self.bins
+    /// The energy in each direction, hard left first, on an **absolute scale**:
+    /// a full-scale signal sitting in one direction settles near `1`, and
+    /// silence really is `0`.
+    ///
+    /// **Not normalized against the largest bin.** That was the first version
+    /// and it was wrong: every bin decays at the same rate, so the ratios
+    /// between them never change and the picture of a sound that stopped stays
+    /// on screen for ever. An absolute reading fades because the sound faded.
+    pub fn levels(&self) -> [f32; BINS] {
+        std::array::from_fn(|index| self.bins[index] * self.scale)
     }
 
     /// Forgets everything. For a transport stop, or reopening an editor onto a
@@ -122,7 +141,7 @@ mod tests {
     /// picture.
     fn peak<const BINS: usize>(scope: &PanScope<BINS>) -> usize {
         scope
-            .bins()
+            .levels()
             .iter()
             .enumerate()
             .max_by(|a, b| a.1.total_cmp(b.1))
@@ -163,21 +182,46 @@ mod tests {
     fn silence_moves_nothing() {
         let mut scope: PanScope<9> = PanScope::new(SR);
         run(&mut scope, 0.0, 0.0, WINDOW * 4);
-        assert_eq!(scope.bins(), &[0.0; 9]);
+        assert_eq!(scope.levels(), [0.0; 9]);
     }
 
     #[test]
     fn a_bin_falls_away_once_the_sound_stops() {
         let mut scope: PanScope<9> = PanScope::new(SR);
         run(&mut scope, 0.5, 0.5, WINDOW * 4);
-        let loud = scope.bins()[4];
+        let loud = scope.levels()[4];
 
         // One time constant of silence.
         run(&mut scope, 0.0, 0.0, (DECAY_SECONDS * SR) as usize);
-        let quiet = scope.bins()[4];
+        let quiet = scope.levels()[4];
 
         assert!(quiet < loud * 0.5, "{loud} did not fall: {quiet}");
         assert!(quiet > 0.0, "it fell all the way to zero");
+    }
+
+    /// The reading has to mean something on its own, or a display can only ever
+    /// show the shape and never the loudness — which is how a picture of a
+    /// sound that stopped stays on screen.
+    #[test]
+    fn a_full_scale_signal_reads_about_one() {
+        let mut scope: PanScope<9> = PanScope::new(SR);
+        // Well past the 250 ms it takes to settle.
+        run(&mut scope, 1.0, 1.0, (SR * 2.0) as usize);
+        let level = scope.levels()[4];
+        assert!((0.7..=1.3).contains(&level), "full scale read {level}");
+    }
+
+    #[test]
+    fn a_quiet_signal_reads_quiet() {
+        let mut loud: PanScope<9> = PanScope::new(SR);
+        run(&mut loud, 1.0, 1.0, (SR * 2.0) as usize);
+
+        let mut quiet: PanScope<9> = PanScope::new(SR);
+        run(&mut quiet, 0.1, 0.1, (SR * 2.0) as usize);
+
+        // A tenth of the amplitude is a hundredth of the energy.
+        let ratio = quiet.levels()[4] / loud.levels()[4];
+        assert!((0.005..=0.02).contains(&ratio), "the ratio was {ratio}");
     }
 
     #[test]
@@ -185,7 +229,7 @@ mod tests {
         let mut scope: PanScope<9> = PanScope::new(SR);
         run(&mut scope, 0.5, 0.5, WINDOW * 4);
         scope.reset();
-        assert_eq!(scope.bins(), &[0.0; 9]);
+        assert_eq!(scope.levels(), [0.0; 9]);
     }
 
     /// The decay is defined in seconds, so a bin has to fall at the same rate in
@@ -197,9 +241,9 @@ mod tests {
         for rate in [44_100.0f32, 48_000.0, 96_000.0, 192_000.0] {
             let mut scope: PanScope<9> = PanScope::new(rate);
             run(&mut scope, 0.5, 0.5, WINDOW);
-            let loud = scope.bins()[4];
+            let loud = scope.levels()[4];
             run(&mut scope, 0.0, 0.0, (DECAY_SECONDS * rate) as usize);
-            levels.push(scope.bins()[4] / loud);
+            levels.push(scope.levels()[4] / loud);
         }
 
         let first = levels[0];
