@@ -34,8 +34,8 @@
 //! the problem it solves.
 //!
 //! **The trade is that it is only exact at the reference amplitude.** Four times
-//! louder and drive costs 11.6 dB across its range; four times quieter and it
-//! gains 9.1 dB. Both are pinned by tests rather than left to be discovered.
+//! louder and drive costs 9.8 dB across its range; four times quieter and it
+//! gains 2.9 dB. Both are pinned by tests rather than left to be discovered.
 //! The reference sits where a mixed vocal sits, so the exactness is where the
 //! plugin is used, and `DENSITY` narrows what is left by bringing the bus
 //! toward a consistent level before the curve sees it (`REQ-VEL-007`).
@@ -53,7 +53,19 @@ use std::f32::consts::TAU;
 /// linear curve is what the bottom is *for* — at `DRIVE_MIN` the shaper passes
 /// its input through with unity gain (`REQ-VEL-009`).
 pub const DRIVE_MIN: f32 = 0.05;
-pub const DRIVE_MAX: f32 = 20.0;
+
+/// **The ceiling is set by aliasing, not by taste.**
+///
+/// A 10 kHz sine — the top of AIR's range — through the hard knee at 4x leaves
+/// aliasing at −68 dB here, −58 dB at drive 8, and −44 dB at drive 20
+/// (measured in `crate::oversample`'s tests). `REQ-VEL-005` asks for −60 dB, and
+/// `REQ-VEL-020` says to reconsider this number before reaching for a higher
+/// oversampling factor. So it is 6, and the useful sound sits under it: at the
+/// reference amplitude the hard knee is already clipping the top third of the
+/// waveform.
+///
+/// `VEL-17` may want it moved. Moving it means re-reading the aliasing table.
+pub const DRIVE_MAX: f32 = 6.0;
 
 /// How far the bias can push the curve off centre.
 ///
@@ -240,7 +252,7 @@ mod tests {
 
     /// The controls, sampled across their ranges. Every claim below is checked
     /// against the whole grid, not against one flattering point.
-    const DRIVES: [f32; 6] = [0.05, 0.5, 2.0, 5.0, 10.0, 20.0];
+    const DRIVES: [f32; 6] = [0.05, 0.5, 1.5, 3.0, 4.5, 6.0];
     const BIASES: [f32; 4] = [0.0, 0.25, 0.5, 0.8];
     const HARDNESSES: [f32; 3] = [0.0, 0.5, 1.0];
 
@@ -284,7 +296,7 @@ mod tests {
     ///
     /// The normalisation is exact at one amplitude. Four times that peaks at
     /// full scale, and there the curve really is saturating — which is what it
-    /// is for. **Measured: −11.6 dB from the bottom of the drive range to the
+    /// is for. **Measured: −9.8 dB from the bottom of the drive range to the
     /// top.** That is the price of a fixed reference, and the alternatives are
     /// worse: normalising against the signal would make `DRIVE` behave
     /// differently on every source.
@@ -297,18 +309,19 @@ mod tests {
         let input = sine(PROBE_AMPLITUDE * 4.0, CYCLES, LENGTH);
         let reference = rms(&input);
 
-        let quiet_drive = db_ratio(rms(&run(&shaper_at(0.05, 0.0, 0.0), &input)), reference);
-        let loud_drive = db_ratio(rms(&run(&shaper_at(20.0, 0.0, 0.0), &input)), reference);
+        let quiet_drive = db_ratio(rms(&run(&shaper_at(DRIVE_MIN, 0.0, 0.0), &input)), reference);
+        let loud_drive = db_ratio(rms(&run(&shaper_at(DRIVE_MAX, 0.0, 0.0), &input)), reference);
 
         assert!(quiet_drive.abs() < 0.3, "{quiet_drive:+.2} dB at the bottom");
         assert!(loud_drive < quiet_drive, "it did not fall: {loud_drive:+.2} dB");
-        assert!(loud_drive > -13.0, "it fell further than expected: {loud_drive:+.2} dB");
+        assert!(loud_drive > -12.0, "it fell further than expected: {loud_drive:+.2} dB");
     }
 
     /// And the same reading from the other side. Material *quieter* than the
     /// reference drifts the other way: the compensation was computed for a
     /// curve that saturates, and down here it barely does, so it over-corrects.
-    /// **Measured: +9.1 dB.**
+    /// **Measured: +2.9 dB** — much less than the loud side, because a quiet
+    /// signal stays on the part of the curve that is nearly straight.
     ///
     /// Taken together with the test above, the reference amplitude is not a
     /// detail — it is where the plugin's central claim is exactly true, and it
@@ -319,9 +332,9 @@ mod tests {
         let input = sine(PROBE_AMPLITUDE * 0.25, CYCLES, LENGTH);
         let reference = rms(&input);
 
-        let loud_drive = db_ratio(rms(&run(&shaper_at(20.0, 0.0, 0.0), &input)), reference);
+        let loud_drive = db_ratio(rms(&run(&shaper_at(DRIVE_MAX, 0.0, 0.0), &input)), reference);
         assert!(loud_drive > 0.0, "it did not rise: {loud_drive:+.2} dB");
-        assert!(loud_drive < 11.0, "it rose further than expected: {loud_drive:+.2} dB");
+        assert!(loud_drive < 5.0, "it rose further than expected: {loud_drive:+.2} dB");
     }
 
     /// The bottom of the drive range is the "no harmonics" setting, and that has
@@ -345,14 +358,14 @@ mod tests {
         let mut previous = -1.0;
 
         for bias in BIASES {
-            let output = run(&shaper_at(4.0, bias, 0.0), &input);
+            let output = run(&shaper_at(3.0, bias, 0.0), &input);
             let ratio = amplitude(&output, CYCLES * 2) / amplitude(&output, CYCLES);
             assert!(ratio > previous, "bias {bias} gave H2/H1 {ratio}, was {previous}");
             previous = ratio;
         }
 
         // And none at all without it: an odd curve cannot make an even harmonic.
-        let output = run(&shaper_at(4.0, 0.0, 0.0), &input);
+        let output = run(&shaper_at(3.0, 0.0, 0.0), &input);
         assert!(amplitude(&output, CYCLES * 2) / amplitude(&output, CYCLES) < 1e-3);
     }
 
@@ -376,7 +389,7 @@ mod tests {
         let mut previous = -1.0;
 
         for hardness in HARDNESSES {
-            let output = run(&shaper_at(4.0, 0.0, hardness), &input);
+            let output = run(&shaper_at(3.0, 0.0, hardness), &input);
             let ratio = amplitude(&output, CYCLES * 3) / amplitude(&output, CYCLES);
             assert!(
                 ratio > previous,
@@ -395,10 +408,10 @@ mod tests {
     fn an_unbiased_curve_leaves_no_dc_and_a_biased_one_does() {
         let input = sine(PROBE_AMPLITUDE, CYCLES, LENGTH);
 
-        let straight = mean(&run(&shaper_at(4.0, 0.0, 0.0), &input));
+        let straight = mean(&run(&shaper_at(3.0, 0.0, 0.0), &input));
         assert!(straight.abs() < 1e-4, "unbiased left {straight}");
 
-        let biased = mean(&run(&shaper_at(4.0, 0.8, 0.0), &input));
+        let biased = mean(&run(&shaper_at(3.0, 0.8, 0.0), &input));
         assert!(biased.abs() > 1e-3, "biased left only {biased}");
     }
 
@@ -453,9 +466,9 @@ mod tests {
     #[test]
     fn setting_the_same_values_twice_changes_nothing() {
         let mut shaper = Shaper::new();
-        shaper.set(6.0, 0.4, 0.7);
+        shaper.set(5.0, 0.4, 0.7);
         let before: Vec<f32> = (0..16).map(|i| shaper.shape(i as f32 / 16.0)).collect();
-        shaper.set(6.0, 0.4, 0.7);
+        shaper.set(5.0, 0.4, 0.7);
         let after: Vec<f32> = (0..16).map(|i| shaper.shape(i as f32 / 16.0)).collect();
         assert_eq!(before, after);
     }

@@ -12,6 +12,8 @@
 //! (`docs/specifications/architecture.md`).
 
 pub mod harmonics;
+pub mod oversample;
 pub mod shaper;
 
+pub use oversample::{Factor, Oversampler};
 pub use shaper::Shaper;

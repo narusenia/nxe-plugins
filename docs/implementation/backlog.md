@@ -43,7 +43,9 @@
 [実装計画](../../plugins/velour/docs/implementation/velour-plan.md)も書けている。
 **`VEL-1` のゲートは通った**（`k` を振っても参照振幅でのレベルが ±0.3 dB 以内、
 全 `(β, h)` で）。実装中に正規化の方式を差し替えていて、理由は `dsp.md` と
-`velour-plan.md` に記録した。次は `VEL-2`。
+`velour-plan.md` に記録した。`VEL-2`（オーバーサンプラ）も完了 — 4x で
+折り返し −68 dB。**その過程で `k` の上限を 20 → 6 に下げた**（`REQ-VEL-020` が
+決めた順に従った）。次は `VEL-3`。
 
 Velour が共通クレートに要求したものは 3 つとも入っている（`UI-13` `BandField` /
 `UI-8` `Meter` / `DSP-4` `Level`）。**Velour のクレートは 1 行も無い状態で
@@ -55,7 +57,7 @@ Velour が共通クレートに要求したものは 3 つとも入っている�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| VEL-2 | オーバーサンプラ（2 段 halfband、2x / 4x） | `velour-plan.md` |
+| VEL-3 | 帯域生成器 3 本と `FOCUS` | `velour-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 | UI-9 | `ToggleSwitch`（**Doubler も Velour も使わない**。3 個目でも要らなければ落とす） | `nxe-ui-plan.md` |
 
@@ -138,8 +140,8 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | ID | 単位 | 状態 |
 |---|---|---|
 | VEL-1 | シェイパ（**ゲート**。`velour-core` クレートもここで作る） | ✅ **ゲート通過** |
-| VEL-2 | オーバーサンプラ（2 段 halfband、2x / 4x） | 🟡 |
-| VEL-3 | 帯域生成器 3 本と `FOCUS` | ⬜ VEL-2 |
+| VEL-2 | オーバーサンプラ（2 段 halfband、2x / 4x） | ✅ 4x で折り返し −68 dB |
+| VEL-3 | 帯域生成器 3 本と `FOCUS` | 🟡 |
 | VEL-5 | nih-plug ラッパと配線（**ここで音が出る**。UI 無し） | ⬜ VEL-3 |
 | VEL-4 | TEXTURE モーフ（Warm / Clear / Edge） | ⬜ VEL-5 |
 | VEL-6 | エンベロープ検波と EMOTION | ⬜ VEL-4 |
