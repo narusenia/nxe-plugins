@@ -25,12 +25,16 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 
-/// Velour's window, which `ui.md` says to start from. **Confirmed on real
-/// hardware, not here** — Velour began at 580 tall and came down to 528 once
-/// it was looked at, because everything inside is a fixed height and a window
-/// set too tall ends in a band of nothing.
+/// `ui.md` says to start from Velour's 680 × 528, and **looking at it in a
+/// host is what settled it** — the same way Velour came down from 580 to 528.
+///
+/// The height is the sum of the parts: everything inside is a fixed height, so
+/// a window set too tall ends in a band of nothing. It is 112 of chrome —
+/// padding, the wordmark, the axis labels, the tab strip — around
+/// [`field::HEIGHT`] and [`TAB_HEIGHT`], and it moves when either of those
+/// does.
 const WIDTH: u32 = 680;
-const HEIGHT: u32 = 528;
+const HEIGHT: u32 = 468;
 
 /// How tall the swapped region is. Fixed, so switching tabs does not move
 /// anything above it.

@@ -36,8 +36,14 @@ const MARKS: [(f32, &str); 6] = [
     (20_000.0, "20k"),
 ];
 
-/// The height of the figure. It is what the plugin *is*, so it gets the room.
-pub const HEIGHT: f32 = 236.0;
+/// The height of the figure.
+///
+/// **Not Velour's 236.** Velour's regions grow from the floor, so its figure is
+/// full of something whatever is happening; these grow from a line through the
+/// middle, so at rest the box holds one line. Looked at in a host, 236 was a
+/// lot of black around it (`SPK-15`). This still leaves 88 px for the ±12 dB a
+/// region can swing, which is more than the swing ever uses.
+pub const HEIGHT: f32 = 176.0;
 
 /// Where "no change" sits: the middle, because `GAIN` is bipolar.
 const UNITY: f32 = 0.5;
