@@ -16,6 +16,10 @@ use vizia::prelude::*;
 
 type SubmitCallback = Arc<dyn Fn(&mut EventContext, &str) + Send + Sync>;
 
+/// How wide the field is while it is being typed into. Wide enough for the
+/// longest value any of these plugins shows, so the caret has somewhere to go.
+const FIELD_WIDTH: f32 = 64.0;
+
 /// Derives `Lens` so the view can bind its children to its own state — a view
 /// cannot rebuild its children from a plain field, and this is the shape vizia
 /// offers for it.
@@ -67,17 +71,24 @@ impl ValueEntry {
                             cx.emit(TextEvent::StartEdit);
                             cx.emit(TextEvent::SelectAll);
                         })
-                        .width(Stretch(1.0))
+                        // Room to type into, rather than a box the width of
+                        // whatever the value happened to read.
+                        .width(Pixels(FIELD_WIDTH))
                         .height(Auto);
                 } else {
                     font::value(cx, text)
                         .class("editable")
                         .on_press(|cx| cx.emit(EntryEvent::Begin))
-                        .width(Stretch(1.0))
+                        // **Sized to the text, not stretched.** A stretched
+                        // label fills its column and puts the text at the left
+                        // edge, which reads as centred only when the value
+                        // happens to be long.
+                        .width(Auto)
                         .height(Auto);
                 }
             });
         })
+        .width(Auto)
         .height(Auto)
     }
 }

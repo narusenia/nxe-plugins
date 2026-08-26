@@ -178,13 +178,21 @@ fn header(cx: &mut Context) {
         // host's plugin list all say the same thing.
         Label::new(cx, "NXE DOUBLER").class("title");
         Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
-        param_bind::segmented(cx, Ui::params, |params| &params.voices, &["2", "4", "8"]);
+        param_bind::segmented(cx, Ui::params, |params| &params.voices, &["2", "4", "8"])
+            .tooltip(|cx| theme::hint(cx, "How many voices run"));
         param_bind::segmented(
             cx,
             Ui::params,
             |params| &params.source,
             &["Mono Sum", "True Stereo"],
-        );
+        )
+        .class("hint-left")
+        .tooltip(|cx| {
+            theme::hint(
+                cx,
+                "Mono Sum: every voice doubles L+R. True Stereo: each doubles one side",
+            )
+        });
     })
     .class("row")
     .height(Auto);
@@ -200,21 +208,10 @@ fn field_row(cx: &mut Context) {
         // shape layer has both a figure and a table — one is for reading, the
         // other for setting a number.
         VStack::new(cx, |cx| {
-            macro_knob(
-                cx,
-                "MIX",
-                "How much of the doubled signal replaces the dry",
-                |params| &params.mix,
-                34.0,
-            );
-            macro_knob(
-                cx,
-                "OUTPUT",
-                "Level after the mix",
-                |params| &params.output,
-                34.0,
-            );
+            macro_knob(cx, "MIX", "Dry against doubled", |params| &params.mix, 34.0);
+            macro_knob(cx, "OUTPUT", "Level out", |params| &params.output, 34.0);
         })
+        .class("hint-left")
         .width(Pixels(SIDE_WIDTH))
         .height(Stretch(1.0))
         .row_between(Pixels(theme::SPACE_3))
@@ -246,9 +243,7 @@ fn mirror_switch(
             .class("segment")
             .checked(on)
             .on_press(move |cx| cx.emit(UiEvent::ToggleMirror(axis)))
-            .tooltip(move |cx| {
-                Label::new(cx, hint);
-            });
+            .tooltip(move |cx| theme::hint(cx, hint));
     })
     .class("segmented");
 }
@@ -274,32 +269,33 @@ fn mirror_switches(cx: &mut Context) {
         mirror_switch(
             cx,
             "PAN",
-            "Moving a voice sideways moves its pair the other way",
+            "Pan mirrors to the pair",
             Ui::mirror_pan,
             MirrorAxis::Pan,
         );
         mirror_switch(
             cx,
             "DETUNE",
-            "Detuning a voice up detunes its pair down by the same amount",
+            "Detune mirrors to the pair",
             Ui::mirror_detune,
             MirrorAxis::Detune,
         );
         mirror_switch(
             cx,
             "DELAY",
-            "A voice's pair takes the same delay. Off by default: two delays are what makes a double thick",
+            "Delay copies to the pair",
             Ui::mirror_delay,
             MirrorAxis::Delay,
         );
         mirror_switch(
             cx,
             "GAIN",
-            "A voice's pair takes the same level, so the image cannot lean by accident",
+            "Level copies to the pair",
             Ui::mirror_gain,
             MirrorAxis::Gain,
         );
     })
+    .class("hint-left")
     // An unset size is `Stretch(1.0)`, not "size to content"
     // (`.agents/rules/vizia.md`).
     .width(Auto)
@@ -349,9 +345,7 @@ pub(crate) fn macro_knob<P, F>(
     VStack::new(cx, |cx| {
         // The tooltip goes on the knob rather than the whole block, so it does
         // not follow the pointer around the label and the number.
-        param_bind::knob(cx, Ui::params, to_param, size).tooltip(move |cx| {
-            Label::new(cx, hint);
-        });
+        param_bind::knob(cx, Ui::params, to_param, size).tooltip(move |cx| theme::hint(cx, hint));
         Label::new(cx, label).class("label");
         param_bind::value_entry(cx, Ui::params, to_param);
     })
@@ -364,31 +358,19 @@ pub(crate) fn macro_knob<P, F>(
 
 fn macros(cx: &mut Context) {
     HStack::new(cx, |cx| {
-        macro_knob(
-            cx,
-            "DETUNE",
-            "How far apart the voices are pitched",
-            |params| &params.detune,
-            56.0,
-        );
+        macro_knob(cx, "DETUNE", "Pitch spread", |params| &params.detune, 56.0);
         macro_knob(
             cx,
             "DELAY",
-            "How far behind the dry the voices sit",
+            "Delay behind the dry",
             |params| &params.delay,
             56.0,
         );
-        macro_knob(
-            cx,
-            "SPREAD",
-            "How wide across the stereo field the voices are placed",
-            |params| &params.spread,
-            56.0,
-        );
+        macro_knob(cx, "SPREAD", "Stereo width", |params| &params.spread, 56.0);
         macro_knob(
             cx,
             "HUMANIZE",
-            "How much each voice drifts on its own",
+            "Drift, per voice",
             |params| &params.humanize,
             56.0,
         );

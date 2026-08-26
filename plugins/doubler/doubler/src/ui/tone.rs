@@ -159,11 +159,12 @@ pub fn view(cx: &mut Context) {
             macro_knob(
                 cx,
                 "SPREAD",
-                "How much the voices differ from each other in colour",
+                "Colour difference between voices",
                 |params| &params.tone_spread,
                 34.0,
             );
         })
+        .class("hint-left")
         .width(Pixels(96.0))
         .height(Auto);
     })

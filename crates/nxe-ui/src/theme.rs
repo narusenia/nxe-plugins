@@ -321,6 +321,7 @@ textbox {{
    The delay lives in the transition: 500 ms before it fades in, so a pointer
    crossing a row of knobs does not leave a trail of boxes. */
 tooltip {{
+    pointer-events: none;
     background-color: {elevated};
     border-width: 1px;
     border-color: {border};
@@ -337,6 +338,15 @@ tooltip {{
 tooltip.vis {{
     opacity: 1;
     transition: opacity 100ms 500ms;
+}}
+
+/* A hint on a control near the right edge hangs to the *left* of it instead of
+   the right, or it runs off the window. Put the class on the container: it
+   matches every tooltip inside, so the decision is made once per region rather
+   than once per control. */
+.hint-left tooltip {{
+    left: 1s;
+    right: 0px;
 }}
 
 /* Content inside something pressable. vizia only emits a press when the entity
@@ -367,6 +377,16 @@ tooltip.vis {{
 
 /// Installs the typeface, the icon font and the stylesheet. Call once when the
 /// window is built.
+/// The content of a hover hint.
+///
+/// **The label is `.decoration`.** vizia's tooltip is not hit-testable but its
+/// children are, and the tooltip hangs *below* its anchor — right over whatever
+/// sits under the control. An invisible label there swallows clicks meant for
+/// the thing it is describing (`.agents/rules/vizia.md`).
+pub fn hint(cx: &mut Context, text: &'static str) {
+    Label::new(cx, text).class("decoration");
+}
+
 pub fn install(cx: &mut Context) {
     font::install(cx);
     icon::install(cx);
@@ -449,6 +469,7 @@ mod tests {
             ":focus-visible",
             ".editable",
             "textbox",
+            ".hint-left",
             ".subtle",
             ".disabled",
             ".icon",

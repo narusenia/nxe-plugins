@@ -115,6 +115,14 @@ More generally: **a CSS declaration this revision cannot parse costs nothing at
 runtime and says nothing.** When a stylesheet change appears to do nothing, check
 the value type in `vizia_style` before assuming the rule did not match.
 
+**A tooltip's content is hit-testable even though the tooltip is not.**
+`.tooltip(…)` builds the view as a child of the anchor with `hoverable(false)`
+and `top: 100%` — so it hangs directly over whatever sits *below* the control,
+and the label inside it, invisible at `opacity: 0`, swallows the clicks meant
+for that. Mark the content `.decoration` (`theme::hint` does). It also has no
+placement logic: near the right edge it runs off the window unless something
+sets `left: 1s; right: 0px` on it.
+
 **A widget must not move its own value optimistically.** `binding_system`
 re-reads every bound lens and compares with `Data::same`, so **a write the caller
 clamps produces no update** — the value did not change. A widget that moved its
