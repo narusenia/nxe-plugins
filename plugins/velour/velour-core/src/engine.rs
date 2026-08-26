@@ -18,6 +18,31 @@ use crate::texture;
 
 pub const BAND_COUNT: usize = 3;
 
+/// How far `Bias_i` moves a band's drive, in octaves either way.
+pub const BIAS_OCTAVES: f32 = 1.5;
+
+/// And how much of the band's level it gives back, in dB per unit of bias.
+///
+/// **Zero, because the measurement said so.** The specification put 6 dB here,
+/// reasoning that a band driven harder needs pulling back. It does not: the
+/// curve is normalised for level (`crate::shaper`), so raising drive leaves the
+/// generator's RMS nearly alone — the whole bias range moves it by under a
+/// decibel. A 6 dB compensation would have turned `Bias` into a volume knob and
+/// nothing else.
+///
+/// **And a fixed number could not fix what is left, because it changes sign.**
+/// Measured across the bias range: −0.15 dB on a 217 Hz tone, +0.80 dB on a
+/// 434 Hz one. The residual comes from the band's *output* filter throwing away
+/// harmonics that the extra drive created — the same mechanism that moves the
+/// level across `TEXTURE` (`crate::texture`) — and how much it throws away
+/// depends on where the content sits. No constant tracks that.
+///
+/// **The constant stays rather than being deleted.** What it would compensate
+/// for is *perceived* density: more harmonics at the same RMS do read as
+/// louder. How much of that to give back is an ear question, on `VEL-17`'s
+/// list. The mechanism is the specification; the amount is not.
+pub const BIAS_LEVEL_DB: f32 = 0.0;
+
 /// What changes the coefficients. **Block rate.**
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Shape {
@@ -29,6 +54,21 @@ pub struct Shape {
     /// `-1..=1` per band, deviating from `texture` by up to
     /// [`crate::texture::OFFSET_RANGE`].
     pub texture_offsets: [f32; BAND_COUNT],
+    /// `-1..=1` per band. **Splits the same amount** between drive and level:
+    /// positive is deeper distortion added more quietly, negative is a shallower
+    /// curve added louder (`REQ-VEL-010`).
+    ///
+    /// One bipolar control rather than separate drive and level knobs, because
+    /// two of them would put "how much" in two places and leave the band's own
+    /// fader arguing with both.
+    pub bias: [f32; BAND_COUNT],
+    /// Which bands to listen to alone. Everything else — including the dry path
+    /// — is muted while any of these is set.
+    ///
+    /// **Only a parallel topology can offer this.** A crossover would play the
+    /// split dry band; here it is the layer being added, by itself
+    /// (`REQ-VEL-010`).
+    pub solo: [bool; BAND_COUNT],
     /// `-1..=1`, sliding every band edge together.
     pub focus: f32,
     pub factor: Factor,
@@ -41,6 +81,8 @@ impl Default for Shape {
             // The middle of the axis, which is Clear.
             texture: 0.5,
             texture_offsets: [0.0; BAND_COUNT],
+            bias: [0.0; BAND_COUNT],
+            solo: [false; BAND_COUNT],
             focus: 0.0,
             factor: Factor::default(),
         }
@@ -68,6 +110,24 @@ pub fn drive_of(knob: f32) -> f32 {
         0.0
     };
     DRIVE_MIN * (DRIVE_MAX / DRIVE_MIN).powf(knob)
+}
+
+/// Decibels to a linear gain. Exactly `1.0` at zero, which is what keeps a
+/// resting trim from touching the signal.
+fn decibels(value: f32) -> f32 {
+    if value == 0.0 {
+        1.0
+    } else {
+        10.0f32.powf(value / 20.0)
+    }
+}
+
+fn clamp_or(value: f32, low: f32, high: f32, fallback: f32) -> f32 {
+    if value.is_finite() {
+        value.clamp(low, high)
+    } else {
+        fallback
+    }
 }
 
 /// One channel's filters. The curves are shared across channels
@@ -103,9 +163,22 @@ pub struct Engine {
     channels: [Channel; 2],
     factor: Factor,
     focus: f32,
-    /// The last drive and texture the curves were built from, so a block where
-    /// nothing moved costs nothing.
-    curve: (f32, f32, [f32; BAND_COUNT]),
+    /// The last values the curves were built from, so a block where nothing
+    /// moved costs nothing.
+    curve: CurveState,
+    /// Which bands are soloed, and whether any is.
+    solo: [bool; BAND_COUNT],
+    soloing: bool,
+}
+
+/// Everything `set_shape` has to notice a change in before rebuilding the
+/// curves. A tuple would compile and would not say which field is which.
+#[derive(Clone, Copy, PartialEq)]
+struct CurveState {
+    drive: f32,
+    texture: f32,
+    texture_offsets: [f32; BAND_COUNT],
+    bias: [f32; BAND_COUNT],
 }
 
 impl Engine {
@@ -120,7 +193,14 @@ impl Engine {
             // decide what to rebuild, and the first call has to rebuild
             // everything.
             focus: f32::NAN,
-            curve: (f32::NAN, f32::NAN, [f32::NAN; BAND_COUNT]),
+            curve: CurveState {
+                drive: f32::NAN,
+                texture: f32::NAN,
+                texture_offsets: [f32::NAN; BAND_COUNT],
+                bias: [f32::NAN; BAND_COUNT],
+            },
+            solo: [false; BAND_COUNT],
+            soloing: false,
         }
     }
 
@@ -145,7 +225,15 @@ impl Engine {
             }
         }
 
-        let curve = (shape.drive, shape.texture, shape.texture_offsets);
+        self.solo = shape.solo;
+        self.soloing = shape.solo.iter().any(|band| *band);
+
+        let curve = CurveState {
+            drive: shape.drive,
+            texture: shape.texture,
+            texture_offsets: shape.texture_offsets,
+            bias: shape.bias,
+        };
         if curve != self.curve {
             self.curve = curve;
             let drive = drive_of(shape.drive);
@@ -153,8 +241,14 @@ impl Engine {
                 let (_, curve_drive) = Band::curve_multipliers(BANDS[index]);
                 let point =
                     texture::for_band(shape.texture, shape.texture_offsets[index], index);
-                shaper.set(drive * curve_drive, point.bias, point.hardness);
-                self.trims[index] = point.trim;
+                let bias = clamp_or(shape.bias[index], -1.0, 1.0, 0.0);
+
+                shaper.set(
+                    drive * curve_drive * (bias * BIAS_OCTAVES).exp2(),
+                    point.bias,
+                    point.hardness,
+                );
+                self.trims[index] = point.trim * decibels(bias * BIAS_LEVEL_DB);
             }
         }
     }
@@ -170,6 +264,8 @@ impl Engine {
             shapers,
             trims,
             channels,
+            solo,
+            soloing,
             ..
         } = self;
 
@@ -181,7 +277,17 @@ impl Engine {
                 oversampler,
                 generators,
             } = channel;
-            let bands = levels.bands;
+            // Soloing mutes the other bands and the dry path, so what is left
+            // is exactly the layer being added — at the level it is added, with
+            // no makeup. How little it is *is* the reading.
+            let bands: [f32; BAND_COUNT] = std::array::from_fn(|band| {
+                if *soloing && !solo[band] {
+                    0.0
+                } else {
+                    levels.bands[band]
+                }
+            });
+            let dry_gain = if *soloing { 0.0 } else { 1.0 };
 
             // The band levels are applied **inside** the oversampled loop. They
             // are scalars, so it makes no arithmetic difference — but keeping
@@ -197,7 +303,7 @@ impl Engine {
                 sum
             });
 
-            output[index] = dry[index] + levels.mix * wet;
+            output[index] = dry[index] * dry_gain + levels.mix * wet;
         }
 
         (output[0], output[1])
@@ -374,6 +480,154 @@ mod tests {
         assert!(drift.abs() < 4.0, "the level walked {drift:+.1} dB");
     }
 
+    fn rendered(shape: &Shape, levels: &Levels, input: &[f32]) -> Vec<f32> {
+        let mut engine = Engine::new(RATE);
+        engine.set_shape(shape);
+        input
+            .iter()
+            .map(|sample| engine.process((*sample, *sample), levels).0)
+            .collect()
+    }
+
+    /// **What `Bias` is for** (`REQ-VEL-010`): it changes how distorted a band
+    /// is without changing how much of it is there.
+    ///
+    /// Measured under a decibel across the whole bias range, and **the sign
+    /// depends on the tone** (−0.15 dB at 217 Hz, +0.80 dB at 434 Hz) — which is
+    /// why `BIAS_LEVEL_DB` is zero rather than a compensation.
+    #[test]
+    fn bias_changes_the_character_and_not_the_level() {
+        // Twice the cycles over twice the length, so the settled half holds a
+        // whole number of them and the harmonic bins land on the tone.
+        const CYCLES: usize = 37;
+        let input = sine(0.25, CYCLES * 2, 8_192);
+        let open = levels(0.8, 1.0);
+
+        // The wet layer alone, taken by soloing everything rather than by
+        // subtracting the dry: `(dry + wet) - dry` throws away most of `wet`'s
+        // precision when the dry is the larger of the two.
+        let at = |bias: f32, drive: f32| {
+            let wet = rendered(
+                &Shape {
+                    drive,
+                    bias: [bias; BAND_COUNT],
+                    solo: [true; BAND_COUNT],
+                    ..Shape::default()
+                },
+                &open,
+                &input,
+            );
+            wet[wet.len() / 2..].to_vec()
+        };
+
+        for drive in [0.3f32, 0.5, 0.7] {
+            let middle = crate::harmonics::rms(&at(0.0, drive));
+            for bias in [-1.0f32, -0.5, 0.5, 1.0] {
+                let drift =
+                    crate::harmonics::db_ratio(crate::harmonics::rms(&at(bias, drive)), middle);
+                assert!(
+                    drift.abs() < 1.5,
+                    "drive {drive}, bias {bias}: {drift:+.2} dB"
+                );
+            }
+        }
+
+        // And it does change the character, or the test above is only proving
+        // that `Bias` does nothing.
+        let ratio = |signal: &[f32]| {
+            crate::harmonics::amplitude(signal, CYCLES * 3)
+                / crate::harmonics::amplitude(signal, CYCLES)
+        };
+        let shallow = ratio(&at(-1.0, 0.5));
+        let deep = ratio(&at(1.0, 0.5));
+        assert!(
+            deep > shallow * 1.5,
+            "harmonics: deep {deep:.4} against shallow {shallow:.4}"
+        );
+    }
+
+    /// **The thing only a parallel topology can offer** (`REQ-VEL-010`): the
+    /// added layer, alone.
+    ///
+    /// Checked by changing what should not matter rather than by reconstructing
+    /// what should — a soloed band's output must not move when the other bands'
+    /// faders do.
+    #[test]
+    fn solo_ignores_the_other_bands() {
+        let input = sine(0.25, 74, 4_096);
+        let base = Shape {
+            drive: 0.6,
+            ..Shape::default()
+        };
+
+        for band in 0..BAND_COUNT {
+            let mut shape = base;
+            shape.solo[band] = true;
+
+            let mut quiet = levels(0.0, 0.7);
+            quiet.bands[band] = 0.8;
+            let mut loud = levels(0.9, 0.7);
+            loud.bands[band] = 0.8;
+
+            assert_eq!(
+                rendered(&shape, &quiet, &input),
+                rendered(&shape, &loud, &input),
+                "band {band} heard its neighbours"
+            );
+        }
+    }
+
+    /// And the soloed band is audible, or the test above passes on silence.
+    #[test]
+    fn a_soloed_band_is_still_heard() {
+        let input = sine(0.25, 74, 4_096);
+        let shape = Shape {
+            drive: 0.6,
+            solo: [false, true, false],
+            ..Shape::default()
+        };
+        let output = rendered(&shape, &levels(0.8, 0.7), &input);
+        assert!(crate::harmonics::rms(&output[2_048..]) > 1e-3);
+    }
+
+    /// The dry is muted by the solo itself, not as a side effect of the band
+    /// levels: with every fader down, soloing leaves **nothing**.
+    #[test]
+    fn solo_mutes_the_dry() {
+        let input = sine(0.5, 74, 4_096);
+
+        for solo in [
+            [true, false, false],
+            [false, true, false],
+            [false, false, true],
+            [true, true, true],
+        ] {
+            let shape = Shape {
+                drive: 0.6,
+                solo,
+                ..Shape::default()
+            };
+            let output = rendered(&shape, &levels(0.0, 1.0), &input);
+            assert!(
+                output.iter().all(|sample| *sample == 0.0),
+                "{solo:?} left the dry in"
+            );
+        }
+    }
+
+    /// Nothing soloed means the dry is back, which is the other half of the
+    /// same claim.
+    #[test]
+    fn without_a_solo_the_dry_is_untouched() {
+        let input = sine(0.5, 74, 4_096);
+        let shape = Shape {
+            drive: 0.6,
+            ..Shape::default()
+        };
+        let output = rendered(&shape, &levels(0.0, 1.0), &input);
+        assert_eq!(output, input);
+    }
+
     #[test]
     fn hostile_values_neither_panic_nor_produce_nonsense() {
         let wild = [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, -1e9, 1e9];
@@ -384,6 +638,8 @@ mod tests {
                 drive: value,
                 texture: value,
                 texture_offsets: [value; BAND_COUNT],
+                bias: [value; BAND_COUNT],
+                solo: [true, false, true],
                 focus: value,
                 factor: Factor::Four,
             });

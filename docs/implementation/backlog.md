@@ -50,9 +50,11 @@
 入力に上蓋を付けて 8。`REQ-VEL-020` が決めた順（入力を絞る → ドライブを絞る →
 倍率は最後）そのまま。
 
-**`VEL-5` で音が出て、Live で確認済み**（2026-08-26）。`VEL-4` で `TEXTURE` が
-入り、パラメータは 9 個。帯域ごとの `Texture_i` はエンジン側だけ（置く場所が
-できる `VEL-14` で宣言する）。次は `VEL-6` / `VEL-8` / `VEL-9` のどれからでも。
+**`VEL-5` で音が出て、Live で確認済み**（2026-08-26）。`VEL-4` で `TEXTURE`、
+`VEL-9` で `Bias_i` / `Texture_i` / `Solo_i` が入り、**パラメータは 18 個**。
+
+**`SOLO` が使えるようになった** — 並列生成でしか提供できない「足している層だけを
+聴く」。次は `VEL-6`（EMOTION）か `VEL-8`（Guard）。
 
 Velour が共通クレートに要求したものは 3 つとも入っている（`UI-13` `BandField` /
 `UI-8` `Meter` / `DSP-4` `Level`）。**Velour のクレートは 1 行も無い状態で
@@ -156,7 +158,7 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | VEL-6 | エンベロープ検波と EMOTION | 🟡 |
 | VEL-7 | DENSITY（生成バスの圧縮） | ⬜ VEL-6 |
 | VEL-8 | Guard（Harsh / Sib） | 🟡 |
-| VEL-9 | Bias と SOLO | 🟡 |
+| VEL-9 | Bias と SOLO | ✅ |
 | VEL-10 | スムージングと非依存性の詰め | ⬜ VEL-7 / VEL-8 / VEL-9 |
 | VEL-11 | UI マクロ層（メインタブ 8 ノブ） | ⬜ VEL-10 |
 | VEL-12 | UI Band Field | ⬜ VEL-11 |

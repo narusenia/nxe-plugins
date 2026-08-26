@@ -67,6 +67,44 @@ pub struct VelourParams {
     pub output: FloatParam,
     #[id = "os"]
     pub oversample: EnumParam<FactorParam>,
+
+    /// Per-band deviation from `TEXTURE`, and the drive-versus-level split
+    /// (`REQ-VEL-010`). Bipolar, resting at zero.
+    ///
+    /// **Three flat fields per control rather than a nested array.** A nested
+    /// array would name them "Band 1 Bias" in a host's automation list; the
+    /// bands have names, and the list is where a user looks for them.
+    #[id = "tex_body"]
+    pub texture_body: FloatParam,
+    #[id = "tex_pres"]
+    pub texture_presence: FloatParam,
+    #[id = "tex_air"]
+    pub texture_air: FloatParam,
+
+    #[id = "bias_body"]
+    pub bias_body: FloatParam,
+    #[id = "bias_pres"]
+    pub bias_presence: FloatParam,
+    #[id = "bias_air"]
+    pub bias_air: FloatParam,
+
+    /// Listen to one generator alone, with the dry muted.
+    ///
+    /// **A parameter, reluctantly.** It changes the sound, so it is not the kind
+    /// of interface state the Doubler keeps in a `#[persist]` flag — and it is
+    /// the only way to reach it before the interface exists (`VEL-14`). Marked
+    /// non-automatable, because automating a listen button is nothing anyone
+    /// means to do.
+    ///
+    /// It is still *saved*, which nih-plug gives no way out of. A project
+    /// reopening with a solo latched sounds broken, so `VEL-14` has to make the
+    /// state obvious on screen.
+    #[id = "solo_body"]
+    pub solo_body: BoolParam,
+    #[id = "solo_pres"]
+    pub solo_presence: BoolParam,
+    #[id = "solo_air"]
+    pub solo_air: BoolParam,
 }
 
 impl Default for VelourParams {
@@ -109,8 +147,33 @@ impl Default for VelourParams {
             // 4x by default: 2x is a cost saving, not an equal — it leaves
             // aliasing about 14 dB higher (`velour_core::oversample`).
             oversample: EnumParam::new("Oversample", FactorParam::Four),
+
+            texture_body: bipolar("Body Texture"),
+            texture_presence: bipolar("Presence Texture"),
+            texture_air: bipolar("Air Texture"),
+
+            bias_body: bipolar("Body Bias"),
+            bias_presence: bipolar("Presence Bias"),
+            bias_air: bipolar("Air Bias"),
+
+            solo_body: listen("Body Solo"),
+            solo_presence: listen("Presence Solo"),
+            solo_air: listen("Air Solo"),
         }
     }
+}
+
+/// A `-1..=1` control resting at zero. Six of these, so the shape lives in one
+/// place and a deviation from it would be visible.
+fn bipolar(name: &'static str) -> FloatParam {
+    FloatParam::new(name, 0.0, FloatRange::Linear { min: -1.0, max: 1.0 })
+        .with_smoother(SmoothingStyle::Linear(30.0))
+        .with_value_to_string(formatters::v2s_f32_rounded(2))
+}
+
+/// A listen switch: on/off, and not something to automate.
+fn listen(name: &'static str) -> BoolParam {
+    BoolParam::new(name, false).non_automatable()
 }
 
 /// A `0..=100%` control. One helper because five of them are the same shape, and
@@ -138,10 +201,23 @@ impl VelourParams {
         Shape {
             drive: self.drive.smoothed.next_step(samples),
             texture: self.texture.smoothed.next_step(samples),
-            // The per-band offsets arrive with the Advanced layer (`VEL-14`).
-            // They exist in the engine already, and there is nowhere to put
-            // three more knobs until there is somewhere to put them.
-            texture_offsets: [0.0; velour_core::BAND_COUNT],
+            // **Order matters**: these arrays are filled by position, and
+            // `the_band_order_matches_the_engine` is what holds it in place.
+            texture_offsets: [
+                self.texture_body.smoothed.next_step(samples),
+                self.texture_presence.smoothed.next_step(samples),
+                self.texture_air.smoothed.next_step(samples),
+            ],
+            bias: [
+                self.bias_body.smoothed.next_step(samples),
+                self.bias_presence.smoothed.next_step(samples),
+                self.bias_air.smoothed.next_step(samples),
+            ],
+            solo: [
+                self.solo_body.value(),
+                self.solo_presence.value(),
+                self.solo_air.value(),
+            ],
             focus: self.focus.smoothed.next_step(samples),
             factor: self.oversample.value().into(),
         }
@@ -197,5 +273,20 @@ mod tests {
         }
         assert_eq!(params.focus.default_plain_value(), 0.0);
         assert_eq!(params.output.default_plain_value(), 0.0);
+
+        // The bipolar controls rest at the middle, and nothing is soloed.
+        for (name, value) in [
+            ("body texture", params.texture_body.default_plain_value()),
+            ("presence texture", params.texture_presence.default_plain_value()),
+            ("air texture", params.texture_air.default_plain_value()),
+            ("body bias", params.bias_body.default_plain_value()),
+            ("presence bias", params.bias_presence.default_plain_value()),
+            ("air bias", params.bias_air.default_plain_value()),
+        ] {
+            assert_eq!(value, 0.0, "{name} defaults to {value}");
+        }
+        assert!(!params.solo_body.default_plain_value());
+        assert!(!params.solo_presence.default_plain_value());
+        assert!(!params.solo_air.default_plain_value());
     }
 }
