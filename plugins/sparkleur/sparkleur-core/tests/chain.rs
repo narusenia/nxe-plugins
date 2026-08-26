@@ -453,3 +453,70 @@ fn focus_slides_the_boundaries_without_crossing_them() {
         "the sweep covered {octaves:.2} octaves"
     );
 }
+
+/// **The axis changes the layer's flavour, not its amount** (`REQ-SPK-007`,
+/// `REQ-SPK-010`, `SPK-18`).
+///
+/// `SPK-6` measured this on a bare tone through the generator alone. This is
+/// the same property on material that has a spectrum, through the real
+/// crossover, so the number a listener is actually judging is on the record:
+///
+/// | | POLISH | default | GLOSS | CRUSH |
+/// |---|---|---|---|---|
+/// | pink noise | −20.5 | −20.0 | −19.6 | −18.9 |
+/// | hi-hats | −19.1 | −19.1 | −19.1 | −19.1 |
+///
+/// At the shipping `SPARK` of 0.35 the layer sits about **twenty decibels under
+/// the band it rides on**, and moving the whole axis moves that by at most
+/// 1.6 dB. That is `nxe_audio::shaper`'s normalisation working: `(β, h)` change
+/// what the harmonics are without changing how much is added, which is what
+/// lets `CHARACTER` and `SPARK` be separate controls at all.
+#[test]
+fn the_sparkle_layer_keeps_its_level_across_the_axis() {
+    use nxe_audio::harmonics::{at_dbfs, db_ratio, pink};
+    use sparkleur_core::character;
+
+    let length = RATE as usize;
+    let material = at_dbfs(pink(1.0, length), -18.0);
+
+    let layer_below_db = |position: f32| {
+        let character = character::at(position);
+        let mut crossover = Crossover::new(RATE);
+        let mut sparkle = Sparkle::new(RATE);
+        sparkle.set(sparkle::Settings {
+            snap: 0.6,
+            bias: character.bias,
+            hardness: character.hardness,
+            ..sparkle::Settings::default()
+        });
+
+        let mut band_energy = 0.0f64;
+        let mut layer = Vec::with_capacity(length);
+        for sample in &material {
+            let top = crossover.split(*sample)[BAND_COUNT - 1];
+            band_energy += (top * top) as f64;
+            layer.push(sparkle.process(top, 0.35));
+        }
+        db_ratio(rms(&layer), (band_energy / length as f64).sqrt() as f32)
+    };
+
+    let readings: Vec<f32> = [0.0f32, 0.27, 0.5, 1.0]
+        .iter()
+        .map(|position| layer_below_db(*position))
+        .collect();
+    let span = readings.iter().copied().fold(f32::MIN, f32::max)
+        - readings.iter().copied().fold(f32::MAX, f32::min);
+    assert!(
+        span < 3.0,
+        "the axis moved the amount {span:.2} dB: {readings:?}"
+    );
+
+    // And there is a layer to measure: a generator producing nothing would
+    // satisfy the bound above perfectly.
+    for reading in &readings {
+        assert!(
+            (-40.0..-6.0).contains(reading),
+            "the layer sat at {reading:.1} dB, which is not a layer: {readings:?}"
+        );
+    }
+}
