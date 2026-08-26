@@ -152,12 +152,15 @@ impl Default for DoublerParams {
         Self {
             editor_state: crate::ui::default_state(),
             detail_tab: Arc::new(AtomicBool::new(false)),
-            // All on by default: the shape table is a mirror image, so
-            // breaking the symmetry is the deliberate act, not keeping it.
+            // On for the two axes the figure is read as symmetric on — angle
+            // and radius — so dragging a dot cannot lean the image by accident.
+            // Off for the two that are not in the picture: an asymmetric delay
+            // and a detune that is not quite its partner's opposite are where a
+            // doubler's thickness comes from, so those start free.
             mirror_pan: Arc::new(AtomicBool::new(true)),
-            mirror_detune: Arc::new(AtomicBool::new(true)),
-            mirror_delay: Arc::new(AtomicBool::new(true)),
             mirror_gain: Arc::new(AtomicBool::new(true)),
+            mirror_detune: Arc::new(AtomicBool::new(false)),
+            mirror_delay: Arc::new(AtomicBool::new(false)),
 
             voices: EnumParam::new("Voices", VoicesParam::Four),
             source: EnumParam::new("Source", SourceParam::MonoSum),
