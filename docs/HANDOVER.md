@@ -101,9 +101,8 @@ UI は実機で 1 周見て、4 つの罠を直してある（`velour-plan.md` �
 
 | 何 | どこ | なぜ残っているか |
 |---|---|---|
-| `doubler-v0.1.0` の**公開** | GitHub Releases | 下書きのまま。公開はユーザーの判断。未署名なので README の Gatekeeper 手順を先に確認する |
 | `DBL-13` 既定値の詰め | `doubler-plan.md` | **耳が要る** |
-| Velour の `SOLO` が保存される | `params.rs` | nih-plug に逃げ道が無い。ラッチしたまま保存されると壊れて聞こえるので、**`VEL-14` で画面上に状態がはっきり出ること**が要件 |
+| Velour の `SOLO` が保存される | `params.rs` | nih-plug に逃げ道が無い。**画面には出るようにした** — Advanced の `ON` と、`BandField` が他の区画を落とすこと（`band.rs` の `soloing`）。図はタブに関係なく常に見えるので、ラッチしたまま開いても分かる |
 | 値の直接入力 | `crates/nxe-ui/src/entry.rs` | gallery では動くがプラグインに載せると editor の表示が止まる。**原因未特定** |
 | `UI-9` `ToggleSwitch` | `nxe-ui-plan.md` | **2 個のプラグインがどちらも要らなかった。** 3 個目でも要らなければ落とす |
 | 混ざったコミット `f89b40c` / `68d5199` | — | それぞれフォント修正 + Dry Gain 削除、コード + 文書の一部。分けるなら push 済み履歴の書き換えが要る |
