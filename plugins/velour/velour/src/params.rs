@@ -53,6 +53,12 @@ pub struct VelourParams {
     #[id = "air"]
     pub air: FloatParam,
 
+    /// Walks Warm → Clear → Edge (`velour_core::texture`). **One knob, not a
+    /// switch plus a knob**: the three names are anchors on a continuous axis,
+    /// and the interface marks them on the track (`REQ-VEL-004`).
+    #[id = "texture"]
+    pub texture: FloatParam,
+
     #[id = "focus"]
     pub focus: FloatParam,
     #[id = "mix"]
@@ -73,6 +79,10 @@ impl Default for VelourParams {
             body: percentage("Body", 0.50),
             presence: percentage("Presence", 0.60),
             air: percentage("Air", 0.40),
+
+            // Clear, the middle. Which of the three is the right default is a
+            // `VEL-17` question.
+            texture: percentage("Texture", 0.50),
 
             focus: FloatParam::new("Focus", 0.0, FloatRange::Linear { min: -1.0, max: 1.0 })
                 .with_unit(" oct")
@@ -127,6 +137,11 @@ impl VelourParams {
     pub fn shape(&self, samples: u32) -> Shape {
         Shape {
             drive: self.drive.smoothed.next_step(samples),
+            texture: self.texture.smoothed.next_step(samples),
+            // The per-band offsets arrive with the Advanced layer (`VEL-14`).
+            // They exist in the engine already, and there is nowhere to put
+            // three more knobs until there is somewhere to put them.
+            texture_offsets: [0.0; velour_core::BAND_COUNT],
             focus: self.focus.smoothed.next_step(samples),
             factor: self.oversample.value().into(),
         }
@@ -175,6 +190,7 @@ mod tests {
             ("body", params.body.default_plain_value()),
             ("presence", params.presence.default_plain_value()),
             ("air", params.air.default_plain_value()),
+            ("texture", params.texture.default_plain_value()),
             ("mix", params.mix.default_plain_value()),
         ] {
             assert!((0.0..=1.0).contains(&value), "{name} defaults to {value}");

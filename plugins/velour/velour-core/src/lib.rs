@@ -17,6 +17,7 @@ pub mod engine;
 pub mod harmonics;
 pub mod oversample;
 pub mod shaper;
+pub mod texture;
 
 pub use bands::{BANDS, Band, Generator};
 pub use engine::{BAND_COUNT, Engine, Levels, Shape};

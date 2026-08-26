@@ -50,9 +50,9 @@
 入力に上蓋を付けて 8。`REQ-VEL-020` が決めた順（入力を絞る → ドライブを絞る →
 倍率は最後）そのまま。
 
-**`VEL-5` で音が出た。** `NXE Velour` が CLAP と VST3 でバンドルされ、パラメータ
-8 個（`TEXTURE` はまだ無い。`VEL-4` で足す）。**実機確認だけ残っている** —
-`mise run install velour`。次は `VEL-4`。
+**`VEL-5` で音が出て、Live で確認済み**（2026-08-26）。`VEL-4` で `TEXTURE` が
+入り、パラメータは 9 個。帯域ごとの `Texture_i` はエンジン側だけ（置く場所が
+できる `VEL-14` で宣言する）。次は `VEL-6` / `VEL-8` / `VEL-9` のどれからでも。
 
 Velour が共通クレートに要求したものは 3 つとも入っている（`UI-13` `BandField` /
 `UI-8` `Meter` / `DSP-4` `Level`）。**Velour のクレートは 1 行も無い状態で
@@ -64,8 +64,9 @@ Velour が共通クレートに要求したものは 3 つとも入っている�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| VEL-4 | TEXTURE モーフ（Warm / Clear / Edge） | `velour-plan.md` |
+| VEL-6 | エンベロープ検波と EMOTION | `velour-plan.md` |
 | VEL-8 | Guard（Harsh / Sib） | `velour-plan.md` |
+| VEL-9 | Bias と SOLO | `velour-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 | UI-9 | `ToggleSwitch`（**Doubler も Velour も使わない**。3 個目でも要らなければ落とす） | `nxe-ui-plan.md` |
 
@@ -150,12 +151,12 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | VEL-1 | シェイパ（**ゲート**。`velour-core` クレートもここで作る） | ✅ **ゲート通過** |
 | VEL-2 | オーバーサンプラ（2 段 halfband、2x / 4x） | ✅ 4x で折り返し −68 dB |
 | VEL-3 | 帯域生成器 3 本と `FOCUS` | ✅ 最悪ケース折り返し −63 dB |
-| VEL-5 | nih-plug ラッパと配線（**ここで音が出る**。UI 無し） | ✅ ❓ 実機確認だけ残り |
-| VEL-4 | TEXTURE モーフ（Warm / Clear / Edge） | 🟡 |
-| VEL-6 | エンベロープ検波と EMOTION | ⬜ VEL-4 |
+| VEL-5 | nih-plug ラッパと配線（**ここで音が出る**。UI 無し） | ✅ Live で確認済み |
+| VEL-4 | TEXTURE モーフ（Warm / Clear / Edge） | ✅ |
+| VEL-6 | エンベロープ検波と EMOTION | 🟡 |
 | VEL-7 | DENSITY（生成バスの圧縮） | ⬜ VEL-6 |
 | VEL-8 | Guard（Harsh / Sib） | 🟡 |
-| VEL-9 | Bias と SOLO | ⬜ VEL-4 |
+| VEL-9 | Bias と SOLO | 🟡 |
 | VEL-10 | スムージングと非依存性の詰め | ⬜ VEL-7 / VEL-8 / VEL-9 |
 | VEL-11 | UI マクロ層（メインタブ 8 ノブ） | ⬜ VEL-10 |
 | VEL-12 | UI Band Field | ⬜ VEL-11 |

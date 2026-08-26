@@ -14,16 +14,9 @@
 use crate::bands::{BANDS, Band, Generator};
 use crate::oversample::{Factor, Oversampler};
 use crate::shaper::{DRIVE_MAX, DRIVE_MIN, Shaper};
+use crate::texture;
 
 pub const BAND_COUNT: usize = 3;
-
-/// Where `TEXTURE`'s Clear anchor sits (`dsp.md`).
-///
-/// **Fixed for now.** `VEL-4` replaces these two with the morph between Warm,
-/// Clear and Edge; until then the plugin sounds like its middle setting, which
-/// is enough to hear whether the bus works at all.
-const CLEAR_BIAS: f32 = 0.30;
-const CLEAR_HARDNESS: f32 = 0.35;
 
 /// What changes the coefficients. **Block rate.**
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -31,6 +24,11 @@ pub struct Shape {
     /// `0..=1`. Mapped onto the curve's drive geometrically, so the bottom of
     /// the knob has as much resolution as the top.
     pub drive: f32,
+    /// `0..=1`, walking Warm → Clear → Edge (`crate::texture`).
+    pub texture: f32,
+    /// `-1..=1` per band, deviating from `texture` by up to
+    /// [`crate::texture::OFFSET_RANGE`].
+    pub texture_offsets: [f32; BAND_COUNT],
     /// `-1..=1`, sliding every band edge together.
     pub focus: f32,
     pub factor: Factor,
@@ -40,6 +38,9 @@ impl Default for Shape {
     fn default() -> Self {
         Self {
             drive: 0.0,
+            // The middle of the axis, which is Clear.
+            texture: 0.5,
+            texture_offsets: [0.0; BAND_COUNT],
             focus: 0.0,
             factor: Factor::default(),
         }
@@ -96,10 +97,15 @@ impl Channel {
 
 pub struct Engine {
     shapers: [Shaper; BAND_COUNT],
+    /// `TEXTURE`'s per-band level trims, resolved with the curves. Block rate,
+    /// so they are held here rather than recomputed per sample.
+    trims: [f32; BAND_COUNT],
     channels: [Channel; 2],
     factor: Factor,
     focus: f32,
-    drive: f32,
+    /// The last drive and texture the curves were built from, so a block where
+    /// nothing moved costs nothing.
+    curve: (f32, f32, [f32; BAND_COUNT]),
 }
 
 impl Engine {
@@ -107,13 +113,14 @@ impl Engine {
         let factor = Factor::default();
         Self {
             shapers: std::array::from_fn(|_| Shaper::new()),
+            trims: [1.0; BAND_COUNT],
             channels: [Channel::new(host_rate, factor), Channel::new(host_rate, factor)],
             factor,
             // Not the resting values: `set_shape` compares against these to
             // decide what to rebuild, and the first call has to rebuild
             // everything.
             focus: f32::NAN,
-            drive: f32::NAN,
+            curve: (f32::NAN, f32::NAN, [f32::NAN; BAND_COUNT]),
         }
     }
 
@@ -138,12 +145,16 @@ impl Engine {
             }
         }
 
-        if shape.drive != self.drive {
-            self.drive = shape.drive;
+        let curve = (shape.drive, shape.texture, shape.texture_offsets);
+        if curve != self.curve {
+            self.curve = curve;
             let drive = drive_of(shape.drive);
             for (index, shaper) in self.shapers.iter_mut().enumerate() {
-                let (bias, curve_drive) = Band::curve_multipliers(BANDS[index]);
-                shaper.set(drive * curve_drive, CLEAR_BIAS * bias, CLEAR_HARDNESS);
+                let (_, curve_drive) = Band::curve_multipliers(BANDS[index]);
+                let point =
+                    texture::for_band(shape.texture, shape.texture_offsets[index], index);
+                shaper.set(drive * curve_drive, point.bias, point.hardness);
+                self.trims[index] = point.trim;
             }
         }
     }
@@ -156,7 +167,10 @@ impl Engine {
         // Destructured so the shapers can be read while the channels are
         // written; borrowing through `self` inside the closure would not.
         let Self {
-            shapers, channels, ..
+            shapers,
+            trims,
+            channels,
+            ..
         } = self;
 
         let dry = [input.0, input.1];
@@ -176,7 +190,9 @@ impl Engine {
             let wet = oversampler.process(dry[index], |value| {
                 let mut sum = 0.0;
                 for band in 0..BAND_COUNT {
-                    sum += generators[band].process(value, &shapers[band]) * bands[band];
+                    sum += generators[band].process(value, &shapers[band])
+                        * bands[band]
+                        * trims[band];
                 }
                 sum
             });
@@ -205,8 +221,7 @@ mod tests {
         let mut engine = Engine::new(RATE);
         engine.set_shape(&Shape {
             drive: 0.6,
-            focus: 0.0,
-            factor: Factor::Four,
+            ..Shape::default()
         });
         engine
     }
@@ -284,7 +299,7 @@ mod tests {
         let shape = Shape {
             drive: 0.6,
             focus: 0.2,
-            factor: Factor::Four,
+            ..Shape::default()
         };
         let open = levels(0.7, 0.9);
         let input = sine(0.3, 37, 4_096);
@@ -309,6 +324,56 @@ mod tests {
         }
     }
 
+    /// `TEXTURE` has to reach the sound, not just the coefficients — and it has
+    /// to do it without the level walking off (`REQ-VEL-004`, `REQ-VEL-009`).
+    #[test]
+    fn texture_changes_the_sound_without_changing_the_level() {
+        let input = sine(0.25, 37, 4_096);
+        let open = levels(0.8, 1.0);
+
+        let render = |texture: f32| {
+            let mut engine = Engine::new(RATE);
+            engine.set_shape(&Shape {
+                drive: 0.7,
+                texture,
+                ..Shape::default()
+            });
+            let output: Vec<f32> = input
+                .iter()
+                .map(|sample| engine.process((*sample, *sample), &open).0)
+                .collect();
+            output[output.len() / 2..].to_vec()
+        };
+
+        let warm = render(0.0);
+        let edge = render(1.0);
+
+        let difference = crate::harmonics::rms(
+            &warm
+                .iter()
+                .zip(&edge)
+                .map(|(a, b)| a - b)
+                .collect::<Vec<f32>>(),
+        );
+        let level = crate::harmonics::rms(&warm);
+        assert!(difference > level * 0.02, "the ends sound the same");
+
+        // **Measured: −3.0 dB from Warm to Edge**, and it is not the trims.
+        //
+        // The shaper's normalisation holds its *own* output level constant
+        // (`crate::shaper`), but a harder curve puts more of that energy into
+        // high harmonics — and each band's output filter throws away whatever
+        // lands outside its range. BODY cuts at 2 kHz, so Edge's extra harmonics
+        // there are made and then discarded.
+        //
+        // That residual is what the per-anchor trims exist to absorb, and they
+        // are provisional (`crate::texture`, `VEL-17`). The bound here says the
+        // morph is a character control rather than a volume one; it is not a
+        // claim that the levels match.
+        let drift = crate::harmonics::db_ratio(crate::harmonics::rms(&edge), level);
+        assert!(drift.abs() < 4.0, "the level walked {drift:+.1} dB");
+    }
+
     #[test]
     fn hostile_values_neither_panic_nor_produce_nonsense() {
         let wild = [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, -1e9, 1e9];
@@ -317,6 +382,8 @@ mod tests {
             let mut engine = Engine::new(RATE);
             engine.set_shape(&Shape {
                 drive: value,
+                texture: value,
+                texture_offsets: [value; BAND_COUNT],
                 focus: value,
                 factor: Factor::Four,
             });

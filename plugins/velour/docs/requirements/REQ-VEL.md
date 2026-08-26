@@ -43,7 +43,7 @@ Logic Pro と GarageBand では読み込めない（`REQ-VEL-014`）。
 | REQ-VEL-001 | 並列生成トポロジ | Must | **実装済み**（`VEL-5`） |
 | REQ-VEL-002 | 帯域生成器（BODY / PRESENCE / AIR）と FOCUS | Must | **実装済み**（`VEL-3`） |
 | REQ-VEL-003 | 倍音生成カーブ | Must | **実装済み**（`VEL-1`） |
-| REQ-VEL-004 | TEXTURE モーフ（Warm / Clear / Edge） | Must | Draft |
+| REQ-VEL-004 | TEXTURE モーフ（Warm / Clear / Edge） | Must | **実装済み**（`VEL-4`） |
 | REQ-VEL-005 | オーバーサンプリング | Must | **実装済み**（`VEL-2`） |
 | REQ-VEL-006 | 保護検出器（Harsh Guard / Sib Guard） | Must | Draft |
 | REQ-VEL-007 | DENSITY | Should | Draft |
@@ -211,9 +211,11 @@ Logic Pro と GarageBand では読み込めない（`REQ-VEL-014`）。
 - **名前は目盛りで保つ。** ノブのトラックに 3 つの名前を刻む。「Warm にする」は
   「0 に振り切る」になる。
 - **受入条件**:
-  - [ ] `TEXTURE` を 0 → 1 に連続で動かして、倍音構成が段差なく変わる
-  - [ ] 0 / 0.5 / 1 がアンカーの値と一致する
-  - [ ] オートメーションで動かしても不連続なノイズが出ない
+  - [x] `TEXTURE` を 0 → 1 に連続で動かして、どの値も段差なく変わる — `VEL-4`
+  - [x] 0 / 0.5 / 1 がアンカーの値と一致する — `VEL-4`
+  - [x] Warm と Edge で H2/H1 と H3/H1 がはっきり違う — `VEL-4`
+  - [x] `Texture_i` がその帯域だけを動かし、端まで届かない — `VEL-4`
+  - [ ] オートメーションで動かしても不連続なノイズが出ない — 実機確認
 - **依存**: REQ-VEL-003
 
 ## REQ-VEL-005: オーバーサンプリング
