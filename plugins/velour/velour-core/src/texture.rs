@@ -3,7 +3,7 @@
 //!
 //! **Not a three-way switch.** Warm → Clear → Edge already has an order —
 //! smooth, neutral, aggressive — and the curve family was parameterised
-//! (`crate::shaper`) precisely so that the space between them exists. A switch
+//! (`nxe_audio::shaper`) precisely so that the space between them exists. A switch
 //! would throw that away and make "half way between Warm and Clear"
 //! unreachable (`REQ-VEL-004`).
 //!
@@ -119,7 +119,7 @@ fn clamp_or(value: f32, low: f32, high: f32, fallback: f32) -> f32 {
 mod tests {
     use super::*;
     use crate::harmonics::{amplitude, sine};
-    use crate::shaper::{PROBE_AMPLITUDE, Shaper};
+    use nxe_audio::shaper::{PROBE_AMPLITUDE, Shaper};
 
     /// PRESENCE, whose multipliers are both `1.0`, so its readings are the
     /// anchor values themselves.

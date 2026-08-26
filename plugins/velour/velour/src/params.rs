@@ -11,12 +11,12 @@
 //! removing an id is not**, so the ids below are as final as `CLAP_ID`.
 
 use nih_plug::prelude::*;
+use nxe_audio::oversample::Factor;
 use velour_core::engine::{Levels, Shape};
-use velour_core::oversample::Factor;
 
 /// How hard the generator bus runs internally.
 ///
-/// A separate type from `velour_core::Factor` on purpose: deriving nih-plug's
+/// A separate type from `nxe_audio::Factor` on purpose: deriving nih-plug's
 /// `Enum` on the core type would make the core depend on nih-plug.
 #[derive(Enum, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum FactorParam {
@@ -197,7 +197,7 @@ impl Default for VelourParams {
             .with_value_to_string(formatters::v2s_f32_rounded(1)),
 
             // 4x by default: 2x is a cost saving, not an equal — it leaves
-            // aliasing about 14 dB higher (`velour_core::oversample`).
+            // aliasing about 14 dB higher (`nxe_audio::oversample`).
             oversample: EnumParam::new("Oversample", FactorParam::Four),
 
             texture_body: bipolar("Body Texture"),

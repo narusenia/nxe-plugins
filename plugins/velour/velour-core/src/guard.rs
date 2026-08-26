@@ -27,7 +27,7 @@
 //! nobody could tell what had happened. This is also what separates it from a
 //! de-esser: **the level is not reduced, the distortion is.**
 
-use crate::biquad::BandPass;
+use nxe_audio::biquad::BandPass;
 
 /// How fast a follower rises and falls. Fast enough to catch one consonant,
 /// slow enough not to chatter — a guard that opens and closes inside a syllable

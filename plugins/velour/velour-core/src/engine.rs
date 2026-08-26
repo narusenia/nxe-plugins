@@ -16,9 +16,9 @@ use crate::density::Density;
 use crate::emotion;
 use crate::envelope::Envelope;
 use crate::guard::{GUARDS, Guarded, Guards};
-use crate::oversample::{Factor, Oversampler};
-use crate::shaper::{DRIVE_MAX, DRIVE_MIN, Shaper};
 use crate::texture;
+use nxe_audio::oversample::{Factor, Oversampler};
+use nxe_audio::shaper::{DRIVE_MAX, DRIVE_MIN, Shaper};
 
 pub const BAND_COUNT: usize = 3;
 
@@ -29,7 +29,7 @@ pub const BIAS_OCTAVES: f32 = 1.5;
 ///
 /// **Zero, because the measurement said so.** The specification put 6 dB here,
 /// reasoning that a band driven harder needs pulling back. It does not: the
-/// curve is normalised for level (`crate::shaper`), so raising drive leaves the
+/// curve is normalised for level (`nxe_audio::shaper`), so raising drive leaves the
 /// generator's RMS nearly alone — the whole bias range moves it by under a
 /// decibel. A 6 dB compensation would have turned `Bias` into a volume knob and
 /// nothing else.
@@ -390,7 +390,7 @@ impl Engine {
         // **Sanitised once, here.** Every detector below holds recursive state,
         // so a single non-finite sample would latch it for the rest of the
         // session — the trap that has already cost this crate a silent wet bus
-        // (`crate::oversample`). Guarding the sum is one check for all of them,
+        // (`nxe_audio::oversample`). Guarding the sum is one check for all of them,
         // and it is the only place they are fed (`REQ-VEL-016`).
         //
         // The dry path is deliberately *not* sanitised: it is a pass-through,
@@ -663,7 +663,7 @@ mod tests {
         // **Measured: −3.0 dB from Warm to Edge**, and it is not the trims.
         //
         // The shaper's normalisation holds its *own* output level constant
-        // (`crate::shaper`), but a harder curve puts more of that energy into
+        // (`nxe_audio::shaper`), but a harder curve puts more of that energy into
         // high harmonics — and each band's output filter throws away whatever
         // lands outside its range. BODY cuts at 2 kHz, so Edge's extra harmonics
         // there are made and then discarded.

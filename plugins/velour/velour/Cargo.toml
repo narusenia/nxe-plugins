@@ -17,6 +17,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 velour-core = { workspace = true }
+nxe-audio = { workspace = true }
 nxe-dsp = { workspace = true }
 nxe-ui = { workspace = true }
 nih_plug = { workspace = true }

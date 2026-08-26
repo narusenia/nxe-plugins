@@ -414,7 +414,7 @@ mod tests {
     ///
     /// A raw curve on a bare 10 kHz tone, with none of the band-limiting the
     /// plugin puts in front of it. The number `REQ-VEL-005` is about is measured
-    /// through a real generator instead (`crate::bands`); this is here to say
+    /// through a real generator instead (`velour_core::bands`); this is here to say
     /// what choosing between 2x and 4x actually buys.
     ///
     /// Measured at the hard knee and full drive: **4x −58 dB, 2x −44 dB.**

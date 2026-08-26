@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/nxe-audio",
     "crates/nxe-dsp",
     "crates/nxe-ui",
     "plugins/doubler/doubler-core",
@@ -17,6 +18,7 @@ license = "GPL-3.0-only"
 repository = "https://github.com/narusenia/nxe-plugins"
 
 [workspace.dependencies]
+nxe-audio = { path = "crates/nxe-audio" }
 nxe-dsp = { path = "crates/nxe-dsp" }
 nxe-ui = { path = "crates/nxe-ui" }
 doubler-core = { path = "plugins/doubler/doubler-core" }
@@ -65,6 +67,9 @@ lto = "thin"
 # An audio plugin built at opt-level 0 cannot keep up with a real-time thread,
 # so a debug build is useless in a DAW unless the DSP itself is optimized.
 # Scope the cost to the crates that do per-sample work.
+[profile.dev.package.nxe-audio]
+opt-level = 2
+
 [profile.dev.package.doubler-core]
 opt-level = 2
 

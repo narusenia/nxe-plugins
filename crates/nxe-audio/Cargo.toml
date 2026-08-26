@@ -1,0 +1,13 @@
+[package]
+name = "nxe-audio"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Audio processing shared by the NXE plugins, independent of any host or interface"
+
+# Deliberately empty, for the same reason `<plugin>-core` is: this runs on the
+# audio thread and must not reach a host API or a UI toolkit. It is also what
+# lets every block be tested without a host
+# (`docs/specifications/architecture.md`).
+[dependencies]

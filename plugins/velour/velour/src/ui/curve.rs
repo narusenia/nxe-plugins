@@ -51,7 +51,7 @@ fn shown(params: &VelourParams, hovered: Option<usize>) -> usize {
 /// The curve, as points across the window.
 ///
 /// **Scaled by its own peak, not by a fixed ceiling.** The shaper is normalised
-/// for *level* at a quarter of full scale (`velour_core::shaper`), so a harder
+/// for *level* at a quarter of full scale (`nxe_audio::shaper`), so a harder
 /// curve returns *less* at full input than a soft one does — it is saturating.
 /// Drawn against a fixed ceiling that meant the curve **shrank as `DRIVE` went
 /// up**, collapsing to a tenth of the window at the top of the range: a squiggle
@@ -142,7 +142,7 @@ mod tests {
 
     /// The curve has to fit the window and pass through the middle: an input of
     /// zero is an output of zero, because the bias offset is subtracted
-    /// (`velour_core::shaper`).
+    /// (`nxe_audio::shaper`).
     #[test]
     fn the_curve_fits_the_window() {
         let params = VelourParams::default();

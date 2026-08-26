@@ -14,9 +14,9 @@
 //! at rest only removes the standing part of it (`Shaper`'s tests say so
 //! directly). Without it the dry path gets a slow DC wander added to it.
 
-use crate::biquad::BandPass;
-use crate::oversample::Factor;
-use crate::shaper::Shaper;
+use nxe_audio::biquad::BandPass;
+use nxe_audio::oversample::Factor;
+use nxe_audio::shaper::Shaper;
 
 /// How far `FOCUS` moves the band edges, in octaves either way.
 ///
@@ -40,7 +40,7 @@ pub const FOCUS_OCTAVES: f32 = 1.0;
 ///
 /// **Not a fraction of the internal rate**, which would tighten it at 2x and
 /// therefore move AIR's band when the factor changed. 2x is already the
-/// documented compromise (`crate::oversample`); making it a different band as
+/// documented compromise (`nxe_audio::oversample`); making it a different band as
 /// well would make the switch audible.
 pub const AIR_INPUT_CEILING: f32 = 0.25;
 
@@ -266,8 +266,8 @@ mod tests {
         );
     }
 
-    use crate::oversample::{Factor, Oversampler};
-    use crate::shaper::{DRIVE_MAX, PROBE_AMPLITUDE, Shaper};
+    use nxe_audio::oversample::{Factor, Oversampler};
+    use nxe_audio::shaper::{DRIVE_MAX, PROBE_AMPLITUDE, Shaper};
 
     const HOST_RATE: f32 = 48_000.0;
     /// A tenth of a second at the host rate, so a bin is 10 Hz.
@@ -296,7 +296,7 @@ mod tests {
     fn passband(band: Band, hz: usize) -> f32 {
         // Drive at the bottom, so the curve is linear and this measures the
         // filters alone.
-        let output = run(band, hz, crate::shaper::DRIVE_MIN, 0.0, 0.0);
+        let output = run(band, hz, nxe_audio::shaper::DRIVE_MIN, 0.0, 0.0);
         db_ratio(amplitude(&output, hz / 10), PROBE_AMPLITUDE)
     }
 
@@ -375,7 +375,7 @@ mod tests {
             (Band::Presence, 1_500),
             (Band::Air, 8_000),
         ] {
-            let output = run(band, hz, 3.0, 0.0, crate::shaper::BIAS_MAX);
+            let output = run(band, hz, 3.0, 0.0, nxe_audio::shaper::BIAS_MAX);
             let offset = mean(&output);
             assert!(offset.abs() < 1e-4, "{band:?} left {offset} of DC");
         }
@@ -413,7 +413,7 @@ mod tests {
     /// Folds landing on a multiple of the tone are skipped: they sit on top of a
     /// real harmonic and cannot be told apart from it. Folds above 20 kHz are
     /// skipped because the halfbands' transition bands deliberately allow them
-    /// (`crate::oversample`).
+    /// (`nxe_audio::oversample`).
     fn alias_floor(band: Band, hz: usize) -> f32 {
         let output = run(band, hz, DRIVE_MAX, 1.0, 0.0);
         let reference = amplitude(&output, hz / 10);

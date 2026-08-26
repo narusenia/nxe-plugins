@@ -148,7 +148,7 @@ impl Biquad {
 ///
 /// Shared because both the generators and the guards want the same thing: keep a
 /// range, and be able to move its edges without a step
-/// (`crate::bands`, `crate::guard`).
+/// (`velour_core::bands`, `velour_core::guard`).
 #[derive(Clone, Copy)]
 pub struct BandPass {
     high: Biquad,

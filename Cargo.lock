@@ -2140,6 +2140,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "nxe-audio"
+version = "0.1.0"
+
+[[package]]
 name = "nxe-dsp"
 version = "0.1.0"
 dependencies = [
@@ -3369,6 +3373,7 @@ version = "0.1.0"
 dependencies = [
  "nih_plug",
  "nih_plug_vizia",
+ "nxe-audio",
  "nxe-dsp",
  "nxe-ui",
  "velour-core",
@@ -3379,6 +3384,7 @@ name = "velour-core"
 version = "0.1.0"
 dependencies = [
  "criterion",
+ "nxe-audio",
 ]
 
 [[package]]

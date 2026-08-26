@@ -7,13 +7,13 @@
 //! **It moves `(β, h, k)` and never a gain.** A level-following gain is a
 //! compressor, and there is one of those already (`DENSITY`). What changes here
 //! is which harmonics get made — the shaper's normalisation
-//! (`crate::shaper`) is what makes that possible, because it holds the
+//! (`nxe_audio::shaper`) is what makes that possible, because it holds the
 //! generator's output level still while the curve underneath it changes.
 //!
 //! **Block rate.** The envelope moves over hundreds of milliseconds, so
 //! resolving the curve once per block is inaudible — and doing it per sample
 //! would mean recomputing the normalisation for every sample
-//! (`crate::shaper::Shaper::set`).
+//! (`nxe_audio::shaper::Shaper::set`).
 
 /// How far from [`crate::envelope::REFERENCE_DB`] counts as all the way. 12 dB is about the span
 /// between a held note and a belted one.
@@ -41,7 +41,7 @@ pub fn deflection(env_db: f32) -> f32 {
 /// the amount, so **zero is exactly the curve that went in** (`REQ-VEL-008`).
 ///
 /// Takes and returns `(bias, hardness, drive)` in the order
-/// [`crate::shaper::Shaper::set`] wants them, and clamps nothing: `set` already
+/// [`nxe_audio::shaper::Shaper::set`] wants them, and clamps nothing: `set` already
 /// does, and doing it twice would hide which range actually applies.
 pub fn modulate(bias: f32, hardness: f32, drive: f32, motion: f32) -> (f32, f32, f32) {
     if !motion.is_finite() || motion == 0.0 {

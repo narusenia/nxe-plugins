@@ -67,7 +67,7 @@ pub const DRIVE_MIN: f32 = 0.05;
 ///
 /// **This number moved twice.** It was 20 in the specification, came down to 6
 /// when `VEL-2` measured the folding, and went back up to 8 once `VEL-3` put a
-/// ceiling on what reaches AIR's curve (`crate::bands::AIR_INPUT_CEILING`) — the
+/// ceiling on what reaches AIR's curve (`velour_core::bands::AIR_INPUT_CEILING`) — the
 /// order `REQ-VEL-020` asks for: tighten the input, then the drive, and only
 /// then reach for a higher oversampling factor.
 pub const DRIVE_MAX: f32 = 8.0;

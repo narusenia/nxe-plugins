@@ -9,14 +9,14 @@
 //! `EMOTION` is on in the worst case, and that is the point of measuring it: a
 //! moving envelope makes `set_shape` rebuild all three curves **every block**,
 //! including the normalisation sweep over 64 probe points per band
-//! (`velour_core::shaper`). With it off the curves are built once and the block
+//! (`nxe_audio::shaper`). With it off the curves are built once and the block
 //! is filter arithmetic alone, so the pair of numbers says what the feature
 //! costs.
 
 use criterion::{Criterion, criterion_group, criterion_main};
+use nxe_audio::oversample::Factor;
 use std::hint::black_box;
 use velour_core::engine::{BAND_COUNT, Engine, Levels, Shape};
-use velour_core::oversample::Factor;
 
 const SAMPLE_RATE: f32 = 48_000.0;
 const BLOCK: usize = 512;
