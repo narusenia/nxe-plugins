@@ -119,8 +119,12 @@ pub const SPACE_4: f32 = 16.0;
 pub const SPACE_5: f32 = 24.0;
 
 /// Two text sizes. Labels name things, values say what they are.
+///
+/// The value is the *smaller* of the two on purpose: it is set in mono at full
+/// contrast, which already makes it the thing the eye lands on. At the label's
+/// size it read as a headline under every knob.
 pub const FONT_LABEL: f32 = 12.0;
-pub const FONT_VALUE: f32 = 13.0;
+pub const FONT_VALUE: f32 = 11.0;
 
 /// Hover and selection only. Never a value: a knob that lags the mouse feels
 /// broken.
