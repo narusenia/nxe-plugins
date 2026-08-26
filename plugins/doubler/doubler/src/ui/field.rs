@@ -1,7 +1,11 @@
 //! The Voice Field: the Doubler's shape layer as points on a half circle.
 //!
-//! Angle is where a voice sits, radius is how far behind it is, and the dot's
-//! size is its level (`plugins/doubler/docs/specifications/ui.md`).
+//! Angle is where a voice sits, **radius is its level**, and the dot's size is
+//! how far behind it is (`plugins/doubler/docs/specifications/ui.md`).
+//!
+//! Level on the radius rather than delay: a doubler's figure is read as "where
+//! are the voices and how loud", the way Waves Doubler shows it. Delay keeps its
+//! numbers in the Detail table and its rough size here.
 //!
 //! **The angle is the effective pan, not the shape value.** A voice's position
 //! depends on `Spread` and on `Source`, and the point of the figure is to show
@@ -9,8 +13,9 @@
 //! `doubler_core::pan_shape_for`, which is the inverse of the formula the DSP
 //! uses — one formula, tested in both directions, rather than two that drift.
 //!
-//! **The radius is the shape value directly.** The outer arc *is* the `Delay`
-//! macro, so a voice at `Delay_i` = 1 sits on it whatever the macro says.
+//! **The radius is `Gain_i`'s normalized value.** The outer arc is the top of
+//! the gain range (+6 dB) and the origin is the bottom (−24 dB), so the default
+//! 0 dB puts every voice on the same ring — a symmetric figure out of the box.
 
 use super::param_bind::Mirror;
 use super::{Ui, UiEvent};
@@ -41,8 +46,8 @@ fn points_of(params: &DoublerParams) -> Vec<FieldPoint> {
             let shape = &params.shape[index];
             FieldPoint {
                 angle: pan_for(source, spread, shape.pan.value(), index),
-                radius: shape.delay.value(),
-                size: shape.gain.unmodulated_normalized_value(),
+                radius: shape.gain.unmodulated_normalized_value(),
+                size: shape.delay.value(),
                 anchor: match source {
                     Source::MonoSum => 0,
                     Source::TrueStereo => index % 2,
@@ -79,12 +84,12 @@ fn anchors_of(params: &DoublerParams) -> Vec<FieldPoint> {
 /// The parameters a dragged point writes.
 struct VoiceHandles {
     pan: ParamWidgetBase,
-    delay: ParamWidgetBase,
+    gain: ParamWidgetBase,
     /// The paired voice's parameters, written alongside the dragged voice's
     /// while mirroring is on (`REQ-DBL-014`). The angle inverts and the radius
     /// matches, so the partner point tracks the dragged one as its reflection.
     mirror_pan: ParamWidgetBase,
-    mirror_delay: ParamWidgetBase,
+    mirror_gain: ParamWidgetBase,
 }
 
 impl VoiceHandles {
@@ -92,12 +97,12 @@ impl VoiceHandles {
     /// the ones it writes. A host that is told a gesture began on a parameter
     /// nothing then writes shows an edit that did not happen.
     fn written(&self, cx: &mut EventContext) -> Vec<&ParamWidgetBase> {
-        let mut bases = vec![&self.pan, &self.delay];
+        let mut bases = vec![&self.pan, &self.gain];
         if Ui::mirror_pan.get(cx) {
             bases.push(&self.mirror_pan);
         }
-        if Ui::mirror_delay.get(cx) {
-            bases.push(&self.mirror_delay);
+        if Ui::mirror_gain.get(cx) {
+            bases.push(&self.mirror_gain);
         }
         bases
     }
@@ -107,12 +112,12 @@ pub fn view(cx: &mut Context) {
     let handles: Vec<VoiceHandles> = (0..MAX_VOICES)
         .map(|index| VoiceHandles {
             pan: ParamWidgetBase::new(cx, Ui::params, move |params| &params.shape[index].pan),
-            delay: ParamWidgetBase::new(cx, Ui::params, move |params| &params.shape[index].delay),
+            gain: ParamWidgetBase::new(cx, Ui::params, move |params| &params.shape[index].gain),
             mirror_pan: ParamWidgetBase::new(cx, Ui::params, move |params| {
                 &params.shape[mirror_partner(index)].pan
             }),
-            mirror_delay: ParamWidgetBase::new(cx, Ui::params, move |params| {
-                &params.shape[mirror_partner(index)].delay
+            mirror_gain: ParamWidgetBase::new(cx, Ui::params, move |params| {
+                &params.shape[mirror_partner(index)].gain
             }),
         })
         .collect();
@@ -161,7 +166,7 @@ pub fn view(cx: &mut Context) {
 
                 // A sideways drag has nothing to write when the mode and spread
                 // leave the voices with no pan to give — every voice is centred
-                // regardless of its shape. The radius still moves.
+                // regardless of its shape. The level still moves.
                 if let Some(shape) = pan_shape_for(source, spread, angle, index) {
                     // `Pan_i` runs `-1..=1`, so its normalized value is the
                     // shape mapped onto `0..=1`.
@@ -174,10 +179,10 @@ pub fn view(cx: &mut Context) {
                     }
                 }
 
-                voice.delay.set_normalized_value(cx, radius);
-                if Ui::mirror_delay.get(cx) {
+                voice.gain.set_normalized_value(cx, radius);
+                if Ui::mirror_gain.get(cx) {
                     voice
-                        .mirror_delay
+                        .mirror_gain
                         .set_normalized_value(cx, Mirror::Same.apply(radius));
                 }
             }

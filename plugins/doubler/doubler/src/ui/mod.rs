@@ -61,15 +61,21 @@ pub(crate) struct Ui {
     mirror_pan: bool,
     mirror_detune: bool,
     mirror_delay: bool,
+    mirror_gain: bool,
 }
 
-/// Which axis a mirror switch controls. `Gain` is absent: it is the one shape
-/// axis with no reading as a mirror image (`REQ-DBL-014`).
+/// Which axis a mirror switch controls — one per shape axis.
+///
+/// `Gain` is here because the figure's radius *is* the gain: without it,
+/// dragging a point would visibly lean the image, which is the thing mirroring
+/// exists to prevent. Leaning it on purpose is what turning this one off is for
+/// (`REQ-DBL-014`).
 #[derive(Clone, Copy)]
 pub(crate) enum MirrorAxis {
     Pan,
     Detune,
     Delay,
+    Gain,
 }
 
 pub(crate) enum UiEvent {
@@ -107,6 +113,12 @@ impl Model for Ui {
                         .mirror_delay
                         .store(self.mirror_delay, Ordering::Relaxed);
                 }
+                MirrorAxis::Gain => {
+                    self.mirror_gain = !self.mirror_gain;
+                    self.params
+                        .mirror_gain
+                        .store(self.mirror_gain, Ordering::Relaxed);
+                }
             },
         });
     }
@@ -128,6 +140,7 @@ pub fn create(params: Arc<DoublerParams>, state: Arc<ViziaState>) -> Option<Box<
             mirror_pan: params.mirror_pan.load(Ordering::Relaxed),
             mirror_detune: params.mirror_detune.load(Ordering::Relaxed),
             mirror_delay: params.mirror_delay.load(Ordering::Relaxed),
+            mirror_gain: params.mirror_gain.load(Ordering::Relaxed),
             params: params.clone(),
         }
         .build(cx);
@@ -237,6 +250,7 @@ fn mirror_switches(cx: &mut Context) {
         mirror_switch(cx, "PAN", Ui::mirror_pan, MirrorAxis::Pan);
         mirror_switch(cx, "DETUNE", Ui::mirror_detune, MirrorAxis::Detune);
         mirror_switch(cx, "DELAY", Ui::mirror_delay, MirrorAxis::Delay);
+        mirror_switch(cx, "GAIN", Ui::mirror_gain, MirrorAxis::Gain);
     })
     .position_type(PositionType::SelfDirected)
     // Stretching the space to its left is how Morphorm right-aligns something

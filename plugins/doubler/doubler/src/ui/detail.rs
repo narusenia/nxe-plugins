@@ -92,14 +92,22 @@ fn effective_text(params: &std::sync::Arc<DoublerParams>, index: usize, column: 
 
 /// One cell: the bar, and the effective value under it.
 ///
-/// **`Gain` is the one column that is not mirrored** — pulling one voice down to
-/// lean the image is a real thing to want (`REQ-DBL-014`).
+/// Every column mirrors, each under its own switch (`REQ-DBL-014`). Leaning the
+/// image on purpose — one voice quieter than its partner — is what turning the
+/// `GAIN` switch off is for, rather than the column never mirroring.
 fn cell(cx: &mut Context, index: usize, column: Column) {
     let partner = mirror_partner(index);
 
     HStack::new(cx, |cx| {
         let bar = match column {
-            Column::Gain => param_bind::bar(cx, Ui::params, move |p| &p.shape[index].gain, false),
+            Column::Gain => param_bind::mirrored_bar(
+                cx,
+                Ui::params,
+                Ui::mirror_gain,
+                Mirror::Same,
+                move |p| &p.shape[index].gain,
+                move |p| &p.shape[partner].gain,
+            ),
             Column::Delay => param_bind::mirrored_bar(
                 cx,
                 Ui::params,

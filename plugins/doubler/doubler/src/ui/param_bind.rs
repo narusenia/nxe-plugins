@@ -93,33 +93,6 @@ where
     Knob::new(cx, value, move |cx, gesture| apply(&base, cx, gesture)).size(Pixels(size))
 }
 
-/// A bar bound to a parameter. `centred` fills from the middle, for a value
-/// that runs either side of zero.
-pub fn bar<'a, L, Params, P, F>(
-    cx: &'a mut Context,
-    params: L,
-    to_param: F,
-    centred: bool,
-) -> Handle<'a, Bar>
-where
-    L: Lens<Target = Params> + Copy,
-    Params: 'static,
-    P: Param + 'static,
-    F: Fn(&Params) -> &P + Copy + 'static,
-{
-    let base = ParamWidgetBase::new(cx, params, to_param);
-    let value = ParamWidgetBase::make_lens(params, to_param, |param| {
-        param.unmodulated_normalized_value()
-    });
-    let handler = move |cx: &mut EventContext, gesture: Gesture| apply(&base, cx, gesture);
-
-    if centred {
-        Bar::bipolar(cx, value, handler)
-    } else {
-        Bar::new(cx, value, handler)
-    }
-}
-
 /// A bar that also writes its mirror partner while `mirror` is on.
 pub fn mirrored_bar<'a, L, M, Params, P, F, G>(
     cx: &'a mut Context,

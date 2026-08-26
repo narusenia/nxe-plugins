@@ -83,8 +83,8 @@ pub struct DoublerParams {
     #[persist = "detail-tab"]
     pub detail_tab: Arc<AtomicBool>,
 
-    /// Whether editing a voice's `Pan`, `Detune` or `Delay` writes its partner
-    /// too (`REQ-DBL-014`). One flag per axis: a single switch plus a per-axis
+    /// Whether editing one of a voice's shape axes writes its partner too
+    /// (`REQ-DBL-014`). One flag per axis: a single switch plus a per-axis
     /// exception would mean two pieces of state deciding one write.
     ///
     /// Not parameters, and deliberately so: they change what an edit does, not
@@ -96,6 +96,8 @@ pub struct DoublerParams {
     pub mirror_detune: Arc<AtomicBool>,
     #[persist = "mirror-delay"]
     pub mirror_delay: Arc<AtomicBool>,
+    #[persist = "mirror-gain"]
+    pub mirror_gain: Arc<AtomicBool>,
 
     #[id = "voices"]
     pub voices: EnumParam<VoicesParam>,
@@ -153,6 +155,7 @@ impl Default for DoublerParams {
             mirror_pan: Arc::new(AtomicBool::new(true)),
             mirror_detune: Arc::new(AtomicBool::new(true)),
             mirror_delay: Arc::new(AtomicBool::new(true)),
+            mirror_gain: Arc::new(AtomicBool::new(true)),
 
             voices: EnumParam::new("Voices", VoicesParam::Four),
             source: EnumParam::new("Source", SourceParam::MonoSum),
