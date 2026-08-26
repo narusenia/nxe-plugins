@@ -43,6 +43,12 @@ mod coefficients;
 
 pub use coefficients::{STAGE_ONE, STAGE_TWO};
 
+/// Zero in place of anything that is not a real number, before it reaches a
+/// recursive filter.
+fn finite(value: f32) -> f32 {
+    if value.is_finite() { value } else { 0.0 }
+}
+
 /// A first-order allpass, `(a + z^-1) / (1 + a * z^-1)`.
 ///
 /// The design is written in `z^-2` at the input rate, which is `z^-1` at the
@@ -237,10 +243,16 @@ impl Oversampler {
     /// Runs `body` once per oversampled sample and returns the one decimated
     /// sample. Allocation-free, and nothing is buffered.
     ///
-    /// A non-finite input is dropped rather than fed in. These filters are
-    /// recursive: one NaN would sit in their state for ever, and since the dry
-    /// path never passes through here the failure would be a wet bus that went
-    /// silent and stayed silent while the plugin looked like it was working.
+    /// A non-finite value is dropped rather than fed in — **both the input and
+    /// whatever `body` returns**. These filters are recursive: one NaN would sit
+    /// in their state for ever, and since the dry path never passes through here
+    /// the failure would be a wet bus that went silent and stayed silent while
+    /// the plugin looked like it was working.
+    ///
+    /// Guarding `body`'s return as well as the input means **the oversampler
+    /// cannot be poisoned by what is done inside it**, which is the useful
+    /// promise for callers: a nonlinearity fed a hostile parameter produces a
+    /// bad sample, not a dead bus.
     pub fn process(&mut self, input: f32, mut body: impl FnMut(f32) -> f32) -> f32 {
         if !input.is_finite() {
             return 0.0;
@@ -250,18 +262,18 @@ impl Oversampler {
 
         match self.factor {
             Factor::Two => {
-                let first = body(first);
-                let second = body(second);
+                let first = finite(body(first));
+                let second = finite(body(second));
                 self.down_one.process([first, second])
             }
             Factor::Four => {
                 let [a, b] = self.up_two.process(first);
                 let [c, d] = self.up_two.process(second);
 
-                let a = body(a);
-                let b = body(b);
-                let c = body(c);
-                let d = body(d);
+                let a = finite(body(a));
+                let b = finite(body(b));
+                let c = finite(body(c));
+                let d = finite(body(d));
 
                 let first = self.down_two.process([a, b]);
                 let second = self.down_two.process([c, d]);
@@ -537,6 +549,25 @@ mod tests {
                 "{hostile} left the filters broken"
             );
         }
+    }
+
+    /// The same promise from the other side: a body that misbehaves must not
+    /// leave the bus dead.
+    #[test]
+    fn a_misbehaving_body_does_not_poison_the_filters() {
+        let mut oversampler = Oversampler::new();
+
+        for _ in 0..64 {
+            oversampler.process(0.5, |_| f32::NAN);
+        }
+
+        let input = sine(0.5, 100, LENGTH);
+        let output: Vec<f32> = input
+            .iter()
+            .map(|sample| oversampler.process(*sample, identity))
+            .collect();
+        let settled = &output[output.len() / 2..];
+        assert!((amplitude(settled, 50) - 0.5).abs() < 2e-3);
     }
 
     #[test]

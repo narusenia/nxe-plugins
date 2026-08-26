@@ -40,7 +40,7 @@ Logic Pro と GarageBand では読み込めない（`REQ-VEL-014`）。
 
 | ID | タイトル | 優先度 | ステータス |
 |---|---|---|---|
-| REQ-VEL-001 | 並列生成トポロジ | Must | Draft |
+| REQ-VEL-001 | 並列生成トポロジ | Must | **実装済み**（`VEL-5`） |
 | REQ-VEL-002 | 帯域生成器（BODY / PRESENCE / AIR）と FOCUS | Must | **実装済み**（`VEL-3`） |
 | REQ-VEL-003 | 倍音生成カーブ | Must | **実装済み**（`VEL-1`） |
 | REQ-VEL-004 | TEXTURE モーフ（Warm / Clear / Edge） | Must | Draft |
@@ -50,8 +50,8 @@ Logic Pro と GarageBand では読み込めない（`REQ-VEL-014`）。
 | REQ-VEL-008 | EMOTION | Should | Draft |
 | REQ-VEL-009 | 4 層の直交 | Must | Draft |
 | REQ-VEL-010 | 二層パラメータモデル | Must | Draft |
-| REQ-VEL-011 | ステレオの扱いと像の保存 | Must | Draft |
-| REQ-VEL-012 | ミックス・出力・レイテンシ | Must | Draft |
+| REQ-VEL-011 | ステレオの扱いと像の保存 | Must | 一部実装（`VEL-5`。検波は `VEL-6`/`VEL-8`） |
+| REQ-VEL-012 | ミックス・出力・レイテンシ | Must | **実装済み**（`VEL-5`） |
 | REQ-VEL-013 | UI | Must | Draft |
 | REQ-VEL-014 | プラグインフォーマットと対応ホスト | Must | Draft |
 | REQ-VEL-015 | DSP のホスト非依存性 | Must | Draft |
@@ -86,9 +86,10 @@ Logic Pro と GarageBand では読み込めない（`REQ-VEL-014`）。
 - **代償として持たないもの**: 原音側を減らせない。ドキュメントにあった
   「Dynamic EQ Reduction」は v1 では持たない（`REQ-VEL-020`）
 - **受入条件**:
-  - [ ] `MIX` = 0 のとき、出力が入力と**ビット一致**
-  - [ ] 3 帯域の量がすべて 0 のとき、出力が入力とビット一致
-  - [ ] 原音経路に乗算・フィルタ・遅延が一切入っていない（`OUTPUT` = 0 dB のとき）
+  - [x] `MIX` = 0 のとき、出力が入力と**一致**（`==`）— `VEL-5`
+  - [x] 3 帯域の量がすべて 0 のとき、出力が入力と一致 — `VEL-5`
+  - [x] 原音経路はフィルタも遅延も通らず、`OUTPUT` = 0 dB の乗算は
+        ちょうど `1.0` — `VEL-5`
 - **依存**: なし
 
 ## REQ-VEL-002: 帯域生成器（BODY / PRESENCE / AIR）と FOCUS
@@ -390,9 +391,10 @@ Logic Pro と GarageBand では読み込めない（`REQ-VEL-014`）。
   持つが、Velour はモノのトラックをモノで返す。
 - **WIDTH / 広がりの操作は持たない**（Sparkleur の担当）。
 - **受入条件**:
-  - [ ] L == R の入力に対して出力も L == R（**ビット一致**）
-  - [ ] 2→2 と 1→1 の両方のレイアウトで動く
-  - [ ] 片チャネルに寄った素材で、処理によって定位が動かない
+  - [x] L == R の入力に対して出力も L == R — `VEL-5`
+  - [x] 2→2 と 1→1 の両方のレイアウトで動く — `VEL-5`
+  - [ ] 片チャネルに寄った素材で、処理によって定位が動かない — 検波が入る
+        `VEL-6` / `VEL-8` で確認する
 - **依存**: REQ-VEL-006
 
 ## REQ-VEL-012: ミックス・出力・レイテンシ
@@ -407,9 +409,10 @@ Logic Pro と GarageBand では読み込めない（`REQ-VEL-014`）。
     `REQ-VEL-007` で自動的に戻す
   - **申告レイテンシは 0**（`REQ-VEL-005`）
 - **受入条件**:
-  - [ ] `MIX` = 0 かつ `OUTPUT` = 0 dB で入力とビット一致
-  - [ ] `OUTPUT` が ±12 dB で正しく効く
-  - [ ] ホストへの申告レイテンシが 0 で、バイパス比較で位相ずれが無い
+  - [x] `MIX` = 0 かつ `OUTPUT` = 0 dB で入力と一致 — `VEL-5`
+  - [x] `OUTPUT` が ±12 dB で正しく効く — `VEL-5`
+  - [x] 申告レイテンシが 0（`set_latency_samples` を呼ばない）— `VEL-5`
+  - [ ] ホストのバイパス比較で位相ずれが無い — 実機確認
 - **依存**: REQ-VEL-001
 
 ## REQ-VEL-013: UI
@@ -443,8 +446,9 @@ Logic Pro と GarageBand では読み込めない（`REQ-VEL-014`）。
   **出荷後に `CLAP_ID` と `VST3_CLASS_ID` は絶対に変えない。**
 - **受入条件**:
   - [ ] Bitwig / Live / Reaper / Studio One で CLAP と VST3 の両方が読み込める
-  - [ ] `bundler.toml` に `NXE Velour` が登録されている
-  - [ ] macOS で universal binary になっている
+  - [x] `bundler.toml` に `NXE Velour` が登録されている — `VEL-5`
+  - [x] `CLAP_ID` = `com.nxe.velour`、`VST3_CLASS_ID` = `NXEVelour.......` — `VEL-5`
+  - [ ] macOS で universal binary になっている — リリース CI で確認
 - **依存**: なし
 
 ## REQ-VEL-015: DSP のホスト非依存性

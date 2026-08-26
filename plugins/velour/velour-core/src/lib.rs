@@ -13,10 +13,12 @@
 
 pub mod bands;
 pub mod biquad;
+pub mod engine;
 pub mod harmonics;
 pub mod oversample;
 pub mod shaper;
 
-pub use bands::{Band, Generator};
+pub use bands::{BANDS, Band, Generator};
+pub use engine::{BAND_COUNT, Engine, Levels, Shape};
 pub use oversample::{Factor, Oversampler};
 pub use shaper::Shaper;

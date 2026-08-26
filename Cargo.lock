@@ -3364,6 +3364,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "velour"
+version = "0.1.0"
+dependencies = [
+ "nih_plug",
+ "velour-core",
+]
+
+[[package]]
 name = "velour-core"
 version = "0.1.0"
 

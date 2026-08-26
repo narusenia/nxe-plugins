@@ -5,3 +5,6 @@
 # name so paths stay short.
 [doubler]
 name = "NXE Doubler"
+
+[velour]
+name = "NXE Velour"

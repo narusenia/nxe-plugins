@@ -6,6 +6,7 @@ members = [
     "plugins/doubler/doubler-core",
     "plugins/doubler/doubler",
     "plugins/velour/velour-core",
+    "plugins/velour/velour",
     "xtask",
 ]
 
@@ -71,4 +72,7 @@ opt-level = 2
 opt-level = 2
 
 [profile.dev.package.velour-core]
+opt-level = 2
+
+[profile.dev.package.velour]
 opt-level = 2
