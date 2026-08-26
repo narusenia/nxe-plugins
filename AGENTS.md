@@ -116,6 +116,7 @@ mise run install doubler   # bundle, then copy into ~/Library/Audio/Plug-Ins
 
 `.agents/rules/` states what must hold:
 
+- `git.md` — commit messages, branches, pull request titles
 - `rust.md` — Rust and real-time audio rules
 - `ui.md` — what the windows have to look like and how they have to read
 - `vizia.md` — what this vizia revision does, and what it silently does not

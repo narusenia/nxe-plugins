@@ -20,6 +20,7 @@
 | **まだ書かれていないプラグインの構想** | [`../concepts/`](../concepts/) |
 | **共通ウィジェットの使い方**（契約・トークン・アイコン） | [`../crates/nxe-ui/README.md`](../crates/nxe-ui/README.md) |
 | **守るべき規約**（Rust / UI / 文書） | [`../.agents/rules/`](../.agents/rules/) |
+| **コミットとブランチの規約** | [`../.agents/rules/git.md`](../.agents/rules/git.md) |
 | **画面の規則**（グリッド、色、読み値、何を出すか） | [`../.agents/rules/ui.md`](../.agents/rules/ui.md) |
 | **踏んだ罠**（vizia の挙動、検証の抜け） | [`../.agents/rules/vizia.md`](../.agents/rules/vizia.md) / [`../.agents/rules/rust.md`](../.agents/rules/rust.md) |
 | **プラグイン固有の要件・仕様・計画** | `plugins/<name>/docs/` |
@@ -48,6 +49,8 @@
 | Velour | ボーカルの存在感を生成するサチュレータ（並列 3 帯域） | [要件](../plugins/velour/docs/requirements/REQ-VEL.md) / [DSP 仕様](../plugins/velour/docs/specifications/dsp.md) / [UI 仕様](../plugins/velour/docs/specifications/ui.md) / [計画](../plugins/velour/docs/implementation/velour-plan.md) |
 | Sparkleur | マルチバンドダイナミクス + 動的な倍音生成（分割 5 帯域） | [要件](../plugins/sparkleur/docs/requirements/REQ-SPK.md) / [DSP 仕様](../plugins/sparkleur/docs/specifications/dsp.md) / [UI 仕様](../plugins/sparkleur/docs/specifications/ui.md) / [計画](../plugins/sparkleur/docs/implementation/sparkleur-plan.md) |
 | Air | 信号駆動の高域テクスチャ生成器（加算 2 系統）**要件のみ** | [要件](../plugins/air/docs/requirements/REQ-AIR.md) |
+| Vocal Depth | 声の前後位置を作る（初期反射 + 直接音）**要件のみ** | [要件](../plugins/vocal-depth/docs/requirements/REQ-VDP.md) |
+| Vocal Glue | ボーカルバスの結束（直列 5 段）**要件のみ** | [要件](../plugins/vocal-glue/docs/requirements/REQ-GLU.md) |
 
 ## 構想
 
