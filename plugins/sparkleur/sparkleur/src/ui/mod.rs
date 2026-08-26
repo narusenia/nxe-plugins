@@ -390,7 +390,7 @@ fn character_knob(cx: &mut Context) {
         font::value(
             cx,
             Ui::params.map(|params| {
-                format!("{} {}", nearest(params.character.value()), params.character)
+                character_readout(params.character.value(), &params.character.to_string())
             }),
         );
     })
@@ -401,20 +401,53 @@ fn character_knob(cx: &mut Context) {
     .child_right(Stretch(1.0));
 }
 
-/// Which anchor a position is closest to. Ties cannot happen: the anchors are
-/// evenly spaced, so the midpoints are the only ambiguous values and they fall
-/// to the lower name.
-fn nearest(position: f32) -> &'static str {
-    ANCHORS
-        .iter()
-        .min_by(|(_, a), (_, b)| {
-            (a - position)
-                .abs()
-                .partial_cmp(&(b - position).abs())
-                .expect("the anchors and the position are finite")
-        })
-        .map(|(name, _)| *name)
-        .unwrap_or("GLOSS")
+/// Which name a position belongs to: **an equal share of the axis each**, not
+/// the anchor it happens to be nearest.
+///
+/// Nearest-anchor is the obvious rule and it is the wrong one here, because the
+/// anchors are not spaced the way the names are. POLISH and CRUSH sit at the
+/// two **ends** while GLOSS sits in the **middle**, so "nearest" hands GLOSS
+/// half the axis and the other two a quarter each. The default at 0.27 then
+/// read `GLOSS 27 %` — one hundredth past the midpoint and already named after
+/// the anchor it is walking away from, while `REQ-SPK-006` had chosen 0.25–0.30
+/// precisely to sit *toward POLISH*. Two documents, each self-consistent,
+/// disagreeing because the readout rule was written without the anchor
+/// positions in front of it.
+///
+/// A third of the axis each puts the boundaries at 0.33 and 0.67, which is what
+/// "toward POLISH" means to someone looking at the knob.
+fn named(position: f32) -> &'static str {
+    let position = if position.is_finite() { position } else { 0.5 };
+    match position {
+        position if position < 1.0 / 3.0 => ANCHORS[0].0,
+        position if position < 2.0 / 3.0 => ANCHORS[1].0,
+        _ => ANCHORS[2].0,
+    }
+}
+
+/// The one line under the knob.
+///
+/// **The percentage is the parameter's own**, so the plugin and the host never
+/// show two different numbers for one control. At the very ends the number is
+/// dropped: `POLISH 0 %` reads as "no polish" when it is the most polished the
+/// plugin gets, and the same at the top.
+///
+/// | position | reads |
+/// |---|---|
+/// | 0.00 | `POLISH` |
+/// | 0.27 (the default) | `POLISH 27 %` |
+/// | 0.50 | `GLOSS 50 %` |
+/// | 0.80 | `CRUSH 80 %` |
+/// | 1.00 | `CRUSH` |
+///
+/// Eleven characters at the widest, which is what keeps it off the knob beside
+/// it — the third of Velour's three failures (`ui.md`).
+fn character_readout(position: f32, formatted: &str) -> String {
+    match position {
+        position if position <= 0.005 => ANCHORS[0].0.to_owned(),
+        position if position >= 0.995 => ANCHORS[2].0.to_owned(),
+        position => format!("{} {formatted}", named(position)),
+    }
 }
 
 #[cfg(test)]
@@ -457,33 +490,49 @@ mod tests {
     }
 
     #[test]
-    fn the_nearest_anchor_is_the_nearest_one() {
-        assert_eq!(nearest(0.0), "POLISH");
-        assert_eq!(nearest(0.2), "POLISH");
-        assert_eq!(nearest(0.5), "GLOSS");
-        assert_eq!(nearest(0.8), "CRUSH");
-        assert_eq!(nearest(1.0), "CRUSH");
-        // The midpoints fall to the lower name rather than flickering between
-        // two as a knob is dragged through them.
-        assert_eq!(nearest(0.25), "POLISH");
-        assert_eq!(nearest(0.75), "GLOSS");
+    fn each_name_owns_an_equal_share_of_the_axis() {
+        assert_eq!(named(0.0), "POLISH");
+        assert_eq!(named(0.32), "POLISH");
+        assert_eq!(named(0.34), "GLOSS");
+        assert_eq!(named(0.5), "GLOSS");
+        assert_eq!(named(0.66), "GLOSS");
+        assert_eq!(named(0.68), "CRUSH");
+        assert_eq!(named(1.0), "CRUSH");
+
+        // Each anchor is inside the share that carries its name, which is the
+        // one thing the boundaries must not break.
+        for (name, position) in ANCHORS {
+            assert_eq!(named(position), name, "{name} fell outside its own share");
+        }
+
+        // A hostile value lands in the middle rather than panicking.
+        assert_eq!(named(f32::NAN), "GLOSS");
     }
 
-    /// **The default reads "GLOSS 27 %", not "POLISH"** — and that is worth
-    /// knowing rather than asserting away.
+    /// **The default reads "POLISH", which is what `REQ-SPK-006` asked for.**
     ///
-    /// `REQ-SPK-006` puts the default at 0.25–0.30, "toward POLISH". By the
-    /// readout's own rule the nearest anchor to 0.27 is GLOSS (0.23 away
-    /// against POLISH's 0.27), so the name over-claims a little. Both halves
-    /// are as specified; they were specified separately. **`SPK-18` decides**
-    /// which one moves — the default under 0.25, or the readout naming the
-    /// anchor it is walking away from.
+    /// It used to read `GLOSS 27 %`: the requirement put the default at
+    /// 0.25–0.30 to sit toward POLISH, and the readout named whichever anchor
+    /// was nearest — and GLOSS at 0.5 is nearer to 0.27 than POLISH at 0.0 is.
+    /// Both were as specified. **The readout moved, not the default**, because
+    /// the sound at 0.27 is not what was wrong (`SPK-18`).
     #[test]
-    fn the_default_reads_as_the_nearer_anchor_even_when_it_leans_the_other_way() {
+    fn the_default_reads_as_polish() {
         let default = sparkleur_core::character::DEFAULT_POSITION;
-        assert_eq!(nearest(default), "GLOSS");
-        // It is genuinely nearer, which is the whole of the oddity.
+        assert_eq!(named(default), "POLISH");
+        // And the old rule really would have said otherwise, so this is a
+        // change rather than a restatement.
         assert!((default - 0.5).abs() < default);
+    }
+
+    /// The ends say the name alone. `POLISH 0 %` reads as "no polish" when it
+    /// is the most polished the plugin gets.
+    #[test]
+    fn the_ends_drop_the_percentage() {
+        assert_eq!(character_readout(0.0, "0 %"), "POLISH");
+        assert_eq!(character_readout(1.0, "100 %"), "CRUSH");
+        assert_eq!(character_readout(0.27, "27 %"), "POLISH 27 %");
+        assert_eq!(character_readout(0.5, "50 %"), "GLOSS 50 %");
     }
 
     /// The anchors are the axis's, not a second copy of them.
