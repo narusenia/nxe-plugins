@@ -1,7 +1,7 @@
 # 引き継ぎ
 
-**2026-08-26 時点。** Doubler が `doubler-v0.1.0` で一区切り、Velour は
-**DSP も UI も一通り入った状態**（残りは CPU の実測と、実機で見て・聴いての詰め）。
+**2026-08-26 時点。** Doubler は `doubler-v0.1.0` を**公開済み**、Velour は
+**DSP・UI・CPU 予算まで終わって、残りは耳で詰めるだけ**。
 
 このファイルは**そのとき何が動いていて、次に触る人が最初に知るべきこと**を
 1 枚にまとめたもの。設計の正は各仕様書、状態の正は
@@ -19,27 +19,24 @@
 
 | | |
 |---|---|
-| `plugins/doubler` | NXE Doubler。CLAP + VST3。`doubler-v0.1.0`（**下書き Release。未公開**） |
+| `plugins/doubler` | NXE Doubler。CLAP + VST3。`doubler-v0.1.0` **公開済み** |
 | `plugins/velour` | NXE Velour。CLAP + VST3。パラメータ 22 個（打ち止め）。UI あり（**実機で見ての確認が残っている**） |
 | `crates/nxe-ui` | 共通ウィジェット・テーマ・アイコン。`mise run gallery` |
 | `crates/nxe-dsp` | 共通の解析（`Handoff` / `PanScope` / `Spectrum` / `Level`） |
 | CI | `check`（PR と main への push）、`release`（`<plugin>-v<version>` タグ） |
 
-テスト 240 本。Doubler の CPU はエンジン 70 µs + 解析 15 µs / 予算 533 µs。
-**Velour の CPU は未測定**（`VEL-16`）。
+テスト 241 本。CPU は予算 533 µs に対し **Doubler 85 µs / Velour 128 µs**
+（`VEL-16`。Velour の内訳はエンジン 4x が 79、`Spectrum` 48 バンド × 2 が 45、
+`Level` × 4 が 4）。
 
 ## 次にやること
 
-**`VEL-16`（CPU 予算の実測）→ `VEL-17`（実機で見て・聴いて詰める）。**
-`velour-plan.md` に完了条件がある。**単位はこの 2 つだけ残っている。**
+**`VEL-17`（既定値と耳の定数を詰める）→ `velour-v0.1.0` のタグ。**
+**残っている単位はこれだけ。** `velour-plan.md` に一覧がある。
 
-`VEL-16` で最初に疑うのは**解析**: `Spectrum` を 2 本、48 バンドで回している
-（`plugins/velour/velour/src/analysis.rs`）。予算に入らなければバンド数が
-最初に削るところ。
-
-`VEL-17` は**目と耳の両方**。UI は組み上がっているが、**実機で見たのはまだ
-`VEL-5` の頃の「UI 無し」状態だけ**。寸法（680 × 580）も Doubler と同じく
-最後に詰める前提で置いてある。
+**耳の作業なので、コードだけでは終われない。** 何を聴くかは下の表。
+UI は実機で 1 周見て、4 つの罠を直してある（`velour-plan.md` の `VEL-11`〜
+`VEL-14`）。寸法は 680 × 528 に詰めた。
 
 ## 耳での確認を待っているもの
 
