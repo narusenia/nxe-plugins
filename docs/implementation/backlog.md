@@ -40,7 +40,6 @@
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| DBL-12 | CPU 予算の確認（フェーズ 4） | `doubler-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4） | `doubler-plan.md` |
 | UI-8 / UI-9 | `Meter` / `ToggleSwitch`（Doubler は使わない。フェーズ 5） | `nxe-ui-plan.md` |
 
@@ -99,5 +98,5 @@
 | DBL-11 | UI Detail 層（ボイス表） | ✅ ❓ 表→図のハイライト未 |
 | DBL-14 | UI Filter View | ✅ |
 | DBL-15 | UI ミラー編集（`REQ-DBL-014`） | ✅ ❓ 連動側のハイライト未 |
-| DBL-12 | CPU 予算の確認（criterion） | ⬜ DBL-8 |
-| DBL-13 | 既定値の詰めと実機確認 | ⬜ DBL-12, DBL-11 |
+| DBL-12 | CPU 予算の確認（criterion） | ✅ 69.4 µs / 予算 533 µs |
+| DBL-13 | 既定値の詰めと実機確認 | 🟡 |
