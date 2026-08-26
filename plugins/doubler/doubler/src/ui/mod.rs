@@ -55,11 +55,15 @@ pub(crate) struct Ui {
     /// can be highlighted. This is what stands in for numbering the dots
     /// (`plugins/doubler/docs/specifications/ui.md`).
     hovered: Option<usize>,
+    /// Whether an edit mirrors onto the paired voice (`REQ-DBL-014`). The
+    /// reactive copy of `params.mirror`, for the same reason `tab` is one.
+    mirror: bool,
 }
 
 pub(crate) enum UiEvent {
     SelectTab(usize),
     Hover(Option<usize>),
+    ToggleMirror,
 }
 
 impl Model for Ui {
@@ -72,6 +76,10 @@ impl Model for Ui {
                     .store(*tab == TAB_DETAIL, Ordering::Relaxed);
             }
             UiEvent::Hover(index) => self.hovered = *index,
+            UiEvent::ToggleMirror => {
+                self.mirror = !self.mirror;
+                self.params.mirror.store(self.mirror, Ordering::Relaxed);
+            }
         });
     }
 }
@@ -89,6 +97,7 @@ pub fn create(params: Arc<DoublerParams>, state: Arc<ViziaState>) -> Option<Box<
                 TAB_MAIN
             },
             hovered: None,
+            mirror: params.mirror.load(Ordering::Relaxed),
             params: params.clone(),
         }
         .build(cx);
@@ -136,7 +145,14 @@ fn header(cx: &mut Context) {
 /// it. `Mix` and `Output` belong next to what they act on, not under a tab.
 fn field_row(cx: &mut Context) {
     HStack::new(cx, |cx| {
-        field::view(cx);
+        // The toggle sits over the figure's top corner rather than in the flow,
+        // so turning mirroring on does not cost the figure any height.
+        HStack::new(cx, |cx| {
+            field::view(cx);
+            mirror_toggle(cx);
+        })
+        .width(Stretch(1.0))
+        .height(Stretch(1.0));
 
         VStack::new(cx, |cx| {
             macro_knob(cx, "MIX", |params| &params.mix, 34.0);
@@ -151,6 +167,28 @@ fn field_row(cx: &mut Context) {
     .height(Pixels(FIELD_HEIGHT))
     .width(Stretch(1.0))
     .col_between(Pixels(theme::SPACE_3));
+}
+
+/// The mirror switch: a single segment, checked when mirroring is on.
+///
+/// Not a new widget. `SegmentedControl` is a row of `.segment` labels with one
+/// checked, and one segment on its own is exactly the same thing
+/// (`plugins/doubler/docs/implementation/doubler-plan.md`). `UI-9`'s
+/// `ToggleSwitch` would be a sliding switch, which is not what belongs beside a
+/// figure.
+fn mirror_toggle(cx: &mut Context) {
+    HStack::new(cx, |cx| {
+        Label::new(cx, "MIRROR")
+            .class("segment")
+            .checked(Ui::mirror)
+            .on_press(|cx| cx.emit(UiEvent::ToggleMirror));
+    })
+    .class("segmented")
+    .position_type(PositionType::SelfDirected)
+    // Stretching the space to its left is how Morphorm right-aligns something
+    // that sizes to its content.
+    .left(Stretch(1.0))
+    .top(Pixels(0.0));
 }
 
 /// The tab strip is a segmented control: exactly the same "one of these" choice

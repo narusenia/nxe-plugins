@@ -83,6 +83,14 @@ pub struct DoublerParams {
     #[persist = "detail-tab"]
     pub detail_tab: Arc<AtomicBool>,
 
+    /// Whether editing a voice's `Pan` or `Detune` writes its partner too
+    /// (`REQ-DBL-014`). Not a parameter, and deliberately so: it changes what
+    /// an edit does, not what the plugin sounds like, so automating it would
+    /// automate the user interface. Persisted for the same reason
+    /// `detail_tab` is.
+    #[persist = "mirror"]
+    pub mirror: Arc<AtomicBool>,
+
     #[id = "voices"]
     pub voices: EnumParam<VoicesParam>,
     #[id = "source"]
@@ -134,6 +142,9 @@ impl Default for DoublerParams {
         Self {
             editor_state: crate::ui::default_state(),
             detail_tab: Arc::new(AtomicBool::new(false)),
+            // On by default: the shape table is symmetric, so breaking the
+            // symmetry is the deliberate act, not keeping it.
+            mirror: Arc::new(AtomicBool::new(true)),
 
             voices: EnumParam::new("Voices", VoicesParam::Four),
             source: EnumParam::new("Source", SourceParam::MonoSum),
