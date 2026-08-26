@@ -26,6 +26,13 @@ const DIMMED: f32 = 0.42;
 /// uniform rows anyway.
 const ROW_HEIGHT: f32 = 22.0;
 
+/// The padding the rows carry themselves.
+///
+/// The panel's own `child-space` is dropped: a table wants its rows flush to the
+/// card's edges, so the top highlight is the card's top edge and a hovered row
+/// is a band across the whole width rather than a floating strip.
+const ROW_PAD: f32 = 12.0;
+
 const INDEX_WIDTH: f32 = 18.0;
 const BAR_HEIGHT: f32 = 10.0;
 const VALUE_WIDTH: f32 = 62.0;
@@ -159,6 +166,8 @@ fn row(cx: &mut Context, index: usize) {
     })
     .class("row")
     .height(Pixels(ROW_HEIGHT))
+    .child_left(Pixels(ROW_PAD))
+    .child_right(Pixels(ROW_PAD))
     // Dimming the whole row rather than each control keeps the bars and the
     // numbers consistent, and costs one modifier.
     .opacity(Ui::params.map(move |params| {
@@ -192,7 +201,9 @@ pub fn view(cx: &mut Context) {
             }
         })
         .class("row")
-        .height(Pixels(ROW_HEIGHT));
+        .height(Pixels(ROW_HEIGHT))
+        .child_left(Pixels(ROW_PAD))
+        .child_right(Pixels(ROW_PAD));
 
         for index in 0..MAX_VOICES {
             row(cx, index);
@@ -200,5 +211,11 @@ pub fn view(cx: &mut Context) {
     })
     .class("panel")
     .height(Auto)
+    // A table, not a stack of cards: nine rows with the panel's 12 px between
+    // them came to 339 px in a 296 px tab. The rows are a fixed height and
+    // carry their own padding, so both go to zero here.
+    .child_space(Pixels(0.0))
+    .child_bottom(Pixels(theme::SPACE_1))
+    .row_between(Pixels(0.0))
     .display(Ui::tab.map(|tab| *tab == super::TAB_DETAIL));
 }
