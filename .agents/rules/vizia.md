@@ -115,6 +115,11 @@ More generally: **a CSS declaration this revision cannot parse costs nothing at
 runtime and says nothing.** When a stylesheet change appears to do nothing, check
 the value type in `vizia_style` before assuming the rule did not match.
 
+**`TimerAction::Tick` carries the elapsed time, not the interval.** Comparing it
+with the `Duration` the timer was created with — `action == TimerAction::Tick(interval)`
+— compiles, reads as correct, and is false on essentially every tick. Match on
+the shape: `matches!(action, TimerAction::Tick(_))`.
+
 **A tooltip's content is hit-testable even though the tooltip is not.**
 `.tooltip(…)` builds the view as a child of the anchor with `hoverable(false)`
 and `top: 100%` — so it hangs directly over whatever sits *below* the control,

@@ -206,7 +206,10 @@ pub fn create(
         // Parameter changes wake the binding system on their own; an idle
         // window with audio running does not. The meter needs its own heartbeat.
         let timer = cx.add_timer(ANALYSIS_INTERVAL, None, |cx, action| {
-            if action == TimerAction::Tick(ANALYSIS_INTERVAL) {
+            // `Tick` carries how long actually elapsed, not the interval it was
+            // asked for, so it is matched on shape rather than compared with
+            // one (`.agents/rules/vizia.md`).
+            if matches!(action, TimerAction::Tick(_)) {
                 cx.emit(UiEvent::Poll);
             }
         });
