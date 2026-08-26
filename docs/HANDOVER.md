@@ -1,7 +1,7 @@
 # 引き継ぎ
 
-**2026-08-26 時点。** Doubler が `doubler-v0.1.0` で一区切り、Velour が
-`VEL-6` まで進んで**音が出る状態**。
+**2026-08-26 時点。** Doubler が `doubler-v0.1.0` で一区切り、Velour は
+**DSP が全部入って音が出る状態**（残りは詰めと UI）。
 
 このファイルは**そのとき何が動いていて、次に触る人が最初に知るべきこと**を
 1 枚にまとめたもの。設計の正は各仕様書、状態の正は
@@ -20,25 +20,25 @@
 | | |
 |---|---|
 | `plugins/doubler` | NXE Doubler。CLAP + VST3。`doubler-v0.1.0`（**下書き Release。未公開**） |
-| `plugins/velour` | NXE Velour。CLAP + VST3。**UI 無し**、パラメータ 21 個。Live で音を確認済み |
+| `plugins/velour` | NXE Velour。CLAP + VST3。**UI 無し**、パラメータ 22 個（打ち止め）。Live で音を確認済み |
 | `crates/nxe-ui` | 共通ウィジェット・テーマ・アイコン。`mise run gallery` |
 | `crates/nxe-dsp` | 共通の解析（`Handoff` / `PanScope` / `Spectrum` / `Level`） |
 | CI | `check`（PR と main への push）、`release`（`<plugin>-v<version>` タグ） |
 
-テスト 217 本。Doubler の CPU はエンジン 70 µs + 解析 15 µs / 予算 533 µs。
+テスト 226 本。Doubler の CPU はエンジン 70 µs + 解析 15 µs / 予算 533 µs。
 **Velour の CPU は未測定**（`VEL-16`）。
 
 ## 次にやること
 
-**`VEL-7`（DENSITY）。** `velour-plan.md` に完了条件がある。
-**検波器は `VEL-6` で入っている**（`velour_core::Envelope`、`Engine` が
-モノ和を毎サンプル押し込んでいる）ので、`VEL-7` は**検波器を足さずに既にある
-ものを読む**単位。`EMOTION` と `DENSITY` は同じエンベロープの別の使い方で、
-検波が**圧縮前の入力**を見ていることが 2 つの衝突を解く唯一の点
-（`REQ-VEL-008`）。
+**`VEL-10`（スムージングと非依存性の詰め）→ `VEL-11`〜`VEL-15`（UI）。**
+`velour-plan.md` に完了条件がある。**DSP の単位は全部終わっている** —
+パラメータは 22 個で打ち止め、`REQ-VEL-001`〜`012` は実装済み。
 
-その後は `VEL-10`（詰め）→ `VEL-11`〜`VEL-15`（UI）→ `VEL-16`（予算）→
-`VEL-17`（耳）。
+その後は `VEL-16`（CPU 予算。**Velour は未測定**）→ `VEL-17`（耳で全定数）。
+
+UI に入る前に [`../.agents/rules/vizia.md`](../.agents/rules/vizia.md) と
+`crates/nxe-ui/README.md` を読む。Velour が要求したウィジェットは 3 つとも
+入っていて（`BandField` / `Meter` / `Level`）、`mise run gallery` で動く。
 
 ## 耳での確認を待っているもの
 
@@ -49,7 +49,8 @@
 | `VEL-4` の `TEXTURE` | Warm と Edge が**別の質感**に聞こえるか。Warm → Edge で **−3.0 dB** レベルが動くのが気になるか |
 | `VEL-8` の Guard | 普通のボーカルで**動かない**か（動くならしきい値が厳しい）。入力ゲインを ±12 dB しても効き方が変わらないか |
 | `VEL-9` の `SOLO` | 各帯域が何を足しているか。`Air Bias` +1 の質感 |
-| `VEL-6` の `EMOTION` | 既定 0.5 で、**声量差で質感が変わるのが分かるか / 不安定でないか**。`REF_DB` −18 が普通のボーカルの位置に合っているか |
+| `VEL-6` の `EMOTION` | 既定 0.5 で、**声量差で質感が変わるのが分かるか / 不安定でないか**。`REFERENCE_DB` −18 が普通のボーカルの位置に合っているか |
+| `VEL-7` の `DENSITY` | 振り切って「平坦だが死んでいない」か。`REFERENCE_DB` は `EMOTION` と**共有**なので、動かすと両方に効く |
 | 既定値すべて | **全部仮。** プリセットを持たない方針（`REQ-VEL-020`）なので既定値が製品の顔。`VEL-17` でまとめて詰める |
 
 ## Velour で踏んだ罠（同じ形を 3 回やった）
@@ -72,8 +73,9 @@
 **引き算で「足した層」を取り出すな。** `出力 − 原音` は原音の方が大きいと層の
 精度をほとんど捨てる。`SOLO` を全部オンにして層を直接取る。
 
-**仕様の数字は 3 回動いた。** `k` の上限 20 → 6 → 8、`bias` のレベル補正
-6 dB → 0。どれも実測が仕様を否定した結果で、**理由と実測値を `dsp.md` と
+**仕様の数字は 4 回動いた。** `k` の上限 20 → 6 → 8、`bias` のレベル補正
+6 dB → 0、`DENSITY` のメイクアップの基準 full scale → `REFERENCE_DB`。
+どれも実測が仕様を否定した結果で、**理由と実測値を `dsp.md` と
 `velour-plan.md` に残してある**。同じ数字を触るなら先にそこを読む。
 
 ## Doubler で踏んだ罠

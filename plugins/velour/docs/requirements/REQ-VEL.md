@@ -46,8 +46,8 @@ Logic Pro と GarageBand では読み込めない（`REQ-VEL-014`）。
 | REQ-VEL-004 | TEXTURE モーフ（Warm / Clear / Edge） | Must | **実装済み**（`VEL-4`） |
 | REQ-VEL-005 | オーバーサンプリング | Must | **実装済み**（`VEL-2`） |
 | REQ-VEL-006 | 保護検出器（Harsh Guard / Sib Guard） | Must | **実装済み**（`VEL-8`） |
-| REQ-VEL-007 | DENSITY | Should | Draft |
-| REQ-VEL-008 | EMOTION | Should | **実装済み**（`VEL-6`。`DENSITY` との直交は `VEL-7`） |
+| REQ-VEL-007 | DENSITY | Should | **実装済み**（`VEL-7`） |
+| REQ-VEL-008 | EMOTION | Should | **実装済み**（`VEL-6` / `VEL-7`） |
 | REQ-VEL-009 | 4 層の直交 | Must | Draft |
 | REQ-VEL-010 | 二層パラメータモデル | Must | **実装済み**（`VEL-9`。UI は `VEL-14`） |
 | REQ-VEL-011 | ステレオの扱いと像の保存 | Must | **実装済み**（`VEL-5` / `VEL-6` / `VEL-8`） |
@@ -293,10 +293,14 @@ Logic Pro と GarageBand では読み込めない（`REQ-VEL-014`）。
   自動的に出る。
 - **メイクアップは自動。** でないと `DENSITY` がただの音量ノブになる。
 - **受入条件**:
-  - [ ] `DENSITY` を上げると、小さいフレーズと大きいフレーズで足される倍音量の
-        差が縮まる
-  - [ ] `DENSITY` を 0 → 100% に動かして出力のラウドネスが ±1 dB 以内
-  - [ ] 原音のダイナミクスがどの設定でも変わらない（`REQ-VEL-001` の帰結）
+  - [x] `DENSITY` を上げると、小さいフレーズと大きいフレーズで足される倍音量の
+        差が縮まる — `VEL-7`（実測 23.7 dB → 6.0 dB、ノブに対して単調）
+  - [x] `DENSITY` を 0 → 100% に動かして出力のラウドネスが ±1 dB 以内 —
+        `VEL-7`。**メイクアップの基準を full scale から `REFERENCE_DB` に
+        差し替えて**達成した。教科書どおりの `−T·(1 − 1/R)` は −18 dB の
+        ボーカルを +13 dB 持ち上げるので、この条件を構造的に満たせない
+  - [x] 原音のダイナミクスがどの設定でも変わらない（`REQ-VEL-001` の帰結） —
+        `VEL-7`。`density` = 1 でも出力が入力とビット一致する
 - **依存**: REQ-VEL-001
 
 ## REQ-VEL-008: EMOTION
@@ -317,7 +321,9 @@ Logic Pro と GarageBand では読み込めない（`REQ-VEL-014`）。
   - [x] `amount` = 0 で完全に静的な `(β, h, k)` になる — `VEL-6`。**ほぼではなく
         厳密**: `amount · d` をカーブの再構築の判定に入れてあるので、0 なら
         エンベロープが動いてもカーブが動かない
-  - [ ] `DENSITY` を振り切っても `EMOTION` の反応量が変わらない — `VEL-7`
+  - [x] `DENSITY` を振り切っても `EMOTION` の反応量が変わらない — `VEL-7`。
+        音ではなく**カーブの係数**で固定した（`DENSITY` はカーブに入るレベルを
+        変えるので倍音は動く。動いてはいけないのは `(k, β, h)`）
   - [x] 追従でノイズやジッパー音が出ない — `VEL-6`
 - **依存**: REQ-VEL-003, REQ-VEL-007
 
@@ -373,7 +379,7 @@ Logic Pro と GarageBand では読み込めない（`REQ-VEL-014`）。
   まま質だけ振れる**ので、二層が壊れない。
 - **VO-TT のような per-band ダイナミクス（UP / DOWN / GAIN）は持たない。**
   それは Sparkleur の担当で、ここに持ってくると 2 製品の境目が消える。
-- パラメータ総数は 8 + 9 + 5 = **22 前後**（Doubler の 43 より小さい）。`VEL-6` 時点で **21 個**宣言済み（`DISTANCE` は持たない。残るは `DENSITY` 1 個）。
+- パラメータ総数は 8 + 9 + 5 = **22 前後**（Doubler の 43 より小さい）。`VEL-7` で **22 個**宣言し終えた（`DISTANCE` は持たない）。
 - **受入条件**:
   - [x] メインの帯域ノブを動かしても `Bias_i` / `Texture_i` の値が変わらない
         （層が別のパラメータなので型で保証）— `VEL-9`
