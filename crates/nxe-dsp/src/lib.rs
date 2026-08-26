@@ -14,9 +14,11 @@
 //! locks, or blocks (`.agents/rules/rust.md`).
 
 mod handoff;
+mod level;
 mod pan;
 mod spectrum;
 
 pub use handoff::Handoff;
+pub use level::Level;
 pub use pan::PanScope;
 pub use spectrum::Spectrum;
