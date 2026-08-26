@@ -12,7 +12,11 @@
 pub mod crossover;
 pub mod detector;
 pub mod dynamics;
+pub mod sparkle;
 
 pub use crossover::{BAND_COUNT, Crossover};
 pub use detector::Detector;
-pub use dynamics::{Curve, Settings, Weights};
+// `dynamics::Settings` and `sparkle::Settings` are different things, so
+// neither is re-exported here — the module name is what tells them apart.
+pub use dynamics::{Curve, Weights};
+pub use sparkle::Sparkle;
