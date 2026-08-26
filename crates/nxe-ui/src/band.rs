@@ -143,9 +143,10 @@ pub struct BandField {
     /// `None` until a caller wires `.focus(...)`, which is also what decides
     /// whether the rail does anything.
     focus: Option<f32>,
-    /// Where "no change" sits, in normalized `y`. `None` for a field whose
-    /// regions grow from the floor — Velour's, where an empty band is nothing
-    /// added rather than unity.
+    /// Where "no change" sits, in normalized `y`. **Also where every region
+    /// grows from.** `None` for a field whose regions are an amount added
+    /// rather than a gain — Velour's, where an empty band is nothing added and
+    /// the floor is the right baseline.
     unity: Option<f32>,
     drag: Drag,
     grabbed: Option<Grabbed>,
@@ -263,9 +264,12 @@ pub trait BandFieldModifiers {
     /// [`crate::polar::PolarField`] simply does not move.
     fn focus(self, value: impl Res<f32> + 'static) -> Self;
 
-    /// Where "no change" sits, in normalized `y`. **Wiring this is what draws
-    /// the line**; a field that does not call it has regions growing from the
-    /// floor and nothing to mark.
+    /// Where "no change" sits, in normalized `y`.
+    ///
+    /// **Wiring this draws the line and moves the baseline to it** — regions
+    /// then grow up or down from it rather than from the floor, which is what a
+    /// gain either side of unity has to look like. A field that does not call
+    /// it keeps the floor as its baseline and has nothing to mark.
     fn unity(self, y: impl Res<f32> + 'static) -> Self;
 }
 
@@ -491,6 +495,14 @@ impl View for BandField {
 
         let soloing = self.bands.iter().any(|band| band.soloed);
 
+        // **Where a region grows from.** The floor for a field whose regions
+        // are an amount added — Velour's — and the unity line for one whose
+        // regions are a gain either side of it. Same rule, one number: without
+        // `.unity(…)` the baseline is the floor, which is exactly what growing
+        // from the bottom means (`SPK-15`).
+        let baseline = self.unity.unwrap_or(0.0);
+        let (_, base_y) = at(0.0, baseline);
+
         for band in &self.bands {
             let (left, _) = at(band.low.min(band.high), 0.0);
             let (right, _) = at(band.low.max(band.high), 0.0);
@@ -507,10 +519,10 @@ impl View for BandField {
                 theme::ACCENT_DEEP.mix(theme::ACCENT_BRIGHT, band.tint.clamp(0.0, 1.0))
             };
 
-            // What was asked for.
+            // What was asked for, from the baseline to it.
             let (_, set_top) = at(0.0, band.level);
             let mut set = vg::Path::new();
-            set.rect(left, set_top, width, plot.y + plot.h - set_top);
+            set.rect(left, set_top.min(base_y), width, (set_top - base_y).abs());
             canvas.fill_path(&set, &vg::Paint::color(tint.at(SET_ALPHA).vg()));
 
             // And what is sounding. The gap between the two is what the
@@ -518,7 +530,7 @@ impl View for BandField {
             let live = band.live();
             let (_, live_top) = at(0.0, live);
             let mut path = vg::Path::new();
-            path.rect(left, live_top, width, plot.y + plot.h - live_top);
+            path.rect(left, live_top.min(base_y), width, (live_top - base_y).abs());
             canvas.fill_path(&path, &vg::Paint::color(tint.at(LIVE_ALPHA).vg()));
 
             let mut edge = vg::Path::new();

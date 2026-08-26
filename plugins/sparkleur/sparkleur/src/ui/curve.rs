@@ -125,8 +125,13 @@ pub fn view(cx: &mut Context, width: f32) {
         .child_left(Stretch(1.0))
         .child_right(Stretch(1.0));
     })
+    // **A frame, like the meter strip's.** Without one the curve is a line
+    // floating in the black beside the figure, and it reads as something that
+    // escaped rather than as a panel of its own (looked at in a host, `SPK-15`).
+    .class("panel")
     .width(Pixels(width))
     .height(Stretch(1.0))
+    .child_space(Pixels(theme::SPACE_2))
     .row_between(Pixels(theme::SPACE_1));
 }
 
