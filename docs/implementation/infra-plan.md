@@ -36,6 +36,15 @@ GitHub Actions で `mise run check`（fmt + clippy + test）。macOS で回す�
 - **完了条件**: プルリクエストで自動実行され、失敗が分かる。ローカルの
   `mise run check` と同じことをしている（片方だけ通る状態を作らない）
 - **依存**: INFRA-1
+- **決めたこと**: ワークフローは `cargo fmt`／`clippy`／`test` を自分で書かず、
+  **`mise run check` を呼ぶだけ**にする。書き下すと CI とローカルが別々に
+  ずれていく
+- **決めたこと**: `pull_request` だけでなく **`main` への push でも回す**。
+  このリポジトリは main に直接コミットしているので、PR 限定だとほとんど動かない
+- **決めたこと**: Rust のバージョンはワークフローに書かず `mise.toml` から取る
+  （`jdx/mise-action`）。バージョンの二重管理をしない
+- **決めたこと**: macOS のみ。開発とバンドルをする場所で、UI スタックが
+  一番プラットフォーム差で壊れる。他の 2 つは `INFRA-3` がビルドする
 
 ## INFRA-3 — リリースの CI
 

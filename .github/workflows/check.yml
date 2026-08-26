@@ -1,0 +1,42 @@
+# Verification for every change.
+#
+# Runs `mise run check` — the same entry point as the pre-commit hook and as a
+# local run. That is the point: a change must not be able to pass here and fail
+# on a laptop, or the other way round, so this workflow deliberately does not
+# spell out `cargo fmt`/`clippy`/`test` itself.
+#
+# **On pushes to `main` as well as on pull requests.** Work on this repository
+# goes straight to `main`, so a pull-request-only workflow would almost never
+# run.
+
+name: check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A newer commit on the same branch makes an in-flight run pointless.
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    # macOS because that is where the plugins are developed and bundled, and
+    # because the UI stack is the part most likely to break per platform. The
+    # other two targets are built in the release workflow.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # mise owns the Rust version (`mise.toml`), so CI gets the same toolchain
+      # as a laptop without repeating the number here.
+      - uses: jdx/mise-action@v2
+
+      - uses: Swatinem/rust-cache@v2
+
+      - run: mise run check

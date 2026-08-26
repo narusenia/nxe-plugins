@@ -40,7 +40,6 @@
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| INFRA-2 | プルリクエストの CI（フェーズ 4） | `infra-plan.md` |
 | INFRA-3 | リリースの CI（フェーズ 4） | `infra-plan.md` |
 | DBL-12 | CPU 予算の確認（フェーズ 4） | `doubler-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4） | `doubler-plan.md` |
@@ -66,8 +65,8 @@
 | ID | 単位 | 状態 |
 |---|---|---|
 | INFRA-1 | ワークスペース骨格 | ✅ `3f98dce` |
-| INFRA-2 | プルリクエストの CI（`mise run check`） | 🟡 |
-| INFRA-3 | リリースの CI（タグ → 3 OS bundle → Release） | ⬜ INFRA-2 |
+| INFRA-2 | プルリクエストの CI（`mise run check`） | ✅ |
+| INFRA-3 | リリースの CI（タグ → 3 OS bundle → Release） | 🟡 |
 
 ### 共通 UI — `nxe-ui-plan.md`
 
