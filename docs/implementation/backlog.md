@@ -24,15 +24,14 @@
 
 ## 現在地
 
-**フェーズ 3（UI）は全単位done。** `nxe-ui` のウィジェットは Doubler が使うものが
-全部揃い、プラグイン側も Voice Field・Filter View・Detail 表・ミラー編集まで
-載っている。次はフェーズ 4（CI と実機での詰め）。
+**フェーズ 3（UI）完了。フェーズ 4 は `DBL-13` だけ残り**（2026-08-26）。
 
-確認待ちなのは**見た目**（2026-08-26 時点）。窓 620 × 572、Voice Field と
-`MIX` / `OUTPUT` が常時表示、タブが「4 ノブ + Filter View」と「8 行の表」を
-入れ替え、図の右上に `⇄ MIRROR`。寸法は
-`plugins/doubler/doubler/src/ui/mod.rs` の `FIELD_HEIGHT` / `SIDE_WIDTH` /
-`TAB_HEIGHT` で調整できる。
+- CI は 2 本。`check`（PR と main への push で `mise run check`）と `release`
+  （タグ → 3 OS の zip → 下書き Release）。**`release` はまだ一度も走っていない**
+- CPU は測った: 512 サンプル / 8 ボイス / True Stereo で **69.4 µs**、
+  予算 533 µs の 13%（1 コアの 0.65%）
+- ベンチを書く過程で、極端なパラメータ値で出力が非有限になるのを見つけて直した
+- 残る `DBL-13`（既定値の詰め）は**実素材と耳が要る**ので、コードでは進まない
 
 ## 今すぐ着手できるもの
 
@@ -40,8 +39,8 @@
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| DBL-13 | 既定値の詰めと実機確認（フェーズ 4） | `doubler-plan.md` |
-| UI-8 / UI-9 | `Meter` / `ToggleSwitch`（Doubler は使わない。フェーズ 5） | `nxe-ui-plan.md` |
+| DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
+| UI-8 / UI-9 | `Meter` / `ToggleSwitch`（**Doubler は使わない**。使う相手が現れるまで着手しない） | `nxe-ui-plan.md` |
 
 ## 積み残し（どれも単位を持っていない小物）
 
