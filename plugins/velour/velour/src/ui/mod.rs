@@ -398,9 +398,8 @@ fn texture_knob(cx: &mut Context) {
         Label::new(cx, "TEXTURE").class("label");
         font::value(
             cx,
-            Ui::params.map(|params| {
-                format!("{} {}", nearest(params.texture.value()), params.texture)
-            }),
+            Ui::params
+                .map(|params| format!("{} {}", nearest(params.texture.value()), params.texture)),
         );
     })
     .width(Stretch(1.0))
