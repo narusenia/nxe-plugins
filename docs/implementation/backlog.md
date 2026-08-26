@@ -164,8 +164,7 @@ attack/release の比が決める）ので、**RMS とピークパワーの間�
 `CHARACTER` で入れ替わる**ので、`SPK-18` で数字を動かすときはここを見る。
 
 **`SPK-6`（Sparkle）も入った**（2026-08-26）。band 5 を上蓋 → 4x → シェイパ →
-HPF に通し、速い/遅いフォロワの比で作ったゲートで出力を開く。テスト 290 本。
-**次は `SPK-5`（CHARACTER）** — `SPK-4` と `SPK-6` が揃ったので着手できる。
+HPF に通し、速い/遅いフォロワの比で作ったゲートで出力を開く。
 
 ここで**仕様の弾道を 1 つ書き換えた**。仕様は fast follower を 1 ms / 40 ms の
 非対称にしていたが、`SPK-3` で分かったとおり非対称な追従は平均とピークの間に
@@ -175,13 +174,22 @@ HPF に通し、速い/遅いフォロワの比で作ったゲートで出力を
 無音 0.000 / アタック 1.000 / 持続音 0.008。**`SPK-3` の知見が 1 つ下の単位で
 直接効いた。**
 
+**`SPK-5`（CHARACTER）も入った**（2026-08-26）。アンカー 3 点 10 項目の補間。
+テスト 297 本。**次は `SPK-7`（De-Harsh / Sub Protect）で、その次が `SPK-8`
+（ここで初めて音が出る）。**
+
+**レベルトリムはまだ 0 のままでよかった** — 軸を端から端まで動かして実測
+**0.98 dB**（許容 ±1.5 dB）。Velour は `TEXTURE` が完成した後に 3.0 dB の
+ずれが出て 9 個のトリムを差し込む羽目になったので、**枠を先に置くという判断
+だけが残った**形。**しきい値は軸に乗せなかった** — 乗せると軸が「何が起きて
+いるか」と「どれくらい起きているか」の両方を動かしてしまう（`REQ-SPK-010`）。
+
 ## 今すぐ着手できるもの
 
 依存が無いか、依存がすべて解決している単位。
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| SPK-5 | **CHARACTER** — アンカー 3 点の補間（POLISH ↔ CRUSH） | `sparkleur-plan.md` |
 | SPK-7 | **De-Harsh / Sub Protect** — `RelativeGuard` 1 個 + `CEILING` の値違い | `sparkleur-plan.md` |
 | SPK-10 | `nxe_ui::band::Band` の `reduction` を符号付き `delta` に（上げコンプが描けない） | `sparkleur-plan.md` |
 | SPK-11 | `param_bind` の共通化（3 個目が要求した。行き先は `nxe-ui` ではない） | `sparkleur-plan.md` |
@@ -300,9 +308,9 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | SPK-2 | クロスオーバー（**ゲート**。LR4 の木 + オールパス補正、`FOCUS`）。`sparkleur-core` もここで作った | ✅ **ゲート通過** `e62aafe` |
 | SPK-3 | 検波と時定数（`SPEED` と帯域中心からの導出） | ✅ `d00f080` |
 | SPK-4 | ゲイン計算（上下コンプ。**製品の核**） | ✅ `351f55a` |
-| SPK-5 | CHARACTER（POLISH ↔ CRUSH の 1 軸） | 🟡 |
+| SPK-5 | CHARACTER（POLISH ↔ CRUSH の 1 軸） | ✅ `6401de9` |
 | SPK-6 | Sparkle（トランジェントでゲートした倍音生成） | ✅ `0117e1e` |
-| SPK-7 | De-Harsh / Sub Protect | 🟡（`SPK-5` が先だと読みやすい） |
+| SPK-7 | De-Harsh / Sub Protect | 🟡 |
 | SPK-8 | ラッパとパラメータ（**ここで音が出る**） | ⬜ SPK-4 / SPK-5 / SPK-6 / SPK-7 |
 | SPK-9 | 詰め（レート・ブロック・極端値） | ⬜ SPK-8 |
 | SPK-10 | `nxe_ui::band::Band` の `reduction` を符号付き `delta` に | 🟡 |

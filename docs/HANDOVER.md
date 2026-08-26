@@ -1,9 +1,9 @@
 # 引き継ぎ
 
 **2026-08-26 時点。** Doubler は `doubler-v0.1.0` を**公開済み**、Velour は
-`velour-v0.1.0` で**一区切り**（下書き Release）。**Sparkleur は `SPK-6` まで —
-`nxe-audio`、クロスオーバーのゲート、検波、上下コンプ、Sparkle が入っている。
-まだ音は出ない**（ラッパは `SPK-8`）。
+`velour-v0.1.0` で**一区切り**（下書き Release）。**Sparkleur は `SPK-6` まで（`SPK-1`〜`SPK-6`）—
+`nxe-audio`、クロスオーバーのゲート、検波、上下コンプ、Sparkle、`CHARACTER`
+が入っている。まだ音は出ない**（ラッパは `SPK-8`）。
 
 このファイルは**そのとき何が動いていて、次に触る人が最初に知るべきこと**を
 1 枚にまとめたもの。設計の正は各仕様書、状態の正は
@@ -26,28 +26,29 @@
 | `crates/nxe-audio` | 共通の**処理**（`shaper` / `oversample` / `biquad` / `envelope` / `guard` / `harmonics`）。`SPK-1` で `velour-core` から抜いた |
 | `crates/nxe-ui` | 共通ウィジェット・テーマ・アイコン。`mise run gallery` |
 | `crates/nxe-dsp` | 共通の解析（`Handoff` / `PanScope` / `Spectrum` / `Level`） |
-| `plugins/sparkleur/sparkleur-core` | **`SPK-6` まで。** 5 帯域クロスオーバー、検波、上下コンプのゲイン計算（純関数）、Sparkle（上蓋 → 4x → シェイパ → HPF → トランジェントゲート）。`CHARACTER` と De-Harsh はまだ |
+| `plugins/sparkleur/sparkleur-core` | **`SPK-1`〜`SPK-6`。** 5 帯域クロスオーバー、検波、上下コンプのゲイン計算（純関数）、Sparkle（上蓋 → 4x → シェイパ → HPF → トランジェントゲート）、`CHARACTER`（アンカー 3 点 10 項目）。De-Harsh とラッパはまだ |
 | `plugins/sparkleur/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`SPK-1`〜`SPK-18`）。`sparkleur` ラッパクレートは無い |
 | CI | `check`（PR と main への push）、`release`（`<plugin>-v<version>` タグ） |
 
-テスト 290 本。CPU は予算 533 µs に対し **Doubler 85 µs / Velour 128 µs**
+テスト 297 本。CPU は予算 533 µs に対し **Doubler 85 µs / Velour 128 µs**
 （`VEL-16`。Velour の内訳はエンジン 4x が 79、`Spectrum` 48 バンド × 2 が 45、
 `Level` × 4 が 4）。
 
 ## 次にやること
 
-**`SPK-5`（CHARACTER）。** アンカー 3 点（POLISH / GLOSS / CRUSH）の表を
-補間して、`R_down` / `R_up` / `CEILING` / ニー幅 / Sparkle の `(β, h)` /
-De-Harsh / Sub Protect / `SPEED` の中心を出す。Velour の `texture.rs` と同じ
-機構だが**同じコードにはしない**（乗っている項目が違う）。**レベルトリムの枠を
-最初から置く** — Velour で `TEXTURE` が −3.0 dB 動いて後から吸収する必要が出た。
+**`SPK-7`（De-Harsh / Sub Protect）。** `nxe_audio::RelativeGuard` を `N = 1`
+で 1 個（検出帯 1.5〜5 kHz、参照帯 300 Hz〜8 kHz、band 4 の出力ゲインを引く）と、
+Sub Protect は**最下帯域の `CEILING` の値違い**（新しい機構は書かない）。
+`Character::de_harsh` と `Character::sub_protect` が既に軸から出ている。
+**その次が `SPK-8` で、ここで初めて音が出る。**
 
 **ここまで通っている**: `SPK-1` の `nxe-audio`（`shaper` / `oversample` /
 `biquad` / `envelope` / `guard` / `harmonics`、`guard` は `RelativeGuard<N>`）、
 `SPK-2` のクロスオーバー（44.1〜192 kHz・`FOCUS` 全域で和が ±0.1 dB 以内）、
 `SPK-3` の検波（帯域ごとのパワー、`SPEED` を帯域中心の周期で下から抑える床）、
 `SPK-4` の上下コンプ（状態を持たない純関数。`SPARK` = 0 がちょうど 0 dB）、
-`SPK-6` の Sparkle（折り返し −60 dB 以下、持続音でゲート 0.008）。
+`SPK-6` の Sparkle（折り返し −60 dB 以下、持続音でゲート 0.008）、
+`SPK-5` の `CHARACTER`（軸端から端でラウドネス 0.98 dB）。
 
 **この 2 つは Sparkleur のコードを 1 行も書かずに着手できる**:
 
