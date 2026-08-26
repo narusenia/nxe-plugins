@@ -38,11 +38,13 @@ with the code, and fix the document in the same change.
   `guard` are thin wrappers holding Velour's tuning
 - `plugins/velour/velour`: the Velour nih-plug wrapper — parameter
   declarations, the Vizia UI, and the binding between them
+- `plugins/sparkleur/sparkleur-core`: the Sparkleur DSP — five-band multiband
+  dynamics with a transient-gated harmonic generator. **Being built**: the
+  crossover gate (`SPK-2`) is in, the dynamics are not. Host-agnostic,
+  allocation-free on the audio path
 - `plugins/sparkleur/docs`: Sparkleur's requirements, specifications and plan.
-  **Designed, not built** — five-band multiband dynamics with a transient-gated
-  harmonic generator. Its first unit (`SPK-1`, creating `crates/nxe-audio`) is
-  done; the crossover gate `SPK-2` is next, and there is no `sparkleur` crate
-  yet
+  There is no `sparkleur` wrapper crate yet — `SPK-8` creates it, and that is
+  where sound first comes out
 - `docs/`: monorepo-wide documents (architecture, cross-plugin backlog and
   roadmap). Indexed by `docs/README.md`
 - `plugins/<name>/docs/`: that plugin's own requirements, specifications, and

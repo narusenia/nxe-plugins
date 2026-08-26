@@ -1,9 +1,9 @@
 # 引き継ぎ
 
 **2026-08-26 時点。** Doubler は `doubler-v0.1.0` を**公開済み**、Velour は
-`velour-v0.1.0` で**一区切り**（下書き Release）。**Sparkleur は設計が済んで、
-入っているのは `SPK-1`（共有クレート `nxe-audio`）だけ。`sparkleur` クレートは
-まだ無い。**
+`velour-v0.1.0` で**一区切り**（下書き Release）。**Sparkleur は `SPK-2` まで —
+`nxe-audio` とクロスオーバーのゲートが入っている。まだ音は出ない**（ラッパは
+`SPK-8`）。
 
 このファイルは**そのとき何が動いていて、次に触る人が最初に知るべきこと**を
 1 枚にまとめたもの。設計の正は各仕様書、状態の正は
@@ -26,24 +26,24 @@
 | `crates/nxe-audio` | 共通の**処理**（`shaper` / `oversample` / `biquad` / `envelope` / `guard` / `harmonics`）。`SPK-1` で `velour-core` から抜いた |
 | `crates/nxe-ui` | 共通ウィジェット・テーマ・アイコン。`mise run gallery` |
 | `crates/nxe-dsp` | 共通の解析（`Handoff` / `PanScope` / `Spectrum` / `Level`） |
-| `plugins/sparkleur` | **文書と `SPK-1` だけ。** 要件・DSP 仕様・UI 仕様・実装計画（`SPK-1`〜`SPK-18`）。`sparkleur` クレートは無い |
+| `plugins/sparkleur/sparkleur-core` | **`SPK-2` まで。** 5 帯域クロスオーバー（LR4 の木 + オールパス補正、`FOCUS`）。ダイナミクスはまだ |
+| `plugins/sparkleur/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`SPK-1`〜`SPK-18`）。`sparkleur` ラッパクレートは無い |
 | CI | `check`（PR と main への push）、`release`（`<plugin>-v<version>` タグ） |
 
-テスト 242 本。CPU は予算 533 µs に対し **Doubler 85 µs / Velour 128 µs**
+テスト 253 本。CPU は予算 533 µs に対し **Doubler 85 µs / Velour 128 µs**
 （`VEL-16`。Velour の内訳はエンジン 4x が 79、`Spectrum` 48 バンド × 2 が 45、
 `Level` × 4 が 4）。
 
 ## 次にやること
 
-**`SPK-2`（クロスオーバー）。ここがゲート** — 全帯域 unity のとき 20 Hz〜20 kHz
-の和が ±0.1 dB 以内で平坦。通らないと「全部 0 で何もしない」が成立せず、その上の
-全部が意味を持たない。Velour の `VEL-1` と同じ位置。材料
-（`nxe_audio::biquad`）は `SPK-1` で揃っている。
+**`SPK-3`（検波と時定数）。** 帯域ごとのパワー追従、`SPEED` からの時定数、
+帯域の中心周波数から導いた床。材料は `nxe_audio::guard` の `Follower` と同じ形で、
+`Crossover::edges()` が帯域の境界を返す。
 
-**`SPK-1` は終わった。** `shaper` / `oversample` / `biquad` / `envelope` /
-`guard` と測定ヘルパの `harmonics` が `crates/nxe-audio` にあり、`guard` は
-`RelativeGuard<N>`（参照フォロワ 1 本 + 帯域 N 本、`Settings<N>` を `const` で
-渡す）。**Velour のテストは 1 本も落ちていない。**
+**ゲートの `SPK-2` は通った。** `sparkleur-core` の 5 帯域クロスオーバーは
+44.1 / 48 / 96 / 192 kHz と `FOCUS` 全域で和が ±0.1 dB 以内。`SPK-1` の
+`nxe-audio`（`shaper` / `oversample` / `biquad` / `envelope` / `guard` /
+`harmonics`、`guard` は `RelativeGuard<N>`）もその下にある。
 
 **この 2 つは Sparkleur のコードを 1 行も書かずに着手できる**:
 
@@ -94,6 +94,16 @@
 
 **引き算で「足した層」を取り出すな。** `出力 − 原音` は原音の方が大きいと層の
 精度をほとんど捨てる。`SOLO` を全部オンにして層を直接取る。
+
+## Sparkleur で踏んだ罠
+
+**分割の裾は 24 dB/oct とは限らない**（`SPK-2`）。木構造なので各帯域は自分の
+境界だけでなく**上流の全部のハイパス**を通っている。band 5 の 6 kHz より
+1 オクターブ下は `HP(1500)` がまだ効いていて 30 dB/oct で落ちる。24 dB/oct を
+測るなら境界が 1 つしか効かないところ。**帯域の幾何中心も 0 dB ではない**
+（band 2 は 1.7 オクターブ幅で中心が −1.5 dB）。どちらもテストの期待値の側が
+間違っていて、**フィルタは最初から正しかった** — 落ちたテストを見たとき、
+まず実測を並べて理論値と突き合わせる方が速い。
 
 **仕様の数字は 4 回動いた。** `k` の上限 20 → 6 → 8、`bias` のレベル補正
 6 dB → 0、`DENSITY` のメイクアップの基準 full scale → `REFERENCE_DB`。
