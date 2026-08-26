@@ -35,6 +35,9 @@ const MARGIN: f32 = 10.0;
 const DOT_MIN: f32 = 3.0;
 const DOT_MAX: f32 = 7.0;
 
+/// Half the width of an anchor's triangle.
+const ANCHOR_SIZE: f32 = 7.0;
+
 /// How close the pointer has to be to grab a dot.
 const GRAB: f32 = 14.0;
 
@@ -430,17 +433,18 @@ impl View for PolarField {
             canvas.stroke_path(&links, &paint);
         }
 
-        // Anchors: a small upward triangle, which reads as a source rather than
-        // as another draggable dot.
+        // Anchors: an upward triangle, which reads as a source rather than as
+        // another draggable dot. In the accent because it *is* draggable — the
+        // shape is what tells it apart from a voice, not the colour.
         for anchor in &self.anchors {
             let (x, y) = geometry.position(anchor.angle, anchor.radius);
-            let size = 5.0 * scale;
+            let size = ANCHOR_SIZE * scale;
             let mut path = vg::Path::new();
             path.move_to(x, y - size);
             path.line_to(x + size, y + size * 0.7);
             path.line_to(x - size, y + size * 0.7);
             path.close();
-            canvas.fill_path(&path, &vg::Paint::color(theme::MUTED.vg()));
+            canvas.fill_path(&path, &vg::Paint::color(theme::ACCENT.vg()));
         }
 
         for (index, point) in self.points.iter().enumerate() {
