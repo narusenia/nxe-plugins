@@ -35,7 +35,7 @@ Application::new(|cx| {
 | [`knob::Knob`](src/knob.rs) | 回転コントロール | `impl Res<f32>` | `Fn(&mut EventContext, Gesture)` |
 | [`bar::Bar`](src/bar.rs) | 横方向の細いスライダ。`new` は左端から、`bipolar` は中央から伸びる | `impl Res<f32>` | 同上 |
 | [`segmented::SegmentedControl`](src/segmented.rs) | 排他選択のボタン列 | `Lens<Target = usize>` | `Fn(&mut EventContext, usize)` |
-| [`polar::PolarField`](src/polar.rs) | 半円上の点をドラッグする 2 軸フィールド | `impl Res<Vec<FieldPoint>>` ×2（点と基準点） | `Fn(&mut EventContext, FieldGesture)` |
+| [`polar::PolarField`](src/polar.rs) | 半円上の点をドラッグする 2 軸フィールド。基準点（アンカー）も半径方向にドラッグできる | `impl Res<Vec<FieldPoint>>` ×2（点と基準点） | `Fn(&mut EventContext, FieldGesture)` |
 | [`curve::CurveView`](src/curve.rs) | 曲線・帯・縦ドラッグのハンドル | `impl Res<...>` ×3（曲線・帯・ハンドル） | `Fn(&mut EventContext, usize, Gesture)` |
 
 値はすべて**正規化**（`0..=1`。双極のものは `0.5` が中央）。単位の写像は
@@ -69,6 +69,13 @@ Application::new(|cx| {
 
 `Bar` も**縦**ドラッグ。横バーを横に引くのは一見自然だが、行を積んだときに端を
 越えて隣に入る誤操作が起きる。
+
+`PolarField` だけは [`polar::FieldGesture`](src/polar.rs) を使う。2 つの値が
+同時に動くため。点の分（`Begin` / `Change` / `End` / `Reset` / `Hover`）に加えて
+アンカーの分（`AnchorBegin` / `AnchorChange(f32)` / `AnchorEnd` /
+`AnchorReset`）がある。**アンカーは半径を共有し、角度では動かない** — 何本
+立っていても表しているのは 1 つの値。書くものが無い呼び出し側は無視すればよく、
+そのときアンカーは動かないだけ。
 
 ## テーマ
 
