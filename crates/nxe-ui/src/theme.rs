@@ -128,8 +128,12 @@ pub const SPACE_5: f32 = 24.0;
 /// keyword or a bare number and nothing else, so `10px` fails to parse and the
 /// declaration is dropped — silently, leaving every label at the 16 px default.
 /// The test below is what keeps a `px` from creeping back in.
-pub const FONT_LABEL: f32 = 11.0;
+pub const FONT_LABEL: f32 = 12.0;
 pub const FONT_VALUE: f32 = 10.0;
+
+/// The wordmark, and nothing else. A third size exists only because a plugin's
+/// name is not a label — it names the window, not a control in it.
+pub const FONT_TITLE: f32 = 17.0;
 
 /// Hover and selection only. Never a value: a knob that lags the mouse feels
 /// broken.
@@ -207,6 +211,12 @@ label {{
 .value {{
     color: {foreground};
     font-size: {FONT_VALUE};
+}}
+
+/* The plugin's name. Set apart by size alone, like everything else here. */
+.title {{
+    color: {foreground};
+    font-size: {FONT_TITLE};
 }}
 
 .subtle {{
@@ -375,6 +385,7 @@ mod tests {
             ".divider",
             ".label",
             ".value",
+            ".title",
             ".subtle",
             ".disabled",
             ".icon",

@@ -174,7 +174,9 @@ pub fn create(params: Arc<DoublerParams>, state: Arc<ViziaState>) -> Option<Box<
 
 fn header(cx: &mut Context) {
     HStack::new(cx, |cx| {
-        Label::new(cx, "DOUBLER").class("value");
+        // The shipped name, in full — `NAME` in `lib.rs`, the bundle, and the
+        // host's plugin list all say the same thing.
+        Label::new(cx, "NXE DOUBLER").class("title");
         Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
         param_bind::segmented(cx, Ui::params, |params| &params.voices, &["2", "4", "8"]);
         param_bind::segmented(

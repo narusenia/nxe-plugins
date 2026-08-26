@@ -207,7 +207,7 @@ fn main() {
         // the start rather than when someone notices it has stopped fitting.
         ScrollView::new(cx, 0.0, 0.0, false, true, |cx| {
             VStack::new(cx, |cx| {
-                Label::new(cx, "nxe-ui").class("value");
+                Label::new(cx, "nxe-ui").class("title");
                 Label::new(cx, "tokens and widgets").class("subtle");
 
                 colours(cx);
@@ -740,7 +740,8 @@ fn spacing(cx: &mut Context) {
 
 fn text(cx: &mut Context) {
     panel(cx, "TEXT", |cx| {
-        Label::new(cx, "LABEL — names a thing, 11, muted").class("label");
+        Label::new(cx, "TITLE — the plugin's name, 17").class("title");
+        Label::new(cx, "LABEL — names a thing, 12, muted").class("label");
         Label::new(cx, "Value — says what it is, 10, Geist Sans").class("value");
         Label::new(cx, "Subtle — gridlines, units, disabled rows").class("subtle");
         Element::new(cx).class("divider");
