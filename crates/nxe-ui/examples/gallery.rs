@@ -708,6 +708,52 @@ fn curves(cx: &mut Context) {
         )
         .class("subtle");
     });
+
+    transfer(cx);
+}
+
+/// The same view read against a line of its own.
+///
+/// A filter response is read against a level, which is the horizontal line the
+/// view draws by default. **A transfer curve is read against the diagonal** —
+/// below it is compression, above it is lift — and a diagonal cannot be a
+/// gridline, because those are vertical. `.reference(…)` is the way in.
+fn transfer(cx: &mut Context) {
+    // A compressor with a soft knee either way: the shape `SPK-14` needs.
+    const KNEE: f32 = 0.12;
+    let curve: Curve = (0..=96)
+        .map(|step| {
+            let x = step as f32 / 96.0;
+            // Squash above the upper threshold, lift below the lower one, and
+            // leave the middle alone.
+            let y = if x > 0.7 {
+                0.7 + (x - 0.7) * 0.35
+            } else if x < 0.3 {
+                0.3 - (0.3 - x) * 0.55
+            } else {
+                x
+            };
+            // Round the two corners so both knees read as curves.
+            (x, y * (1.0 - KNEE) + x * KNEE)
+        })
+        .collect();
+    let diagonal: Curve = vec![(0.0, 0.0), (1.0, 1.0)];
+
+    panel(cx, "CURVE VIEW · reference", move |cx| {
+        CurveView::new(
+            cx,
+            vec![curve.clone()],
+            Vec::<Span>::new(),
+            Vec::<Grip>::new(),
+            Vec::new(),
+            |_cx, _index, _gesture| {},
+        )
+        .reference(diagonal.clone())
+        .height(Pixels(120.0))
+        .width(Stretch(1.0));
+
+        Label::new(cx, "read only · in against out, against the diagonal").class("subtle");
+    });
 }
 
 /// What the three generators are adding, as a bell per band scaled by whatever

@@ -161,15 +161,7 @@ impl Engine {
             edges,
         );
 
-        let sub_protect = protect::amount_of(character.sub_protect, shape.sub_protect);
-        let scales = protect::ceiling_scales(sub_protect);
-        self.weights = std::array::from_fn(|band| Weights {
-            down: shape.down[band],
-            up: shape.up[band],
-            gain_db: shape.gain_db[band],
-            ceiling_scale: scales[band],
-        });
-
+        self.weights = weights_of(shape, &character);
         self.curve = character.curve;
         self.floor_db = floor_of(shape.lift);
         self.de_harsh_amount = protect::amount_of(character.de_harsh, shape.de_harsh);
@@ -310,6 +302,46 @@ impl Engine {
         self.de_harsh.reset();
         self.gains_db = [0.0; BAND_COUNT];
     }
+}
+
+/// The per-band weights a shape resolves to, **Sub Protect folded in**: it is
+/// the bottom band's ceiling closed down and nothing else (`REQ-SPK-008`).
+///
+/// Shared by [`Engine::set_shape`] and [`transfer_db`], so the window cannot
+/// draw a curve the sound does not have.
+fn weights_of(shape: &Shape, character: &Character) -> [Weights; BAND_COUNT] {
+    let scales =
+        protect::ceiling_scales(protect::amount_of(character.sub_protect, shape.sub_protect));
+    std::array::from_fn(|band| Weights {
+        down: shape.down[band],
+        up: shape.up[band],
+        gain_db: shape.gain_db[band],
+        ceiling_scale: scales[band],
+    })
+}
+
+/// One band's transfer curve: an input level in dB to the output level in dB.
+///
+/// **For the picture** (`SPK-14`, `REQ-SPK-013`). Resolved from the same values
+/// the audio path resolves, through the same gain computer — so the window
+/// cannot show a curve the sound does not have.
+///
+/// **De-Harsh is not in it**, and cannot be: it depends on what is going
+/// through right now rather than on where a knob is. The figure shows that one
+/// instead, by sinking the region it holds back (`SPK-13`).
+pub fn transfer_db(shape: &Shape, levels: &Levels, band: usize, input_db: f32) -> f32 {
+    let band = band.min(BAND_COUNT - 1);
+    let character = character::at(shape.character);
+    let weights = weights_of(shape, &character);
+
+    input_db
+        + dynamics::band_gain_db(
+            input_db,
+            &character.curve,
+            &weights[band],
+            spark_for(band, levels),
+            floor_of(shape.lift),
+        )
 }
 
 /// `LIFT` as the floor it opens to, in dB.
@@ -885,6 +917,60 @@ mod tests {
             (with - (without + reduction)).abs() < 0.5,
             "the reported gain {with:.2} is not {without:.2} plus {reduction:.2}"
         );
+    }
+
+    /// **The window and the sound come from one gain computer** (`SPK-14`).
+    #[test]
+    fn the_transfer_curve_is_the_gain_the_engine_applies() {
+        let shape = Shape::default();
+        let levels = working();
+
+        for band in 0..BAND_COUNT {
+            for input_db in [-60.0f32, -40.0, -24.0, -18.0, -6.0, 0.0] {
+                let output_db = transfer_db(&shape, &levels, band, input_db);
+                // Compressing pulls the output below the input, lifting puts it
+                // above, and between the thresholds they are the same number.
+                assert!(output_db.is_finite());
+                if (-30.0..-24.0).contains(&input_db) {
+                    assert!(
+                        (output_db - input_db).abs() < 1e-4,
+                        "band {band} moved a rest"
+                    );
+                }
+            }
+        }
+
+        // Above the downward threshold the curve is under the diagonal; below
+        // the upward one it is over it. **Both knees**, which is what the
+        // window exists to show (`REQ-SPK-006`).
+        assert!(transfer_db(&shape, &levels, 2, -6.0) < -6.0);
+        assert!(transfer_db(&shape, &levels, 2, -50.0) > -50.0);
+
+        // And `SPARK` at zero is the diagonal exactly.
+        let idle = Levels::default();
+        for input_db in [-60.0f32, -30.0, 0.0] {
+            assert_eq!(transfer_db(&shape, &idle, 2, input_db), input_db);
+        }
+    }
+
+    /// It rises: an input that goes up cannot come out lower than one that did
+    /// not, whatever the ratios say.
+    #[test]
+    fn the_transfer_curve_never_turns_back_on_itself() {
+        let shape = Shape::default();
+        let levels = working();
+        for band in 0..BAND_COUNT {
+            let mut previous = f32::MIN;
+            for step in 0..=120 {
+                let input_db = -60.0 + step as f32 * 0.5;
+                let output_db = transfer_db(&shape, &levels, band, input_db);
+                assert!(
+                    output_db >= previous - 1e-4,
+                    "band {band} fell back at {input_db} dB"
+                );
+                previous = output_db;
+            }
+        }
     }
 
     #[test]

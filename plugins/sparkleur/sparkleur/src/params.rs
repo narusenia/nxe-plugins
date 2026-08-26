@@ -326,6 +326,64 @@ impl SparkleurParams {
         }
     }
 
+    /// The same values, **without touching a smoother** — for the interface.
+    ///
+    /// `shape` advances every smoother it reads, so calling it from the editor
+    /// would steal a step from the audio thread and make a drag ramp at double
+    /// speed. This reads the settled values instead, which is what a picture
+    /// should show anyway: the curve you have set, not the one the ramp is half
+    /// way through.
+    pub fn display_shape(&self) -> Shape {
+        Shape {
+            character: self.character.value(),
+            focus: self.focus.value(),
+            speed: self.speed.value(),
+            snap: self.snap.value(),
+            lift: self.lift.value(),
+            de_harsh: self.de_harsh.value(),
+            sub_protect: self.sub_protect.value(),
+            up: [
+                self.up_sub.value(),
+                self.up_body.value(),
+                self.up_mid.value(),
+                self.up_pres.value(),
+                self.up_air.value(),
+            ],
+            down: [
+                self.down_sub.value(),
+                self.down_body.value(),
+                self.down_mid.value(),
+                self.down_pres.value(),
+                self.down_air.value(),
+            ],
+            gain_db: [
+                self.gain_sub.value(),
+                self.gain_body.value(),
+                self.gain_mid.value(),
+                self.gain_pres.value(),
+                self.gain_air.value(),
+            ],
+            solo: [
+                self.solo_sub.value(),
+                self.solo_body.value(),
+                self.solo_mid.value(),
+                self.solo_pres.value(),
+                self.solo_air.value(),
+            ],
+            factor: self.oversample.value().into(),
+        }
+    }
+
+    /// The settled per-sample values, for the same reason.
+    pub fn display_levels(&self) -> Levels {
+        Levels {
+            spark: self.spark.value(),
+            body: self.body.value(),
+            air: self.air.value(),
+            mix: self.mix.value(),
+        }
+    }
+
     /// What the engine needs every sample, because it multiplies the signal.
     pub fn levels(&self) -> Levels {
         Levels {

@@ -41,6 +41,7 @@ enum CurveEvent {
     Spans(Vec<Span>),
     Grips(Vec<Grip>),
     Analysis(Curve),
+    Reference(Curve),
 }
 
 pub struct CurveView {
@@ -50,6 +51,9 @@ pub struct CurveView {
     /// A filled area behind everything: **what is going through**, as opposed to
     /// what the curves are set to. Empty unless a caller supplies one.
     analysis: Curve,
+    /// The line the curves are read against. Empty means the horizontal one
+    /// through the middle of the window.
+    reference: Curve,
     /// Gridline positions in normalized `x`. Fixed for the life of the view —
     /// the caller knows where its own axis marks go.
     grid: Vec<f32>,
@@ -76,6 +80,7 @@ impl CurveView {
             spans: initial_spans,
             grips: initial_grips,
             analysis: Curve::new(),
+            reference: Curve::new(),
             grid,
             drag: Drag::default(),
             dragging: None,
@@ -122,6 +127,15 @@ pub trait CurveViewModifiers {
     /// A filled area drawn behind the curves — the signal going through, on the
     /// same axes as the curves. Optional; without it nothing is drawn there.
     fn analysis(self, curve: impl Res<Curve> + 'static) -> Self;
+
+    /// **The line the curves are read against**, replacing the horizontal one
+    /// through the middle.
+    ///
+    /// A transfer curve of input against output is read against the diagonal,
+    /// not against a level (`plugins/sparkleur/docs/specifications/ui.md`), and
+    /// a view cannot draw a diagonal as a gridline — those are vertical. Give
+    /// it the line instead.
+    fn reference(self, curve: impl Res<Curve> + 'static) -> Self;
 }
 
 impl CurveViewModifiers for Handle<'_, CurveView> {
@@ -129,6 +143,14 @@ impl CurveViewModifiers for Handle<'_, CurveView> {
         let entity = self.entity();
         curve.set_or_bind(self.context(), entity, move |cx, value| {
             cx.emit_to(entity, CurveEvent::Analysis(value));
+        });
+        self
+    }
+
+    fn reference(mut self, curve: impl Res<Curve> + 'static) -> Self {
+        let entity = self.entity();
+        curve.set_or_bind(self.context(), entity, move |cx, value| {
+            cx.emit_to(entity, CurveEvent::Reference(value));
         });
         self
     }
@@ -146,6 +168,7 @@ impl View for CurveView {
                 CurveEvent::Spans(spans) => self.spans = spans.clone(),
                 CurveEvent::Grips(grips) => self.grips = grips.clone(),
                 CurveEvent::Analysis(analysis) => self.analysis = analysis.clone(),
+                CurveEvent::Reference(reference) => self.reference = reference.clone(),
             }
             cx.needs_redraw();
         });
@@ -242,15 +265,28 @@ impl View for CurveView {
         paint.set_line_width(line);
         canvas.stroke_path(&grid, &paint);
 
-        // The resting line, brighter than the grid: a curve's distance from it
-        // is the thing being read.
-        let mut centre = vg::Path::new();
-        let (_, centre_y) = at(0.0, 0.5);
-        centre.move_to(bounds.x, centre_y);
-        centre.line_to(bounds.x + bounds.w, centre_y);
+        // The line a curve's distance from is the thing being read. The middle
+        // of the window unless the caller gave one of its own — an input
+        // against output plot is read against the diagonal, and a diagonal
+        // cannot be a gridline here.
+        let mut resting = vg::Path::new();
+        if self.reference.len() > 1 {
+            for (index, (x, y)) in self.reference.iter().enumerate() {
+                let (px, py) = at(*x, *y);
+                if index == 0 {
+                    resting.move_to(px, py);
+                } else {
+                    resting.line_to(px, py);
+                }
+            }
+        } else {
+            let (_, centre_y) = at(0.0, 0.5);
+            resting.move_to(bounds.x, centre_y);
+            resting.line_to(bounds.x + bounds.w, centre_y);
+        }
         let mut paint = vg::Paint::color(theme::BORDER.vg());
         paint.set_line_width(line);
-        canvas.stroke_path(&centre, &paint);
+        canvas.stroke_path(&resting, &paint);
 
         for curve in &self.curves {
             let mut path = vg::Path::new();
@@ -295,6 +331,7 @@ mod tests {
             spans: Vec::new(),
             grips,
             analysis: Curve::new(),
+            reference: Curve::new(),
             grid: Vec::new(),
             drag: Drag::default(),
             dragging: None,

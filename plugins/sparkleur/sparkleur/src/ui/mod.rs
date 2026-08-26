@@ -7,13 +7,14 @@
 //! wedged it in Ableton. Tabs need nothing from the host for a control to
 //! become reachable.
 //!
-//! The transfer window and the meters arrive in `SPK-14` and the Advanced
-//! table in `SPK-15`; until then their space is empty rather than filled with
-//! something that pretends to be them.
+//! The Advanced table arrives in `SPK-15`; until then its space is empty
+//! rather than filled with something that pretends to be it.
 
+mod curve;
 mod field;
+mod meters;
 
-use crate::analysis::{Analysis, BANDS, HIGH_HZ, LOW_HZ};
+use crate::analysis::{Analysis, BANDS, HIGH_HZ, LOW_HZ, METERS};
 use crate::params::SparkleurParams;
 use nih_plug::prelude::Editor;
 use nih_plug_vizia::vizia::prelude::*;
@@ -75,6 +76,9 @@ pub(crate) struct Ui {
     analysis: Arc<Analysis>,
     /// The reactive copies. Updating these is what makes the display move.
     dry: Curve,
+    /// Peak and held peak per meter, normalized onto the meter's own scale.
+    peaks: Vec<f32>,
+    holds: Vec<f32>,
     /// **Always empty.** The widget takes two curves because Velour has two;
     /// a split topology has no separable added layer, and the per-band gains
     /// are what say what happened (`REQ-SPK-018`).
@@ -96,6 +100,10 @@ impl Model for Ui {
             UiEvent::Hover(index) => self.hovered = *index,
             UiEvent::Poll => {
                 self.dry = spectrum_curve(&self.analysis.dry.read());
+                let peaks = self.analysis.peaks.read();
+                let holds = self.analysis.holds.read();
+                self.peaks = peaks.iter().copied().map(meter_position).collect();
+                self.holds = holds.iter().copied().map(meter_position).collect();
                 // The gains are **not** copied here. The figure reads them
                 // inside its own lens, because a region carries what it is set
                 // to and what it is doing in one value and a lens can only map
@@ -130,6 +138,21 @@ fn start_heartbeat(cx: &mut Context) {
 /// The floor of the spectrum curve. Below this a band is drawn as silence —
 /// without a floor the curve sits on the noise of an idle track.
 const SPECTRUM_FLOOR_DB: f32 = -72.0;
+
+/// The floor of the meters. Shallower than the spectrum's: a meter is read for
+/// "how close to clipping", and 60 dB of travel puts a working mix in the top
+/// third where it can be read.
+const METER_FLOOR_DB: f32 = -60.0;
+
+/// An amplitude as a position on a meter.
+fn meter_position(amplitude: f32) -> f32 {
+    let db = 20.0 * amplitude.max(1e-9).log10();
+    ((db - METER_FLOOR_DB) / -METER_FLOOR_DB).clamp(0.0, 1.0)
+}
+
+/// How wide the transfer window is. Narrower than the figure beside it: it
+/// answers one question about one band, and the figure answers the main one.
+const CURVE_WIDTH: f32 = 132.0;
 
 /// One published band frame as a curve across the figure's axis.
 ///
@@ -178,6 +201,8 @@ pub fn create(
             analysis: analysis.clone(),
             dry: Curve::new(),
             wet: Curve::new(),
+            peaks: vec![0.0; METERS],
+            holds: vec![0.0; METERS],
         }
         .build(cx);
 
@@ -186,31 +211,51 @@ pub fn create(
         // heartbeat.
         start_heartbeat(cx);
 
-        VStack::new(cx, |cx| {
-            header(cx);
-
-            // The figure stays put above the tabs. It is what the plugin
-            // *is* — hiding it behind a tab would leave the window with
-            // nothing to look at (`ui.md`).
-            field::view(cx, host_rate, analysis.clone());
-
-            tab_strip(cx);
-
-            // Both tabs are built and one is hidden. Rebuilding on a switch
-            // would drop the widgets' own state — a drag in progress, a hover —
-            // for nothing.
+        HStack::new(cx, |cx| {
             VStack::new(cx, |cx| {
-                main_tab(cx);
-                advanced_tab(cx);
+                header(cx);
+
+                // The figure stays put above the tabs. It is what the plugin
+                // *is* — hiding it behind a tab would leave the window with
+                // nothing to look at (`ui.md`).
+                figure_row(cx, host_rate, analysis.clone());
+
+                tab_strip(cx);
+
+                // Both tabs are built and one is hidden. Rebuilding on a
+                // switch would drop the widgets' own state — a drag in
+                // progress, a hover — for nothing.
+                VStack::new(cx, |cx| {
+                    main_tab(cx);
+                    advanced_tab(cx);
+                })
+                .height(Pixels(TAB_HEIGHT))
+                .width(Stretch(1.0));
             })
-            .height(Pixels(TAB_HEIGHT))
-            .width(Stretch(1.0));
+            .width(Stretch(1.0))
+            .height(Stretch(1.0))
+            .row_between(Pixels(theme::SPACE_3));
+
+            // **Outside the tabs**, because "is this louder or better" is a
+            // question asked while looking at either of them (`ui.md`).
+            meters::view(cx);
         })
         .width(Stretch(1.0))
         .height(Stretch(1.0))
-        .row_between(Pixels(theme::SPACE_3))
+        .col_between(Pixels(theme::SPACE_3))
         .child_space(Pixels(theme::SPACE_3));
     })
+}
+
+/// The figure and the window that reads one band of it, side by side.
+fn figure_row(cx: &mut Context, host_rate: f32, analysis: Arc<Analysis>) {
+    HStack::new(cx, |cx| {
+        field::view(cx, host_rate, analysis);
+        curve::view(cx, CURVE_WIDTH);
+    })
+    .class("row")
+    .height(Pixels(field::HEIGHT))
+    .col_between(Pixels(theme::SPACE_3));
 }
 
 fn header(cx: &mut Context) {
