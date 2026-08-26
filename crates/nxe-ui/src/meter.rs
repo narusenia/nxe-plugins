@@ -132,7 +132,15 @@ impl View for Meter {
         if w > 0.0 && h > 0.0 {
             let mut fill = vg::Path::new();
             fill.rect(x, y, w, h);
-            canvas.fill_path(&fill, &vg::Paint::color(theme::ACCENT.vg()));
+            // The ramp spans the whole track, so a level reads against the
+            // scale rather than against its own height
+            // (`theme::accent_paint`).
+            let paint = if self.vertical {
+                theme::accent_paint(bounds.x, bounds.y + bounds.h, bounds.x, bounds.y)
+            } else {
+                theme::accent_paint(bounds.x, bounds.y, bounds.x + bounds.w, bounds.y)
+            };
+            canvas.fill_path(&fill, &paint);
         }
 
         // Over the fill, in the background colour, so the scale stays legible

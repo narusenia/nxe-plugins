@@ -298,7 +298,11 @@ impl View for CurveView {
                     path.line_to(px, py);
                 }
             }
-            let mut paint = vg::Paint::color(theme::ACCENT.vg());
+            // The ramp runs left to right across the plot, so the curve says
+            // which way it is read — the far end of the axis is the pale end,
+            // the same as a bar filled to the far end
+            // (`theme::accent_paint`).
+            let mut paint = theme::accent_paint(bounds.x, bounds.y, bounds.x + bounds.w, bounds.y);
             paint.set_line_width(CURVE_WIDTH * scale);
             paint.set_line_cap(vg::LineCap::Butt);
             canvas.stroke_path(&path, &paint);

@@ -18,6 +18,15 @@ const ANGLE: f32 = 135.0;
 const ARC_WIDTH: f32 = 3.0;
 const TICK_INNER: f32 = 0.42;
 
+/// How far past the arc the two end marks sit, and how long they are.
+///
+/// **Where the sweep stops, said once.** A 270° arc has no natural end on
+/// screen — the track is the same grey whether it has run out or not — so the
+/// two extremes get a mark. It is the smallest thing that makes the control
+/// read as an instrument with a range rather than as a ring.
+const END_GAP: f32 = 3.0;
+const END_LENGTH: f32 = 3.0;
+
 /// Pushed into the view when the bound value changes from outside — an
 /// automation move, a preset, the host.
 enum KnobEvent {
@@ -97,23 +106,34 @@ impl View for Knob {
         paint.set_line_cap(vg::LineCap::Butt);
         canvas.stroke_path(&track, &paint);
 
-        // The one gradient the design allows, and only here: it makes a thin
-        // arc read as a lit indicator rather than as a stray line.
+        // The lit arc. The ramp runs across the widget from the resting end of
+        // the sweep to the far one, so it agrees with a bar filled to the same
+        // value (`theme::accent_paint`).
         if self.value > 0.0 {
             let mut filled = vg::Path::new();
             filled.arc(centre_x, centre_y, radius, start, angle, vg::Solidity::Hole);
-            let mut paint = vg::Paint::linear_gradient(
-                bounds.x,
-                bounds.y + bounds.h,
-                bounds.x + bounds.w,
-                bounds.y,
-                theme::ACCENT.vg(),
-                theme::ACCENT_BRIGHT.vg(),
-            );
+            let mut paint =
+                theme::accent_paint(bounds.x, bounds.y + bounds.h, bounds.x + bounds.w, bounds.y);
             paint.set_line_width(width);
             paint.set_line_cap(vg::LineCap::Butt);
             canvas.stroke_path(&filled, &paint);
         }
+
+        // The two end marks, outside the track.
+        let mut ends = vg::Path::new();
+        for edge in [start, end] {
+            let (cos, sin) = (edge.cos(), edge.sin());
+            let inner = radius + width * 0.5 + END_GAP * scale;
+            ends.move_to(centre_x + cos * inner, centre_y + sin * inner);
+            ends.line_to(
+                centre_x + cos * (inner + END_LENGTH * scale),
+                centre_y + sin * (inner + END_LENGTH * scale),
+            );
+        }
+        let mut paint = vg::Paint::color(theme::BORDER.vg());
+        paint.set_line_width(scale.max(1.0));
+        paint.set_line_cap(vg::LineCap::Butt);
+        canvas.stroke_path(&ends, &paint);
 
         let mut tick = vg::Path::new();
         tick.move_to(

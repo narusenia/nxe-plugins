@@ -197,3 +197,18 @@ shift-fine, double-click reset, or type-a-value around it.
   The per-voice value is a normalized shape and the macro scales it (see
   `plugins/doubler/docs/specifications/ui.md`). Any UI that writes a computed
   value back into the other layer is wrong.
+
+## 字送りと行間は無い
+
+`letter-spacing` と `line-height` は**このリビジョンのプロパティ表に存在しない**
+（`vizia_style/src/property.rs` が解析する名前の一覧が正）。スイス様式の
+字送りを効かせた大文字ラベルは書けないので、**階層はサイズ・ウェイト・色・
+罫線で作る**。
+
+使えるものは確認済み: **片側の罫線**（`border-top-width` など）、`text-align`、
+`font-weight`、`transition`、`opacity`、`clip-path`、`min-*` / `max-*`、
+`z-index`、`box-shadow`。
+
+**グラデーションは `background-image` にだけ書ける。** `background-color` に
+`linear-gradient` を渡しても解析されない。両方指定すると色の**上に**勾配が
+乗るのではなく、色が下に残る。radial は無い。

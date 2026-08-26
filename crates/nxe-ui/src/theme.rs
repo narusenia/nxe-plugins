@@ -128,6 +128,21 @@ pub const ACCENT_DIM: Token = Token::rgba(0x38, 0xBD, 0xF8, 0.18);
 /// lightness, not colour.
 pub const ACCENT_WASH: Token = Token::rgb(0xE0, 0xF2, 0xFE);
 
+/// The accent fill, as a paint for a custom-drawn widget.
+///
+/// **One helper so the drawn fills and the stylesheet cannot disagree.** `Bar`,
+/// `Meter` and `Knob` all fill with the accent, and each drew it its own way:
+/// two flat, one with a gradient across its bounding box. A filled control now
+/// looks the same whichever of them it is.
+///
+/// The coordinates are the **span of the fill**, not the widget's bounds — the
+/// gradient runs from where the fill starts to where it could reach, so a
+/// quarter-full bar shows the first quarter of the ramp rather than the whole
+/// of it squeezed. `(x0, y0)` is the resting end.
+pub fn accent_paint(x0: f32, y0: f32, x1: f32, y1: f32) -> vg::Paint {
+    vg::Paint::linear_gradient(x0, y0, x1, y1, ACCENT.vg(), ACCENT_WASH.vg())
+}
+
 /// A two-stop linear gradient, for `background-image`.
 ///
 /// **`background-image`, not `background-color`** — vizia parses
