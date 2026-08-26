@@ -56,7 +56,12 @@
 `VEL-8` で Guard が入り、**パラメータは 20 個**。
 
 **`SOLO` が使えるようになった** — 並列生成でしか提供できない「足している層だけを
-聴く」。次は `VEL-6`（EMOTION）→ `VEL-7`（DENSITY）。
+聴く」。
+
+**`VEL-6` で `EMOTION` が入り、パラメータは 21 個。** `EMOTION` と `DENSITY` が
+共有する検波器（`envelope.rs`、ピーク、モノ和、**圧縮前**）も同時に入った。
+次は `VEL-7`（DENSITY）で、そこは検波器を足すのではなく**既にあるものを使う**
+単位になる。
 
 Velour が共通クレートに要求したものは 3 つとも入っている（`UI-13` `BandField` /
 `UI-8` `Meter` / `DSP-4` `Level`）。**Velour のクレートは 1 行も無い状態で
@@ -68,7 +73,7 @@ Velour が共通クレートに要求したものは 3 つとも入っている�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| VEL-6 | エンベロープ検波と EMOTION | `velour-plan.md` |
+| VEL-7 | DENSITY（検波器は `VEL-6` のものを使う） | `velour-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 | UI-9 | `ToggleSwitch`（**Doubler も Velour も使わない**。3 個目でも要らなければ落とす） | `nxe-ui-plan.md` |
 
