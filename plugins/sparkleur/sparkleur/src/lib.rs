@@ -3,9 +3,9 @@
 //!
 //! No DSP lives here (`.agents/rules/rust.md`).
 //!
-//! **No editor yet** — `SPK-8` is the unit where sound first comes out, and the
-//! interface arrives in `SPK-12` onward (`sparkleur-plan.md`). Until then a
-//! host shows its own generic view, which is enough to turn a knob and listen.
+//! **The interface is the macro layer only so far** (`SPK-12`): the seven
+//! everyday knobs and the tab strip. The figure, the meters and the Advanced
+//! table arrive in `SPK-13` through `SPK-15`.
 
 use analysis::{Analysis, BANDS, HIGH_HZ, LOW_HZ, METERS};
 use nih_plug::prelude::*;
@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 mod analysis;
 mod params;
+mod ui;
 
 use params::SparkleurParams;
 
@@ -28,6 +29,8 @@ struct Sparkleur {
     /// What the editor reads. **The audio thread writes; nothing else touches
     /// the analysers below** (`analysis.rs`).
     analysis: Arc<Analysis>,
+    /// The window's size and position, which the host saves with the project.
+    editor_state: Arc<nih_plug_vizia::ViziaState>,
     dry_spectrum: Spectrum<BANDS>,
     /// IN L, IN R, OUT L, OUT R.
     meters: [Level; METERS],
@@ -43,6 +46,7 @@ impl Default for Sparkleur {
             params: Arc::new(SparkleurParams::default()),
             engine: Engine::new(FALLBACK_SAMPLE_RATE),
             analysis: Arc::new(Analysis::default()),
+            editor_state: ui::default_state(),
             dry_spectrum: Spectrum::new(FALLBACK_SAMPLE_RATE, LOW_HZ, HIGH_HZ),
             meters: std::array::from_fn(|_| Level::new(FALLBACK_SAMPLE_RATE)),
             sample_rate: FALLBACK_SAMPLE_RATE,
@@ -78,6 +82,10 @@ impl Plugin for Sparkleur {
 
     fn params(&self) -> Arc<dyn Params> {
         self.params.clone()
+    }
+
+    fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
+        ui::create(self.params.clone(), self.editor_state.clone())
     }
 
     /// The only place that allocates. Everything the audio thread touches is
