@@ -56,9 +56,23 @@ fn points_of(params: &DoublerParams) -> Vec<FieldPoint> {
                     Source::TrueStereo => index % 2,
                 },
                 enabled: true,
+                // A step along the accent per pair, so the two voices a
+                // mirrored edit moves together are findable among eight dots
+                // (`plugins/doubler/docs/specifications/ui.md`).
+                tint: tint_of(index),
             }
         })
         .collect()
+}
+
+/// Where a voice's pair sits on the accent ramp, `0` deepest and `1` brightest.
+///
+/// Steps rather than hues: **the accent is the only colour this design has**
+/// (`plugins/doubler/docs/specifications/ui.md`), so four pairs are four
+/// brightnesses of the same blue.
+fn tint_of(index: usize) -> f32 {
+    let pairs = MAX_VOICES / 2;
+    (index / 2) as f32 / (pairs - 1) as f32
 }
 
 /// One marker under `MonoSum`, two under `TrueStereo`. They sit where a voice

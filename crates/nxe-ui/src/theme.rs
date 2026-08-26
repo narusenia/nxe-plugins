@@ -74,6 +74,21 @@ impl Token {
 
     /// The same colour at a different opacity. Used for dimming a disabled
     /// control rather than desaturating it.
+    /// A colour `t` of the way from this one to `other`, `t` in `0..=1`.
+    ///
+    /// Lets a set of related things be told apart along the accent instead of
+    /// by adding hues the palette does not have.
+    pub fn mix(self, other: Self, t: f32) -> Self {
+        let t = t.clamp(0.0, 1.0);
+        let lerp = |a: u8, b: u8| (a as f32 + (b as f32 - a as f32) * t).round() as u8;
+        Self {
+            red: lerp(self.red, other.red),
+            green: lerp(self.green, other.green),
+            blue: lerp(self.blue, other.blue),
+            alpha: self.alpha + (other.alpha - self.alpha) * t,
+        }
+    }
+
     pub fn at(self, alpha: f32) -> Self {
         Self { alpha, ..self }
     }
@@ -101,6 +116,10 @@ pub const SUBTLE: Token = Token::rgb(0x73, 0x73, 0x73);
 // One accent, and no other hue anywhere.
 pub const ACCENT: Token = Token::rgb(0x38, 0xBD, 0xF8);
 pub const ACCENT_BRIGHT: Token = Token::rgb(0x7D, 0xD3, 0xFC);
+/// The dark end of the accent ramp. Used with [`ACCENT_BRIGHT`] to tell groups
+/// of the same kind of thing apart — four voice pairs, say — **without adding a
+/// second hue**, which is the one thing this palette does not allow.
+pub const ACCENT_DEEP: Token = Token::rgb(0x03, 0x69, 0xA1);
 pub const ACCENT_DIM: Token = Token::rgba(0x38, 0xBD, 0xF8, 0.18);
 
 /// Corner radii. **Zero — the corners are square.** They were 2 and 3 px, on the

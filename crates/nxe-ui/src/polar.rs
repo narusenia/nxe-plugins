@@ -55,6 +55,11 @@ pub struct FieldPoint {
     /// A disabled point is drawn dim but stays draggable — the caller may well
     /// want to set up something that is not in use yet.
     pub enabled: bool,
+    /// Where along the accent ramp this point is drawn, `0` deepest and `1`
+    /// brightest. **What a group is, is the caller's business** — the Doubler
+    /// gives each pair of voices its own step, which is what makes a pair
+    /// findable in a field of eight dots.
+    pub tint: f32,
 }
 
 /// Vizia compares bound values to decide whether to rebuild. `PartialEq` is the
@@ -73,6 +78,7 @@ impl Default for FieldPoint {
             size: 0.5,
             anchor: 0,
             enabled: true,
+            tint: 1.0,
         }
     }
 }
@@ -461,7 +467,7 @@ impl View for PolarField {
             }
 
             let colour = if point.enabled {
-                theme::ACCENT
+                theme::ACCENT_DEEP.mix(theme::ACCENT_BRIGHT, point.tint)
             } else {
                 theme::SUBTLE
             };

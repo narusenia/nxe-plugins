@@ -165,6 +165,8 @@ fn default_field() -> Vec<FieldPoint> {
             anchor: index % 2,
             // Four voices to start with, matching the VOICES control.
             enabled: index < 4,
+            // A step along the accent per pair, the way the Doubler reads them.
+            tint: (index / 2) as f32 / 3.0,
         })
         .collect()
 }
