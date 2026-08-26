@@ -271,7 +271,7 @@ fn header(cx: &mut Context) {
     HStack::new(cx, |cx| {
         // The shipped name, in full — `NAME` in `lib.rs`, the bundle, and the
         // host's plugin list all say the same thing.
-        Label::new(cx, "NXE DOUBLER").class("title");
+        font::title(cx, "NXE DOUBLER");
         Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
         param_bind::segmented(cx, Ui::params, |params| &params.voices, &["2", "4", "8"])
             .tooltip(|cx| theme::hint(cx, "How many voices run"));

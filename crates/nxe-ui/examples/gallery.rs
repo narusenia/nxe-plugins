@@ -315,7 +315,7 @@ fn main() {
         // the start rather than when someone notices it has stopped fitting.
         ScrollView::new(cx, 0.0, 0.0, false, true, |cx| {
             VStack::new(cx, |cx| {
-                Label::new(cx, "nxe-ui").class("title");
+                font::title(cx, "nxe-ui");
                 Label::new(cx, "tokens and widgets").class("subtle");
 
                 colours(cx);
@@ -1063,7 +1063,11 @@ fn spacing(cx: &mut Context) {
 
 fn text(cx: &mut Context) {
     panel(cx, "TEXT", |cx| {
-        Label::new(cx, "TITLE — the plugin's name, 17").class("title");
+        // Both, side by side: the wordmark is the one place the bold face is
+        // used, so the panel has to show what it looks like against the plain
+        // one it is an exception to.
+        font::title(cx, "TITLE — the wordmark, 17, bold");
+        Label::new(cx, "TITLE — the same class, regular").class("title");
         Label::new(cx, "LABEL — names a thing, 12, muted").class("label");
         Label::new(cx, "Value — says what it is, 10, Geist Sans").class("value");
         Label::new(cx, "Subtle — gridlines, units, disabled rows").class("subtle");

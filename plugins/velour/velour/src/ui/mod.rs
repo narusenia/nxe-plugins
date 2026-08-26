@@ -255,7 +255,7 @@ fn header(cx: &mut Context) {
     HStack::new(cx, |cx| {
         // The shipped name, in full — `NAME` in `lib.rs`, the bundle, and the
         // host's plugin list all say the same thing.
-        Label::new(cx, "NXE VELOUR").class("title");
+        font::title(cx, "NXE VELOUR");
     })
     .class("row")
     .height(Auto);
