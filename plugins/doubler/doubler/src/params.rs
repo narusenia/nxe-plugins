@@ -119,6 +119,8 @@ pub struct DoublerParams {
     pub tone_spread: FloatParam,
     #[id = "mix"]
     pub mix: FloatParam,
+    #[id = "drygain"]
+    pub dry_gain: FloatParam,
     #[id = "output"]
     pub output: FloatParam,
 
@@ -245,6 +247,21 @@ impl Default for DoublerParams {
                 .with_smoother(SmoothingStyle::Linear(20.0))
                 .with_value_to_string(formatters::v2s_f32_percentage(0))
                 .with_string_to_value(formatters::s2v_f32_percentage()),
+
+            // Same range as a voice's `Gain`, so the Voice Field's radius means
+            // one thing whether it is under a dot or under the source marker
+            // (`plugins/doubler/docs/specifications/ui.md`).
+            dry_gain: FloatParam::new(
+                "Dry Gain",
+                0.0,
+                FloatRange::Linear {
+                    min: -24.0,
+                    max: 6.0,
+                },
+            )
+            .with_unit(" dB")
+            .with_smoother(SmoothingStyle::Linear(20.0))
+            .with_value_to_string(formatters::v2s_f32_rounded(1)),
 
             output: FloatParam::new(
                 "Output",

@@ -127,12 +127,18 @@ impl Plugin for Doubler {
 
             let mix = self.params.mix.smoothed.next();
             let output = util::db_to_gain(self.params.output.smoothed.next());
+            // A trim on the dry path, on top of the balance `Mix` sets. Polled
+            // every sample whatever its value, or its smoother would hold a
+            // stale value to jump from.
+            let dry_gain = util::db_to_gain(self.params.dry_gain.smoothed.next());
+            let dry = (1.0 - mix) * dry_gain;
 
             // Dry is never delayed or filtered, which is why the plugin reports
-            // no latency (`REQ-DBL-006`). At `mix == 0` this is the input
-            // multiplied by one, so a bypassed plugin is bit-transparent.
-            left[sample] = (dry_left * (1.0 - mix) + wet_left * mix) * output;
-            right[sample] = (dry_right * (1.0 - mix) + wet_right * mix) * output;
+            // no latency (`REQ-DBL-006`). At `mix == 0` and `Dry Gain` at its
+            // default 0 dB this is the input multiplied by one, so a bypassed
+            // plugin is still bit-transparent.
+            left[sample] = (dry_left * dry + wet_left * mix) * output;
+            right[sample] = (dry_right * dry + wet_right * mix) * output;
         }
 
         ProcessStatus::Normal

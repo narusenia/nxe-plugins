@@ -26,10 +26,6 @@ use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
 use nxe_ui::polar::{FieldGesture, FieldPoint, PolarField};
 
-/// How far off the origin the source markers sit, so they are visible rather
-/// than buried under the innermost dot.
-const ANCHOR_RADIUS: f32 = 0.06;
-
 /// Reads the discrete source mode out of its parameter.
 fn source_of(params: &DoublerParams) -> Source {
     params.source.value().into()
@@ -61,24 +57,27 @@ fn points_of(params: &DoublerParams) -> Vec<FieldPoint> {
 /// One marker under `MonoSum`, two under `TrueStereo`. They sit where a voice
 /// with no pan offset would, so raising `Spread` visibly pushes the two sources
 /// apart.
+///
+/// **Their radius is `Dry Gain`**, read on the same axis as the dots' own level,
+/// so the dry sits in the picture with the voices rather than beside it. Both
+/// markers show one value; dragging either writes it.
 fn anchors_of(params: &DoublerParams) -> Vec<FieldPoint> {
     let source = source_of(params);
     let spread = params.spread.value();
+    let radius = params.dry_gain.unmodulated_normalized_value();
 
-    match source {
-        Source::MonoSum => vec![FieldPoint {
-            angle: 0.0,
-            radius: 0.0,
+    let markers = match source {
+        Source::MonoSum => 1,
+        Source::TrueStereo => 2,
+    };
+
+    (0..markers)
+        .map(|index| FieldPoint {
+            angle: pan_for(source, spread, 0.0, index),
+            radius,
             ..FieldPoint::default()
-        }],
-        Source::TrueStereo => (0..2)
-            .map(|index| FieldPoint {
-                angle: pan_for(source, spread, 0.0, index),
-                radius: ANCHOR_RADIUS,
-                ..FieldPoint::default()
-            })
-            .collect(),
-    }
+        })
+        .collect()
 }
 
 /// The parameters a dragged point writes.
@@ -128,6 +127,8 @@ pub fn view(cx: &mut Context) {
     let anchors = Ui::params.map(|params| anchors_of(params));
     let source_and_spread = Ui::params.map(|params| (source_of(params), params.spread.value()));
 
+    let dry = ParamWidgetBase::new(cx, Ui::params, |params| &params.dry_gain);
+
     PolarField::new(cx, points, anchors, move |cx, gesture| {
         let index = match gesture {
             FieldGesture::Begin(index)
@@ -136,6 +137,26 @@ pub fn view(cx: &mut Context) {
             | FieldGesture::Change { index, .. } => index,
             FieldGesture::Hover(over) => {
                 cx.emit(UiEvent::Hover(over));
+                return;
+            }
+            // The source markers carry `Dry Gain`, on the same radial axis the
+            // dots use for their own level.
+            FieldGesture::AnchorBegin => {
+                dry.begin_set_parameter(cx);
+                return;
+            }
+            FieldGesture::AnchorChange(radius) => {
+                dry.set_normalized_value(cx, radius);
+                return;
+            }
+            FieldGesture::AnchorEnd => {
+                dry.end_set_parameter(cx);
+                return;
+            }
+            FieldGesture::AnchorReset => {
+                dry.begin_set_parameter(cx);
+                dry.set_normalized_value(cx, dry.default_normalized_value());
+                dry.end_set_parameter(cx);
                 return;
             }
         };
@@ -186,7 +207,7 @@ pub fn view(cx: &mut Context) {
                         .set_normalized_value(cx, Mirror::Same.apply(radius));
                 }
             }
-            FieldGesture::Hover(_) => {}
+            _ => {}
         }
     })
     .height(Stretch(1.0))
