@@ -40,7 +40,7 @@ Sparkleur が必ず使うが、上げるのは 2 個目が要求してから
 `velour-core` クレートを作り、`shaper.rs` と `harmonics.rs`（測るための素朴な
 DFT）を置く。この単位では帯域もフィルタも無い。
 
-**移動候補**（Sparkleur が同じものを使う）。
+**`SPK-1` で `nxe_audio::shaper` に移動済み**（Sparkleur が同じものを使う）。
 
 **実装中に仕様を 1 つ差し替えた。** `dsp.md` は正規化を `k · f_h'(β)`（原点の
 傾き）と書いていたが、それが 1 にするのは**無限小の信号に対するゲイン**だけ。
@@ -81,7 +81,7 @@ RMS ゲイン**で正規化する方式に変え、理由と実測値を `dsp.md
 `scripts/design-oversampler.py`（**標準ライブラリのみ**）で設計して
 `src/oversample/coefficients.rs` に生成する。`mise run oversampler:design`。
 
-**移動候補。**
+**`SPK-1` で `nxe_audio::oversample` に移動済み。**
 
 **実装中に仕様を 2 つ差し替えた。**
 
@@ -123,7 +123,7 @@ RMS ゲイン**で正規化する方式に変え、理由と実測値を `dsp.md
 
 ### VEL-3 — 帯域生成器と FOCUS ✅
 
-`biquad.rs`（**移動候補**）と `bands.rs`。3 本の生成器（入力側フィルタ →
+`biquad.rs`（**`SPK-1` で `nxe_audio::biquad` に移動済み**）と `bands.rs`。3 本の生成器（入力側フィルタ →
 シェイパ → 出力側フィルタ）と `FOCUS`。2 次 Butterworth、direct form 1。
 
 **実装中に仕様を 1 つ足し、1 つの数字を戻した。**
@@ -236,7 +236,8 @@ RMS ゲイン**で正規化する方式に変え、理由と実測値を `dsp.md
 
 ### VEL-6 — エンベロープ検波と EMOTION ✅
 
-`envelope.rs`（**移動候補**）と `emotion.rs`。共用の検波器（attack 5 ms /
+`envelope.rs`（**`SPK-1` で機構が `nxe_audio::envelope` に移動。時定数と
+`REFERENCE_DB` は `velour-core` に残る**）と `emotion.rs`。共用の検波器（attack 5 ms /
 release 150 ms、モノ和、**圧縮前の入力**）と、`(β, h, k)` の変調。
 パラメータは 18 → **19** 個。
 
@@ -280,7 +281,7 @@ release 150 ms、モノ和、**圧縮前の入力**）と、`(β, h, k)` の変�
 
 ### VEL-7 — DENSITY ✅
 
-`density.rs`（**移動候補**）。**生成バスの入力にだけ**掛かるコンプレッサ。
+`density.rs`（**移動しない** — Sparkleur のコンプは別物、`SPK-1`）。**生成バスの入力にだけ**掛かるコンプレッサ。
 しきい値とレシオの写像、静的メイクアップ。パラメータは 21 → **22** 個
 （宣言はこれで打ち止め）。
 
@@ -328,7 +329,9 @@ release 150 ms、モノ和、**圧縮前の入力**）と、`(β, h, k)` の変�
 
 ### VEL-8 — Guard（Harsh / Sib）✅
 
-`guard.rs`（**移動候補** — Sparkleur の De-Harsh は同じもの）。相対バランスの
+`guard.rs`（**`SPK-1` で `nxe_audio::guard::RelativeGuard<N>` に一般化して
+移動。ここに残るのは 2 帯域・2 しきい値の `Settings` だけ** — Sparkleur の
+De-Harsh は同じものを `N = 1` で使う）。相対バランスの
 検出と、生成器の出力ゲインの引き。2 インスタンスと共有の参照帯。
 `BandPass` は `bands.rs` から `biquad.rs` に上げて共有した。
 

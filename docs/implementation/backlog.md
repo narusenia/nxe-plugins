@@ -119,13 +119,22 @@ Velour が共通クレートに要求したものは 3 つとも入っている�
 `UI-8` `Meter` / `DSP-4` `Level`）。**Velour のクレートは 1 行も無い状態で
 作れた** — 主役の図が Hz も dB も知らないから。テスト 124 本。
 
+**`SPK-1` が終わった**（2026-08-26）。`velour-core` から `shaper` /
+`oversample` / `biquad` / `envelope` / `guard` と、測定ヘルパの `harmonics` を
+新クレート `crates/nxe-audio` に移し、`guard` を `RelativeGuard<N>` に
+一般化した。**Velour のテストは 1 本も落ちていない** — 241 本が 241 本のまま
+通り、`N = 1` の形を固定する 1 本を足して **242 本**。`envelope` は機構だけ
+移して、attack 5 ms / release 150 ms と `REFERENCE_DB` は**歌に対して耳で決めた
+数**なので `velour-core` に残した。**次は `SPK-2`**（分割の和が ±0.1 dB 以内で
+平坦。ここが通らないとその上の全部が意味を持たない）。
+
 ## 今すぐ着手できるもの
 
 依存が無いか、依存がすべて解決している単位。
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| SPK-1 | **共有クレート `nxe-audio` を作る**（`velour-core` から 5 モジュール移動 + `guard` の一般化） | `sparkleur-plan.md` |
+| SPK-2 | **クロスオーバー（ゲート）** — LR4 の木 + オールパス補正、5 帯域、`FOCUS` | `sparkleur-plan.md` |
 | SPK-10 | `nxe_ui::band::Band` の `reduction` を符号付き `delta` に（上げコンプが描けない） | `sparkleur-plan.md` |
 | SPK-11 | `param_bind` の共通化（3 個目が要求した。行き先は `nxe-ui` ではない） | `sparkleur-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
@@ -214,15 +223,45 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | VEL-3 | 帯域生成器 3 本と `FOCUS` | ✅ 最悪ケース折り返し −63 dB |
 | VEL-5 | nih-plug ラッパと配線（**ここで音が出る**。UI 無し） | ✅ Live で確認済み |
 | VEL-4 | TEXTURE モーフ（Warm / Clear / Edge） | ✅ |
-| VEL-6 | エンベロープ検波と EMOTION | 🟡 |
-| VEL-7 | DENSITY（生成バスの圧縮） | ⬜ VEL-6 |
+| VEL-6 | エンベロープ検波と EMOTION | ✅ |
+| VEL-7 | DENSITY（生成バスの圧縮） | ✅ |
 | VEL-8 | Guard（Harsh / Sib） | ✅ |
 | VEL-9 | Bias と SOLO | ✅ |
-| VEL-10 | スムージングと非依存性の詰め | ⬜ VEL-7 / VEL-8 / VEL-9 |
-| VEL-11 | UI マクロ層（メインタブ 8 ノブ） | ⬜ VEL-10 |
-| VEL-12 | UI Band Field | ⬜ VEL-11 |
-| VEL-15 | 通っている音の表示（解析の配線） | ⬜ VEL-8 |
-| VEL-13 | UI 伝達曲線の小窓と I/O メーター | ⬜ VEL-11 / VEL-15 |
-| VEL-14 | UI Advanced タブ | ⬜ VEL-12 |
-| VEL-16 | CPU 予算の確認（criterion） | ⬜ VEL-15 |
-| VEL-17 | 既定値の詰めと実機確認（**耳が要る**） | ⬜ VEL-16 |
+| VEL-10 | スムージングと非依存性の詰め | ✅ 非有限で Guard が固まるバグを 1 個潰した |
+| VEL-11 | UI マクロ層（メインタブ 8 ノブ） | ✅ |
+| VEL-12 | UI Band Field | ✅ |
+| VEL-15 | 通っている音の表示（解析の配線） | ✅ |
+| VEL-13 | UI 伝達曲線の小窓と I/O メーター | ✅ |
+| VEL-14 | UI Advanced タブ | ✅ |
+| VEL-16 | CPU 予算の確認（criterion） | ✅ 128 µs / 予算 533 µs |
+| VEL-17 | 既定値の詰めと実機確認（**耳が要る**） | ✅ |
+
+### Sparkleur — `../../plugins/sparkleur/docs/implementation/sparkleur-plan.md`
+
+**ゲートは `SPK-2`**（全帯域 unity のとき 20 Hz〜20 kHz の和が ±0.1 dB 以内で
+平坦）。ここが通らないと「全部 0 で何もしない」が成立せず、その上の全部が
+意味を持たない。Velour の `VEL-1` と同じ位置。
+
+`SPK-10` と `SPK-11` は共通クレート側の単位で、Sparkleur のコードを 1 行も
+書かずに着手できる。
+
+| ID | 単位 | 状態 |
+|---|---|---|
+| SPK-1 | 共有クレート `nxe-audio`（`velour-core` から 6 モジュール移動 + `guard` の一般化） | ✅ `2817adc`〜`38ae534` |
+| SPK-2 | クロスオーバー（**ゲート**。LR4 の木 + オールパス補正、`FOCUS`） | 🟡 |
+| SPK-3 | 検波と時定数（`SPEED` と帯域中心からの導出） | ⬜ SPK-2 |
+| SPK-4 | ゲイン計算（上下コンプ。**製品の核**） | ⬜ SPK-3 |
+| SPK-5 | CHARACTER（POLISH ↔ CRUSH の 1 軸） | ⬜ SPK-4 / SPK-6 |
+| SPK-6 | Sparkle（トランジェントでゲートした倍音生成） | ⬜ SPK-2 |
+| SPK-7 | De-Harsh / Sub Protect | ⬜ SPK-4 / SPK-5 |
+| SPK-8 | ラッパとパラメータ（**ここで音が出る**） | ⬜ SPK-4 / SPK-5 / SPK-6 / SPK-7 |
+| SPK-9 | 詰め（レート・ブロック・極端値） | ⬜ SPK-8 |
+| SPK-10 | `nxe_ui::band::Band` の `reduction` を符号付き `delta` に | 🟡 |
+| SPK-11 | `param_bind` の共通化（行き先は `nxe-ui` ではない） | 🟡 |
+| SPK-12 | UI マクロ層（メインタブ） | ⬜ SPK-9 / SPK-11 |
+| SPK-13 | UI Band Field（5 区画） | ⬜ SPK-10 / SPK-12 / SPK-16 |
+| SPK-14 | UI 小窓とメーター | ⬜ SPK-12 / SPK-16 |
+| SPK-15 | UI Advanced タブ | ⬜ SPK-13 |
+| SPK-16 | 解析の配線 | ⬜ SPK-8 |
+| SPK-17 | CPU 予算 | ⬜ SPK-16 |
+| SPK-18 | 既定値と耳 | ⬜ SPK-17 |

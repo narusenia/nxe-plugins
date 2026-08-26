@@ -56,10 +56,17 @@ Doubler と Velour は同内容の `param_bind.rs` をそれぞれ持ってい�
 ## 依存の向き
 
 ```
-doubler ──→ doubler-core      （DSP。nih-plug も Vizia も知らない）
-        ├─→ nxe-dsp           （解析。同上）
-        └─→ nxe-ui            （ウィジェット。nih-plug を知らない）
+<plugin> ──→ <plugin>-core ──→ nxe-audio  （処理。nih-plug も Vizia も知らない）
+         ├─→ nxe-audio                    （ラッパが直接触る型だけ）
+         ├─→ nxe-dsp                      （解析。同上）
+         └─→ nxe-ui                       （ウィジェット。nih-plug を知らない）
 ```
+
+`nxe-audio` は `SPK-1` で `velour-core` から抜き出して作った。`velour-core` は
+そこに依存し、`velour` も `Factor` のように**ラッパが直接名前を書く型**だけを
+直接引く。互換のための再輸出は置いていない — どこから来た型かが `use` で
+読めることを優先している（例外は測定ヘルパの `harmonics` 1 つで、テストが
+書かれた場所に残すために `velour_core` が再輸出している）。
 
 一方向で、戻る矢印は無い。この向きには 2 つの意味がある。
 

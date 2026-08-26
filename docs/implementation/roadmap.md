@@ -204,6 +204,13 @@ Sparkleur（マルチバンドダイナミクス + Harmonic Sparkle）を **Velo
 移動は Sparkleur の最初の単位（`SPK-1`）で、行き先は新クレート
 **`nxe-audio`**（`REQ-SPK-015`、理由は `architecture.md`）。
 
+**やってみて 2 つ外れた**（`SPK-1`）。1 つは**測定ヘルパの `harmonics` も
+一緒に動いた**こと — 移す 5 つのテストが全部それで書かれていて、依存の向きが
+逆だから残せない。もう 1 つは `envelope` で、時定数と `REFERENCE_DB` は
+**歌に対して耳で決めた数**なので機構だけ移して数は `velour-core` に残した。
+「ファイルの移動で済む」は `shaper` / `oversample` / `biquad` の 3 つには
+そのまま当たった。
+
 ### Sparkleur の中での順序
 
 **v1 の線引きは設計で解いた**（`REQ-SPK-019` / `REQ-SPK-020`）。WIDTH と PUNCH を

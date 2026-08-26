@@ -18,8 +18,9 @@ with the code, and fix the document in the same change.
 ## Repository map
 
 - `crates/nxe-audio`: shared audio **processing** — the harmonic curve, the
-  oversampler, biquads, envelope followers, the relative guard. Host-agnostic
-  and interface-agnostic. **Separate from `nxe-dsp` on purpose**: a bug here
+  oversampler, biquads, envelope followers, the relative guard, and the
+  harmonic measurement the tests are written against. Host-agnostic and
+  interface-agnostic. **Separate from `nxe-dsp` on purpose**: a bug here
   breaks the sound, a bug there breaks a picture
 - `crates/nxe-ui`: shared Vizia widgets, theme tokens, and the embedded Lucide
   icon font. **Depends on Vizia only, never on nih-plug** — widgets take a
@@ -32,14 +33,16 @@ with the code, and fix the document in the same change.
 - `plugins/doubler/doubler`: the Doubler nih-plug wrapper — parameter
   declarations, the Vizia UI, and the binding between them
 - `plugins/velour/velour-core`: the Velour DSP. Host-agnostic, allocation-free
-  on the audio path. `shaper`, `oversample` and `biquad` are written to know
-  nothing about Velour, because Sparkleur will want them
+  on the audio path. What is left here is what only makes sense as Velour —
+  the shared blocks moved to `nxe-audio` in `SPK-1`, and `envelope` and
+  `guard` are thin wrappers holding Velour's tuning
 - `plugins/velour/velour`: the Velour nih-plug wrapper — parameter
   declarations, the Vizia UI, and the binding between them
 - `plugins/sparkleur/docs`: Sparkleur's requirements, specifications and plan.
   **Designed, not built** — five-band multiband dynamics with a transient-gated
-  harmonic generator. Its first implementation unit is the one that creates
-  `crates/nxe-audio`
+  harmonic generator. Its first unit (`SPK-1`, creating `crates/nxe-audio`) is
+  done; the crossover gate `SPK-2` is next, and there is no `sparkleur` crate
+  yet
 - `docs/`: monorepo-wide documents (architecture, cross-plugin backlog and
   roadmap). Indexed by `docs/README.md`
 - `plugins/<name>/docs/`: that plugin's own requirements, specifications, and

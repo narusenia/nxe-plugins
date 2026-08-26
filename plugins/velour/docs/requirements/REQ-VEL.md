@@ -481,9 +481,16 @@ Logic Pro と GarageBand では読み込めない（`REQ-VEL-014`）。
   （`architecture.md` の「2 個目が必要とするまで」）。代わりに**プラグインの
   パラメータ構造体を知らない自立したモジュール**として書き、移動がファイルの
   移動だけで済む状態にする。どれが候補かは実装計画に記録する。
+- **移動は済んだ**（`SPK-1`）。候補 5 つは `crates/nxe-audio` にあり、
+  `shaper` / `oversample` / `biquad` はファイルの移動だけで済んだ。`guard` は
+  予定どおり一般化が要り、`envelope` は**耳で決めた数**（時定数と
+  `REFERENCE_DB`）を `velour-core` に残す形になった。予定になかったのは測定
+  ヘルパの `harmonics` で、候補のテストが全部これで書かれているので一緒に
+  動いた。
 - **受入条件**:
-  - [ ] `velour-core` の `Cargo.toml` に nih-plug / Vizia が無い
-  - [ ] 移動候補のモジュールがパラメータ構造体を参照していない
+  - [x] `velour-core` の `Cargo.toml` に nih-plug / Vizia が無い
+  - [x] 移動候補のモジュールがパラメータ構造体を参照していない
+        （`SPK-1` の移動が通ったことがその証明）
 - **依存**: なし
 
 ## REQ-VEL-016: リアルタイム安全性と CPU 予算

@@ -16,7 +16,7 @@ UI 仕様は [`../specifications/ui.md`](../specifications/ui.md)。
 だから「測れる土台」を先に作り、耳の判断を最後にまとめる。
 
 ```text
-SPK-1  共有クレート        ← ここが通らないと何も書けない
+SPK-1  共有クレート ✅     ← ここが通らないと何も書けない
 SPK-2  クロスオーバー      ← 平坦性が全部の前提（ゲート）
 SPK-3  検波と時定数
 SPK-4  ゲイン計算（上下）  ← 製品の核
@@ -42,19 +42,21 @@ SPK-18 既定値と耳
 
 ---
 
-### SPK-1 — 共有クレート `nxe-audio`
+### SPK-1 — 共有クレート `nxe-audio` ✅
 
 `velour-core` から `shaper` / `oversample` / `biquad` / `envelope` / `guard` を
 新クレート `crates/nxe-audio` に移す。`guard` は一般化する。
 
 - **完了条件**:
-  - [ ] `nxe-audio` が nih-plug / Vizia / `velour-core` に依存しない
-  - [ ] **Velour のテストが 1 本も落ちない**（移動前と同じ本数が通る）
-  - [ ] `RelativeGuard` が帯域・参照帯・しきい値を引数で受ける
-  - [ ] Velour 側が「Harsh と Sib を 2 個作る薄いラッパ」になり、既存の
-        `guard::tests` がそのまま回帰テストとして残る
-  - [ ] `velour-core` に残るのは `bands` / `texture` / `density` / `engine` /
-        `harmonics`
+  - [x] `nxe-audio` が nih-plug / Vizia / `velour-core` に依存しない
+  - [x] **Velour のテストが 1 本も落ちない**（241 本が 241 本のまま通り、
+        `N = 1` の形を固定する 1 本を足して **242 本**）
+  - [x] `RelativeGuard` が帯域・参照帯・しきい値を引数で受ける
+  - [x] Velour 側が「Harsh と Sib を 2 個作る薄いラッパ」になり、既存の
+        `guard::tests` がそのまま回帰テストとして残る（信号で駆動する 7 本は
+        そのまま。純関数の 2 本は `gain_of` と一緒に `nxe-audio` へ）
+  - [x] `velour-core` に残るのは `bands` / `texture` / `density` / `engine` と、
+        Velour のチューニングだけになった `envelope` / `guard`
 - **要件**: REQ-SPK-015
 - **依存**: なし
 - **決めたこと**: `nxe-dsp` には入れない。あちらは「音を変えない」ことが
@@ -62,6 +64,26 @@ SPK-18 既定値と耳
   壊れる**（リスクの階級が違う）
 - **決めたこと**: `density` は移さない。Sparkleur のコンプは上下マルチバンドで
   別物。**要求されるまで上げない**（`architecture.md`）
+- **決めたこと**: `RelativeGuard<N>` は**参照フォロワを 1 本だけ持ち、帯域を
+  N 本持つ**。「Velour が 2 個作る」だと同じ信号に同じ帯域通過を 2 回かけて
+  同じ答えを得ることになる。`VEL-16` の内訳が示すとおり、この構造で効くのは
+  フィルタの本数
+- **決めたこと**: 設定は `Settings<N>`（参照帯・帯域としきい値・時定数・傾き・
+  最大引き量）を**呼び出し側の `const` 1 個**で渡す。引数 5 本より、何を
+  どこまで守るのかが 1 ブロックで読める
+- **決めたこと**: 互換の再輸出を置かない。`velour` も `nxe-audio` を直接引く。
+  例外は測定ヘルパの `harmonics` 1 つだけ（下）
+- **踏んだ罠**: **`harmonics` も一緒に移すことになった。** 移す 5
+  モジュールのテストが全部これで書かれていて、`nxe-audio` は `velour-core` に
+  依存できない（向きが逆）。計画では「`velour-core` に残る」と書いていたが、
+  残すと移動先のテストが 1 本も書けない。移して `velour_core` が再輸出する形に
+  した — `crate::harmonics::tone` と書いてある既存のテストが無修正で通る
+- **踏んだ罠**: **`envelope` は「ファイルの移動だけ」では済まなかった。**
+  attack 5 ms / release 150 ms と `REFERENCE_DB` −18 dB は**歌に対して耳で
+  決めた数**で、Sparkleur は `SPEED` と帯域中心から導出する（`REQ-SPK-005`）。
+  時定数を `Envelope::new` の引数に出し、Velour の 3 つの数は
+  `velour_core::envelope`（`vocal()` と `REFERENCE_DB`）に残した。**共有部品が
+  片方の製品の好みを黙って運ばないこと**が境界の引き方
 
 ---
 

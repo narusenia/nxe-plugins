@@ -459,21 +459,25 @@ Advanced  per-band UP / DOWN / GAIN ── 重み（絶対量ではない）
 | `biquad` | LR4 クロスオーバー、検波の帯域通過 |
 | `envelope` | Sparkle の検出、`SPEED` |
 | `guard` | De-Harsh（**一般化が必要** — 今は Velour 語彙） |
+| `harmonics` | 上の 5 つのテストが全部これで書かれている（`SPK-1` で判明） |
 
 - **`nxe-dsp` に入れない。** あちらは「解析」で、doc に
   「**None of it changes the audio**」と書いてある。解析はバグっても絵が
   壊れるだけ、処理はバグると音が壊れる — **リスクの階級が違う**。
 - **`guard` の一般化**: `Guarded::Presence/Air` と Harsh/Sib のしきい値を
-  呼び出し側に出し、`RelativeGuard::new(band, reference, threshold, rate)` を
-  N 個持てる形にする。Velour 側は「2 個作る薄いラッパ」に変わり、既存の
-  テストがそのまま回帰テストになる。
+  呼び出し側に出す。**実装は `RelativeGuard<N>`**（`SPK-1`）— 参照フォロワを
+  1 本共有して帯域を N 本持ち、`Settings<N>` を `const` で受ける。N 個の
+  独立インスタンスにしなかったのは、同じ参照帯の帯域通過を N 回走らせる
+  ことになるから。Velour 側は「2 帯域の `Settings` を渡す薄いラッパ」で、
+  既存のテストがそのまま回帰テストになった。
 - **`density` / `texture` / `bands` は動かさない。** Sparkleur が要求して
   いないので `velour-core` に残す（`architecture.md` の「要求されるまで
   上げない」）。
 - **受入条件**:
   - [ ] `sparkleur-core` と `nxe-audio` が nih-plug / Vizia に依存しない
-  - [ ] `nxe-audio` に移した後も Velour のテストが全部通る
-  - [ ] `nxe-audio` の各モジュールが Velour も Sparkleur も知らない
+        （`nxe-audio` は満たした。`sparkleur-core` はまだ無い）
+  - [x] `nxe-audio` に移した後も Velour のテストが全部通る（`SPK-1`）
+  - [x] `nxe-audio` の各モジュールが Velour も Sparkleur も知らない
 - **依存**: なし
 
 ---
