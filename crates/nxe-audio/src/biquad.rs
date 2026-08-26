@@ -1,6 +1,7 @@
 //! Second-order sections, Butterworth-aligned.
 //!
-//! **Move candidate**: nothing here knows about Velour (`REQ-VEL-015`).
+//! Written for Velour and moved out for Sparkleur (`SPK-1`), so it knows
+//! about neither (`REQ-VEL-015`, `REQ-SPK-015`).
 //!
 //! Direct form 1 with the RBJ cookbook coefficients, the same shape
 //! `nxe_dsp::Spectrum` uses. Retuning writes new coefficients and **leaves the

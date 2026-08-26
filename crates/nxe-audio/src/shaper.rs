@@ -1,7 +1,8 @@
 //! The one curve family every generator uses.
 //!
-//! **Move candidate**: Sparkleur's Harmonic Sparkle is the same block, so this
-//! module knows nothing about Velour (`REQ-VEL-015`).
+//! Sparkleur's Harmonic Sparkle is the same block, which is why this moved out
+//! of `velour-core` (`SPK-1`). It knows about neither product
+//! (`REQ-VEL-015`, `REQ-SPK-015`).
 //!
 //! ```text
 //! raw(x)   = f(k·x + β) − f(β)

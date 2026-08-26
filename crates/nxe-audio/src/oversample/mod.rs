@@ -1,8 +1,9 @@
 //! Running the generator bus at 2x or 4x, so the curves do not fold their own
 //! harmonics back into the audible band.
 //!
-//! **Move candidate**: Sparkleur generates harmonics too, so this module knows
-//! nothing about Velour (`REQ-VEL-015`).
+//! Sparkleur generates harmonics too, which is why this moved out of
+//! `velour-core` (`SPK-1`). It knows about neither product (`REQ-VEL-015`,
+//! `REQ-SPK-015`).
 //!
 //! ## Why it is needed at all
 //!
