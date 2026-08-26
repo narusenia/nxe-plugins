@@ -7,6 +7,7 @@
 //! wedged it in Ableton (`plugins/doubler/docs/implementation/doubler-plan.md`).
 //! Tabs need nothing from the host for a control to become reachable.
 
+mod advanced;
 mod field;
 mod param_bind;
 
@@ -191,11 +192,9 @@ fn main_tab(cx: &mut Context) {
     .display(Ui::tab.map(|tab| *tab == TAB_MAIN));
 }
 
-/// `VEL-14` fills this in. It is built rather than left out so the tab strip
-/// switches to something.
 fn advanced_tab(cx: &mut Context) {
     VStack::new(cx, |cx| {
-        Label::new(cx, "ADVANCED").class("subtle");
+        advanced::view(cx);
     })
     .height(Auto)
     .width(Stretch(1.0))
@@ -204,7 +203,7 @@ fn advanced_tab(cx: &mut Context) {
 
 /// One labelled knob with its value underneath: the shape every macro control
 /// takes.
-fn knob_block<P, F>(
+pub(crate) fn knob_block<P, F>(
     cx: &mut Context,
     label: &'static str,
     hint: &'static str,
