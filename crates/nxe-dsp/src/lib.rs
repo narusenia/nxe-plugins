@@ -15,6 +15,8 @@
 
 mod handoff;
 mod pan;
+mod spectrum;
 
 pub use handoff::Handoff;
 pub use pan::PanScope;
+pub use spectrum::Spectrum;
