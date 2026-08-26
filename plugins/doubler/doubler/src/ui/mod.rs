@@ -19,7 +19,7 @@ use nih_plug::prelude::Editor;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
 use nxe_ui::segmented::SegmentedControl;
-use nxe_ui::{icon, theme};
+use nxe_ui::{font, icon, theme};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
@@ -347,7 +347,14 @@ pub(crate) fn macro_knob<P, F>(
         // not follow the pointer around the label and the number.
         param_bind::knob(cx, Ui::params, to_param, size).tooltip(move |cx| theme::hint(cx, hint));
         Label::new(cx, label).class("label");
-        param_bind::value_entry(cx, Ui::params, to_param);
+        font::value(
+            cx,
+            nih_plug_vizia::widgets::param_base::ParamWidgetBase::make_lens(
+                Ui::params,
+                to_param,
+                |param| param.to_string(),
+            ),
+        );
     })
     .width(Stretch(1.0))
     .height(Auto)

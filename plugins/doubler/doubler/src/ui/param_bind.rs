@@ -12,7 +12,6 @@ use nih_plug::prelude::Param;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
 use nxe_ui::bar::Bar;
-use nxe_ui::entry::ValueEntry;
 use nxe_ui::input::Gesture;
 use nxe_ui::knob::Knob;
 use nxe_ui::segmented::SegmentedControl;
@@ -71,37 +70,6 @@ impl Mirror {
             other => other,
         }
     }
-}
-
-/// The number under a control, which can be clicked and typed into.
-///
-/// The parsing is nih-plug's: each parameter carries its own
-/// `string_to_normalized_value`, so `-3 dB`, `3dB` and `L70` are understood by
-/// the parameter that means them rather than by a format this module invents.
-/// Text it cannot read leaves the value alone.
-pub fn value_entry<'a, L, Params, P, F>(
-    cx: &'a mut Context,
-    params: L,
-    to_param: F,
-) -> Handle<'a, ValueEntry>
-where
-    L: Lens<Target = Params> + Copy,
-    Params: 'static,
-    P: Param + 'static,
-    F: Fn(&Params) -> &P + Copy + 'static,
-{
-    let base = ParamWidgetBase::new(cx, params, to_param);
-    let text = ParamWidgetBase::make_lens(params, to_param, |param| param.to_string());
-
-    ValueEntry::new(cx, text, move |cx, typed| {
-        if let Some(normalized) = base.string_to_normalized_value(typed) {
-            // One gesture, the same as a drag: a host records a typed value as
-            // one edit rather than as a write from nowhere.
-            base.begin_set_parameter(cx);
-            base.set_normalized_value(cx, normalized);
-            base.end_set_parameter(cx);
-        }
-    })
 }
 
 /// A knob bound to a parameter.

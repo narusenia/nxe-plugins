@@ -9,6 +9,14 @@
 //! The caller supplies the text to show and takes the string back. Parsing is
 //! its business: this crate has no idea what a cent or a decibel is
 //! (`docs/specifications/architecture.md`).
+//!
+//! **Not used by the Doubler yet.** Putting one under each knob stopped the
+//! whole editor from updating — every value froze at whatever it read when the
+//! window opened, in the plugin only. What has been ruled out: the shape is the
+//! one `nih_plug_vizia`'s own `ParamSlider` uses (`#[derive(Lens)]` on the view
+//! plus a `Binding` on its own field), nothing panics, and the same build is
+//! fine as soon as this comes back off. It is exercised by the gallery, which is
+//! where the difference should be found (`docs/implementation/nxe-ui-plan.md`).
 
 use crate::font;
 use std::sync::Arc;
