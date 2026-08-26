@@ -358,6 +358,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
+| AIR-1 | **ノイズ層と `WIDTH`**（Air のゲート）。着手前に `dsp.md` を書く | `../../plugins/air/docs/implementation/air-plan.md` |
 | SPK-18 | **既定値と耳** ✅ — 測れるものは全部固定。既定値は 1 つも動かす理由が出なかった | `sparkleur-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 
@@ -488,3 +489,39 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | SPK-17 | CPU 予算 | ✅ **129 µs / 予算 533** |
 | SPK-18 | 既定値と耳 | ✅ 測定分は全部。**主観サインオフのみ未了**（リリースの阻害要因ではない） |
 | SPK-19 | **1 画面と、既にある数字を出す** — スイス様式への作り直し。3 つ全部に及んだ | ✅ |
+
+### Air — `../../plugins/air/docs/implementation/air-plan.md`
+
+**ゲートは `AIR-1`**（`WIDTH` 全域でモノ和に櫛形が出ない、`REQ-AIR-008`）。
+崩れると `WIDTH` の設計ごと書き直しになり、「層を独立した対象として配置する」
+という製品の主張が成立しない。**耳ではなく単体テストで通る。**
+
+**`AIR-4`（ラッパ）が `AIR-5`（Follow）より前**なのは Velour の `VEL-5` と
+同じ判断 — Follow Engine は正体だが効いたかの判断が一番耳寄りなので、
+音が出る状態を先に作る。
+
+**共有クレートの新規単位が無い。** Air が要求する既存ブロックは全部
+`nxe-audio` にあり、唯一の新規（ノイズ生成器）は `air-core` に置く。
+
+| ID | 単位 | 状態 |
+|---|---|---|
+| AIR-1 | ノイズ層と `WIDTH`（**ゲート**）。`air-core` もここで作る | 🟡 |
+| AIR-2 | 倍音層（`nxe_audio::shaper` の借用 + 上蓋） | ⬜ |
+| AIR-3 | `BLEND` / `CHARACTER` / `FOCUS`（層を 1 個の対象に） | ⬜ |
+| AIR-4 | ラッパとパラメータ（**ここで音が出る**。バックエンドの判断もここ） | ⬜ |
+| AIR-5 | Follow Engine（`ENVELOPE` / `BRIGHTNESS` / `TRANSIENT`） | ⬜ |
+| AIR-6 | 保護（Excess Guard） | ⬜ |
+| AIR-7 | 詰め（レート・ブロック・極端値） | ⬜ |
+| AIR-8 | UI マクロ層（メイン 7 本） | ⬜ |
+| AIR-9 | UI スペクトルの重ね描き（**画面の主役**） | ⬜ |
+| AIR-10 | UI 読み値と Advanced | ⬜ |
+| AIR-11 | 解析の配線 | ⬜ |
+| AIR-12 | CPU 予算 | ⬜ |
+| AIR-13 | 既定値と耳 | ⬜ |
+
+### Vocal Depth / Vocal Glue
+
+**要件まで済み、実装単位はまだ無い。**
+[`REQ-VDP.md`](../../plugins/vocal-depth/docs/requirements/REQ-VDP.md) /
+[`REQ-GLU.md`](../../plugins/vocal-glue/docs/requirements/REQ-GLU.md)。
+着手順とその根拠は [`roadmap.md`](roadmap.md)。

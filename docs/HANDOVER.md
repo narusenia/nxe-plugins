@@ -1,12 +1,27 @@
 # 引き継ぎ
 
-**2026-08-27 時点。** **3 つとも `v0.1.1`。** Sparkleur は `SPK-1`〜`SPK-19`
-完了。`SPK-19` で**見た目をスイス様式に作り直し、3 つの窓を同じグリッドに
-乗せた** — Sparkleur と Velour はタブを廃止して 1 画面、Doubler はタブのまま
-情報だけ増やした。既に計算していて誰も読んでいなかった数字が画面に出た。
+**2026-08-27 時点。3 つとも `v0.1.1` で公開済み。テスト 378 本。**
 
-残っているのは Sparkleur の既定値の**主観サインオフだけ**（下のチェックリスト。
-**リリースの阻害要因ではない** — 既定値の変更は既存セッションを壊さない）。
+**次は Air の実装。** 要件は書けている（`REQ-AIR.md`）、実装計画も単位まで
+割ってある（`air-plan.md`）。**最初にやるのは `dsp.md` を書くこと**で、
+そのあと `AIR-1`（ゲート）。詳しくは「次にやること」。
+
+出荷済み 3 本に手を入れる用事は無い。残っているのは Sparkleur の既定値の
+**主観サインオフだけ**（下のチェックリスト。**リリースの阻害要因ではない** —
+既定値の変更は既存セッションを壊さない）。
+
+## 2026-08-27 に変わったこと（コードは 1 行も動いていない）
+
+- **構想 6 本の着手順を決めた**（`implementation/roadmap.md`）。
+  Air → Vocal Depth → Vocal Glue → Impact → Growl、Bass Density はどこにでも。
+  判断軸は「新規ホスト連携が要るか」— サイドチェイン・レイテンシ申告・MIDI は
+  **`cargo test` で確かめられない**ので後ろに置いた
+- **Air / Vocal Depth / Vocal Glue の要件を書いた。** 構想から削ったものが
+  それぞれ 3 つずつあり、理由付きで `Won't` として残してある
+- **ライセンスを 2 つに割った**（`../LICENSING.md`）。共有クレートは
+  **MIT OR Apache-2.0**、`vst3-sys` を引く 4 つは GPL-3.0-only のまま
+- **コミット規約を明文化した**（`../.agents/rules/git.md`）。Conventional
+  Commits の prefix が **22 コミット黙って外れていた**
 
 このファイルは**そのとき何が動いていて、次に触る人が最初に知るべきこと**を
 1 枚にまとめたもの。設計の正は各仕様書、状態の正は
@@ -26,18 +41,22 @@
 
 | | |
 |---|---|
-| `plugins/doubler` | NXE Doubler。CLAP + VST3。`doubler-v0.1.0` **公開済み** |
-| `plugins/velour` | NXE Velour。CLAP + VST3。パラメータ 22 個。UI・解析・既定値まで完了。`velour-v0.1.0` |
+| `plugins/doubler` | NXE Doubler。CLAP + VST3。`doubler-v0.1.1` **公開済み** |
+| `plugins/velour` | NXE Velour。CLAP + VST3。パラメータ 22 個。UI・解析・既定値まで完了。`velour-v0.1.1` **公開済み** |
 | `crates/nxe-audio` | 共通の**処理**（`shaper` / `oversample` / `biquad` / `envelope` / `guard` / `harmonics`）。`SPK-1` で `velour-core` から抜いた |
 | `crates/nxe-ui` | 共通ウィジェット・テーマ・アイコン。`mise run gallery` |
 | `crates/nxe-plug-ui` | nih-plug のパラメータと `nxe-ui` の結線。**両方を知る唯一のクレート**（`SPK-11`） |
 | `crates/nxe-dsp` | 共通の解析（`Handoff` / `PanScope` / `Spectrum` / `Level`） |
 | `plugins/sparkleur/sparkleur-core` | **DSP は全部。** 5 帯域クロスオーバー、検波、上下コンプ、Sparkle、`CHARACTER`、De-Harsh / Sub Protect、エンジン |
 | `plugins/sparkleur/sparkleur` | NXE Sparkleur。CLAP + VST3。パラメータ 33 個、**全部にコントロールがある**。UI は MAIN の 7 ノブ + Band Field + 伝達曲線の小窓 + メーター + Advanced の表 |
-| `plugins/sparkleur/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`SPK-1`〜`SPK-18`） |
+| `plugins/sparkleur/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`SPK-1`〜`SPK-19`）。`sparkleur-v0.1.1` **公開済み** |
+| `plugins/air/docs` | **要件と実装計画のみ。**次に作るもの（`AIR-1`〜`AIR-13`） |
+| `plugins/vocal-depth/docs` | **要件のみ。** 初期反射を作る本で、Glue と Impact に貸す |
+| `plugins/vocal-glue/docs` | **要件のみ。** 新規 DSP がほぼ無い（`guard` の N 帯域化だけ） |
+| `concepts/` | まだ要件を書いていない構想 3 本（Bass Density / Impact / Growl） |
 | CI | `check`（PR と main への push）、`release`（`<plugin>-v<version>` タグ） |
 
-テスト 365 本。CPU は予算 533 µs に対し
+テスト 378 本。CPU は予算 533 µs に対し
 **Doubler 85 µs / Velour 128 µs / Sparkleur 129 µs**。
 Sparkleur の内訳（`SPK-17`）はエンジン 4x が **110**、`Spectrum` 32 バンドが
 **15.2**、`Level` × 4 が **3.9**。**2x にしても 11 µs しか減らない**ので 4x が
@@ -45,12 +64,56 @@ Sparkleur の内訳（`SPK-17`）はエンジン 4x が **110**、`Spectrum` 32 
 
 ## 次にやること
 
-**手が空いている。** `SPK-1`〜`SPK-19` は全部通っていて、3 つとも `v0.1.1` が
-出ている。
+### 1. Air の `dsp.md` を書く（`AIR-1` の前に）
 
-**窓の高さが手置きの定数になっている**のが唯一の構造的な借金 — 中身に 1 行
-足すたびに下が切れるか余るかして、`SPK-19` では 5 回往復した。部品の合計から
-計算する形にすると消える。
+**要件は決着している** — [`../plugins/air/docs/requirements/REQ-AIR.md`](../plugins/air/docs/requirements/REQ-AIR.md)。
+22 要件、うち 3 つは `Won't (v1)` として理由付き。**先に「設計の中心にある
+6 つの判断」だけ読めば、残りはその帰結。**
+
+足りないのは式と数。`dsp.md` に書くもの:
+
+- ノイズの傾きの実装（極 1 個で pink↔white↔blue を連続に動かせるか）
+- `sqrt(fs / 48000)` の補正をどこに入れるか
+- `WIDTH` の共有モデル（共有成分と独立成分の混合比 → 相関の対応）
+- `FOCUS` の可動域と、2 系統への写像（倍音 = HPF コーナー、ノイズ = 傾き）
+- Follow 3 本の時定数（**`sparkle.rs` の `SNAP_RANGE_DB = 6.0` は
+  band 5 だけを見た数**なので、全帯域を見る Air ではそのまま使えない）
+- 保護の検出帯と参照帯の関係（`FOCUS` に追従、かつ**重ならない**）
+- **耳で詰める定数の一覧**（Velour / Sparkleur の `dsp.md` と同じ節）
+
+### 2. `AIR-1` — ノイズ層と `WIDTH`（ゲート）
+
+計画は [`../plugins/air/docs/implementation/air-plan.md`](../plugins/air/docs/implementation/air-plan.md)。
+**`air-core` クレートもこの単位で作る**（`VEL-1` / `SPK-2` と同じ位置）。
+
+ゲートの中身: **`WIDTH` 全域でモノ和に櫛形の谷が出ない。** 位相を回す処理を
+1 つも置かない設計にしたので、**構造的に破れない**はず — それを測って固定する。
+道具は `nxe_dsp::Correlation`（既にある）。
+
+**このゲートは耳が要らない。** Vocal Depth と Vocal Glue のゲートも同じで、
+3 本ともコアの中で閉じる。Doubler の `DBL-2` のようにラッパを前倒しする
+必要が無い。
+
+### 3. `AIR-4` でバックエンドを決める
+
+nih-plug のままか、**nice-plug（ISC）+ vizia-plug** へ移るか。
+調査は `../LICENSING.md` に書いてある。要点だけ:
+
+- nice-plug は `vst3` クレート（MIT OR Apache-2.0）を使っていて、
+  **VST3 の GPL 除外条項が無い**
+- README に *"currently experimental, expect some bugs"*
+- 最新の vizia が来るので、`../.agents/rules/vizia.md` の 233 行のうち
+  `patched-2024-05-06` に紐付いた罠が消える可能性がある
+- **Air は出荷済み ID もセッションも無いので、試すならここが一番安い**
+
+出荷済み 3 本を載せ替えるなら、その前に **`VST3_CLASS_ID` と状態の
+シリアライズ形式が一致するか**を測る。ズレたら既存セッションが全滅する。
+
+### 積み残し（Air とは独立、いつでも）
+
+**窓の高さは `SPK-19` で計算式にした**ので、手置きの定数の借金は消えている。
+残るのは `UI-3` の値の直接入力（gallery では動くがプラグインで editor が
+更新されない、原因未特定）と Velour の `SOLO` が保存されること。
 
 ### Sparkleur を実素材で聴く（10 分、いつでもよい）
 
