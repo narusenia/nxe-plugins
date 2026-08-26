@@ -157,7 +157,7 @@ fn loudness_db(position: f32) -> f32 {
     };
     run();
     let output = run();
-    20.0 * rms(&output).log10() + character.trim_db
+    20.0 * rms(&output).log10()
 }
 
 /// **The axis must not double as a volume knob** (`REQ-SPK-006`,
@@ -183,4 +183,273 @@ fn moving_the_character_axis_keeps_the_loudness_within_one_and_a_half_db() {
     // And the chain is doing something, or the bound above is a bound on
     // silence.
     assert!(lowest > -40.0, "the chain produced nothing: {readings:?}");
+}
+
+/// The engine's output level with the axis at `position`, in dB.
+fn axis_loudness_db(input: &[f32], position: f32, spark: f32) -> f32 {
+    use sparkleur_core::engine::{Engine, Levels, Shape};
+
+    let shape = Shape {
+        character: position,
+        ..Shape::default()
+    };
+    let levels = Levels {
+        spark,
+        ..Levels::default()
+    };
+
+    let mut engine = Engine::new(RATE);
+    let mut output = Vec::with_capacity(input.len());
+    for block in input.chunks(64) {
+        engine.set_shape(&shape);
+        for sample in block {
+            output.push(engine.process((*sample, *sample), &levels).0);
+        }
+    }
+    // A quarter of a second for the detectors to settle.
+    20.0 * rms(&output[(RATE * 0.25) as usize..]).log10()
+}
+
+/// Four materials that have nothing in common but their level.
+fn materials(length: usize) -> Vec<(&'static str, Vec<f32>)> {
+    use nxe_audio::harmonics::{at_dbfs, noise, pink};
+
+    let pad = {
+        let mut mixed = vec![0.0f32; length];
+        for hz in [110.0f32, 220.0, 330.0, 550.0, 1_100.0, 3_300.0] {
+            for (sample, value) in mixed.iter_mut().zip(tone(0.05, hz, RATE, length)) {
+                *sample += value;
+            }
+        }
+        at_dbfs(mixed, -18.0)
+    };
+    let period = (RATE / 8.0) as usize;
+    let hats = at_dbfs(
+        noise(1.0, length)
+            .iter()
+            .enumerate()
+            .map(|(index, value)| value * (-((index % period) as f32 / RATE) / 0.006).exp())
+            .collect(),
+        -18.0,
+    );
+
+    vec![
+        ("pink -18", at_dbfs(pink(1.0, length), -18.0)),
+        ("pink -30", at_dbfs(pink(1.0, length), -30.0)),
+        ("pad", pad),
+        ("hats", hats),
+    ]
+}
+
+/// **The axis must not double as a volume knob — on sustained material**
+/// (`REQ-SPK-006`, `SPK-18`).
+///
+/// The test above measures a tone in every band through a hand-built chain and
+/// reads 0.98 dB. The standing note against the trim column was that **changing
+/// the material would move it**, so this runs the real `Engine` over four
+/// materials. Drift from the middle of the axis, at full `SPARK`:
+///
+/// | | POLISH | GLOSS | CRUSH |
+/// |---|---|---|---|
+/// | pink −18 dBFS | −0.07 | 0 | +0.08 |
+/// | pink −30 dBFS | +0.01 | 0 | +0.09 |
+/// | six steady partials | −0.13 | 0 | +0.08 |
+/// | **hi-hats** | **+1.23** | 0 | **−1.18** |
+///
+/// **Three of the four do not move at all**, and the fourth moves 2.4 dB — so
+/// the answer for the trim column is not a number, it is that **there is no
+/// number**. A trim large enough to flatten the hats would tilt the other three
+/// by the same amount in the opposite direction, turning a drift on one
+/// material into a drift on all of them.
+///
+/// What the hats measure is the ratios working. CRUSH compresses 6:1 against
+/// POLISH's 1.5:1, and a hi-hat is very nearly all transient, so a harder ratio
+/// takes level off it — **that is the processing being asked for**, not the
+/// axis leaking into the volume. The condition that means something is the one
+/// on material that has something to sustain.
+#[test]
+fn the_character_axis_holds_its_level_on_sustained_material() {
+    let length = RATE as usize;
+    let drift = |material: &[f32], spark: f32| {
+        let readings: Vec<f32> = (0..=8)
+            .map(|step| axis_loudness_db(material, step as f32 / 8.0, spark))
+            .collect();
+        let span = readings.iter().copied().fold(f32::MIN, f32::max)
+            - readings.iter().copied().fold(f32::MAX, f32::min);
+        (span, readings)
+    };
+
+    for (name, material) in materials(length) {
+        if name == "hats" {
+            continue;
+        }
+        for spark in [0.35f32, 1.0] {
+            let (span, readings) = drift(&material, spark);
+            assert!(
+                span < 0.5,
+                "{name} at SPARK {spark}: the axis moved the level {span:.2} dB: {readings:?}"
+            );
+        }
+    }
+
+    // **The transient case, stated rather than asserted away.** It is allowed
+    // to move, but only downward as the ratios harden — a drift that wandered
+    // would be something else.
+    let hats = &materials(length)[3].1;
+    let (span, readings) = drift(hats, 1.0);
+    assert!(span < 3.0, "the hats moved {span:.2} dB: {readings:?}");
+    for pair in readings.windows(2) {
+        assert!(
+            pair[1] <= pair[0] + 0.01,
+            "the level rose toward CRUSH: {readings:?}"
+        );
+    }
+
+    // **And the measurement can fail.** With the amount at zero there is no
+    // processing to differ, so every position must read the same — if this
+    // moved, the spans above would be measuring the material rather than
+    // the axis.
+    let (silent, _) = drift(hats, 0.0);
+    assert!(
+        silent < 0.01,
+        "the axis moved the level {silent:.2} dB at SPARK 0"
+    );
+}
+
+/// **The trim column is wired, and it was not** (`SPK-18`).
+///
+/// `Character::trim_db` was interpolated across the anchors and then read by
+/// nobody: the engine never applied it, so the column that exists to correct
+/// the axis's level could not have corrected anything. It now lives on
+/// [`Curve`](sparkleur_core::dynamics::Curve) and is added **inside `SPARK`**,
+/// because it pays back what the ratios took and those only act in proportion
+/// to `SPARK`.
+///
+/// The shipping trims are all zero — the test above is why — so this drives the
+/// mechanism directly rather than through the axis.
+#[test]
+fn the_character_trim_moves_the_level_and_zero_spark_still_does_nothing() {
+    use sparkleur_core::dynamics::{Curve, Settings, gains_db};
+
+    let levels = [-24.0f32; BAND_COUNT];
+    let trimmed = |trim_db: f32, spark: f32| {
+        gains_db(
+            &Settings {
+                curve: Curve {
+                    trim_db,
+                    ..Curve::GLOSS
+                },
+                spark,
+                ..Settings::default()
+            },
+            levels,
+        )[0]
+    };
+
+    let plain = trimmed(0.0, 1.0);
+    assert!(
+        (trimmed(3.0, 1.0) - plain - 3.0).abs() < 1e-4,
+        "three decibels of trim moved the gain {:.3}",
+        trimmed(3.0, 1.0) - plain
+    );
+    assert!(
+        (trimmed(-3.0, 1.0) - plain + 3.0).abs() < 1e-4,
+        "it is not symmetric"
+    );
+
+    // **Zero is still exactly nothing** (`REQ-SPK-009`). A trim applied outside
+    // `SPARK` would make the axis a static gain at the one setting that must
+    // not have one.
+    for trim_db in [-6.0f32, 0.0, 6.0] {
+        assert_eq!(
+            trimmed(trim_db, 0.0),
+            0.0,
+            "a trim of {trim_db} leaked through SPARK = 0"
+        );
+    }
+}
+
+/// **The four boundaries divide ordinary material into comparable portions**
+/// (`REQ-SPK-002`, `SPK-18`).
+///
+/// A boundary set that starved a band would leave a fader on the front panel
+/// that never does anything, and no amount of listening tells you *which* band
+/// unless you know what should have been in it. Pink noise carries equal energy
+/// per octave, so it says what the boundaries themselves do rather than what
+/// some particular sound does. Each band's share of the total:
+///
+/// | | SUB | BODY | MID | PRES | AIR |
+/// |---|---|---|---|---|---|
+/// | share, dB | −3.1 | −9.6 | −9.6 | −8.7 | −8.0 |
+///
+/// The four upper bands sit **within 1.6 dB of each other** — 120 / 400 / 1500
+/// / 6000 Hz is close to four equal octave spans. SUB holds more because it
+/// carries everything below 120 Hz including the part with no bottom to it.
+#[test]
+fn the_boundaries_divide_ordinary_material_evenly() {
+    use nxe_audio::harmonics::{at_dbfs, db_ratio, pink};
+
+    let length = RATE as usize;
+    let material = at_dbfs(pink(1.0, length), -18.0);
+    let mut crossover = Crossover::new(RATE);
+    let mut energy = [0.0f64; BAND_COUNT];
+    for sample in &material {
+        for (slot, band) in energy.iter_mut().zip(crossover.split(*sample)) {
+            *slot += (band * band) as f64;
+        }
+    }
+
+    let total: f64 = energy.iter().sum();
+    let shares: Vec<f32> = energy
+        .iter()
+        .map(|slot| db_ratio((slot / total).sqrt() as f32, 1.0))
+        .collect();
+
+    // No band is starved.
+    for (band, share) in shares.iter().enumerate() {
+        assert!(
+            *share > -14.0,
+            "band {band} holds only {share:.1} dB: {shares:?}"
+        );
+    }
+
+    // And the four with a boundary on each side are comparable.
+    let upper = &shares[1..];
+    let span = upper.iter().copied().fold(f32::MIN, f32::max)
+        - upper.iter().copied().fold(f32::MAX, f32::min);
+    assert!(span < 2.5, "the upper four spread {span:.1} dB: {shares:?}");
+}
+
+/// **`FOCUS` slides every boundary by an octave and a half either way, and the
+/// order survives** (`REQ-SPK-002`).
+///
+/// The top edge is what breaks first: an octave and a half above 6 kHz is
+/// 17 kHz, which is under Nyquist at 48 kHz but would not be at a lower rate.
+#[test]
+fn focus_slides_the_boundaries_without_crossing_them() {
+    for rate in [44_100.0f32, 48_000.0, 96_000.0] {
+        for focus in [-1.0f32, -0.5, 0.0, 0.5, 1.0] {
+            let edges = sparkleur_core::crossover::edges_for(focus, rate);
+            for pair in edges.windows(2) {
+                assert!(
+                    pair[0] < pair[1],
+                    "at {rate} Hz, focus {focus}: the edges crossed: {edges:?}"
+                );
+            }
+            assert!(
+                edges[BAND_COUNT - 2] < rate / 2.0,
+                "at {rate} Hz, focus {focus}: the top edge reached {:.0} Hz",
+                edges[BAND_COUNT - 2]
+            );
+        }
+    }
+
+    // The full sweep really is three octaves end to end.
+    let low = sparkleur_core::crossover::edges_for(-1.0, 48_000.0)[0];
+    let high = sparkleur_core::crossover::edges_for(1.0, 48_000.0)[0];
+    let octaves = (high / low).log2();
+    assert!(
+        (octaves - 3.0).abs() < 0.01,
+        "the sweep covered {octaves:.2} octaves"
+    );
 }

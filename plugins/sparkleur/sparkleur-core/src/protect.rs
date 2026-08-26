@@ -157,25 +157,9 @@ mod tests {
     use super::*;
     use crate::character;
     use crate::dynamics::{Curve, Weights, band_gain_db};
-    use nxe_audio::harmonics::tone;
+    use nxe_audio::harmonics::{pink, tone};
 
     const RATE: f32 = 48_000.0;
-
-    /// Deterministic pink noise — the proxy for spectrally ordinary material.
-    fn pink(length: usize) -> Vec<f32> {
-        let mut state = 0x1234_5678u32;
-        let (mut b0, mut b1, mut b2) = (0.0f32, 0.0f32, 0.0f32);
-        (0..length)
-            .map(|_| {
-                state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
-                let value = (state >> 8) as f32 / (1 << 23) as f32 * 2.0 - 1.0;
-                b0 = 0.99765 * b0 + value * 0.099_046;
-                b1 = 0.96300 * b1 + value * 0.296_516_4;
-                b2 = 0.57000 * b2 + value * 1.052_691_3;
-                (b0 + b1 + b2 + value * 0.1848) * 0.15
-            })
-            .collect()
-    }
 
     /// A quiet tone standing for "the rest of the sound", plus one in the
     /// painful band at `harsh`.
@@ -198,7 +182,7 @@ mod tests {
     fn tilted(boost_db: f32, length: usize) -> Vec<f32> {
         let mut band = nxe_audio::biquad::BandPass::new(1_500.0, 5_000.0, RATE);
         let gain = 10.0f32.powf(boost_db / 20.0) - 1.0;
-        pink(length)
+        pink(0.15, length)
             .iter()
             .map(|sample| sample + band.process(*sample) * gain)
             .collect()
@@ -254,7 +238,11 @@ mod tests {
         let length = 48_000;
 
         // Spectrally neutral, and something with even less up there.
-        assert_eq!(worst(&pink(length), 1.0), 0.0, "it fired on pink noise");
+        assert_eq!(
+            worst(&pink(0.15, length), 1.0),
+            0.0,
+            "it fired on pink noise"
+        );
         let mut mixed = vec![0.0f32; length];
         for hz in [110.0f32, 220.0, 330.0, 550.0, 1_100.0, 3_300.0] {
             for (sample, value) in mixed.iter_mut().zip(tone(0.05, hz, RATE, length)) {

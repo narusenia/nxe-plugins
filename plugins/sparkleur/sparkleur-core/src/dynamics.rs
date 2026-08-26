@@ -69,6 +69,13 @@ pub struct Curve {
     pub knee_db: f32,
     /// The most the upward side may lift, in dB.
     pub ceiling_db: f32,
+    /// The level correction the axis needs, in dB (`SPK-18`).
+    ///
+    /// **Inside `SPARK`, unlike [`Weights::gain_db`].** It compensates for what
+    /// the ratios and the knee do, and those only act in proportion to `SPARK`
+    /// — so a trim applied outside it would make `SPARK` = 0 a static gain and
+    /// break "zero is exactly nothing" (`REQ-SPK-009`).
+    pub trim_db: f32,
 }
 
 impl Curve {
@@ -81,6 +88,7 @@ impl Curve {
         up_ratio: 1.5,
         knee_db: 6.0,
         ceiling_db: 9.0,
+        trim_db: 0.0,
     };
 }
 
@@ -166,6 +174,9 @@ pub fn gains_db(settings: &Settings, levels_db: [f32; BAND_COUNT]) -> [f32; BAND
 /// dynamics (`dsp.md`). The consequence is worth saying out loud: `SPARK` = 0
 /// is amplitude-flat *at the default weights*, and a band the user has trimmed
 /// keeps its trim.
+///
+/// **`curve.trim_db` is added inside it**, because it is the axis paying back
+/// what the axis took (`SPK-18`).
 pub fn band_gain_db(
     level_db: f32,
     curve: &Curve,
@@ -194,7 +205,8 @@ pub fn band_gain_db(
     ) * taper(level_db, floor_db);
 
     let weighted = down * finite(weights.down, 0.0).clamp(0.0, 1.0)
-        + up * finite(weights.up, 0.0).clamp(0.0, 1.0);
+        + up * finite(weights.up, 0.0).clamp(0.0, 1.0)
+        + finite(curve.trim_db, 0.0);
 
     // Bounded, so that whatever comes out of here is a multiplier and not an
     // infinity (see `MAX_GAIN_DB`).
@@ -503,6 +515,7 @@ mod tests {
                     up_ratio: value,
                     knee_db: value,
                     ceiling_db: value,
+                    trim_db: value,
                 };
                 let weights = Weights {
                     down: value,

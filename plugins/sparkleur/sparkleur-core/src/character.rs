@@ -115,9 +115,6 @@ pub struct Character {
     /// Where `SPEED` sits when its own control is centred (`SPK-8` combines
     /// them).
     pub speed_centre: f32,
-    /// The level correction the axis needs, in dB. **Provisional** — the frame
-    /// exists so that `SPK-18` has somewhere to put the answer.
-    pub trim_db: f32,
 }
 
 /// The character at `position`, `0..=1` from POLISH to CRUSH.
@@ -150,13 +147,13 @@ pub fn at(position: f32) -> Character {
             up_ratio: between(low.up_ratio, high.up_ratio),
             knee_db: between(low.knee_db, high.knee_db),
             ceiling_db: between(low.ceiling_db, high.ceiling_db),
+            trim_db: between(low.trim_db, high.trim_db),
         },
         bias: between(low.bias, high.bias),
         hardness: between(low.hardness, high.hardness),
         de_harsh: between(low.de_harsh, high.de_harsh),
         sub_protect: between(low.sub_protect, high.sub_protect),
         speed_centre: between(low.speed_centre, high.speed_centre),
-        trim_db: between(low.trim_db, high.trim_db),
     }
 }
 
@@ -177,7 +174,7 @@ mod tests {
             character.de_harsh,
             character.sub_protect,
             character.speed_centre,
-            character.trim_db,
+            character.curve.trim_db,
         ]
     }
 

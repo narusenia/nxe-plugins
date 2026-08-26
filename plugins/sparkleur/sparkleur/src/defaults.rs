@@ -16,7 +16,7 @@
 //! measured here to drift from the numbers shipped.
 
 use crate::params::SparkleurParams;
-use nxe_audio::harmonics::{amplitude, bin_of, db_ratio, rms, tone};
+use nxe_audio::harmonics::{amplitude, at_dbfs, bin_of, db_ratio, noise, pink, rms, tone};
 use sparkleur_core::crossover::BAND_COUNT;
 use sparkleur_core::engine::{Engine, Shape};
 
@@ -28,47 +28,10 @@ const BLOCK: usize = 64;
 /// fully on it — which would read as "the pad sparkled".
 const SETTLE: f32 = 0.25;
 
-/// A deterministic noise source. No `rand` dependency, and the same numbers
-/// every run.
-struct Noise(u32);
-
-impl Noise {
-    fn new() -> Self {
-        Self(0x1234_5678)
-    }
-
-    fn next(&mut self) -> f32 {
-        self.0 = self.0.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
-        (self.0 >> 8) as f32 / (1 << 23) as f32 * 2.0 - 1.0
-    }
-}
-
-fn scaled(mut signal: Vec<f32>, dbfs: f32) -> Vec<f32> {
-    let scale = 10.0f32.powf(dbfs / 20.0) / rms(&signal);
-    for sample in &mut signal {
-        *sample *= scale;
-    }
-    signal
-}
-
-/// **Pink, not white, is the proxy for ordinary material.** White noise puts
-/// four times as much energy in the presence band as in the sub band purely
-/// because the band is two octaves wide, so anything judging one band against
-/// another reads it as bright when nothing is. Three one-pole sections give
-/// −3 dB/octave closely enough to judge a threshold against.
-fn pink(dbfs: f32, length: usize) -> Vec<f32> {
-    let mut source = Noise::new();
-    let (mut b0, mut b1, mut b2) = (0.0f32, 0.0f32, 0.0f32);
-    let raw = (0..length)
-        .map(|_| {
-            let value = source.next();
-            b0 = 0.99765 * b0 + value * 0.099_046;
-            b1 = 0.96300 * b1 + value * 0.296_516_4;
-            b2 = 0.57000 * b2 + value * 1.052_691_3;
-            b0 + b1 + b2 + value * 0.1848
-        })
-        .collect();
-    scaled(raw, dbfs)
+/// Pink noise at a chosen level: the proxy for spectrally ordinary material
+/// (`nxe_audio::harmonics::pink`).
+fn ordinary(dbfs: f32, length: usize) -> Vec<f32> {
+    at_dbfs(pink(1.0, length), dbfs)
 }
 
 /// Six steady partials: something with no transients in it at all.
@@ -79,20 +42,21 @@ fn pad(dbfs: f32, length: usize) -> Vec<f32> {
             *sample += value;
         }
     }
-    scaled(mixed, dbfs)
+    at_dbfs(mixed, dbfs)
 }
 
 /// Eight strikes a second, each a 6 ms burst: nothing but transients.
 fn hats(dbfs: f32, length: usize) -> Vec<f32> {
-    let mut source = Noise::new();
     let period = (RATE / 8.0) as usize;
-    let raw = (0..length)
-        .map(|index| {
+    let raw = noise(1.0, length)
+        .iter()
+        .enumerate()
+        .map(|(index, value)| {
             let since = (index % period) as f32 / RATE;
-            source.next() * (-since / 0.006).exp()
+            value * (-since / 0.006).exp()
         })
         .collect();
-    scaled(raw, dbfs)
+    at_dbfs(raw, dbfs)
 }
 
 /// Everything one run of the engine says about itself.
@@ -187,7 +151,7 @@ fn silence_does_not_breathe() {
     // drawn on a signal 80 dB down, which the shipping floor still holds at
     // nothing and an opened one reaches for. This is what `LIFT` is, and it is
     // why it ships closed (`REQ-SPK-003`).
-    let whisper = pink(-80.0, RATE as usize);
+    let whisper = ordinary(-80.0, RATE as usize);
     let held = rendered(&whisper);
     let lifted = rendered_with(&whisper, |shape| shape.lift = 1.0);
     let reach = |run: &Run| run.gain_high_db.iter().fold(f32::MIN, |a, b| a.max(*b));
@@ -208,16 +172,16 @@ fn silence_does_not_breathe() {
 #[test]
 fn ordinary_material_passes_through_and_both_sides_move() {
     let length = RATE as usize;
-    let nominal = pink(-18.0, length);
+    let nominal = ordinary(-18.0, length);
     let change = rendered(&nominal).change_db(&nominal);
     assert!(
         change.abs() < 0.5,
         "inserting it moved the level {change:+.2} dB"
     );
 
-    let quiet = pink(-42.0, length);
+    let quiet = ordinary(-42.0, length);
     let up = rendered(&quiet).change_db(&quiet);
-    let loud = pink(-6.0, length);
+    let loud = ordinary(-6.0, length);
     let down = rendered(&loud).change_db(&loud);
     assert!(up > 0.2, "the upward side did nothing: {up:+.2} dB");
     assert!(down < -1.0, "the downward side did nothing: {down:+.2} dB");
@@ -234,7 +198,7 @@ fn ordinary_material_passes_through_and_both_sides_move() {
 #[test]
 fn the_protection_leaves_ordinary_material_alone() {
     for dbfs in [-30.0f32, -18.0, -6.0] {
-        let pull = rendered(&pink(dbfs, RATE as usize)).de_harsh_db;
+        let pull = rendered(&ordinary(dbfs, RATE as usize)).de_harsh_db;
         assert!(
             pull > -0.1,
             "it pulled {pull:.2} dB out of pink noise at {dbfs:.0} dBFS"
@@ -246,7 +210,7 @@ fn the_protection_leaves_ordinary_material_alone() {
     // rather than the guard being unreachable from here.
     let length = RATE as usize;
     let mut band = nxe_audio::biquad::BandPass::new(1_500.0, 5_000.0, RATE);
-    let harsh: Vec<f32> = pink(-18.0, length)
+    let harsh: Vec<f32> = ordinary(-18.0, length)
         .iter()
         .map(|sample| sample + band.process(*sample) * (10.0f32.powf(10.0 / 20.0) - 1.0))
         .collect();
@@ -299,6 +263,8 @@ fn transients_open_the_gate_and_sustains_do_not() {
 /// what it fixes is the total residue rather than one cause of it.
 ///
 /// Measured: **−68.3 dB at the defaults, −52.3 dB at CRUSH with `SPARK` full.**
+/// (`SPK-18` re-ran these after the test noise was found to carry a DC term;
+/// a tone probe never saw it, so the figures are unchanged.)
 #[test]
 fn the_defaults_leave_the_signal_clean() {
     let residue_below = |spark: f32, character: f32| {
@@ -378,7 +344,7 @@ fn survey() {
 
     println!("\n--- pink noise, the ordinary-material proxy ---");
     for dbfs in [-42.0f32, -36.0, -24.0, -18.0, -12.0, -6.0] {
-        report(&format!("{dbfs:.0} dBFS"), &pink(dbfs, length));
+        report(&format!("{dbfs:.0} dBFS"), &ordinary(dbfs, length));
     }
     println!("\n--- sustain against transients, both at -18 dBFS ---");
     report("pad", &pad(-18.0, length));
