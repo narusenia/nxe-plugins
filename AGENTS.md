@@ -28,8 +28,8 @@ with the code, and fix the document in the same change.
 - `plugins/doubler/doubler`: the Doubler nih-plug wrapper — parameter
   declarations, the Vizia UI, and the binding between them
 - `plugins/velour/velour-core`: the Velour DSP. Host-agnostic, allocation-free
-  on the audio path. `shaper` / `oversample` / `biquad` / `guard` are written to
-  know nothing about Velour, because Sparkleur will want them
+  on the audio path. `shaper`, `oversample` and `biquad` are written to know
+  nothing about Velour, because Sparkleur will want them
 - `plugins/velour/velour`: the Velour nih-plug wrapper. **No interface yet** —
   it makes sound through the host's generated parameter view
 - `docs/`: monorepo-wide documents (architecture, cross-plugin backlog and
