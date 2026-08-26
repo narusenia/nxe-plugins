@@ -217,6 +217,12 @@ pub fn create(
             // is a question asked while looking at any of it (`ui.md`).
             meters::view(cx);
         })
+        // **`.root` is what paints the window.** Without it the background is
+        // whatever the host's window is — black — and every `.panel`, which
+        // sits at `BACKGROUND`, reads as a lighter box on it. The theme's
+        // "two levels, not three" only works when the window is one of them
+        // (measured off a screenshot: panels 0x0A, window 0x00).
+        .class("root")
         .width(Stretch(1.0))
         .height(Stretch(1.0))
         .col_between(Pixels(theme::SPACE_3))
