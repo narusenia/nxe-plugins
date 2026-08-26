@@ -6,6 +6,7 @@ members = [
     "crates/nxe-ui",
     "plugins/doubler/doubler-core",
     "plugins/doubler/doubler",
+    "plugins/sparkleur/sparkleur-core",
     "plugins/velour/velour-core",
     "plugins/velour/velour",
     "xtask",
@@ -22,6 +23,7 @@ nxe-audio = { path = "crates/nxe-audio" }
 nxe-dsp = { path = "crates/nxe-dsp" }
 nxe-ui = { path = "crates/nxe-ui" }
 doubler-core = { path = "plugins/doubler/doubler-core" }
+sparkleur-core = { path = "plugins/sparkleur/sparkleur-core" }
 velour-core = { path = "plugins/velour/velour-core" }
 
 # nih-plug is not on crates.io. All three crates come from one repository, so
@@ -74,6 +76,9 @@ opt-level = 2
 opt-level = 2
 
 [profile.dev.package.doubler]
+opt-level = 2
+
+[profile.dev.package.sparkleur-core]
 opt-level = 2
 
 [profile.dev.package.velour-core]
