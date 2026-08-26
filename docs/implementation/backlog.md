@@ -40,7 +40,6 @@
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| INFRA-3 | リリースの CI（フェーズ 4） | `infra-plan.md` |
 | DBL-12 | CPU 予算の確認（フェーズ 4） | `doubler-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4） | `doubler-plan.md` |
 | UI-8 / UI-9 | `Meter` / `ToggleSwitch`（Doubler は使わない。フェーズ 5） | `nxe-ui-plan.md` |
@@ -66,7 +65,7 @@
 |---|---|---|
 | INFRA-1 | ワークスペース骨格 | ✅ `3f98dce` |
 | INFRA-2 | プルリクエストの CI（`mise run check`） | ✅ |
-| INFRA-3 | リリースの CI（タグ → 3 OS bundle → Release） | 🟡 |
+| INFRA-3 | リリースの CI（タグ → 3 OS bundle → Release） | ✅ ❓ タグ未実行 |
 
 ### 共通 UI — `nxe-ui-plan.md`
 

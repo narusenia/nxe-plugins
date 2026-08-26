@@ -57,3 +57,15 @@ GitHub Actions で `mise run check`（fmt + clippy + test）。macOS で回す�
 - **署名は範囲外**: Apple Developer Program を契約するまでは未署名で出す。
   契約したらこの単位に署名と公証を足す（README の手順はそのとき削る）
 - **依存**: INFRA-2
+- **決めたこと**: 各プラットフォームは**自分のランナーでビルドする**。
+  ネイティブの UI スタックをリンクするのでクロスコンパイルしない。macOS の
+  2 アーキテクチャだけは `cargo xtask bundle-universal` が lipo でまとめる
+- **決めたこと**: Release は**下書きで作る**。macOS が未署名なので、
+  リリースノートを見て人が公開ボタンを押す
+- **決めたこと**: `fail-fast: false`。1 つ落ちたときに残り 2 つの成果物を
+  捨てると、原因の当たりを付けにくい
+- **決めたこと**: zip は Windows だけ `Compress-Archive`、他は `zip`。
+  `zip` は Windows ランナーに無く、`Compress-Archive` は他に無い
+- **未検証**: タグを打っていないので、このワークフローはまだ一度も走っていない。
+  最初のタグで確認する項目 — 3 つの zip が付くか、macOS の bundle が
+  `lipo -info` で universal か、README の Gatekeeper 手順が実際の添付物に効くか

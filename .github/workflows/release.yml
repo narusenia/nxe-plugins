@@ -1,0 +1,108 @@
+# Cuts a release from a tag.
+#
+# Builds the bundles on each platform's own runner — the plugins link a native
+# UI stack, so there is no cross-compiling here beyond macOS's two architectures
+# — zips what `cargo xtask bundle` produced, and attaches one zip per platform
+# to the GitHub Release.
+#
+# **Nothing is signed or notarized.** Until there is an Apple Developer Program
+# membership, macOS users clear the quarantine attribute by hand; the README
+# says how, and that section comes out when signing lands (`INFRA-3`).
+
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+# Creating the release and uploading to it is a write.
+permissions:
+  contents: write
+
+jobs:
+  bundle:
+    strategy:
+      # One platform failing should not throw away the other two builds: it is
+      # easier to look at what did build than to guess from a cancelled run.
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            name: macos
+          - os: windows-latest
+            name: windows
+          - os: ubuntu-latest
+            name: linux
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # The list comes from nih-plug's own CI. Without them the baseview window
+      # and the audio backends do not build.
+      - name: Install Linux build dependencies
+        if: matrix.name == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libgl-dev libjack-dev \
+            libx11-xcb-dev libxcb1-dev libxcb-dri2-0-dev libxcb-icccm4-dev \
+            libxcursor-dev libxkbcommon-dev libxcb-shape0-dev libxcb-xfixes0-dev
+
+      # Same toolchain as `mise run check` and as a laptop: the version lives in
+      # `mise.toml` and nowhere else.
+      - uses: jdx/mise-action@v2
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.name }}
+
+      # `bundle-universal` builds both macOS architectures and lipos them, so
+      # one bundle runs on Apple Silicon and Intel.
+      - name: Add the second macOS architecture
+        if: matrix.name == 'macos'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Bundle
+        if: matrix.name == 'macos'
+        run: cargo xtask bundle-universal doubler --release
+
+      - name: Bundle
+        if: matrix.name != 'macos'
+        run: cargo xtask bundle doubler --release
+
+      # `zip` is not on the Windows runners and `Compress-Archive` is not
+      # anywhere else, so this is two steps rather than one clever one.
+      - name: Zip
+        if: matrix.name != 'windows'
+        run: |
+          cd target/bundled
+          zip -r "../../nxe-plugins-${{ github.ref_name }}-${{ matrix.name }}.zip" .
+
+      - name: Zip
+        if: matrix.name == 'windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path target/bundled/* -DestinationPath "nxe-plugins-${{ github.ref_name }}-${{ matrix.name }}.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: nxe-plugins-*.zip
+          if-no-files-found: error
+
+  release:
+    needs: bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*.zip
+          # A draft, not a published release: the macOS bundle is unsigned, so
+          # someone has to say the notes are right and press the button.
+          draft: true
+          generate_release_notes: true
