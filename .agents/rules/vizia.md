@@ -143,13 +143,19 @@ for that. Mark the content `.decoration` (`theme::hint` does). It also has no
 placement logic: near the right edge it runs off the window unless something
 sets `left: 1s; right: 0px` on it.
 
-**Centring a container's children costs a stretching child its width.**
-`child-left: 1s` / `child-right: 1s` are two more `Stretch`es for the row to
-divide, so a child asking for `Stretch(1.0)` gets a *third* of the space rather
-than all of it. Velour's transfer-curve window was drawn 44 px wide inside a
-132 px column for exactly this reason (`VEL-13`). Centre the thing that needs
-centring — put the stretch on the `Label`, not on the column that also holds a
-full-width view.
+**Centring a container's children costs a stretching child its width — and its
+height.** `child-left: 1s` / `child-right: 1s` are two more `Stretch`es for the
+row to divide, so a child asking for `Stretch(1.0)` gets a *third* of the space
+rather than all of it. Velour's transfer-curve window was drawn 44 px wide
+inside a 132 px column for exactly this reason (`VEL-13`). Centre the thing that
+needs centring — put the stretch on the `Label`, not on the column that also
+holds a full-width view.
+
+**`.class("row")` does this vertically to everything in it.** The class carries
+`child-top: 1s` and `child-bottom: 1s`, so a `Stretch(1.0)` child of a 176 px
+row is 58 px tall and whatever is inside it hangs out of the bottom. Sparkleur's
+transfer window shipped that way for one build (`SPK-15`). A row whose children
+already have heights of their own does not want the class.
 
 **A widget must not move its own value optimistically.** `binding_system`
 re-reads every bound lens and compares with `Data::same`, so **a write the caller
