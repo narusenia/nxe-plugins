@@ -93,8 +93,10 @@ impl VoiceHandles {
     /// nothing then writes shows an edit that did not happen.
     fn written(&self, cx: &mut EventContext) -> Vec<&ParamWidgetBase> {
         let mut bases = vec![&self.pan, &self.delay];
-        if Ui::mirror.get(cx) {
+        if Ui::mirror_pan.get(cx) {
             bases.push(&self.mirror_pan);
+        }
+        if Ui::mirror_delay.get(cx) {
             bases.push(&self.mirror_delay);
         }
         bases
@@ -160,14 +162,12 @@ pub fn view(cx: &mut Context) {
                 // A sideways drag has nothing to write when the mode and spread
                 // leave the voices with no pan to give — every voice is centred
                 // regardless of its shape. The radius still moves.
-                let mirroring = Ui::mirror.get(cx);
-
                 if let Some(shape) = pan_shape_for(source, spread, angle, index) {
                     // `Pan_i` runs `-1..=1`, so its normalized value is the
                     // shape mapped onto `0..=1`.
                     let normalized = (shape + 1.0) * 0.5;
                     voice.pan.set_normalized_value(cx, normalized);
-                    if mirroring {
+                    if Ui::mirror_pan.get(cx) {
                         voice
                             .mirror_pan
                             .set_normalized_value(cx, Mirror::Opposite.apply(normalized));
@@ -175,7 +175,7 @@ pub fn view(cx: &mut Context) {
                 }
 
                 voice.delay.set_normalized_value(cx, radius);
-                if mirroring {
+                if Ui::mirror_delay.get(cx) {
                     voice
                         .mirror_delay
                         .set_normalized_value(cx, Mirror::Same.apply(radius));

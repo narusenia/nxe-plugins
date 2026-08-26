@@ -103,7 +103,7 @@ fn cell(cx: &mut Context, index: usize, column: Column) {
             Column::Delay => param_bind::mirrored_bar(
                 cx,
                 Ui::params,
-                Ui::mirror,
+                Ui::mirror_delay,
                 Mirror::Same,
                 move |p| &p.shape[index].delay,
                 move |p| &p.shape[partner].delay,
@@ -111,7 +111,7 @@ fn cell(cx: &mut Context, index: usize, column: Column) {
             Column::Detune => param_bind::mirrored_bar(
                 cx,
                 Ui::params,
-                Ui::mirror,
+                Ui::mirror_detune,
                 Mirror::Opposite,
                 move |p| &p.shape[index].detune,
                 move |p| &p.shape[partner].detune,
@@ -119,7 +119,7 @@ fn cell(cx: &mut Context, index: usize, column: Column) {
             Column::Pan => param_bind::mirrored_bar(
                 cx,
                 Ui::params,
-                Ui::mirror,
+                Ui::mirror_pan,
                 Mirror::Opposite,
                 move |p| &p.shape[index].pan,
                 move |p| &p.shape[partner].pan,

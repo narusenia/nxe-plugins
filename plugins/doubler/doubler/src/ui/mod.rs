@@ -55,15 +55,27 @@ pub(crate) struct Ui {
     /// can be highlighted. This is what stands in for numbering the dots
     /// (`plugins/doubler/docs/specifications/ui.md`).
     hovered: Option<usize>,
-    /// Whether an edit mirrors onto the paired voice (`REQ-DBL-014`). The
-    /// reactive copy of `params.mirror`, for the same reason `tab` is one.
-    mirror: bool,
+    /// Whether an edit mirrors onto the paired voice, per axis
+    /// (`REQ-DBL-014`). The reactive copies of `params.mirror_*`, for the same
+    /// reason `tab` is one.
+    mirror_pan: bool,
+    mirror_detune: bool,
+    mirror_delay: bool,
+}
+
+/// Which axis a mirror switch controls. `Gain` is absent: it is the one shape
+/// axis with no reading as a mirror image (`REQ-DBL-014`).
+#[derive(Clone, Copy)]
+pub(crate) enum MirrorAxis {
+    Pan,
+    Detune,
+    Delay,
 }
 
 pub(crate) enum UiEvent {
     SelectTab(usize),
     Hover(Option<usize>),
-    ToggleMirror,
+    ToggleMirror(MirrorAxis),
 }
 
 impl Model for Ui {
@@ -76,10 +88,26 @@ impl Model for Ui {
                     .store(*tab == TAB_DETAIL, Ordering::Relaxed);
             }
             UiEvent::Hover(index) => self.hovered = *index,
-            UiEvent::ToggleMirror => {
-                self.mirror = !self.mirror;
-                self.params.mirror.store(self.mirror, Ordering::Relaxed);
-            }
+            UiEvent::ToggleMirror(axis) => match axis {
+                MirrorAxis::Pan => {
+                    self.mirror_pan = !self.mirror_pan;
+                    self.params
+                        .mirror_pan
+                        .store(self.mirror_pan, Ordering::Relaxed);
+                }
+                MirrorAxis::Detune => {
+                    self.mirror_detune = !self.mirror_detune;
+                    self.params
+                        .mirror_detune
+                        .store(self.mirror_detune, Ordering::Relaxed);
+                }
+                MirrorAxis::Delay => {
+                    self.mirror_delay = !self.mirror_delay;
+                    self.params
+                        .mirror_delay
+                        .store(self.mirror_delay, Ordering::Relaxed);
+                }
+            },
         });
     }
 }
@@ -97,7 +125,9 @@ pub fn create(params: Arc<DoublerParams>, state: Arc<ViziaState>) -> Option<Box<
                 TAB_MAIN
             },
             hovered: None,
-            mirror: params.mirror.load(Ordering::Relaxed),
+            mirror_pan: params.mirror_pan.load(Ordering::Relaxed),
+            mirror_detune: params.mirror_detune.load(Ordering::Relaxed),
+            mirror_delay: params.mirror_delay.load(Ordering::Relaxed),
             params: params.clone(),
         }
         .build(cx);
@@ -149,7 +179,7 @@ fn field_row(cx: &mut Context) {
         // so turning mirroring on does not cost the figure any height.
         HStack::new(cx, |cx| {
             field::view(cx);
-            mirror_toggle(cx);
+            mirror_switches(cx);
         })
         .width(Stretch(1.0))
         .height(Stretch(1.0));
@@ -169,55 +199,56 @@ fn field_row(cx: &mut Context) {
     .col_between(Pixels(theme::SPACE_3));
 }
 
-/// What the switch's own parts are coloured.
+/// One mirror switch: a pill that is checked while that axis mirrors.
 ///
-/// `.segment:checked` recolours the entity it is on, but this segment has
-/// children, and the `label` and `.icon` class rules beat anything they would
-/// inherit from it. So they are told directly.
-fn segment_color(on: &bool) -> Color {
-    if *on {
-        theme::BACKGROUND.vizia()
-    } else {
-        theme::MUTED.vizia()
-    }
+/// Not a new widget. `SegmentedControl` is `.segment` labels inside a
+/// `.segmented` row, and one label on its own is the same thing — including
+/// `:checked` recolouring it, which only works because the label carries the
+/// class itself (`plugins/doubler/docs/implementation/doubler-plan.md`).
+/// `UI-9`'s `ToggleSwitch` would be a sliding switch, which is not what belongs
+/// beside a figure.
+fn mirror_switch(
+    cx: &mut Context,
+    label: &'static str,
+    on: impl Lens<Target = bool>,
+    axis: MirrorAxis,
+) {
+    HStack::new(cx, |cx| {
+        Label::new(cx, label)
+            .class("segment")
+            .checked(on)
+            .on_press(move |cx| cx.emit(UiEvent::ToggleMirror(axis)));
+    })
+    .class("segmented");
 }
 
-/// The mirror switch: a single segment, checked when mirroring is on.
+/// The three mirror switches, over the figure's empty top corner.
 ///
-/// Not a new widget. `SegmentedControl` is a row of `.segment` labels with one
-/// checked, and one segment on its own is exactly the same thing
-/// (`plugins/doubler/docs/implementation/doubler-plan.md`). `UI-9`'s
-/// `ToggleSwitch` would be a sliding switch, which is not what belongs beside a
-/// figure.
-fn mirror_toggle(cx: &mut Context) {
+/// **One pill per axis, not a master switch with exceptions.** A master plus a
+/// per-axis opt-out would mean two pieces of state deciding one write, and
+/// "mirror is on but delay is not mirroring" is a state a reader has to
+/// reconstruct. Separate pills say it outright.
+///
+/// They are separate `.segmented` groups rather than one, because one group is
+/// how this interface says "pick exactly one of these" everywhere else.
+fn mirror_switches(cx: &mut Context) {
     HStack::new(cx, |cx| {
-        HStack::new(cx, |cx| {
-            // Both children are `.decoration`. A hit-testable child makes the
-            // container's press fire only when the pointer happens not to cross
-            // between children (`.agents/rules/vizia.md`).
-            icon::label(cx, icon::FLIP_HORIZONTAL_2)
-                .class("decoration")
-                .color(Ui::mirror.map(segment_color));
-            Label::new(cx, "MIRROR")
-                .class("decoration")
-                .color(Ui::mirror.map(segment_color));
-        })
-        .class("segment")
-        // Morphorm's default width is `Stretch(1.0)`, and a stretching child of
-        // an auto-width parent resolves to zero — the switch came out as a
-        // one-pixel sliver with its text clipped away. `SegmentedControl` gets
-        // away with the same CSS because its segments are `Label`s.
-        .width(Auto)
-        .col_between(Pixels(theme::SPACE_1))
-        .checked(Ui::mirror)
-        .on_press(|cx| cx.emit(UiEvent::ToggleMirror));
+        icon::label(cx, icon::FLIP_HORIZONTAL_2);
+        mirror_switch(cx, "PAN", Ui::mirror_pan, MirrorAxis::Pan);
+        mirror_switch(cx, "DETUNE", Ui::mirror_detune, MirrorAxis::Detune);
+        mirror_switch(cx, "DELAY", Ui::mirror_delay, MirrorAxis::Delay);
     })
-    .class("segmented")
     .position_type(PositionType::SelfDirected)
     // Stretching the space to its left is how Morphorm right-aligns something
-    // that sizes to its content.
+    // that sizes to its content. Both axes need saying: an unset size is
+    // `Stretch(1.0)`, not "size to content" (`.agents/rules/vizia.md`).
     .left(Stretch(1.0))
-    .top(Pixels(0.0));
+    .top(Pixels(0.0))
+    .width(Auto)
+    .height(Auto)
+    .col_between(Pixels(theme::SPACE_1))
+    .child_top(Stretch(1.0))
+    .child_bottom(Stretch(1.0));
 }
 
 /// The tab strip is a segmented control: exactly the same "one of these" choice
