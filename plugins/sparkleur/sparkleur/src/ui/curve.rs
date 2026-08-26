@@ -44,13 +44,27 @@ const HIGH_DB: f32 = 0.0;
 /// something the eye reads at a glance and becomes something to work out
 /// (looked at in a host, `SPK-15`).
 ///
-/// The number is what is left of [`crate::ui::field::HEIGHT`] once the label
-/// under the plot and the panel's own padding are taken out, so the frame sits
+/// The number is what is left of [`super::field::HEIGHT`] once the label under
+/// the plot and the panel's own padding are taken out, so the frame sits
 /// exactly as tall as the figure beside it.
-const PLOT: f32 = 140.0;
+///
+/// **The padding is `.panel`'s, from the stylesheet** — `child-space: 16` and
+/// `row-between: 12`, not the 8 this first assumed. Getting it wrong put the
+/// plot through the right-hand border (`SPK-15`).
+const PLOT: f32 = super::field::HEIGHT - theme::SPACE_4 * 2.0 - theme::SPACE_3 - LABEL;
 
-/// The panel around the plot: the plot plus its padding.
-pub const WIDTH: f32 = PLOT + theme::SPACE_2 * 2.0;
+/// The band's name under the plot. **Given a height rather than measured**: the
+/// plot's size is worked out from what is left, and "what is left" cannot be
+/// arithmetic on a number nobody has written down.
+const LABEL: f32 = 16.0;
+
+/// The panel around the plot: the plot plus `.panel`'s own padding.
+pub const WIDTH: f32 = PLOT + theme::SPACE_4 * 2.0;
+
+/// If the padding ever grows past the figure's height, the plot is a negative
+/// number and the panel draws nothing. **Caught at compile time**, because a
+/// test would only catch it after somebody ran one.
+const _: () = assert!(PLOT > 0.0);
 
 const NAMES: [&str; BAND_COUNT] = ["SUB", "BODY", "MID", "PRESENCE", "AIR"];
 
@@ -141,17 +155,22 @@ pub fn view(cx: &mut Context) {
         )
         .class("subtle")
         .width(Stretch(1.0))
+        .height(Pixels(LABEL))
         .child_left(Stretch(1.0))
         .child_right(Stretch(1.0));
     })
     // **A frame, like the meter strip's.** Without one the curve is a line
     // floating in the black beside the figure, and it reads as something that
     // escaped rather than as a panel of its own (looked at in a host, `SPK-15`).
+    //
+    // **Both sides given.** `Stretch(1.0)` here was a third of the row's height:
+    // the row centres its children with `child-top: 1s` and `child-bottom: 1s`,
+    // and those are two more stretches for the height to be divided among
+    // (`.agents/rules/vizia.md`). The panel came out 58 px tall with a 140 px
+    // plot hanging out of the bottom of it.
     .class("panel")
     .width(Pixels(WIDTH))
-    .height(Stretch(1.0))
-    .child_space(Pixels(theme::SPACE_2))
-    .row_between(Pixels(theme::SPACE_1));
+    .height(Pixels(super::field::HEIGHT));
 }
 
 #[cfg(test)]
@@ -172,14 +191,16 @@ mod tests {
     /// with the figure at one height.
     #[test]
     fn the_plot_is_square_inside_a_panel_the_height_of_the_figure() {
-        assert_eq!(WIDTH, PLOT + theme::SPACE_2 * 2.0);
-        // The plot, the label under it and the padding fill the figure's
-        // height exactly.
-        const LABEL: f32 = 16.0;
+        // The plot, the label under it and `.panel`'s own padding fill the
+        // figure's height exactly — which is what makes the frame line up with
+        // the figure beside it.
         assert_eq!(
-            PLOT + LABEL + theme::SPACE_1 + theme::SPACE_2 * 2.0,
+            PLOT + LABEL + theme::SPACE_3 + theme::SPACE_4 * 2.0,
             super::super::field::HEIGHT
         );
+        // And the plot is as wide as it is tall, which is what makes the
+        // diagonal 45 degrees.
+        assert_eq!(WIDTH - theme::SPACE_4 * 2.0, PLOT);
     }
 
     #[test]

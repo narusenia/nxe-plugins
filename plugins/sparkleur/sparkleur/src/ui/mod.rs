@@ -251,8 +251,12 @@ fn figure_row(cx: &mut Context, host_rate: f32, analysis: Arc<Analysis>) {
         field::view(cx, host_rate, analysis);
         curve::view(cx);
     })
-    .class("row")
+    // **Not `.class("row")`.** That centres its children vertically, and
+    // `child-top: 1s` / `child-bottom: 1s` are two more stretches for the
+    // height to be divided among (`.agents/rules/vizia.md`). Both children here
+    // are given an explicit height and want the whole of it.
     .height(Pixels(field::HEIGHT))
+    .width(Stretch(1.0))
     .col_between(Pixels(theme::SPACE_3));
 }
 
