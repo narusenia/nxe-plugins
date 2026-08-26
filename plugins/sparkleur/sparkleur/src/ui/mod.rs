@@ -152,10 +152,6 @@ fn meter_position(amplitude: f32) -> f32 {
     ((db - METER_FLOOR_DB) / -METER_FLOOR_DB).clamp(0.0, 1.0)
 }
 
-/// How wide the transfer window is. Narrower than the figure beside it: it
-/// answers one question about one band, and the figure answers the main one.
-const CURVE_WIDTH: f32 = 132.0;
-
 /// One published band frame as a curve across the figure's axis.
 ///
 /// **Both mappings live on this side of the widget**, which is the same split
@@ -253,7 +249,7 @@ pub fn create(
 fn figure_row(cx: &mut Context, host_rate: f32, analysis: Arc<Analysis>) {
     HStack::new(cx, |cx| {
         field::view(cx, host_rate, analysis);
-        curve::view(cx, CURVE_WIDTH);
+        curve::view(cx);
     })
     .class("row")
     .height(Pixels(field::HEIGHT))

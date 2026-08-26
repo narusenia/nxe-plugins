@@ -36,6 +36,22 @@ const RESOLUTION: usize = 96;
 const LOW_DB: f32 = -60.0;
 const HIGH_DB: f32 = 0.0;
 
+/// **The plot is square**, and it has to be.
+///
+/// The line the curve is read against is the diagonal, and a diagonal is only
+/// 45 degrees when the two axes are the same length. Stretched to a tall box it
+/// still runs corner to corner, but "below the line is compression" stops being
+/// something the eye reads at a glance and becomes something to work out
+/// (looked at in a host, `SPK-15`).
+///
+/// The number is what is left of [`crate::ui::field::HEIGHT`] once the label
+/// under the plot and the panel's own padding are taken out, so the frame sits
+/// exactly as tall as the figure beside it.
+const PLOT: f32 = 140.0;
+
+/// The panel around the plot: the plot plus its padding.
+pub const WIDTH: f32 = PLOT + theme::SPACE_2 * 2.0;
+
 const NAMES: [&str; BAND_COUNT] = ["SUB", "BODY", "MID", "PRESENCE", "AIR"];
 
 /// The fallback: where this plugin is mostly used.
@@ -93,7 +109,7 @@ fn diagonal() -> Curve {
     vec![(0.0, 0.0), (1.0, 1.0)]
 }
 
-pub fn view(cx: &mut Context, width: f32) {
+pub fn view(cx: &mut Context) {
     VStack::new(cx, |cx| {
         CurveView::new(
             cx,
@@ -108,8 +124,11 @@ pub fn view(cx: &mut Context, width: f32) {
             |_cx, _index, _gesture| {},
         )
         .reference(diagonal())
-        .height(Stretch(1.0))
-        .width(Stretch(1.0));
+        // **Both sides given, not stretched.** A stretching plot would take the
+        // height the row hands it and the width the panel hands it, and those
+        // are not the same number.
+        .width(Pixels(PLOT))
+        .height(Pixels(PLOT));
 
         // Centred on the label itself, **not with stretch on the column**:
         // `child-left: 1s` and `child-right: 1s` on the parent are two more
@@ -129,7 +148,7 @@ pub fn view(cx: &mut Context, width: f32) {
     // floating in the black beside the figure, and it reads as something that
     // escaped rather than as a panel of its own (looked at in a host, `SPK-15`).
     .class("panel")
-    .width(Pixels(width))
+    .width(Pixels(WIDTH))
     .height(Stretch(1.0))
     .child_space(Pixels(theme::SPACE_2))
     .row_between(Pixels(theme::SPACE_1));
@@ -146,6 +165,21 @@ mod tests {
         assert_eq!(shown(&params, Some(0)), 0);
         // Out of range is the fallback rather than a panic.
         assert_eq!(shown(&params, Some(99)), DEFAULT_BAND);
+    }
+
+    /// **The plot is square, and the panel is as tall as the figure.** The
+    /// diagonal is only 45 degrees at one aspect, and the frame only lines up
+    /// with the figure at one height.
+    #[test]
+    fn the_plot_is_square_inside_a_panel_the_height_of_the_figure() {
+        assert_eq!(WIDTH, PLOT + theme::SPACE_2 * 2.0);
+        // The plot, the label under it and the padding fill the figure's
+        // height exactly.
+        const LABEL: f32 = 16.0;
+        assert_eq!(
+            PLOT + LABEL + theme::SPACE_1 + theme::SPACE_2 * 2.0,
+            super::super::field::HEIGHT
+        );
     }
 
     #[test]
