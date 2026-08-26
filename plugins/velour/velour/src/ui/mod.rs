@@ -8,7 +8,9 @@
 //! Tabs need nothing from the host for a control to become reachable.
 
 mod advanced;
+mod curve;
 mod field;
+mod meters;
 mod param_bind;
 
 use crate::analysis::{Analysis, BANDS, HIGH_HZ, LOW_HZ, METERS};
@@ -125,7 +127,6 @@ fn meter_position(amplitude: f32) -> f32 {
     ((db - METER_FLOOR_DB) / -METER_FLOOR_DB).clamp(0.0, 1.0)
 }
 
-
 pub(crate) enum UiEvent {
     SelectTab(usize),
     Hover(Option<usize>),
@@ -192,29 +193,55 @@ pub fn create(
         // with audio running does not. The display needs its own heartbeat.
         start_heartbeat(cx);
 
-        VStack::new(cx, |cx| {
-            header(cx);
-            // The figure stays put above the tabs. It is what the plugin *is* —
-            // hiding it behind a tab would leave the window with nothing to look
-            // at (`ui.md`).
-            field::view(cx, host_rate, analysis.clone());
-            tab_strip(cx);
-
-            // Both tabs are built and one is hidden. Rebuilding on a switch
-            // would drop the widgets' own state — a drag in progress, a hover —
-            // for nothing.
+        HStack::new(cx, |cx| {
             VStack::new(cx, |cx| {
-                main_tab(cx);
-                advanced_tab(cx);
+                header(cx);
+                // The figure stays put above the tabs. It is what the plugin
+                // *is* — hiding it behind a tab would leave the window with
+                // nothing to look at (`ui.md`).
+                figure_row(cx, host_rate, analysis.clone());
+                tab_strip(cx);
+
+                // Both tabs are built and one is hidden. Rebuilding on a switch
+                // would drop the widgets' own state — a drag in progress, a
+                // hover — for nothing.
+                VStack::new(cx, |cx| {
+                    main_tab(cx);
+                    advanced_tab(cx);
+                })
+                .height(Pixels(TAB_HEIGHT))
+                .width(Stretch(1.0));
             })
-            .height(Pixels(TAB_HEIGHT))
-            .width(Stretch(1.0));
+            .width(Stretch(1.0))
+            .height(Stretch(1.0))
+            .row_between(Pixels(theme::SPACE_3));
+
+            // **Outside the tabs**, because "is this louder or better" is a
+            // question asked while looking at either of them (`ui.md`).
+            meters::view(cx);
         })
         .class("root")
         .child_space(Pixels(theme::SPACE_3))
-        .row_between(Pixels(theme::SPACE_3));
+        .col_between(Pixels(theme::SPACE_3));
     })
 }
+
+/// The figure, with the transfer curve beside it. The curve is a fixed column:
+/// two stretching children would split the row in half and leave the figure
+/// drawn across half the width it is meant to span.
+fn figure_row(cx: &mut Context, host_rate: f32, analysis: Arc<Analysis>) {
+    HStack::new(cx, |cx| {
+        field::view(cx, host_rate, analysis);
+        curve::view(cx, CURVE_WIDTH);
+    })
+    .height(Pixels(field::HEIGHT))
+    .width(Stretch(1.0))
+    .col_between(Pixels(theme::SPACE_3));
+}
+
+/// The transfer-curve window's width. Square-ish: it is a curve read for its
+/// shape, and a wide one flattens the very thing being read.
+const CURVE_WIDTH: f32 = 132.0;
 
 fn header(cx: &mut Context) {
     HStack::new(cx, |cx| {
@@ -256,9 +283,12 @@ fn main_tab(cx: &mut Context) {
             });
             macro_knob(cx, "AIR", "Sheen, top harmonics", |params| &params.air);
             texture_knob(cx);
-            macro_knob(cx, "DENSITY", "Levels the texture, not the voice", |params| {
-                &params.density
-            });
+            macro_knob(
+                cx,
+                "DENSITY",
+                "Levels the texture, not the voice",
+                |params| &params.density,
+            );
         })
         .class("row")
         .height(Auto);
@@ -268,9 +298,13 @@ fn main_tab(cx: &mut Context) {
         // so the row above reads as the instrument and this one as the tap.
         HStack::new(cx, |cx| {
             Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
-            knob_block(cx, "MIX", "Dry against the added texture", OUTPUT_KNOB, |params| {
-                &params.mix
-            });
+            knob_block(
+                cx,
+                "MIX",
+                "Dry against the added texture",
+                OUTPUT_KNOB,
+                |params| &params.mix,
+            );
             knob_block(cx, "OUTPUT", "Level out", OUTPUT_KNOB, |params| {
                 &params.output
             });
@@ -309,8 +343,7 @@ pub(crate) fn knob_block<P, F>(
     VStack::new(cx, |cx| {
         // The tooltip goes on the knob rather than the whole block, so it does
         // not follow the pointer around the label and the number.
-        param_bind::knob(cx, Ui::params, to_param, size)
-            .tooltip(move |cx| theme::hint(cx, hint));
+        param_bind::knob(cx, Ui::params, to_param, size).tooltip(move |cx| theme::hint(cx, hint));
         Label::new(cx, label).class("label");
         font::value(
             cx,

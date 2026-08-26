@@ -172,7 +172,9 @@ pub fn view(cx: &mut Context, host_rate: f32, analysis: Arc<Analysis>) {
         // in the Advanced table (`VEL-14`) — is marked.
         .highlight(Ui::hovered)
         // Wiring this is what makes the rail live (`crates/nxe-ui/README.md`).
-        .focus(super::param_bind::value_of(Ui::params, |params| &params.focus))
+        .focus(super::param_bind::value_of(Ui::params, |params| {
+            &params.focus
+        }))
         .height(Stretch(1.0))
         .width(Stretch(1.0));
 

@@ -148,9 +148,12 @@ fn side(cx: &mut Context) {
             labelled_bar(cx, "SIB", "How far the sibilance guard may pull", |cx| {
                 super::param_bind::bar(cx, Ui::params, |params| &params.guard_sib, false)
             });
-            labelled_bar(cx, "EMOTION", "How much the singing moves the curves", |cx| {
-                super::param_bind::bar(cx, Ui::params, |params| &params.emotion, false)
-            });
+            labelled_bar(
+                cx,
+                "EMOTION",
+                "How much the singing moves the curves",
+                |cx| super::param_bind::bar(cx, Ui::params, |params| &params.emotion, false),
+            );
 
             HStack::new(cx, |cx| {
                 Label::new(cx, "OVERSAMPLE")
@@ -163,9 +166,7 @@ fn side(cx: &mut Context) {
                     |params| &params.oversample,
                     &["2x", "4x"],
                 )
-                .tooltip(|cx| {
-                    theme::hint(cx, "2x costs less and aliases about 14 dB higher")
-                });
+                .tooltip(|cx| theme::hint(cx, "2x costs less and aliases about 14 dB higher"));
             })
             .class("row")
             .height(Auto)

@@ -158,13 +158,20 @@ impl Default for VelourParams {
             // not to be.
             density: percentage("Density", 0.0),
 
-            focus: FloatParam::new("Focus", 0.0, FloatRange::Linear { min: -1.0, max: 1.0 })
-                .with_unit(" oct")
-                // Moving `FOCUS` rebuilds twelve sets of filter coefficients, so
-                // the smoothing is what keeps a drag from stepping. The edges
-                // themselves are moved once per block (`velour_core::Engine`).
-                .with_smoother(SmoothingStyle::Linear(50.0))
-                .with_value_to_string(formatters::v2s_f32_rounded(2)),
+            focus: FloatParam::new(
+                "Focus",
+                0.0,
+                FloatRange::Linear {
+                    min: -1.0,
+                    max: 1.0,
+                },
+            )
+            .with_unit(" oct")
+            // Moving `FOCUS` rebuilds twelve sets of filter coefficients, so
+            // the smoothing is what keeps a drag from stepping. The edges
+            // themselves are moved once per block (`velour_core::Engine`).
+            .with_smoother(SmoothingStyle::Linear(50.0))
+            .with_value_to_string(formatters::v2s_f32_rounded(2)),
 
             mix: percentage("Mix", 0.50),
 
@@ -212,9 +219,16 @@ impl Default for VelourParams {
 /// A `-1..=1` control resting at zero. Six of these, so the shape lives in one
 /// place and a deviation from it would be visible.
 fn bipolar(name: &'static str) -> FloatParam {
-    FloatParam::new(name, 0.0, FloatRange::Linear { min: -1.0, max: 1.0 })
-        .with_smoother(SmoothingStyle::Linear(30.0))
-        .with_value_to_string(formatters::v2s_f32_rounded(2))
+    FloatParam::new(
+        name,
+        0.0,
+        FloatRange::Linear {
+            min: -1.0,
+            max: 1.0,
+        },
+    )
+    .with_smoother(SmoothingStyle::Linear(30.0))
+    .with_value_to_string(formatters::v2s_f32_rounded(2))
 }
 
 /// A listen switch: on/off, and not something to automate.
@@ -275,6 +289,44 @@ impl VelourParams {
         }
     }
 
+    /// The same values, **without touching a smoother** — for the interface.
+    ///
+    /// `shape` advances every smoother it reads, so calling it from the editor
+    /// would steal a step from the audio thread and make a drag ramp at double
+    /// speed. This reads the settled values instead, which is what a picture
+    /// should show anyway: the curve you have set, not the one the ramp is
+    /// half way through.
+    ///
+    /// `EMOTION` is left at zero here. The window exists to show what `TEXTURE`
+    /// and the biases did to the curve (`ui.md`), and a curve breathing with the
+    /// envelope thirty times a second is harder to read, not easier.
+    pub fn display_shape(&self) -> Shape {
+        Shape {
+            drive: self.drive.value(),
+            texture: self.texture.value(),
+            texture_offsets: [
+                self.texture_body.value(),
+                self.texture_presence.value(),
+                self.texture_air.value(),
+            ],
+            bias: [
+                self.bias_body.value(),
+                self.bias_presence.value(),
+                self.bias_air.value(),
+            ],
+            solo: [
+                self.solo_body.value(),
+                self.solo_presence.value(),
+                self.solo_air.value(),
+            ],
+            guards: [self.guard_harsh.value(), self.guard_sib.value()],
+            emotion: 0.0,
+            density: self.density.value(),
+            focus: self.focus.value(),
+            factor: self.oversample.value().into(),
+        }
+    }
+
     /// What the engine needs per sample.
     pub fn levels(&self) -> Levels {
         Levels {
@@ -331,7 +383,10 @@ mod tests {
         // The bipolar controls rest at the middle, and nothing is soloed.
         for (name, value) in [
             ("body texture", params.texture_body.default_plain_value()),
-            ("presence texture", params.texture_presence.default_plain_value()),
+            (
+                "presence texture",
+                params.texture_presence.default_plain_value(),
+            ),
             ("air texture", params.texture_air.default_plain_value()),
             ("body bias", params.bias_body.default_plain_value()),
             ("presence bias", params.bias_presence.default_plain_value()),

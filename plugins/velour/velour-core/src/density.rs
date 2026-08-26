@@ -195,7 +195,10 @@ mod tests {
         }
         // 24 dB in, and the top of the range has to actually do something about
         // it.
-        assert!(previous < 12.0, "the top of the range only reached {previous:.2} dB");
+        assert!(
+            previous < 12.0,
+            "the top of the range only reached {previous:.2} dB"
+        );
     }
 
     /// A compressor, not an expander: nothing above the threshold comes out
@@ -206,7 +209,10 @@ mod tests {
             let density = density_at(amount);
             for level_db in [-18.0f32, -12.0, -6.0, 0.0] {
                 let gain = db(density.gain(decibels(level_db)));
-                assert!(gain <= 0.01, "amount {amount} at {level_db} dB: {gain:+.2} dB");
+                assert!(
+                    gain <= 0.01,
+                    "amount {amount} at {level_db} dB: {gain:+.2} dB"
+                );
             }
         }
     }

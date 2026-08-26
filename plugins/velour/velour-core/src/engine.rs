@@ -153,6 +153,67 @@ fn clamp_or(value: f32, low: f32, high: f32, fallback: f32) -> f32 {
     }
 }
 
+/// One band's curve, resolved from the controls.
+///
+/// **Public because the interface draws it** (`REQ-VEL-013`), and it is the same
+/// function [`Engine::set_shape`] tunes the audio path with — a window built
+/// from a second copy of this arithmetic would drift from the sound the first
+/// time one of the multipliers moved.
+///
+/// `motion` is `EMOTION`'s deflection times its amount; pass `0.0` for the
+/// resting curve.
+///
+/// Returns the three controls rather than a built [`Shaper`]: building one costs
+/// a table of sines, and this is called per band per block on the audio thread.
+pub fn curve_for(shape: &Shape, band: usize, motion: f32) -> Curve {
+    let index = band.min(BAND_COUNT - 1);
+    let (_, curve_drive) = Band::curve_multipliers(BANDS[index]);
+    let point = texture::for_band(shape.texture, shape.texture_offsets[index], index);
+    let bias = clamp_or(shape.bias[index], -1.0, 1.0, 0.0);
+
+    let (curve_bias, hardness, band_drive) = emotion::modulate(
+        point.bias,
+        point.hardness,
+        drive_of(shape.drive) * curve_drive * (bias * BIAS_OCTAVES).exp2(),
+        motion,
+    );
+
+    Curve {
+        drive: band_drive,
+        bias: curve_bias,
+        hardness,
+    }
+}
+
+/// One band's curve, as the three numbers [`Shaper::set`] takes. Named fields
+/// rather than a tuple, because three unlabelled floats in that order is exactly
+/// the sort of thing that gets swapped.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct Curve {
+    pub drive: f32,
+    pub bias: f32,
+    pub hardness: f32,
+}
+
+impl Curve {
+    /// A shaper built from this curve. **Not for the audio path** — the audio
+    /// path keeps its shapers and calls `set` on them.
+    pub fn shaper(&self) -> Shaper {
+        let mut shaper = Shaper::new();
+        shaper.set(self.drive, self.bias, self.hardness);
+        shaper
+    }
+}
+
+/// What `TEXTURE` trims a band's level by, in the same resolution the audio path
+/// uses. Split out so [`curve_for`] can stay about the curve alone.
+fn trim_for(shape: &Shape, band: usize) -> f32 {
+    let index = band.min(BAND_COUNT - 1);
+    let point = texture::for_band(shape.texture, shape.texture_offsets[index], index);
+    let bias = clamp_or(shape.bias[index], -1.0, 1.0, 0.0);
+    point.trim * decibels(bias * BIAS_LEVEL_DB)
+}
+
 /// One channel's filters. The curves are shared across channels
 /// (`crate::bands::Generator`).
 struct Channel {
@@ -234,7 +295,10 @@ impl Engine {
         Self {
             shapers: std::array::from_fn(|_| Shaper::new()),
             trims: [1.0; BAND_COUNT],
-            channels: [Channel::new(host_rate, factor), Channel::new(host_rate, factor)],
+            channels: [
+                Channel::new(host_rate, factor),
+                Channel::new(host_rate, factor),
+            ],
             factor,
             // Not the resting values: `set_shape` compares against these to
             // decide what to rebuild, and the first call has to rebuild
@@ -304,21 +368,12 @@ impl Engine {
         };
         if curve != self.curve {
             self.curve = curve;
-            let drive = drive_of(shape.drive);
             for (index, shaper) in self.shapers.iter_mut().enumerate() {
-                let (_, curve_drive) = Band::curve_multipliers(BANDS[index]);
-                let point =
-                    texture::for_band(shape.texture, shape.texture_offsets[index], index);
-                let bias = clamp_or(shape.bias[index], -1.0, 1.0, 0.0);
-
-                let (curve_bias, hardness, band_drive) = emotion::modulate(
-                    point.bias,
-                    point.hardness,
-                    drive * curve_drive * (bias * BIAS_OCTAVES).exp2(),
-                    motion,
-                );
-                shaper.set(band_drive, curve_bias, hardness);
-                self.trims[index] = point.trim * decibels(bias * BIAS_LEVEL_DB);
+                // The same function the interface draws from, so the picture
+                // and the sound cannot disagree.
+                let resolved = curve_for(shape, index, motion);
+                shaper.set(resolved.drive, resolved.bias, resolved.hardness);
+                self.trims[index] = trim_for(shape, index);
             }
         }
     }
@@ -401,9 +456,8 @@ impl Engine {
                 let value = value * compression;
                 let mut sum = 0.0;
                 for band in 0..BAND_COUNT {
-                    sum += generators[band].process(value, &shapers[band])
-                        * bands[band]
-                        * trims[band];
+                    sum +=
+                        generators[band].process(value, &shapers[band]) * bands[band] * trims[band];
                 }
                 sum
             });
@@ -845,7 +899,10 @@ mod tests {
         let held = crate::harmonics::rms(&guarded[settled..]);
         let difference = crate::harmonics::db_ratio(held, loud);
 
-        assert!(difference < -2.0, "the guard changed nothing: {difference:+.1} dB");
+        assert!(
+            difference < -2.0,
+            "the guard changed nothing: {difference:+.1} dB"
+        );
     }
 
     /// And with the amount at zero it must be **exactly** absent, not nearly.
@@ -936,7 +993,10 @@ mod tests {
         // Geometric, so the midpoint is the geometric mean rather than the
         // arithmetic one.
         let middle = drive_of(0.5);
-        assert!((middle - (DRIVE_MIN * DRIVE_MAX).sqrt()).abs() < 1e-4, "{middle}");
+        assert!(
+            (middle - (DRIVE_MIN * DRIVE_MAX).sqrt()).abs() < 1e-4,
+            "{middle}"
+        );
 
         for knob in [f32::NAN, f32::INFINITY, -1.0, 2.0] {
             let drive = drive_of(knob);
@@ -1081,7 +1141,10 @@ mod tests {
         let off = render(0.0);
         let on = render(1.0);
         let difference = crate::harmonics::rms(
-            &off.iter().zip(&on).map(|(a, b)| a - b).collect::<Vec<f32>>(),
+            &off.iter()
+                .zip(&on)
+                .map(|(a, b)| a - b)
+                .collect::<Vec<f32>>(),
         );
         assert!(
             difference > crate::harmonics::rms(&off) * 0.02,
@@ -1184,6 +1247,47 @@ mod tests {
             curves(0.0),
             curves(1.0),
             "`DENSITY` moved the detector `EMOTION` reads"
+        );
+    }
+
+    /// The curve the interface draws has to be the curve the audio runs through
+    /// (`REQ-VEL-013`). Read back off the engine's own shapers rather than
+    /// recomputed.
+    #[test]
+    fn the_drawn_curve_is_the_tuned_curve() {
+        let shape = Shape {
+            drive: 0.7,
+            texture: 0.8,
+            texture_offsets: [0.2, -0.1, 0.4],
+            bias: [0.5, 0.0, -0.5],
+            // Zero, so the comparison does not depend on what the envelope has
+            // heard — `curve_for` takes the motion as an argument for exactly
+            // that reason.
+            emotion: 0.0,
+            ..Shape::default()
+        };
+
+        let mut engine = Engine::new(RATE);
+        engine.set_shape(&shape);
+
+        for index in 0..BAND_COUNT {
+            let drawn = curve_for(&shape, index, 0.0);
+            let tuned = &engine.shapers[index];
+            // Through `Shaper::set`'s clamps on both sides, which is what makes
+            // this a comparison of the curve rather than of the arithmetic.
+            let clamped = drawn.shaper();
+            assert_eq!(
+                (clamped.drive(), clamped.bias(), clamped.hardness()),
+                (tuned.drive(), tuned.bias(), tuned.hardness()),
+                "band {index}"
+            );
+        }
+
+        // An out-of-range band draws the last one rather than panicking: this is
+        // called from the interface, where an index can come from a stale hover.
+        assert_eq!(
+            curve_for(&shape, 99, 0.0),
+            curve_for(&shape, BAND_COUNT - 1, 0.0)
         );
     }
 
@@ -1354,12 +1458,35 @@ mod tests {
 
         type Sweep = (&'static str, fn(f32) -> Shape);
         let sweeps: [Sweep; 6] = [
-            ("drive", |t| Shape { drive: t, ..Shape::default() }),
-            ("texture", |t| Shape { drive: 0.6, texture: t, ..Shape::default() }),
-            ("focus", |t| Shape { drive: 0.6, focus: t * 2.0 - 1.0, ..Shape::default() }),
-            ("guards", |t| Shape { drive: 0.6, guards: [1.0 - t; 2], ..Shape::default() }),
-            ("emotion", |t| Shape { drive: 0.6, emotion: t, ..Shape::default() }),
-            ("density", |t| Shape { drive: 0.6, density: t, ..Shape::default() }),
+            ("drive", |t| Shape {
+                drive: t,
+                ..Shape::default()
+            }),
+            ("texture", |t| Shape {
+                drive: 0.6,
+                texture: t,
+                ..Shape::default()
+            }),
+            ("focus", |t| Shape {
+                drive: 0.6,
+                focus: t * 2.0 - 1.0,
+                ..Shape::default()
+            }),
+            ("guards", |t| Shape {
+                drive: 0.6,
+                guards: [1.0 - t; 2],
+                ..Shape::default()
+            }),
+            ("emotion", |t| Shape {
+                drive: 0.6,
+                emotion: t,
+                ..Shape::default()
+            }),
+            ("density", |t| Shape {
+                drive: 0.6,
+                density: t,
+                ..Shape::default()
+            }),
         ];
 
         for (name, shape_at) in sweeps {
@@ -1427,4 +1554,3 @@ mod tests {
         assert_eq!(engine.process((0.0, 0.0), &open), (0.0, 0.0));
     }
 }
-

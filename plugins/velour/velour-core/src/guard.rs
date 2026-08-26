@@ -302,9 +302,15 @@ mod tests {
         let mut full = Guards::new(RATE);
         let complete = settle(&mut full, &input, [1.0, 1.0]);
 
-        assert!(partial < 0.0 && complete < partial, "{partial} / {complete}");
+        assert!(
+            partial < 0.0 && complete < partial,
+            "{partial} / {complete}"
+        );
         // Slope 1, so half the amount is half the reduction.
-        assert!((partial * 2.0 - complete).abs() < 0.5, "{partial} / {complete}");
+        assert!(
+            (partial * 2.0 - complete).abs() < 0.5,
+            "{partial} / {complete}"
+        );
     }
 
     #[test]
@@ -348,7 +354,10 @@ mod tests {
         for multiple in [1.1f32, 2.0, 10.0, 100.0, 1e6] {
             let gain = gain_of(threshold * multiple, reference, threshold, 1.0);
             assert!(gain <= previous, "{multiple} gave {gain}, was {previous}");
-            assert!(gain >= floor - 1e-6, "{multiple} went past the limit: {gain}");
+            assert!(
+                gain >= floor - 1e-6,
+                "{multiple} went past the limit: {gain}"
+            );
             previous = gain;
         }
         // And it does reach the limit, or the bound above is vacuous.
@@ -362,7 +371,10 @@ mod tests {
             for reference in wild {
                 for amount in wild {
                     let gain = gain_of(band, reference, power_ratio(-8.0), amount);
-                    assert!(gain.is_finite() && gain > 0.0, "{band}/{reference}/{amount}");
+                    assert!(
+                        gain.is_finite() && gain > 0.0,
+                        "{band}/{reference}/{amount}"
+                    );
                 }
             }
         }
