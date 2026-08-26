@@ -81,9 +81,19 @@ const HOLD_SECONDS: f32 = 0.040;
 /// ratio of the input frequency to the internal rate, and at a fixed factor
 /// those move together (`velour_core::bands::AIR_INPUT_CEILING`).
 pub const INPUT_CEILING: f32 = 0.25;
-/// And an absolute lid, because nothing above the top of hearing is worth
-/// exciting.
-const INPUT_CEILING_HZ: f32 = 20_000.0;
+/// And an absolute lid, which is what makes the product rate-independent.
+///
+/// **12 kHz, not the top of hearing** (`SPK-9`). With only the fraction, the
+/// lid sits at 11 kHz at 44.1 kHz and 20 kHz at 96 kHz, and a 7 kHz tone comes
+/// out **1.0 dB** apart at the two — `REQ-SPK-017` allows 0.5. With the
+/// absolute lid the fraction only bites below 48 kHz, where there genuinely is
+/// less room, and 48 against 96 becomes exact.
+///
+/// The cost is that content between 12 and 20 kHz is not excited at a high
+/// rate even though there would be room. It is the same trade Velour made
+/// (`velour_core::bands`), and the harmonics of anything above 12 kHz land
+/// past hearing anyway.
+const INPUT_CEILING_HZ: f32 = 12_000.0;
 
 const ENERGY_FLOOR: f32 = 1e-10;
 /// `10·log10(x)` is `10/log2(10)` times `log2(x)`.
@@ -442,8 +452,10 @@ mod tests {
         for (rate, expected) in [
             (44_100.0f32, 11_025.0f32),
             (48_000.0, 12_000.0),
-            (96_000.0, 20_000.0),
-            (192_000.0, 20_000.0),
+            // The absolute lid, which is what makes 48 and 96 the same plugin
+            // (`SPK-9`).
+            (96_000.0, 12_000.0),
+            (192_000.0, 12_000.0),
         ] {
             let sparkle = Sparkle::new(rate);
             assert!(

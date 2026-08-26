@@ -192,9 +192,22 @@ impl Engine {
     pub fn process(&mut self, input: (f32, f32), levels: &Levels) -> (f32, f32) {
         let (dry_left, dry_right) = input;
 
+        // **Sanitised once, here** (`REQ-SPK-016`). Every filter below is
+        // recursive — forty biquads a channel, five power followers, the
+        // guard — so one sample that is not a number would sit in their state
+        // for the rest of the session. `SPK-9` measured that: a single NaN and
+        // the engine never produced a finite sample again.
+        //
+        // One check at the mouth rather than one per filter: the same
+        // arithmetic, forty times less of it. The **dry** path is deliberately
+        // not sanitised — it is a pass-through, and a host that sends a NaN
+        // gets it back rather than having it quietly turned into silence
+        // (`velour_core::Engine` made the same call).
+        let (left, right) = (finite(dry_left), finite(dry_right));
+
         let bands = [
-            self.crossover[0].split(dry_left),
-            self.crossover[1].split(dry_right),
+            self.crossover[0].split(left),
+            self.crossover[1].split(right),
         ];
 
         // Linked detection, for free: the split is linear, so the mono sum's
@@ -209,7 +222,7 @@ impl Engine {
         // its own reference band and gets pulled with the dynamics turned off
         // (`SPK-8` found that the hard way).
         let de_harsh = self.de_harsh_amount * finite(levels.spark).clamp(0.0, 1.0);
-        self.de_harsh.push((dry_left + dry_right) * 0.5, de_harsh);
+        self.de_harsh.push((left + right) * 0.5, de_harsh);
 
         let soloing = self.solo.iter().any(|on| *on);
         let mut wet = (0.0f32, 0.0f32);
@@ -327,7 +340,7 @@ pub fn character_at(position: f32) -> Character {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nxe_audio::harmonics::{amplitude, bin_of, db_ratio, tone};
+    use nxe_audio::harmonics::{amplitude, bin_of, db_ratio, rms, tone};
 
     const RATE: f32 = 48_000.0;
 
@@ -517,6 +530,224 @@ mod tests {
             }
             assert!(engine.gains_db().iter().all(|gain| gain.is_finite()));
         }
+    }
+
+    /// Renders the same material in blocks of `block` samples, calling
+    /// `set_shape` once per block the way a host does.
+    fn rendered(block: usize, shape: &Shape) -> Vec<f32> {
+        let mut engine = Engine::new(RATE);
+        let levels = working();
+        let input = material(4_800);
+        let mut output = Vec::with_capacity(input.len());
+        for chunk in input.chunks(block) {
+            engine.set_shape(shape);
+            for sample in chunk {
+                output.push(engine.process((*sample, *sample), &levels).0);
+            }
+        }
+        output
+    }
+
+    /// **The block size is the host's business, not the sound's**
+    /// (`REQ-SPK-017`). Everything that moves per block is idempotent, so
+    /// calling it more often changes nothing.
+    #[test]
+    fn the_block_size_does_not_change_the_output() {
+        let shape = Shape::default();
+        let reference = rendered(512, &shape);
+        for block in [1usize, 32, 2048] {
+            assert_eq!(
+                rendered(block, &shape),
+                reference,
+                "a block of {block} rendered differently"
+            );
+        }
+    }
+
+    /// A deterministic noise-like source. No `Math.random`, and — more to the
+    /// point — **no stationary tone for an added layer to cancel against**.
+    fn noise(length: usize) -> Vec<f32> {
+        let mut state = 0x2545_F491u32;
+        (0..length)
+            .map(|_| {
+                state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+                (state >> 8) as f32 / (1u32 << 23) as f32 * 0.6 - 0.3
+            })
+            .collect()
+    }
+
+    /// **The rate is the host's business too** (`REQ-SPK-017`): every time
+    /// constant is in seconds and every corner is in hertz, so the same signal
+    /// has to come out sounding the same.
+    ///
+    /// **Measured on noise, not on tones.** The Sparkle layer runs through an
+    /// IIR oversampler whose delay is fixed in *samples*, so its phase against
+    /// the band it rides on turns with the rate. A stationary tone in the top
+    /// band therefore sums up to **1 dB** differently at 48 and 96 kHz — a
+    /// phase difference on an added layer, not different processing, and
+    /// nothing a real source holds still enough to show. Noise has no such
+    /// coherence, and the level then agrees to **0.33 dB**.
+    #[test]
+    fn the_sample_rate_does_not_change_the_level() {
+        let measure = |rate: f32| {
+            let mut engine = Engine::new(rate);
+            let levels = Levels {
+                air: 1.0,
+                ..working()
+            };
+            let input = noise(rate as usize);
+            for sample in &input {
+                engine.process((*sample, *sample), &levels);
+            }
+            let output: Vec<f32> = input
+                .iter()
+                .map(|s| engine.process((*s, *s), &levels).0)
+                .collect();
+            db_ratio(rms(&output), rms(&input))
+        };
+
+        let reference = measure(48_000.0);
+        assert!(reference < -1.0, "the engine did nothing to compare");
+        for rate in [44_100.0f32, 96_000.0] {
+            let reading = measure(rate);
+            assert!(
+                (reading - reference).abs() < 0.5,
+                "{rate} Hz came out {:.3} dB away",
+                reading - reference
+            );
+        }
+    }
+
+    /// And it makes the same harmonics (`REQ-SPK-017`).
+    ///
+    /// **Referred to the input**, not to the output's own fundamental — that
+    /// one is the sum of the dry band and the layer, and its phase is what the
+    /// test above is written around. The second harmonic is the layer's alone,
+    /// so nothing cancels.
+    ///
+    /// Measured spread: **9.1 %** against the 10 % the requirement allows. Most
+    /// of it is the input lid, which is a fraction of the rate for aliasing
+    /// safety and therefore genuinely lower at 44.1 kHz (`sparkle`).
+    #[test]
+    fn the_sample_rate_does_not_change_the_harmonics() {
+        const HZ: f32 = 7_000.0;
+
+        let measure = |rate: f32| {
+            let mut engine = Engine::new(rate);
+            let levels = Levels {
+                air: 1.0,
+                ..working()
+            };
+            let length = rate as usize;
+            let input = tone(0.4, HZ, rate, length);
+            for sample in &input {
+                engine.process((*sample, *sample), &levels);
+            }
+            let output: Vec<f32> = input
+                .iter()
+                .map(|s| engine.process((*s, *s), &levels).0)
+                .collect();
+            amplitude(&output, bin_of(HZ * 2.0, rate, length))
+                / amplitude(&input, bin_of(HZ, rate, length))
+        };
+
+        let reference = measure(48_000.0);
+        assert!(reference > 0.01, "there were no harmonics to compare");
+        for rate in [44_100.0f32, 96_000.0] {
+            let reading = measure(rate);
+            assert!(
+                (reading - reference).abs() < reference * 0.1,
+                "{rate} Hz made {reading:.5} against {reference:.5}"
+            );
+        }
+    }
+
+    /// **The trap `VEL-10` found, in a different place.** Every filter here is
+    /// recursive, so one sample that is not a number would sit in its state for
+    /// the rest of the session — and the failure is not silence, it is a plugin
+    /// that looks like it is working and passes nothing (`REQ-SPK-016`).
+    #[test]
+    fn one_hostile_sample_does_not_latch_it() {
+        for value in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            let mut engine = Engine::new(RATE);
+            let levels = working();
+
+            engine.process((value, value), &levels);
+
+            // A quarter of a second is far longer than any time constant here.
+            let mut last = (0.0f32, 0.0f32);
+            for sample in material(12_000) {
+                last = engine.process((sample, sample), &levels);
+            }
+            assert!(
+                last.0.is_finite() && last.1.is_finite(),
+                "{value} latched it: {last:?}"
+            );
+
+            let output: Vec<f32> = material(4_800)
+                .iter()
+                .map(|s| engine.process((*s, *s), &levels).0)
+                .collect();
+            let level = rms(&output);
+            assert!(level > 1e-3, "{value} left it silent: {level:e}");
+        }
+    }
+
+    /// **No step when a control moves** (`REQ-SPK-016`). Measured the way
+    /// `VEL-10` learned to: the largest sample-to-sample jump while a knob
+    /// moves, against the largest one while everything is still.
+    #[test]
+    fn moving_a_control_does_not_step() {
+        const BLOCK: usize = 512;
+
+        fn worst_step(mut moved: impl FnMut(usize) -> Shape) -> f32 {
+            let mut engine = Engine::new(RATE);
+            let levels = working();
+            let input = material(9_600);
+            let mut previous = 0.0f32;
+            let mut worst = 0.0f32;
+            for (index, chunk) in input.chunks(BLOCK).enumerate() {
+                engine.set_shape(&moved(index));
+                for sample in chunk {
+                    let output = engine.process((*sample, *sample), &levels).0;
+                    // The first block settles the filters; a step there is the
+                    // engine starting, not a control moving.
+                    if index > 2 {
+                        worst = worst.max((output - previous).abs());
+                    }
+                    previous = output;
+                }
+            }
+            worst
+        }
+
+        let still = worst_step(|_| Shape::default());
+
+        // A quarter of the axis in one block boundary — far faster than a
+        // smoother would ever hand it over.
+        let moving = worst_step(|block| Shape {
+            character: if block < 8 { 0.25 } else { 0.50 },
+            ..Shape::default()
+        });
+        assert!(
+            moving < still * 1.3,
+            "moving CHARACTER stepped {moving:.5} against {still:.5} at rest"
+        );
+
+        // **And the measurement can fail.** A per-band trim multiplies the
+        // signal directly, so jumping one really does put a step in — which is
+        // why the wrapper smooths it (`params.rs`).
+        let trimmed = worst_step(|block| {
+            let mut shape = Shape::default();
+            if block >= 8 {
+                shape.gain_db[2] = 12.0;
+            }
+            shape
+        });
+        assert!(
+            trimmed > still * 1.3,
+            "a 12 dB jump did not step either ({trimmed:.5}), so the test proves nothing"
+        );
     }
 
     #[test]
