@@ -31,13 +31,20 @@ fn source_of(params: &DoublerParams) -> Source {
     params.source.value().into()
 }
 
+/// **Only the live voices.** A dimmed dot for every voice that is not running
+/// left the figure crowded, and there is nothing to read off one: the place to
+/// set up a voice that is not in use yet is the Detail table, where it is dimmed
+/// but editable.
+///
+/// The live voices are always the first N, so an index into this list is still
+/// the voice's own index and the hover highlight keeps lining up with the table.
 fn points_of(params: &DoublerParams) -> Vec<FieldPoint> {
     let source = source_of(params);
     let spread = params.spread.value();
     let live = params.voices.value().into();
     let live: usize = doubler_core::Voices::count(live);
 
-    (0..MAX_VOICES)
+    (0..live.min(MAX_VOICES))
         .map(|index| {
             let shape = &params.shape[index];
             FieldPoint {
@@ -48,7 +55,7 @@ fn points_of(params: &DoublerParams) -> Vec<FieldPoint> {
                     Source::MonoSum => 0,
                     Source::TrueStereo => index % 2,
                 },
-                enabled: index < live,
+                enabled: true,
             }
         })
         .collect()
