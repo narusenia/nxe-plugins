@@ -35,6 +35,10 @@ const MARGIN: f32 = 10.0;
 const DOT_MIN: f32 = 3.0;
 const DOT_MAX: f32 = 7.0;
 
+/// How opaque a wedge gets at full signal. Enough to read against the frame,
+/// far enough from solid that the points stay the thing being looked at.
+const ANALYSIS_ALPHA: f32 = 0.16;
+
 /// Half the width of an anchor's triangle.
 const ANCHOR_SIZE: f32 = 7.0;
 
@@ -419,9 +423,13 @@ impl View for PolarField {
         let geometry = Geometry::of(cx.bounds(), MARGIN * scale);
         let line = (1.0 * scale).max(1.0);
 
-        // The signal, as a wedge per direction, under everything else. Neutral
-        // rather than accent: the accent says what the plugin is *set* to, and
-        // a reader has to be able to tell the setting from the result.
+        // The signal, as a wedge per direction, under everything else.
+        //
+        // **Translucent foreground, not a solid grey.** A flat mid-grey over a
+        // tinted background comes out muddy; light at low opacity only ever
+        // lifts what is under it, which is what a layer meaning "there is sound
+        // here" should do. Neutral either way: the accent says what the plugin
+        // is *set* to, and a reader has to be able to tell that from the result.
         //
         // The values arrive on an absolute scale, so a wedge fades as the sound
         // does and silence draws nothing at all.
@@ -443,7 +451,10 @@ impl View for PolarField {
             wedge.line_to(x1, y1);
             wedge.line_to(x2, y2);
             wedge.close();
-            canvas.fill_path(&wedge, &vg::Paint::color(theme::BORDER.at(share).vg()));
+            canvas.fill_path(
+                &wedge,
+                &vg::Paint::color(theme::FOREGROUND.at(share * ANALYSIS_ALPHA).vg()),
+            );
         }
 
         // The outer arc and the baseline: the frame the values are read against.

@@ -27,6 +27,10 @@ pub type Grip = (f32, f32);
 /// How close the pointer has to be to a handle, horizontally, to grab it.
 const GRAB: f32 = 16.0;
 
+/// How opaque the signal fill is. Light enough that the curve and its handles
+/// stay in front of it.
+const ANALYSIS_ALPHA: f32 = 0.14;
+
 const CURVE_WIDTH: f32 = 2.0;
 const GRIP_RADIUS: f32 = 4.0;
 
@@ -196,12 +200,16 @@ impl View for CurveView {
             let (right, _) = at(start.max(*end), 0.0);
             let mut path = vg::Path::new();
             path.rect(left, bounds.y, (right - left).max(0.0), bounds.h);
-            canvas.fill_path(&path, &vg::Paint::color(theme::ACCENT_DIM.at(0.06).vg()));
+            canvas.fill_path(&path, &vg::Paint::color(theme::ACCENT_DIM.at(0.05).vg()));
         }
 
-        // The signal, filled from the floor. Neutral, because the accent
-        // belongs to what the plugin is *set* to — a reader has to be able to
-        // tell the setting from the result at a glance.
+        // The signal, filled from the floor.
+        //
+        // **Translucent foreground, not a solid grey.** Grey over the tinted
+        // bands underneath came out muddy; light at low opacity lifts what is
+        // beneath it instead of covering it. Neutral either way, because the
+        // accent belongs to what the plugin is *set* to — a reader has to be
+        // able to tell the setting from the result at a glance.
         //
         // **Above the shaded ranges, below everything else.** Underneath them it
         // was buried: eight overlapping bands of translucent accent stack up to
@@ -218,7 +226,10 @@ impl View for CurveView {
             let (last_x, _) = at(self.analysis[self.analysis.len() - 1].0, 0.0);
             path.line_to(last_x, bounds.y + bounds.h);
             path.close();
-            canvas.fill_path(&path, &vg::Paint::color(theme::BORDER.vg()));
+            canvas.fill_path(
+                &path,
+                &vg::Paint::color(theme::FOREGROUND.at(ANALYSIS_ALPHA).vg()),
+            );
         }
 
         let mut grid = vg::Path::new();
