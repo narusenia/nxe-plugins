@@ -36,14 +36,25 @@
 - 共通クレート: `nxe-ui`（ウィジェット）と `nxe-dsp`（解析）。他プラグインで
   そのまま使える状態
 
+**2 個目のプラグイン Velour の設計が始まった**（2026-08-26）。要件
+（[`REQ-VEL`](../../plugins/velour/docs/requirements/REQ-VEL.md)）と UI 仕様
+（[`ui.md`](../../plugins/velour/docs/specifications/ui.md)）は書けている。
+**DSP 仕様と実装計画は未作成**なので、`VEL-*` の実装単位はまだこの表に無い。
+
+Velour が共通クレートに要求したものが 3 つあり、**これは Velour のクレートを
+作る前に着手できる**（`UI-13` / `UI-8` / `DSP-4`）。
+
 ## 今すぐ着手できるもの
 
 依存が無いか、依存がすべて解決している単位。
 
 | ID | 単位 | 計画 |
 |---|---|---|
+| UI-13 | `BandField`（Velour の主役の図。`REQ-VEL-013`） | `nxe-ui-plan.md` |
+| UI-8 | `Meter`（**Velour で使う相手が現れた**） | `nxe-ui-plan.md` |
+| DSP-4 | `Level`（IN / OUT メーターの値） | `nxe-dsp-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
-| UI-8 / UI-9 | `Meter` / `ToggleSwitch`（**Doubler は使わない**。使う相手が現れるまで着手しない） | `nxe-ui-plan.md` |
+| UI-9 | `ToggleSwitch`（**Doubler も Velour も使わない**。3 個目でも要らなければ落とす） | `nxe-ui-plan.md` |
 
 ## 積み残し（どれも単位を持っていない小物）
 
@@ -71,6 +82,7 @@
 | DSP-1 | 音声スレッド → UI の受け渡し（`Handoff`） | ✅ |
 | DSP-2 | ステレオ像の分布（`PanScope`） | ✅ |
 | DSP-3 | スペクトラム（`Spectrum`。定 Q のフィルタバンク） | ✅ |
+| DSP-4 | レベル（`Level`。peak + RMS + ピークホールド） | 🟡 |
 
 ### 共通 UI — `nxe-ui-plan.md`
 
@@ -86,8 +98,9 @@
 | UI-10 | `CurveView`（領域知識を持たない曲線表示） | ✅ |
 | UI-11 | `PolarField` の分布オーバーレイ | ✅ |
 | UI-12 | `CurveView` の解析カーブ | ✅ |
-| UI-8 | `Meter` — **Doubler は使わない** | 🟡 |
-| UI-9 | `ToggleSwitch` — **Doubler は使わない** | 🟡 |
+| UI-13 | `BandField`（領域知識を持たない帯域パネル） | 🟡 |
+| UI-8 | `Meter` — **Velour の IN / OUT が使う** | 🟡 |
+| UI-9 | `ToggleSwitch` — **誰も使っていない**（2 個目でも不要） | 🟡 |
 
 ### Doubler — `../../plugins/doubler/docs/implementation/doubler-plan.md`
 
@@ -109,3 +122,14 @@
 | DBL-12 | CPU 予算の確認（criterion） | ✅ 69.4 µs / 予算 533 µs |
 | DBL-16 | 通っている音の表示（`REQ-DBL-015`） | ✅ |
 | DBL-13 | 既定値の詰めと実機確認 | 🟡 |
+
+### Velour — 実装計画 未作成
+
+要件 [`REQ-VEL`](../../plugins/velour/docs/requirements/REQ-VEL.md) と UI 仕様
+[`ui.md`](../../plugins/velour/docs/specifications/ui.md) はある。**単位を
+起こすには先に `specifications/dsp.md` と `implementation/velour-plan.md` が
+要る**（`architecture.md` の「新しいプラグインを足す」の手順 4–5）。
+
+| ID | 単位 | 状態 |
+|---|---|---|
+| VEL-* | 未起票 | ⬜ dsp.md と velour-plan.md 待ち |
