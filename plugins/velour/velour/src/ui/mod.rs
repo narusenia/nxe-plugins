@@ -11,6 +11,7 @@ mod advanced;
 mod field;
 mod param_bind;
 
+use crate::analysis::{Analysis, BANDS, HIGH_HZ, LOW_HZ, METERS};
 use crate::params::VelourParams;
 use nih_plug::prelude::Editor;
 use nih_plug_vizia::vizia::prelude::*;
@@ -21,6 +22,7 @@ use nxe_ui::segmented::SegmentedControl;
 use nxe_ui::{font, theme};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::time::Duration;
 
 /// The starting point from `ui.md`: the Doubler's 620 × 572 plus the width of
 /// the meter strip. **Settled by looking at it in a host**, the way the
@@ -52,15 +54,84 @@ pub(crate) struct Ui {
     /// mark each other. One value, both directions — the Doubler's
     /// `Ui::hovered` (`plugins/doubler/docs/specifications/ui.md`).
     hovered: Option<usize>,
-    /// The two analysis layers the figure draws behind the regions. Empty until
-    /// `VEL-15` fills them, which is also what an idle track looks like.
+    /// What the audio thread has published. Read on a heartbeat rather than
+    /// mapped from the `Arc`: the handoff's identity never changes, so nothing
+    /// would tell the binding system to look again.
+    analysis: Arc<Analysis>,
+    /// The reactive copies. Updating these is what makes the display move.
+    ///
+    /// The two curves the figure draws behind the regions: what came in, and the
+    /// harmonics being added to it (`REQ-VEL-018`).
     dry: Curve,
     wet: Curve,
+    /// Peak and held peak per meter, normalized onto the meter's own scale.
+    peaks: Vec<f32>,
+    holds: Vec<f32>,
 }
+
+/// How often the display re-reads the analysis. 30 Hz is as fast as a meter
+/// needs to look alive, and half the work of matching the frame rate.
+const ANALYSIS_INTERVAL: Duration = Duration::from_millis(33);
+
+/// Why this is a thread and not `cx.add_timer`.
+///
+/// **vizia's timers never fire here.** `process_timers` is called by
+/// `vizia_winit` and by nothing else; the baseview backend — the one every
+/// plugin and the gallery run on — does not call it (`.agents/rules/vizia.md`).
+/// `cx.spawn` hands out a `ContextProxy`, which baseview *does* support, and
+/// emitting through it fails once the window is gone, which is the thread's
+/// signal to stop.
+fn start_heartbeat(cx: &mut Context) {
+    cx.spawn(|proxy| {
+        while proxy.emit(UiEvent::Poll).is_ok() {
+            std::thread::sleep(ANALYSIS_INTERVAL);
+        }
+    });
+}
+
+/// The floor of the spectrum curves. Below this a band is drawn as silence —
+/// without a floor the curve sits on the noise of an idle track.
+const SPECTRUM_FLOOR_DB: f32 = -72.0;
+
+/// The floor of the meters. Shallower than the spectrum's: a meter is read for
+/// "how close to clipping", and 60 dB of travel puts a working vocal in the top
+/// third where it can be read.
+const METER_FLOOR_DB: f32 = -60.0;
+
+/// One published band frame as a curve across the figure's axis.
+///
+/// **Both mappings live on this side of the widget**, which is the same split as
+/// everywhere else: `nxe-ui` knows nothing about hertz or decibels, and
+/// `nxe-dsp` knows nothing about the view it ends up in.
+fn spectrum_curve(levels: &[f32; BANDS]) -> Curve {
+    let span = (HIGH_HZ / LOW_HZ).log10();
+
+    levels
+        .iter()
+        .enumerate()
+        .map(|(index, level)| {
+            let hz = LOW_HZ * (HIGH_HZ / LOW_HZ).powf(index as f32 / (BANDS - 1) as f32);
+            let x = (hz / LOW_HZ).log10() / span;
+            let db = 20.0 * level.max(1e-9).log10();
+            let y = ((db - SPECTRUM_FLOOR_DB) / -SPECTRUM_FLOOR_DB).clamp(0.0, 1.0);
+            (x, y)
+        })
+        .collect()
+}
+
+/// An amplitude as a position on a meter.
+fn meter_position(amplitude: f32) -> f32 {
+    let db = 20.0 * amplitude.max(1e-9).log10();
+    ((db - METER_FLOOR_DB) / -METER_FLOOR_DB).clamp(0.0, 1.0)
+}
+
 
 pub(crate) enum UiEvent {
     SelectTab(usize),
     Hover(Option<usize>),
+    /// The heartbeat asking the model to re-read what the audio thread
+    /// published.
+    Poll,
 }
 
 impl Model for Ui {
@@ -68,6 +139,20 @@ impl Model for Ui {
         event.map(|ui_event: &UiEvent, _| match ui_event {
             UiEvent::SelectTab(tab) => self.tab = *tab,
             UiEvent::Hover(index) => self.hovered = *index,
+            UiEvent::Poll => {
+                self.dry = spectrum_curve(&self.analysis.dry.read());
+                self.wet = spectrum_curve(&self.analysis.wet.read());
+                let peaks = self.analysis.peaks.read();
+                let holds = self.analysis.holds.read();
+                self.peaks = peaks.iter().copied().map(meter_position).collect();
+                self.holds = holds.iter().copied().map(meter_position).collect();
+                // The guards are **not** copied here. The figure reads them
+                // inside its own lens, because a region carries its reduction
+                // in the same value as its level and a lens can only map one
+                // field (`.agents/rules/vizia.md`). Any change to this model —
+                // this heartbeat included — re-evaluates that lens, which is
+                // what makes the regions sink in time.
+            }
         });
     }
 }
@@ -76,6 +161,7 @@ pub fn create(
     params: Arc<VelourParams>,
     state: Arc<ViziaState>,
     sample_rate: Arc<AtomicU32>,
+    analysis: Arc<Analysis>,
 ) -> Option<Box<dyn Editor>> {
     // `ViziaTheming::None`: the plugin brings its own stylesheet and wants none
     // of vizia's defaults leaking into it.
@@ -93,18 +179,25 @@ pub fn create(
         Ui {
             tab: TAB_MAIN,
             hovered: None,
+            analysis: analysis.clone(),
             dry: Curve::new(),
             wet: Curve::new(),
+            peaks: vec![0.0; METERS],
+            holds: vec![0.0; METERS],
             params: params.clone(),
         }
         .build(cx);
+
+        // Parameter changes wake the binding system on their own; an idle window
+        // with audio running does not. The display needs its own heartbeat.
+        start_heartbeat(cx);
 
         VStack::new(cx, |cx| {
             header(cx);
             // The figure stays put above the tabs. It is what the plugin *is* —
             // hiding it behind a tab would leave the window with nothing to look
             // at (`ui.md`).
-            field::view(cx, host_rate);
+            field::view(cx, host_rate, analysis.clone());
             tab_strip(cx);
 
             // Both tabs are built and one is hidden. Rebuilding on a switch

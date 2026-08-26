@@ -202,6 +202,15 @@ pub struct Engine {
     /// **One for both channels**, driven by the shared detector — a compressor
     /// per channel would move the image (`REQ-VEL-011`).
     density: Density,
+    /// The generator bus's own output from the last sample, before the dry was
+    /// added and before `MIX`.
+    ///
+    /// **Kept rather than reconstructed.** The interface draws the added layer
+    /// as its own curve (`REQ-VEL-018`), and `output − dry` throws away most of
+    /// the layer's precision when the dry is the larger of the two — the trap
+    /// the tests here hit first (`velour-plan.md`, `VEL-9`). Two floats are
+    /// cheaper than being wrong.
+    wet: (f32, f32),
 }
 
 /// Everything `set_shape` has to notice a change in before rebuilding the
@@ -244,6 +253,7 @@ impl Engine {
             guard_amounts: [1.0; 2],
             envelope: Envelope::new(host_rate),
             density: Density::new(),
+            wet: (0.0, 0.0),
         }
     }
 
@@ -359,6 +369,7 @@ impl Engine {
 
         let dry = [input.0, input.1];
         let mut output = [0.0f32; 2];
+        let mut layer = [0.0f32; 2];
 
         for (index, channel) in channels.iter_mut().enumerate() {
             let Channel {
@@ -398,9 +409,17 @@ impl Engine {
             });
 
             output[index] = dry[index] * dry_gain + levels.mix * wet;
+            layer[index] = wet;
         }
 
+        self.wet = (layer[0], layer[1]);
         (output[0], output[1])
+    }
+
+    /// The generator bus alone, from the last call to [`Engine::process`] — what
+    /// is being added, for the display to draw (`REQ-VEL-018`).
+    pub fn wet(&self) -> (f32, f32) {
+        self.wet
     }
 
     /// How far each guard is pulling right now, in dB, in the order of
@@ -417,6 +436,7 @@ impl Engine {
         // still pulling when it starts again.
         self.guards.reset();
         self.envelope.reset();
+        self.wet = (0.0, 0.0);
     }
 }
 
@@ -1165,6 +1185,42 @@ mod tests {
             curves(1.0),
             "`DENSITY` moved the detector `EMOTION` reads"
         );
+    }
+
+    /// The layer the display draws has to be the layer that is added
+    /// (`REQ-VEL-018`) — soloing everything is the same thing said through the
+    /// audio path, so the two must agree.
+    #[test]
+    fn the_reported_wet_is_the_layer_that_is_added() {
+        let input = sine(0.3, 37, 2_048);
+        let shape = Shape {
+            drive: 0.6,
+            emotion: 0.0,
+            ..Shape::default()
+        };
+        let open = levels(0.8, 1.0);
+
+        let mut engine = Engine::new(RATE);
+        engine.set_shape(&shape);
+        let mut reported = Vec::new();
+        for sample in &input {
+            engine.process((*sample, *sample), &open);
+            reported.push(engine.wet().0);
+        }
+
+        // The same engine with everything soloed plays the layer and nothing
+        // else, at the same band levels — so the two series are the same numbers.
+        let mut soloed = Shape {
+            solo: [true; BAND_COUNT],
+            ..shape
+        };
+        soloed.solo = [true; BAND_COUNT];
+        let played = rendered(&soloed, &levels(0.8, 1.0), &input);
+
+        for (index, (a, b)) in reported.iter().zip(&played).enumerate() {
+            // `MIX` is 1 in both, so the played layer is the reported one.
+            assert!((a - b).abs() < 1e-6, "sample {index}: {a} against {b}");
+        }
     }
 
     /// **A hostile sample must not latch a detector** (`REQ-VEL-016`).

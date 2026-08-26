@@ -3,10 +3,13 @@
 //!
 //! No DSP lives here (`.agents/rules/rust.md`).
 
+use analysis::{Analysis, BANDS, HIGH_HZ, LOW_HZ, METERS};
 use nih_plug::prelude::*;
+use nxe_dsp::{Level, Spectrum};
 use std::sync::Arc;
 use velour_core::Engine;
 
+mod analysis;
 mod params;
 mod ui;
 
@@ -25,6 +28,13 @@ struct Velour {
     /// another; `f32` bits because there is no `AtomicF32`.
     sample_rate_hint: Arc<std::sync::atomic::AtomicU32>,
     engine: Engine,
+    /// What the editor reads. **The audio thread writes; nothing else touches
+    /// the analysers below** (`plugins/velour/velour/src/analysis.rs`).
+    analysis: Arc<Analysis>,
+    dry_spectrum: Spectrum<BANDS>,
+    wet_spectrum: Spectrum<BANDS>,
+    /// IN L, IN R, OUT L, OUT R.
+    meters: [Level; METERS],
     sample_rate: f32,
     /// How many input channels the host actually negotiated. Under the mono
     /// layout there is one, and reading a second would read undefined data.
@@ -40,6 +50,10 @@ impl Default for Velour {
                 FALLBACK_SAMPLE_RATE.to_bits(),
             )),
             engine: Engine::new(FALLBACK_SAMPLE_RATE),
+            analysis: Arc::new(Analysis::default()),
+            dry_spectrum: Spectrum::new(FALLBACK_SAMPLE_RATE, LOW_HZ, HIGH_HZ),
+            wet_spectrum: Spectrum::new(FALLBACK_SAMPLE_RATE, LOW_HZ, HIGH_HZ),
+            meters: std::array::from_fn(|_| Level::new(FALLBACK_SAMPLE_RATE)),
             sample_rate: FALLBACK_SAMPLE_RATE,
             input_channels: 2,
         }
@@ -81,6 +95,7 @@ impl Plugin for Velour {
             self.params.clone(),
             self.editor_state.clone(),
             self.sample_rate_hint.clone(),
+            self.analysis.clone(),
         )
     }
 
@@ -108,12 +123,20 @@ impl Plugin for Velour {
             // input ceiling is a fraction of it, so the engine is rebuilt rather
             // than corrected (`velour_core::bands::AIR_INPUT_CEILING`).
             self.engine = Engine::new(self.sample_rate);
+            self.dry_spectrum = Spectrum::new(self.sample_rate, LOW_HZ, HIGH_HZ);
+            self.wet_spectrum = Spectrum::new(self.sample_rate, LOW_HZ, HIGH_HZ);
+            self.meters = std::array::from_fn(|_| Level::new(self.sample_rate));
         }
         true
     }
 
     fn reset(&mut self) {
         self.engine.reset();
+        self.dry_spectrum.reset();
+        self.wet_spectrum.reset();
+        for meter in &mut self.meters {
+            meter.reset();
+        }
     }
 
     fn process(
@@ -139,10 +162,22 @@ impl Plugin for Velour {
             for sample in 0..samples {
                 let levels = self.params.levels();
                 let output = util::db_to_gain(self.params.output.smoothed.next());
-                let (wet_left, wet_right) =
-                    self.engine.process((left[sample], right[sample]), &levels);
-                left[sample] = wet_left * output;
-                right[sample] = wet_right * output;
+                let (in_left, in_right) = (left[sample], right[sample]);
+                let (out_left, out_right) = self.engine.process((in_left, in_right), &levels);
+                let (out_left, out_right) = (out_left * output, out_right * output);
+                left[sample] = out_left;
+                right[sample] = out_right;
+
+                // **After the output trim**, because the meters answer "is this
+                // louder than what went in" and the trim is part of the answer
+                // (`ui.md`).
+                let layer = self.engine.wet();
+                self.dry_spectrum.push((in_left + in_right) * 0.5);
+                self.wet_spectrum.push((layer.0 + layer.1) * 0.5);
+                self.meters[0].push(in_left);
+                self.meters[1].push(in_right);
+                self.meters[2].push(out_left);
+                self.meters[3].push(out_right);
             }
         } else {
             let [mono, ..] = channels else {
@@ -158,10 +193,35 @@ impl Plugin for Velour {
                 // paid deliberately, because a mono path through the engine
                 // would be a second version of the same arithmetic to keep
                 // correct, and a mono instance is the cheap case anyway.
-                let (result, _) = self.engine.process((mono[sample], mono[sample]), &levels);
-                mono[sample] = result * output;
+                let input = mono[sample];
+                let (result, _) = self.engine.process((input, input), &levels);
+                let result = result * output;
+                mono[sample] = result;
+
+                // A mono track drives both sides of every meter, which is why
+                // the two bars sitting exactly on top of each other is itself
+                // information (`ui.md`).
+                let layer = self.engine.wet();
+                self.dry_spectrum.push(input);
+                self.wet_spectrum.push(layer.0);
+                self.meters[0].push(input);
+                self.meters[1].push(input);
+                self.meters[2].push(result);
+                self.meters[3].push(result);
             }
         }
+
+        // One frame per block. The editor reads whatever is there — a frame it
+        // misses is a frame nobody would have seen.
+        self.analysis.dry.write(&self.dry_spectrum.levels());
+        self.analysis.wet.write(&self.wet_spectrum.levels());
+        self.analysis
+            .peaks
+            .write(&std::array::from_fn(|index| self.meters[index].peak()));
+        self.analysis
+            .holds
+            .write(&std::array::from_fn(|index| self.meters[index].hold()));
+        self.analysis.guards.write(&self.engine.guard_reductions());
 
         ProcessStatus::Normal
     }
