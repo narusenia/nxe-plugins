@@ -189,15 +189,13 @@ fn row(cx: &mut Context, index: usize) {
         if *hovered == Some(index) {
             theme::ELEVATED.vizia()
         } else {
-            theme::CARD.vizia()
+            theme::BACKGROUND.vizia()
         }
     }));
 }
 
 pub fn view(cx: &mut Context) {
     VStack::new(cx, |cx| {
-        Element::new(cx).class("panel-highlight");
-
         HStack::new(cx, |cx| {
             Label::new(cx, "").class("label").width(Pixels(INDEX_WIDTH));
             for column in COLUMNS {

@@ -82,13 +82,16 @@ impl Token {
 // Surfaces. Fully neutral — every channel equal — so the accent is the only
 // hue anywhere in the window. A slight blue cast in the greys reads as a
 // colour scheme rather than as a background.
+//
+// **Two levels, not three.** Panels and controls sit at `BACKGROUND` with the
+// rest of the window; what separates them is the one-pixel border, nothing
+// else. `ELEVATED` is left for things that are only there for a moment — a
+// hovered row, a bar's track, the field being typed into. A lighter resting
+// surface (and the one-pixel top highlight that went with it) made a flat
+// window look like a stack of cards.
 pub const BACKGROUND: Token = Token::rgb(0x0A, 0x0A, 0x0A);
-pub const CARD: Token = Token::rgb(0x14, 0x14, 0x14);
 pub const ELEVATED: Token = Token::rgb(0x1F, 0x1F, 0x1F);
 pub const BORDER: Token = Token::rgb(0x2A, 0x2A, 0x2A);
-/// The one-pixel lift along the top of a surface. Most of the "shadcn feel" is
-/// this line.
-pub const HIGHLIGHT: Token = Token::rgba(0xFF, 0xFF, 0xFF, 0.04);
 
 // Text. Neutral for the same reason as the surfaces.
 pub const FOREGROUND: Token = Token::rgb(0xFA, 0xFA, 0xFA);
@@ -145,10 +148,8 @@ pub const TRANSITION_MS: u32 = 150;
 /// The stylesheet, built from the constants above.
 pub fn stylesheet() -> String {
     let background = BACKGROUND.css();
-    let card = CARD.css();
     let elevated = ELEVATED.css();
     let border = BORDER.css();
-    let highlight = HIGHLIGHT.css();
     let foreground = FOREGROUND.css();
     let muted = MUTED.css();
     let subtle = SUBTLE.css();
@@ -172,20 +173,12 @@ label {{
 }}
 
 .panel {{
-    background-color: {card};
+    background-color: {background};
     border-width: 1px;
     border-color: {border};
     border-radius: {RADIUS_CARD}px;
     child-space: {SPACE_4}px;
     row-between: {SPACE_3}px;
-}}
-
-/* One pixel along the top of a surface, which is where the sense of a raised
-   card comes from without a shadow. Placed as the first child of a panel. */
-.panel-highlight {{
-    height: 1px;
-    width: 1s;
-    background-color: {highlight};
 }}
 
 .section {{
@@ -253,12 +246,12 @@ label {{
    so the selected one reads as raised out of the track. */
 .segmented {{
     layout-type: row;
-    background-color: {elevated};
+    background-color: {background};
     border-width: 1px;
     border-color: {border};
     border-radius: {RADIUS_CONTROL}px;
-    child-space: 2px;
-    col-between: 2px;
+    child-space: 1px;
+    col-between: 1px;
     height: auto;
     width: auto;
 }}
@@ -269,7 +262,7 @@ label {{
     child-space: 1s;
     child-left: {SPACE_2}px;
     child-right: {SPACE_2}px;
-    height: 22px;
+    height: 18px;
     border-radius: {RADIUS_CONTROL}px;
     transition: background-color {TRANSITION_MS}ms, color {TRANSITION_MS}ms;
 }}
@@ -422,10 +415,8 @@ mod tests {
     fn the_neutrals_have_no_hue() {
         for (name, token) in [
             ("background", BACKGROUND),
-            ("card", CARD),
             ("elevated", ELEVATED),
             ("border", BORDER),
-            ("highlight", HIGHLIGHT),
             ("foreground", FOREGROUND),
             ("muted", MUTED),
             ("subtle", SUBTLE),
@@ -458,7 +449,6 @@ mod tests {
         for class in [
             ".root",
             ".panel",
-            ".panel-highlight",
             ".section",
             ".row",
             ".divider",

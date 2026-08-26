@@ -243,7 +243,6 @@ fn main() {
 /// A titled surface, with the one-pixel top highlight the theme calls for.
 fn panel(cx: &mut Context, title: &str, content: impl Fn(&mut Context)) {
     VStack::new(cx, |cx| {
-        Element::new(cx).class("panel-highlight");
         Label::new(cx, title).class("label");
         content(cx);
     })
@@ -271,10 +270,8 @@ fn colours(cx: &mut Context) {
     panel(cx, "SURFACES", |cx| {
         HStack::new(cx, |cx| {
             swatch(cx, "background", theme::BACKGROUND);
-            swatch(cx, "card", theme::CARD);
             swatch(cx, "elevated", theme::ELEVATED);
             swatch(cx, "border", theme::BORDER);
-            swatch(cx, "highlight", theme::HIGHLIGHT);
         })
         .class("row")
         .height(Auto);
@@ -644,7 +641,7 @@ fn detail(cx: &mut Context) {
                         0.42
                     }
                 }))
-                .background_color(Demo::last_gesture.map(move |_| theme::CARD.vizia()));
+                .background_color(Demo::last_gesture.map(move |_| theme::BACKGROUND.vizia()));
             }
         })
         .height(Auto)

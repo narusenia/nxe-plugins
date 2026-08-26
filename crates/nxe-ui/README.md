@@ -103,7 +103,7 @@ theme::ACCENT.css()     // 生成される CSS 用
 
 ### CSS のクラス
 
-`.root` / `.panel` / `.panel-highlight` / `.section` / `.row` / `.divider` /
+`.root` / `.panel` / `.section` / `.row` / `.divider` /
 `.label` / `.value` / `.subtle` / `.disabled` / `.track` / `.accent` /
 `.hoverable` / `.segmented` / `.segment` / `.icon`
 
