@@ -322,7 +322,17 @@ impl Engine {
         // written; borrowing through `self` inside the closure would not.
         // The guards run **before** the split, at the host rate, on the mono
         // sum — one detector for two channels and for both bands.
+        // **Sanitised once, here.** Every detector below holds recursive state,
+        // so a single non-finite sample would latch it for the rest of the
+        // session — the trap that has already cost this crate a silent wet bus
+        // (`crate::oversample`). Guarding the sum is one check for all of them,
+        // and it is the only place they are fed (`REQ-VEL-016`).
+        //
+        // The dry path is deliberately *not* sanitised: it is a pass-through,
+        // and a host that sends a NaN gets it back rather than having it
+        // quietly turned into silence.
         let mono = (input.0 + input.1) * 0.5;
+        let mono = if mono.is_finite() { mono } else { 0.0 };
         self.guards.push(mono, self.guard_amounts);
         // **Before the generator bus**, which is where `DENSITY`'s compressor
         // lives: the detector has to see the signal the singer produced, not
@@ -601,6 +611,26 @@ mod tests {
         let mut output = Vec::new();
         for chunk in input.chunks(block) {
             engine.set_shape(shape);
+            for sample in chunk {
+                output.push(engine.process((*sample, *sample), levels).0);
+            }
+        }
+        output
+    }
+
+    /// Renders while a control moves: `shape_at(progress)` is resolved once per
+    /// block, the way a host delivers a drag.
+    fn rendered_while(
+        shape_at: fn(f32) -> Shape,
+        levels: &Levels,
+        input: &[f32],
+        block: usize,
+    ) -> Vec<f32> {
+        let mut engine = Engine::new(RATE);
+        let mut output = Vec::new();
+        for (index, chunk) in input.chunks(block).enumerate() {
+            let progress = (index * block) as f32 / input.len() as f32;
+            engine.set_shape(&shape_at(progress));
             for sample in chunk {
                 output.push(engine.process((*sample, *sample), levels).0);
             }
@@ -1134,6 +1164,199 @@ mod tests {
             curves(0.0),
             curves(1.0),
             "`DENSITY` moved the detector `EMOTION` reads"
+        );
+    }
+
+    /// **A hostile sample must not latch a detector** (`REQ-VEL-016`).
+    ///
+    /// The guards and the envelope are recursive, so one NaN would poison them
+    /// permanently — and the symptom would be a plugin that silently stops
+    /// protecting anything, which nothing else here would catch.
+    #[test]
+    fn a_hostile_sample_does_not_latch_the_detectors() {
+        let input = harsh(24_000);
+        let open = levels(0.8, 1.0);
+        let shape = Shape {
+            drive: 0.6,
+            solo: [false, true, false],
+            ..Shape::default()
+        };
+
+        let mut engine = Engine::new(RATE);
+        let settle = |engine: &mut Engine, input: &[f32]| {
+            for sample in input {
+                engine.set_shape(&shape);
+                engine.process((*sample, *sample), &open);
+            }
+        };
+
+        settle(&mut engine, &input);
+        let before = engine.guard_reductions();
+        assert!(before[0] < -1.0, "the guard was not pulling to begin with");
+
+        for value in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            for _ in 0..64 {
+                engine.process((value, value), &open);
+            }
+        }
+
+        settle(&mut engine, &input);
+        let after = engine.guard_reductions();
+        assert!(
+            (after[0] - before[0]).abs() < 0.5,
+            "the guard went from {:+.2} dB to {:+.2} dB",
+            before[0],
+            after[0]
+        );
+    }
+
+    /// **The same sound at any sample rate** (`REQ-VEL-017`). Every time
+    /// constant and every filter corner is written in seconds or hertz, and
+    /// this is what says none of them slipped into samples or radians.
+    #[test]
+    fn the_sample_rate_does_not_change_the_sound() {
+        let mut readings = Vec::new();
+
+        for rate in [44_100.0f32, 48_000.0, 96_000.0] {
+            // A whole number of cycles in the analysed half, at every rate:
+            // the slice is a fixed *fraction* of the buffer, so the frequency
+            // is derived from the rate rather than fixed.
+            let length = (rate as usize / 2) * 2;
+            let settled = length / 2;
+            let hertz = rate * 100.0 / settled as f32;
+            let input = tone(0.5, hertz, rate, length);
+
+            let shape = Shape {
+                drive: 0.6,
+                // Off: it is level-dependent, and the point here is the rate.
+                emotion: 0.0,
+                solo: [true, false, false],
+                ..Shape::default()
+            };
+            let mut engine = Engine::new(rate);
+            let mut output = Vec::new();
+            for chunk in input.chunks(64) {
+                engine.set_shape(&shape);
+                for sample in chunk {
+                    output.push(engine.process((*sample, *sample), &levels(0.8, 1.0)).0);
+                }
+            }
+
+            let tail = &output[settled..];
+            let first = crate::harmonics::amplitude(tail, 100);
+            readings.push((
+                crate::harmonics::db_ratio(crate::harmonics::rms(tail), 1.0),
+                crate::harmonics::amplitude(tail, 200) / first,
+                crate::harmonics::amplitude(tail, 300) / first,
+            ));
+        }
+
+        let (level, even, odd) = readings[0];
+        for (other_level, other_even, other_odd) in &readings[1..] {
+            assert!(
+                (other_level - level).abs() < 0.5,
+                "the level moved: {readings:?}"
+            );
+            assert!(
+                (other_even - even).abs() < even * 0.1,
+                "H2/H1 moved: {readings:?}"
+            );
+            assert!(
+                (other_odd - odd).abs() < odd * 0.15,
+                "H3/H1 moved: {readings:?}"
+            );
+        }
+    }
+
+    /// The largest jump between two neighbouring samples. A click *is* a step,
+    /// so this is the measurement.
+    fn largest_step(signal: &[f32]) -> f32 {
+        signal
+            .windows(2)
+            .map(|pair| (pair[1] - pair[0]).abs())
+            .fold(0.0f32, f32::max)
+    }
+
+    /// **No zipper while a control is dragged** (`REQ-VEL-017`), for the
+    /// controls that are resolved once per block.
+    ///
+    /// The band faders and `MIX` are per-sample and cannot step. Everything
+    /// here rebuilds coefficients, so it moves at block boundaries — and the
+    /// question is whether the result has a discontinuity in it. The yardstick
+    /// is the input's own largest step: a control change may bend the waveform,
+    /// but it must not put a bigger edge in it than the signal already has.
+    #[test]
+    fn a_fast_sweep_leaves_no_step_in_the_output() {
+        // 100 ms end to end, which is faster than a hand.
+        //
+        // Harsh material rather than a clean tone, so that the guards are
+        // actually pulling while their amount moves — a sweep the detector
+        // never reacts to would test nothing.
+        let length = 4_800;
+        let input = harsh(length);
+        let open = levels(0.8, 1.0);
+
+        type Sweep = (&'static str, fn(f32) -> Shape);
+        let sweeps: [Sweep; 6] = [
+            ("drive", |t| Shape { drive: t, ..Shape::default() }),
+            ("texture", |t| Shape { drive: 0.6, texture: t, ..Shape::default() }),
+            ("focus", |t| Shape { drive: 0.6, focus: t * 2.0 - 1.0, ..Shape::default() }),
+            ("guards", |t| Shape { drive: 0.6, guards: [1.0 - t; 2], ..Shape::default() }),
+            ("emotion", |t| Shape { drive: 0.6, emotion: t, ..Shape::default() }),
+            ("density", |t| Shape { drive: 0.6, density: t, ..Shape::default() }),
+        ];
+
+        for (name, shape_at) in sweeps {
+            let swept = largest_step(&rendered_while(shape_at, &open, &input, 64));
+
+            // The yardstick is the same engine **held still**, at the worst
+            // point on the sweep. The added layer's harmonics are steeper than
+            // the input by construction, so comparing against the input would
+            // only measure that; what matters is whether *moving* the control
+            // puts an edge in that holding it does not.
+            let held = [0.0f32, 0.25, 0.5, 0.75, 1.0]
+                .iter()
+                .map(|value| {
+                    let shape = shape_at(*value);
+                    largest_step(&blocked(&shape, &open, &input, 64))
+                })
+                .fold(0.0f32, f32::max);
+
+            assert!(
+                swept < held * 1.3,
+                "{name}: {swept:.5} while moving against {held:.5} while held"
+            );
+        }
+
+        // **The measurement has to be able to fail**, or the six passes above
+        // mean nothing. A band fader stepped at block boundaries is exactly the
+        // edge this is looking for — and it is why the faders are smoothed per
+        // sample instead (`velour::params`).
+        let mut engine = Engine::new(RATE);
+        let mut stepped = Vec::new();
+        for (index, chunk) in input.chunks(64).enumerate() {
+            engine.set_shape(&Shape {
+                drive: 0.6,
+                ..Shape::default()
+            });
+            // Alternating, so every block boundary is a jump rather than a ramp.
+            let level = if index % 2 == 0 { 0.0 } else { 3.0 };
+            for sample in chunk {
+                stepped.push(engine.process((*sample, *sample), &levels(level, 1.0)).0);
+            }
+        }
+        let held = largest_step(&blocked(
+            &Shape {
+                drive: 0.6,
+                ..Shape::default()
+            },
+            &levels(3.0, 1.0),
+            &input,
+            64,
+        ));
+        assert!(
+            largest_step(&stepped) > held * 1.3,
+            "a stepped fader did not register as a step"
         );
     }
 
