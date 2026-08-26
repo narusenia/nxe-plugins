@@ -9,11 +9,13 @@
 //!
 //! Run it with `mise run gallery`.
 
+use nxe_ui::band::{Band, BandField, BandFieldModifiers, BandGesture};
 use nxe_ui::bar::Bar;
 use nxe_ui::curve::{Curve, CurveView, CurveViewModifiers, Grip, Span};
 use nxe_ui::entry::ValueEntry;
 use nxe_ui::input::Gesture;
 use nxe_ui::knob::Knob;
+use nxe_ui::meter::Meter;
 use nxe_ui::polar::{FieldGesture, FieldPoint, PolarField, PolarFieldModifiers};
 use nxe_ui::segmented::SegmentedControl;
 use nxe_ui::{font, icon, theme};
@@ -62,6 +64,23 @@ struct Demo {
     /// Mirrors the Doubler's Detail disclosure, so the show/hide of a tall
     /// table can be exercised without a host.
     detail_open: bool,
+    /// Three parallel band regions, the way Velour reads them. Their edges are
+    /// derived from `focus`, so a lens can only map one field — same reason
+    /// `curves` is derived.
+    bands: Vec<Band>,
+    /// Moves all three regions together, `0.5` at rest.
+    focus: f32,
+    /// `0` for none, otherwise the band index plus one.
+    solo: usize,
+    /// Which region the pointer is over. Fed straight back into the widget's
+    /// `highlight`, which is how a figure and a table point at the same thing.
+    hovered: Option<usize>,
+    /// What came in, and what is being added to it.
+    dry: Curve,
+    added: Curve,
+    /// Stands in for a signal level, so the meters have something to do. The
+    /// guards below bite when it gets loud.
+    meter: f32,
 }
 
 enum DemoEvent {
@@ -80,9 +99,43 @@ enum DemoEvent {
     Gesture(&'static str),
     Typed(String),
     ToggleDetail,
+    SetBand(usize, f32),
+    ResetBand(usize),
+    SetFocus(f32),
+    HoverBand(Option<usize>),
+    SetSolo(usize),
+    SetMeter(f32),
 }
 
 impl Demo {
+    /// The band regions' resting edges in Hz. Velour's, near enough to see the
+    /// widget work.
+    const BAND_EDGES: [(f32, f32); 3] = [(90.0, 520.0), (480.0, 5_200.0), (4_800.0, 20_000.0)];
+
+    /// Recomputes everything derived from `focus`, `solo` and `meter`.
+    fn refresh_bands(&mut self) {
+        // An octave either way, which is what a voice-range control has to
+        // cover: a male fundamental near 110 Hz against a female one near 220.
+        let shift = ((self.focus - 0.5) * 2.0).exp2();
+
+        for (index, band) in self.bands.iter_mut().enumerate() {
+            let (low, high) = Self::BAND_EDGES[index];
+            band.low = log_x(low * shift);
+            band.high = log_x(high * shift);
+            band.soloed = self.solo == index + 1;
+            // A stand-in for a protective detector: the upper two bands are
+            // pulled back once the signal gets loud, so the sinking inside the
+            // set outline is something that can be watched happening.
+            band.reduction = if index == 0 {
+                0.0
+            } else {
+                ((self.meter - 0.72) * 3.0).clamp(0.0, 0.8)
+            };
+        }
+
+        self.added = added_curve(&self.bands);
+    }
+
     /// Recomputes everything derived from the tone values.
     fn refresh(&mut self) {
         self.curves = vec![shelf_curve(self.tone_lo, self.tone_hi)];
@@ -142,6 +195,27 @@ impl Model for Demo {
             }
             DemoEvent::Gesture(name) => self.last_gesture = (*name).to_owned(),
             DemoEvent::ToggleDetail => self.detail_open = !self.detail_open,
+            DemoEvent::SetBand(index, level) => {
+                self.bands[*index].level = *level;
+                self.added = added_curve(&self.bands);
+            }
+            DemoEvent::ResetBand(index) => {
+                self.bands[*index].level = [0.55, 0.70, 0.45][*index];
+                self.added = added_curve(&self.bands);
+            }
+            DemoEvent::SetFocus(value) => {
+                self.focus = *value;
+                self.refresh_bands();
+            }
+            DemoEvent::HoverBand(over) => self.hovered = *over,
+            DemoEvent::SetSolo(index) => {
+                self.solo = *index;
+                self.refresh_bands();
+            }
+            DemoEvent::SetMeter(value) => {
+                self.meter = *value;
+                self.refresh_bands();
+            }
         });
     }
 }
@@ -215,8 +289,26 @@ fn main() {
             last_gesture: "—".to_owned(),
             typed: "22.0 ms".to_owned(),
             detail_open: false,
+            bands: [0.55f32, 0.70, 0.45]
+                .iter()
+                .enumerate()
+                .map(|(index, level)| Band {
+                    level: *level,
+                    // A step along the accent per band, so three regions of one
+                    // hue stay distinguishable.
+                    tint: index as f32 / 2.0,
+                    ..Band::default()
+                })
+                .collect(),
+            focus: 0.5,
+            solo: 0,
+            hovered: None,
+            dry: sample_analysis(),
+            added: Vec::new(),
+            meter: 0.62,
         };
         demo.refresh();
+        demo.refresh_bands();
         demo.build(cx);
 
         // The gallery grows every time a widget is added, so it scrolls from
@@ -232,6 +324,8 @@ fn main() {
                 segments(cx);
                 field(cx);
                 curves(cx);
+                band_field(cx);
+                meters(cx);
                 detail(cx);
                 icons(cx);
                 shapes(cx);
@@ -609,6 +703,198 @@ fn curves(cx: &mut Context) {
         Label::new(
             cx,
             "drag a handle vertically · the shaded bands are Tone Spread",
+        )
+        .class("subtle");
+    });
+}
+
+/// What the three generators are adding, as a bell per band scaled by whatever
+/// is getting through it. Not a real spectrum — the point is that raising a
+/// region visibly raises the curve above it, which is the reading the panel
+/// exists to give.
+fn added_curve(bands: &[Band]) -> Curve {
+    (0..=96)
+        .map(|step| {
+            let x = step as f32 / 96.0;
+            let level: f32 = bands
+                .iter()
+                .map(|band| {
+                    let centre = (band.low + band.high) * 0.5;
+                    let width = (band.high - band.low).max(0.02);
+                    let bell = (-((x - centre) / (width * 0.6)).powi(2)).exp();
+                    band.live() * bell * 0.55
+                })
+                .sum();
+            (x, level.min(0.95))
+        })
+        .collect()
+}
+
+fn band_gesture_name(gesture: BandGesture) -> &'static str {
+    match gesture {
+        BandGesture::Begin(_) => "begin",
+        BandGesture::Change { .. } => "change",
+        BandGesture::End(_) => "end",
+        BandGesture::Reset(_) => "reset (double click)",
+        BandGesture::Hover(_) => "hover",
+        BandGesture::FocusBegin => "focus begin",
+        BandGesture::FocusChange(_) => "focus change",
+        BandGesture::FocusEnd => "focus end",
+        BandGesture::FocusReset => "focus reset (double click)",
+    }
+}
+
+fn band_field(cx: &mut Context) {
+    const MARKS: [(f32, &str); 5] = [
+        (20.0, "20"),
+        (200.0, "200"),
+        (1000.0, "1k"),
+        (5000.0, "5k"),
+        (20000.0, "20k"),
+    ];
+
+    panel(cx, "BAND FIELD", |cx| {
+        BandField::new(
+            cx,
+            Demo::bands,
+            Demo::dry,
+            Demo::added,
+            MARKS.iter().map(|(hz, _)| log_x(*hz)).collect(),
+            |cx, gesture| {
+                match gesture {
+                    BandGesture::Change { index, level } => {
+                        cx.emit(DemoEvent::SetBand(index, level))
+                    }
+                    BandGesture::Reset(index) => cx.emit(DemoEvent::ResetBand(index)),
+                    BandGesture::Hover(over) => cx.emit(DemoEvent::HoverBand(over)),
+                    BandGesture::FocusChange(value) => cx.emit(DemoEvent::SetFocus(value)),
+                    BandGesture::FocusReset => cx.emit(DemoEvent::SetFocus(0.5)),
+                    _ => {}
+                }
+                cx.emit(DemoEvent::Gesture(band_gesture_name(gesture)));
+            },
+        )
+        // Whatever the pointer is over comes straight back in, which is the
+        // linkage a plugin uses to light up the matching table row.
+        .highlight(Demo::hovered)
+        // Wiring this is what makes the rail at the bottom live.
+        .focus(Demo::focus)
+        .height(Pixels(150.0))
+        .width(Stretch(1.0));
+
+        // The axis labels are the caller's, placed with the caller's own
+        // mapping — the widget cannot draw text at arbitrary positions.
+        HStack::new(cx, |cx| {
+            for (hz, text) in MARKS {
+                Label::new(cx, text)
+                    .class("subtle")
+                    .position_type(PositionType::SelfDirected)
+                    .left(Percentage(log_x(hz) * 100.0));
+            }
+        })
+        .height(Pixels(16.0))
+        .width(Stretch(1.0));
+
+        HStack::new(cx, |cx| {
+            Label::new(cx, "SOLO").class("label");
+            SegmentedControl::new(
+                cx,
+                Demo::solo,
+                &["—", "BODY", "PRES", "AIR"],
+                |cx, index| {
+                    cx.emit(DemoEvent::SetSolo(index));
+                },
+            );
+
+            Label::new(cx, "FOCUS").class("label");
+            font::value(cx, Demo::focus.map(|value| format!("{value:.3}")));
+        })
+        .class("row")
+        .height(Auto);
+
+        Label::new(
+            cx,
+            "drag a region vertically · drag the rail at the bottom to move all three",
+        )
+        .class("subtle");
+    });
+}
+
+/// The scale the meters are drawn against, so the marks and the values agree.
+const METER_FLOOR_DB: f32 = -60.0;
+
+fn meter_mark(db: f32) -> f32 {
+    ((db - METER_FLOOR_DB) / -METER_FLOOR_DB).clamp(0.0, 1.0)
+}
+
+/// One labelled bar. The hold marker sits a little above the bar because that
+/// is what a hold looks like — the DSP keeps the real one (`nxe_dsp::Level`).
+fn meter_column<L>(cx: &mut Context, label: &'static str, level: L)
+where
+    L: Lens<Target = f32> + Copy,
+{
+    let marks = vec![meter_mark(-18.0), meter_mark(-6.0), meter_mark(0.0)];
+
+    VStack::new(cx, |cx| {
+        Meter::new(
+            cx,
+            level,
+            level.map(|value| (value + 0.08).min(1.0)),
+            marks.clone(),
+        )
+        .width(Pixels(10.0))
+        .height(Pixels(120.0));
+        Label::new(cx, label).class("label");
+    })
+    .width(Auto)
+    .height(Auto)
+    .row_between(Pixels(theme::SPACE_1))
+    .child_left(Stretch(1.0))
+    .child_right(Stretch(1.0));
+}
+
+fn meters(cx: &mut Context) {
+    panel(cx, "METER", |cx| {
+        HStack::new(cx, |cx| {
+            VStack::new(cx, |cx| {
+                Knob::new(cx, Demo::meter, |cx, gesture| {
+                    if let Gesture::Change(value) = gesture {
+                        cx.emit(DemoEvent::SetMeter(value));
+                    }
+                    cx.emit(DemoEvent::Gesture(name_of(gesture)));
+                })
+                .size(Pixels(44.0));
+                Label::new(cx, "LEVEL").class("label");
+            })
+            .width(Auto)
+            .height(Auto)
+            .row_between(Pixels(theme::SPACE_1))
+            .child_left(Stretch(1.0))
+            .child_right(Stretch(1.0));
+
+            // In and out side by side, because the question a saturator's meters
+            // answer is "is this louder, or is it better".
+            meter_column(cx, "IN L", Demo::meter);
+            meter_column(cx, "IN R", Demo::meter);
+            meter_column(cx, "OUT L", Demo::meter.map(|value| value * 0.85));
+            meter_column(cx, "OUT R", Demo::meter.map(|value| value * 0.85));
+        })
+        .class("row")
+        .col_between(Pixels(theme::SPACE_3))
+        .height(Auto);
+
+        Meter::horizontal(
+            cx,
+            Demo::meter,
+            Demo::meter.map(|value| (value + 0.08).min(1.0)),
+            vec![meter_mark(-18.0), meter_mark(-6.0), meter_mark(0.0)],
+        )
+        .width(Stretch(1.0))
+        .height(Pixels(8.0));
+
+        Label::new(
+            cx,
+            "turn LEVEL up past the marks · the hold marker turns white at full scale",
         )
         .class("subtle");
     });

@@ -38,6 +38,8 @@ Application::new(|cx| {
 | [`polar::PolarField`](src/polar.rs) | 半円上の点をドラッグする 2 軸フィールド。基準点（アンカー）も半径方向にドラッグできる。`PolarFieldModifiers` で `.highlight(lens)`（外から 1 点を指す）と `.density(lens)`（方向ごとの信号量を扇形で背後に敷く） | `impl Res<Vec<FieldPoint>>` ×2（点と基準点） | `Fn(&mut EventContext, FieldGesture)` |
 | [`entry::ValueEntry`](src/entry.rs) | クリックで打ち込める数値 | `impl Lens<Target = String>`（表示文字列） | `Fn(&mut EventContext, &str)` |
 | [`curve::CurveView`](src/curve.rs) | 曲線・帯・縦ドラッグのハンドル。`CurveViewModifiers` の `.analysis(lens)` で信号のカーブを背後に塗る | `impl Res<...>` ×3（曲線・帯・ハンドル） | `Fn(&mut EventContext, usize, Gesture)` |
+| [`band::BandField`](src/band.rs) | 対数周波数のパネル。掴める帯域の区画と信号のカーブ 2 本。`BandFieldModifiers` で `.highlight(lens)` と `.focus(lens)`（下端のレールを横に引いて全区画をまとめて動かす） | `impl Res<Vec<Band>>` + `impl Res<Curve>` ×2 | `Fn(&mut EventContext, BandGesture)` |
+| [`meter::Meter`](src/meter.rs) | レベルバー 1 本とピークホールドの印。`new` が縦、`horizontal` が横。操作は無い | `impl Res<f32>` ×2（レベル・ホールド） | — |
 
 値はすべて**正規化**（`0..=1`。双極のものは `0.5` が中央）。単位の写像は
 呼び出し側が持つ。
@@ -70,6 +72,16 @@ Application::new(|cx| {
 
 `Bar` も**縦**ドラッグ。横バーを横に引くのは一見自然だが、行を積んだときに端を
 越えて隣に入る誤操作が起きる。
+
+`BandField` は [`band::BandGesture`](src/band.rs)。区画の分（`Begin` /
+`Change { index, level }` / `End` / `Reset` / `Hover`）と、下端のレールの分
+（`FocusBegin` / `FocusChange(f32)` / `FocusEnd` / `FocusReset`）。**レールは
+`.focus(lens)` を繋いだときだけ生きる** — 書くものが無い呼び出し側は繋がなければ
+よく、そのときレールは掴めるように見えない。
+
+**縦ドラッグと横ドラッグを位置で見分けさせない。** 区画が全高になった瞬間に
+曖昧になり、最初の数ピクセルの向きから推測するのはもっと悪い。だから横方向は
+**常にそこにある下端のレール**が受ける。
 
 `PolarField` だけは [`polar::FieldGesture`](src/polar.rs) を使う。2 つの値が
 同時に動くため。点の分（`Begin` / `Change` / `End` / `Reset` / `Hover`）に加えて
@@ -181,6 +193,6 @@ icon::label(cx, icon::CHEVRON_DOWN).font_size(20.0);
 
 ## まだ無いもの
 
-- ツールチップ（vizia に `Tooltip` view はある）
-- `SegmentedControl` のキーボード左右移動
-- `Meter` / `ToggleSwitch` — 使うプラグインが出てから
+- `ToggleSwitch` — **2 個のプラグインがどちらも要らなかった。** `.segment` を
+  当てた `Label` に `checked` と `on_press` で足りる（上記）。3 個目でも要らな
+  ければ計画から落とす

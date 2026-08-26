@@ -42,8 +42,9 @@
 [UI 仕様](../../plugins/velour/docs/specifications/ui.md)は書けている。
 **実装計画は未作成**なので、`VEL-*` の実装単位はまだこの表に無い。
 
-Velour が共通クレートに要求したものが 3 つあり、**これは Velour のクレートを
-作る前に着手できる**（`UI-13` / `UI-8` / `DSP-4`）。
+Velour が共通クレートに要求したものは 3 つとも入っている（`UI-13` `BandField` /
+`UI-8` `Meter` / `DSP-4` `Level`）。Velour のクレートは 1 行も無い状態で作れた
+ので、**次は実装計画**。テスト 124 本。
 
 ## 今すぐ着手できるもの
 
@@ -51,11 +52,11 @@ Velour が共通クレートに要求したものが 3 つあり、**これは V
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| UI-13 | `BandField`（Velour の主役の図。`REQ-VEL-013`） | `nxe-ui-plan.md` |
-| UI-8 | `Meter`（**Velour で使う相手が現れた**） | `nxe-ui-plan.md` |
-| DSP-4 | `Level`（IN / OUT メーターの値） | `nxe-dsp-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 | UI-9 | `ToggleSwitch`（**Doubler も Velour も使わない**。3 個目でも要らなければ落とす） | `nxe-ui-plan.md` |
+
+Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`）は完了。
+**gallery で見る**（`mise run gallery`）。
 
 ## 積み残し（どれも単位を持っていない小物）
 
@@ -83,7 +84,7 @@ Velour が共通クレートに要求したものが 3 つあり、**これは V
 | DSP-1 | 音声スレッド → UI の受け渡し（`Handoff`） | ✅ |
 | DSP-2 | ステレオ像の分布（`PanScope`） | ✅ |
 | DSP-3 | スペクトラム（`Spectrum`。定 Q のフィルタバンク） | ✅ |
-| DSP-4 | レベル（`Level`。peak + RMS + ピークホールド） | 🟡 |
+| DSP-4 | レベル（`Level`。peak + RMS + ピークホールド） | ✅ |
 
 ### 共通 UI — `nxe-ui-plan.md`
 
@@ -99,8 +100,8 @@ Velour が共通クレートに要求したものが 3 つあり、**これは V
 | UI-10 | `CurveView`（領域知識を持たない曲線表示） | ✅ |
 | UI-11 | `PolarField` の分布オーバーレイ | ✅ |
 | UI-12 | `CurveView` の解析カーブ | ✅ |
-| UI-13 | `BandField`（領域知識を持たない帯域パネル） | 🟡 |
-| UI-8 | `Meter` — **Velour の IN / OUT が使う** | 🟡 |
+| UI-13 | `BandField`（領域知識を持たない帯域パネル） | ✅ |
+| UI-8 | `Meter` — **Velour の IN / OUT が使う** | ✅ |
 | UI-9 | `ToggleSwitch` — **誰も使っていない**（2 個目でも不要） | 🟡 |
 
 ### Doubler — `../../plugins/doubler/docs/implementation/doubler-plan.md`
