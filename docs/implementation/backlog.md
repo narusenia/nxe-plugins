@@ -37,9 +37,10 @@
   そのまま使える状態
 
 **2 個目のプラグイン Velour の設計が始まった**（2026-08-26）。要件
-（[`REQ-VEL`](../../plugins/velour/docs/requirements/REQ-VEL.md)）と UI 仕様
-（[`ui.md`](../../plugins/velour/docs/specifications/ui.md)）は書けている。
-**DSP 仕様と実装計画は未作成**なので、`VEL-*` の実装単位はまだこの表に無い。
+（[`REQ-VEL`](../../plugins/velour/docs/requirements/REQ-VEL.md)）と
+[DSP 仕様](../../plugins/velour/docs/specifications/dsp.md) と
+[UI 仕様](../../plugins/velour/docs/specifications/ui.md)は書けている。
+**実装計画は未作成**なので、`VEL-*` の実装単位はまだこの表に無い。
 
 Velour が共通クレートに要求したものが 3 つあり、**これは Velour のクレートを
 作る前に着手できる**（`UI-13` / `UI-8` / `DSP-4`）。
@@ -125,11 +126,13 @@ Velour が共通クレートに要求したものが 3 つあり、**これは V
 
 ### Velour — 実装計画 未作成
 
-要件 [`REQ-VEL`](../../plugins/velour/docs/requirements/REQ-VEL.md) と UI 仕様
-[`ui.md`](../../plugins/velour/docs/specifications/ui.md) はある。**単位を
-起こすには先に `specifications/dsp.md` と `implementation/velour-plan.md` が
-要る**（`architecture.md` の「新しいプラグインを足す」の手順 4–5）。
+要件・DSP 仕様・UI 仕様はある。**単位を起こすには
+`implementation/velour-plan.md` が要る**（`architecture.md` の「新しい
+プラグインを足す」の手順 5）。
+
+ゲートは `REQ-VEL-003` の「`k` を振っても基音が ±0.1 dB 以内」。ここが崩れると
+4 層の直交（`REQ-VEL-009`）が成立せず、パラメータの意味づけごとやり直しになる。
 
 | ID | 単位 | 状態 |
 |---|---|---|
-| VEL-* | 未起票 | ⬜ dsp.md と velour-plan.md 待ち |
+| VEL-* | 未起票 | ⬜ velour-plan.md 待ち |
