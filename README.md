@@ -13,7 +13,7 @@ and **VST3**.
 | Plugin | What it is | Status |
 |---|---|---|
 | [NXE Doubler](plugins/doubler/docs/requirements/REQ-DBL.md) | Multi-voice doubler — 2/4/8 detuned, delayed, humanized voices from one source | `doubler-v0.1.0` |
-| [NXE Velour](plugins/velour/docs/requirements/REQ-VEL.md) | Vocal presence saturator — three parallel harmonic generators added to an untouched dry path | Design |
+| [NXE Velour](plugins/velour/docs/requirements/REQ-VEL.md) | Vocal presence saturator — three parallel harmonic generators added to an untouched dry path | In progress |
 
 ## Formats
 

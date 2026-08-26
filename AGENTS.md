@@ -27,9 +27,11 @@ with the code, and fix the document in the same change.
   on the audio path
 - `plugins/doubler/doubler`: the Doubler nih-plug wrapper — parameter
   declarations, the Vizia UI, and the binding between them
-- `plugins/velour/docs`: Velour — the second plugin. **Documents only so far**;
-  no crates yet. Requirements, both specifications, and the implementation plan
-  are written; `VEL-1` is where the code starts
+- `plugins/velour/velour-core`: the Velour DSP. Host-agnostic, allocation-free
+  on the audio path. `shaper` / `oversample` / `biquad` / `guard` are written to
+  know nothing about Velour, because Sparkleur will want them
+- `plugins/velour/velour`: the Velour nih-plug wrapper. **No interface yet** —
+  it makes sound through the host's generated parameter view
 - `docs/`: monorepo-wide documents (architecture, cross-plugin backlog and
   roadmap). Indexed by `docs/README.md`
 - `plugins/<name>/docs/`: that plugin's own requirements, specifications, and
