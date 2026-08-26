@@ -96,6 +96,14 @@ do not remove it.
 than margin, and `layout-type: row | column` to choose the axis. Layout is
 Morphorm, not flexbox.
 
+**A view's default width and height are `Stretch(1.0)`, and a stretching child
+of an auto-sized parent resolves to zero.** `Handle::width` unset means Morphorm
+picks the default, not "size to content". Wrapping content in an `HStack` inside
+an `width: auto` container therefore renders a sliver with the content clipped
+away — the same CSS works when the child is a `Label`, which sets `Auto` itself.
+When a container's size comes from its content, say `.width(Auto)` on every
+level, not just the outermost.
+
 **Bind inside `build`'s closure.** `Res::set_or_bind` needs `cx`, and the handle
 `build` returns holds it, so binding after the build does not compile. Inside the
 closure, `cx.current()` is the new view.

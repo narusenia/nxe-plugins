@@ -203,6 +203,11 @@ fn mirror_toggle(cx: &mut Context) {
                 .color(Ui::mirror.map(segment_color));
         })
         .class("segment")
+        // Morphorm's default width is `Stretch(1.0)`, and a stretching child of
+        // an auto-width parent resolves to zero — the switch came out as a
+        // one-pixel sliver with its text clipped away. `SegmentedControl` gets
+        // away with the same CSS because its segments are `Label`s.
+        .width(Auto)
         .col_between(Pixels(theme::SPACE_1))
         .checked(Ui::mirror)
         .on_press(|cx| cx.emit(UiEvent::ToggleMirror));
