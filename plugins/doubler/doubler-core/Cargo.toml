@@ -10,3 +10,12 @@ description = "The Doubler DSP, independent of any plugin host"
 # host API: that is what keeps a future AU wrapper possible and what lets the
 # DSP be tested without a host (`.agents/rules/rust.md`).
 [dependencies]
+
+# criterion is a dev dependency, so it never reaches a plugin binary. The rule
+# above is about what the DSP links, not about what measures it.
+[dev-dependencies]
+criterion = { version = "0.5", default-features = false }
+
+[[bench]]
+name = "engine"
+harness = false
