@@ -3011,6 +3011,7 @@ version = "0.1.0"
 dependencies = [
  "nih_plug",
  "nxe-audio",
+ "nxe-dsp",
  "sparkleur-core",
 ]
 

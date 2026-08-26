@@ -96,6 +96,13 @@ pub const INPUT_CEILING: f32 = 0.25;
 const INPUT_CEILING_HZ: f32 = 12_000.0;
 
 const ENERGY_FLOOR: f32 = 1e-10;
+
+/// Below this the gate counts as shut.
+///
+/// A one-pole never reaches its target, so without a floor the gate settles on
+/// a **denormal** — a number no picture can draw, and one some CPUs multiply
+/// slowly (`SPK-16`).
+const CLOSED: f32 = 1e-6;
 /// `10·log10(x)` is `10/log2(10)` times `log2(x)`.
 const DECIBELS_PER_OCTAVE_POWER: f32 = 3.010_3;
 
@@ -243,7 +250,8 @@ impl Sparkle {
         self.opening = if raw > self.opening {
             raw
         } else {
-            self.opening + (raw - self.opening) * self.hold
+            let held = self.opening + (raw - self.opening) * self.hold;
+            if held < CLOSED { 0.0 } else { held }
         };
 
         let air = finite(air, 0.0).clamp(0.0, 1.0);
@@ -612,6 +620,25 @@ mod tests {
             rms(&output) > 1e-6,
             "the layer went silent and stayed silent"
         );
+    }
+
+    /// **The gate has to actually shut** (`REQ-SPK-018`). A one-pole
+    /// asymptotes, so without a floor it settles on a denormal that a picture
+    /// draws as a permanently ajar gate.
+    #[test]
+    fn the_gate_shuts_completely_when_the_music_stops() {
+        let mut sparkle = Sparkle::new(RATE);
+        sparkle.set(settings(1.0, crush()));
+        for sample in sine(0.5, 9_000, 4_800) {
+            sparkle.process(sample, AIR);
+        }
+        assert!(sparkle.opening() > 0.0, "it never opened");
+
+        // A second of nothing, against a 40 ms hold.
+        for _ in 0..RATE as usize {
+            sparkle.process(0.0, AIR);
+        }
+        assert_eq!(sparkle.opening(), 0.0, "the gate stayed ajar");
     }
 
     #[test]

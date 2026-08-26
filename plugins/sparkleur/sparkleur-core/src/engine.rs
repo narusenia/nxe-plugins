@@ -750,6 +750,94 @@ mod tests {
         );
     }
 
+    /// **The figure's subject has to point the way the dynamics do**
+    /// (`REQ-SPK-018`): a band over the threshold reports a gain below unity,
+    /// one under it reports a gain above. The picture draws this straight into
+    /// `nxe_ui::band::Band::delta`, which is signed for exactly this reason
+    /// (`SPK-10`).
+    #[test]
+    fn the_reported_gains_point_the_way_the_dynamics_do() {
+        let settle = |scale: f32, lift: f32| {
+            let mut engine = Engine::new(RATE);
+            engine.set_shape(&Shape {
+                lift,
+                ..Shape::default()
+            });
+            let levels = working();
+            for sample in material(RATE as usize / 2) {
+                engine.process((sample * scale, sample * scale), &levels);
+            }
+            engine.gains_db()
+        };
+
+        // Loud: over the downward threshold, so the regions sink.
+        let loud = settle(1.0, 0.0);
+        assert!(
+            loud.iter().any(|gain| *gain < -0.5),
+            "nothing was compressed: {loud:?}"
+        );
+        assert!(
+            loud.iter().all(|gain| *gain <= 0.001),
+            "something was lifted while it was loud: {loud:?}"
+        );
+
+        // Quiet, with the floor left where it is: under the upward threshold
+        // and above the fade, so the regions rise.
+        let quiet = settle(0.01, 0.0);
+        assert!(
+            quiet.iter().any(|gain| *gain > 0.5),
+            "nothing was lifted: {quiet:?}"
+        );
+        assert!(
+            quiet.iter().all(|gain| *gain >= -0.001),
+            "something was compressed while it was quiet: {quiet:?}"
+        );
+    }
+
+    /// **And when the music stops the figure empties** (`REQ-SPK-018`). The
+    /// floor is what does it: below the fade there is nothing to lift, so every
+    /// region settles back on the unity line rather than drifting upward.
+    #[test]
+    fn silence_brings_every_reported_gain_back_to_unity() {
+        let mut engine = Engine::new(RATE);
+        let levels = working();
+        for sample in material(RATE as usize / 2) {
+            engine.process((sample, sample), &levels);
+        }
+        assert!(
+            engine.gains_db().iter().any(|gain| *gain != 0.0),
+            "nothing was happening to decay from"
+        );
+
+        // **How long "decays away" actually takes.** The release the axis
+        // chooses for the bottom band is floored at 133 ms, and a one-pole
+        // sheds 4.34 dB per time constant, so falling from working level to
+        // under the floor's fade is a couple of seconds. That is the upward
+        // side being honest rather than slow: until the level is under the
+        // floor there really is something down there to lift, which is why the
+        // floor exists at all (`REQ-SPK-003`).
+        let at_rest = |engine: &Engine| {
+            engine.gains_db().iter().all(|gain| *gain == 0.0)
+                && engine.de_harsh_db() == 0.0
+                && engine.sparkle_opening() == 0.0
+        };
+
+        let mut silent = 0usize;
+        while !at_rest(&engine) {
+            engine.process((0.0, 0.0), &levels);
+            silent += 1;
+            assert!(
+                silent < RATE as usize * 5,
+                "it never settled: gains {:?}, de-harsh {}, sparkle {}",
+                engine.gains_db(),
+                engine.de_harsh_db(),
+                engine.sparkle_opening()
+            );
+        }
+        let seconds = silent as f32 / RATE;
+        assert!(seconds < 3.0, "it took {seconds:.2} s to empty");
+    }
+
     #[test]
     fn reset_clears_it() {
         let mut engine = Engine::new(RATE);
