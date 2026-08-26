@@ -10,7 +10,7 @@
 - **順序の判断は [`roadmap.md`](roadmap.md)**。この表は「何があるか」、
   ロードマップは「どの順でやるか、なぜその順か」
 
-最終更新: 2026-08-25
+最終更新: 2026-08-26
 
 ## 凡例
 
@@ -24,13 +24,15 @@
 
 ## 現在地
 
-**フェーズ 3（UI）はほぼ完了。** `nxe-ui` のウィジェットは Doubler が使うものが
-全部揃い、プラグイン側も Voice Field・Filter View・Detail 表まで載っている。
+**フェーズ 3（UI）は全単位done。** `nxe-ui` のウィジェットは Doubler が使うものが
+全部揃い、プラグイン側も Voice Field・Filter View・Detail 表・ミラー編集まで
+載っている。次はフェーズ 4（CI と実機での詰め）。
 
-最後に確認待ちなのは**タブ式レイアウトの見た目**（2026-08-26 時点）。窓 620 × 572、
-Voice Field と `MIX` / `OUTPUT` が常時表示、タブが「4 ノブ + Filter View」と
-「8 行の表」を入れ替える。寸法は `plugins/doubler/doubler/src/ui/mod.rs` の
-`FIELD_HEIGHT` / `SIDE_WIDTH` / `TAB_HEIGHT` で調整できる。
+確認待ちなのは**見た目**（2026-08-26 時点）。窓 620 × 572、Voice Field と
+`MIX` / `OUTPUT` が常時表示、タブが「4 ノブ + Filter View」と「8 行の表」を
+入れ替え、図の右上に `⇄ MIRROR`。寸法は
+`plugins/doubler/doubler/src/ui/mod.rs` の `FIELD_HEIGHT` / `SIDE_WIDTH` /
+`TAB_HEIGHT` で調整できる。
 
 ## 今すぐ着手できるもの
 
@@ -38,7 +40,6 @@ Voice Field と `MIX` / `OUTPUT` が常時表示、タブが「4 ノブ + Filter
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| DBL-15 | UI ミラー編集（フェーズ 3 の最後） | `doubler-plan.md` |
 | INFRA-2 | プルリクエストの CI（フェーズ 4） | `infra-plan.md` |
 | INFRA-3 | リリースの CI（フェーズ 4） | `infra-plan.md` |
 | DBL-12 | CPU 予算の確認（フェーズ 4） | `doubler-plan.md` |
@@ -55,6 +56,7 @@ Voice Field と `MIX` / `OUTPUT` が常時表示、タブが「4 ノブ + Filter
 | `SegmentedControl` のキーボード左右移動 | `UI-6` |
 | 値の直接入力（`Gesture::Edit` が無反応） | `UI-3`。インラインのテキスト入力が要る |
 | Detail 表 → Voice Field のハイライト | `DBL-11`。`PolarField` に外からハイライトを指定する入力が無い |
+| ミラーで連動した側のハイライト | `DBL-15`。上と同じ穴。まとめて 1 単位にできる |
 | 見た目の最終調整（フォントサイズ、寸法、余白） | ユーザーの指示で最後にまとめる |
 
 ## 全単位
@@ -98,6 +100,6 @@ Voice Field と `MIX` / `OUTPUT` が常時表示、タブが「4 ノブ + Filter
 | DBL-10 | UI Voice Field | ✅ |
 | DBL-11 | UI Detail 層（ボイス表） | ✅ ❓ 表→図のハイライト未 |
 | DBL-14 | UI Filter View | ✅ |
-| DBL-15 | UI ミラー編集（`REQ-DBL-014`） | 🟡 |
+| DBL-15 | UI ミラー編集（`REQ-DBL-014`） | ✅ ❓ 連動側のハイライト未 |
 | DBL-12 | CPU 予算の確認（criterion） | ⬜ DBL-8 |
 | DBL-13 | 既定値の詰めと実機確認 | ⬜ DBL-12, DBL-11 |
