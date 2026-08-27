@@ -173,6 +173,7 @@ impl Engine {
         self.resolved_gain = self.probe.gain(
             Resolved {
                 presence_db: self.direct.presence_db(),
+                direct_level: self.direct.target_level(),
                 tap_energy: self.reflections.tap_energy(),
                 direct_corner_hz: self.damping.direct_corner_hz(),
                 reflected_corner_hz: self.damping.reflected_corner_hz(),
@@ -406,15 +407,18 @@ mod tests {
     /// stand-in for anything a vocal processor will see, and the probe is pink
     /// for exactly that reason.
     ///
-    /// **The bound here is stricter than the requirement**, deliberately.
-    /// `REQ-VDP-008` allows `±1.0 dB`, which is a spread of 2.0; this asserts
-    /// 1.2, so the plugin has to stay inside roughly `±0.6` and a drift shows up
-    /// here long before it breaks the promise.
+    /// **The bound is 1.8 where the requirement allows 2.0**, so a drift shows
+    /// up here before it breaks the promise.
     ///
-    /// Measured spreads with `DAMPING` at its default: **pink 0.40, phrase 0.89,
-    /// phrase + breath 0.85 dB**; with `DAMPING` open, **0.56 / 1.00 / 0.95**
-    /// (`VDP-5`, `VDP-7`). In the requirement's units that is a worst case of
-    /// **±0.50 dB** — inside even the original `±0.5` the gate started with.
+    /// **`VDP-14` spent most of the margin on purpose.** A listener reported
+    /// that the old ranges did not read as distance at all, and the fix was to
+    /// widen every cue: the direct sound now loses 9 dB broadband, the
+    /// reflections end above unity, and the damping corner reaches 3.8 kHz. The
+    /// worst case over pink noise and a voice went from ±0.50 dB to **±0.83 dB**
+    /// — which is what the tolerance was relaxed to `±1.0` for.
+    ///
+    /// Measured spreads (peak to peak) at `DAMPING` 0 / 0.5 / 1: **pink 0.80 /
+    /// 1.22 / 1.66**, **phrase 1.12 / 1.36 / 1.46**.
     #[test]
     fn depth_does_not_move_the_loudness() {
         let length = 2 * RATE as usize;
@@ -431,7 +435,7 @@ mod tests {
                     ..Macros::default()
                 });
                 assert!(
-                    spread < 1.2,
+                    spread < 1.8,
                     "{name} at DAMPING {damping}: DEPTH moved the level by {spread:.2} dB \
                      peak to peak"
                 );
@@ -467,9 +471,12 @@ mod tests {
             damping: 1.0,
             ..Macros::default()
         });
+        // **7.6 dB after `VDP-14`**, up from 4.4: widening the damping range
+        // put more of the distance cue exactly where white noise keeps its
+        // energy.
         assert!(
-            (2.0..6.0).contains(&open),
-            "white with DAMPING open moved {open:.2} dB, not the 4.4 on record"
+            (4.0..10.0).contains(&open),
+            "white with DAMPING open moved {open:.2} dB, not the 7.6 on record"
         );
     }
 
@@ -485,7 +492,7 @@ mod tests {
                 ..Macros::default()
             });
             assert!(
-                spread < 1.2,
+                spread < 1.8,
                 "mix {mix}: DEPTH moved the level by {spread:.2} dB peak to peak"
             );
         }
@@ -505,7 +512,7 @@ mod tests {
             ..Macros::default()
         });
         assert!(
-            spread < 1.2,
+            spread < 1.8,
             "with DAMPING open, DEPTH moved the level by {spread:.2} dB peak to peak"
         );
 
@@ -516,7 +523,7 @@ mod tests {
             ..Macros::default()
         });
         assert!(
-            across_damping < 1.2,
+            across_damping < 1.8,
             "DAMPING itself moved the level by {across_damping:.2} dB peak to peak"
         );
     }
@@ -525,8 +532,14 @@ mod tests {
     #[test]
     fn room_does_not_move_the_loudness() {
         let signal = harmonics::pink(0.3, 2 * RATE as usize);
+        // Measured **1.48 dB peak to peak** (= ±0.74) after `VDP-14` widened
+        // the reflection range: `ROOM` reaches above unity now, so there is more
+        // of it for the normalisation to be approximately right about.
         let spread = spread_db(&signal, |room| at(0.7, room));
-        assert!(spread < 0.5, "ROOM moved the level by {spread:.2} dB");
+        assert!(
+            spread < 1.8,
+            "ROOM moved the level by {spread:.2} dB peak to peak"
+        );
     }
 
     /// **The measurement has to be able to fail** (`VEL-10`). With the

@@ -110,10 +110,17 @@ pub const HIGHPASS_HZ: f32 = 200.0;
 
 /// Reflection level at `distance` 0 and 1, relative to the direct sound.
 ///
-/// Asymmetric on purpose: getting closer runs out of room, getting further
-/// does not (`REQ-VDP-002`).
-const LEVEL_NEAR_DB: f32 = -24.0;
-const LEVEL_FAR_DB: f32 = -4.0;
+/// Asymmetric on purpose: getting closer runs out of room, getting further does
+/// not (`REQ-VDP-002`).
+///
+/// **The far end is above unity, and it has to be** (`VDP-14`). What says "far"
+/// is the direct-to-reflected ratio, and in a real space that ratio *crosses
+/// zero*: the reverberant field catches up with the direct sound and then
+/// passes it. The first version ended at `-4 dB` nominal, which after the tap
+/// weights left the ratio at **+17 dB** across the whole of `DEPTH` — a
+/// listener heard "more effect", not "further away".
+const LEVEL_NEAR_DB: f32 = -20.0;
+const LEVEL_FAR_DB: f32 = 2.0;
 
 /// [`Settings::amount`] is a linear gain of `amount^AMOUNT_EXPONENT · SCALE`.
 ///

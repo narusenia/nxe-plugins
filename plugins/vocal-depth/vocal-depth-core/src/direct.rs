@@ -40,6 +40,24 @@ const RETUNE_STEP_DB: f32 = 0.05;
 const PRESENCE_CLOSE_DB: f32 = 4.0;
 const PRESENCE_FAR_DB: f32 = -8.0;
 
+/// How far the direct sound's **broadband** level falls as the voice goes away.
+///
+/// **The strongest distance cue there is, and it was missing.** `REQ-VDP-002`'s
+/// table says the direct sound's share falls with distance, and the first
+/// implementation only tilted the presence band — so the direct-to-reflected
+/// ratio moved from +30 dB to +17 dB across the whole of `DEPTH` and a listener
+/// heard "more effect", not "further away" (`VDP-14`). Real distance takes that
+/// ratio to about 0 dB: the reverberant field catches up with the direct sound
+/// and then passes it.
+///
+/// **The loudness normalisation handles this term exactly, for every
+/// material.** A broadband gain scales every spectrum identically, which is the
+/// one thing the presence band and the damping corners could not do
+/// (`crate::depth::PRESENCE_COMPENSATION`) — so spending the distance cue here
+/// rather than there makes the gate *more* robust, not less.
+const LEVEL_CLOSE_DB: f32 = 0.0;
+const LEVEL_FAR_DB: f32 = -9.0;
+
 /// However the terms add up, the band does not move further than this. A
 /// parameter is host-controlled input and `CLARITY` adds on top of it
 /// (`REQ-VDP-016`).
@@ -236,6 +254,9 @@ pub struct Direct {
     opening: f32,
     /// What the parameters ask the band for, without the transient.
     static_db: f32,
+    /// The broadband level, linear. Smoothed toward `level_target`.
+    level: f32,
+    level_target: f32,
     /// Where the smoothed gain has got to, in dB.
     gain_db: f32,
     /// What the coefficients were last built for.
@@ -258,6 +279,8 @@ impl Direct {
             transient_span: 0.0,
             opening: 0.0,
             static_db: 0.0,
+            level: 1.0,
+            level_target: 1.0,
             gain_db: 0.0,
             tuned_db: f32::NAN,
             settling: false,
@@ -271,6 +294,7 @@ impl Direct {
     /// Puts the band where the parameters ask, without a ramp. For
     /// construction and [`reset`](Self::reset).
     fn snap(&mut self) {
+        self.level = self.level_target;
         self.gain_db = self.static_db;
         self.settling = false;
         self.retune();
@@ -308,6 +332,15 @@ impl Direct {
         self.static_db = (PRESENCE_FAR_DB + (PRESENCE_CLOSE_DB - PRESENCE_FAR_DB) * closeness)
             .clamp(-PRESENCE_LIMIT_DB, PRESENCE_LIMIT_DB);
 
+        // **Broadband, and it falls with distance** — the cue `REQ-VDP-002`
+        // asks for and the first implementation left out (`LEVEL_FAR_DB`).
+        //
+        // **From `distance` alone, not from `closeness`.** `DIRECT` is "how near
+        // the voice itself sounds", which is presence and attack; letting it
+        // move the broadband level too would make it a second `MIX`.
+        let level_db = LEVEL_FAR_DB + (LEVEL_CLOSE_DB - LEVEL_FAR_DB) * (1.0 - settings.distance);
+        self.level_target = 10.0f32.powf(level_db / 20.0);
+
         self.settling = true;
         self.transient_span = 2.0 * closeness - 1.0;
         self.settings = settings;
@@ -329,11 +362,14 @@ impl Direct {
         // at block rate is a seam.
         if self.settling {
             let remaining = self.static_db - self.gain_db;
-            if remaining.abs() < GAIN_SETTLED {
+            let level_remaining = self.level_target - self.level;
+            if remaining.abs() < GAIN_SETTLED && level_remaining.abs() < GAIN_SETTLED {
                 self.gain_db = self.static_db;
+                self.level = self.level_target;
                 self.settling = false;
             } else {
                 self.gain_db += remaining * self.coefficient;
+                self.level += level_remaining * self.coefficient;
             }
         }
 
@@ -352,8 +388,8 @@ impl Direct {
         }
 
         (
-            self.channels[0].process(left),
-            self.channels[1].process(right),
+            self.channels[0].process(left) * self.level,
+            self.channels[1].process(right) * self.level,
         )
     }
 
@@ -367,6 +403,14 @@ impl Direct {
     /// `VDP-11` displays it.
     pub fn presence_db(&self) -> f32 {
         self.static_db
+    }
+
+    /// The broadband level the direct sound is asked for, linear.
+    ///
+    /// **The target rather than where it has got to**: the normalisation is
+    /// resolved from the parameters at block rate (`REQ-VDP-008`).
+    pub fn target_level(&self) -> f32 {
+        self.level_target
     }
 
     pub fn settings(&self) -> Settings {
@@ -651,12 +695,15 @@ mod tests {
             band_energy(&render(&mut direct, &signal))
         };
 
-        // The same static gain, with the transient leaning each way: distance
-        // and presence are chosen so `closeness` is 1 and 0 while the band
-        // gain difference is known and removed below.
-        let near = with(at(0.0, 1.0));
-        let far = with(at(1.0, 0.0));
+        // **Distance held still, `DIRECT` moved.** `distance` also moves the
+        // broadband level now (`LEVEL_FAR_DB`), and this test is about the
+        // transient's share of the band — so the two ends are chosen to put
+        // `closeness` at 1 and 0 while leaving the level alone (`VDP-14`).
+        let near = with(at(0.5, 1.0));
+        let far = with(at(0.5, 0.0));
 
+        // `closeness` runs 1 to 0 across those two, so the static band gain
+        // spans its whole range.
         let static_difference = PRESENCE_CLOSE_DB - PRESENCE_FAR_DB;
         let total = 10.0 * (near / far).log10();
         let from_transient = total - static_difference;
@@ -705,7 +752,11 @@ mod tests {
                     // End to end: -8 dB of presence to +4 dB.
                     direct.set(at(0.0, 1.0));
                     if as_a_plain_gain {
-                        extra = 10.0f32.powf(12.0 / 20.0);
+                        // **Big enough to be unmistakable.** The step under
+                        // test now moves the broadband level as well, so a
+                        // control of the same size as the band change alone no
+                        // longer stands out from it (`VDP-14`).
+                        extra = 10.0f32.powf(24.0 / 20.0);
                     }
                 }
                 rendered.push(extra * direct.process(sample, sample, 0.0).0);

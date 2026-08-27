@@ -28,9 +28,17 @@
 `velour-v0.1.3` / `sparkleur-v0.1.3` / `air-v0.1.2`。**テスト 558 本、
 `mise run check` は通っている。**
 
-**5 本目 Vocal Depth が `VDP-12` まで来た**（2026-08-28）。DSP・ラッパ・窓・
-CPU まで全部入っている。**残っているのは人が要る 3 つだけ** —
-`VDP-13`（既定値、耳）、**実機での見た目の確認**、**製品名の確定**。
+**5 本目 Vocal Depth が `VDP-14` まで来た**（2026-08-28）。DSP・ラッパ・窓・
+CPU まで全部入っていて、**実機で一度聴いて効き幅を作り直した**。
+**残っているのは人が要る 3 つだけ** — `VDP-13`（既定値、耳）、**実機での
+見た目の確認**、**製品名の確定**。
+
+**`VDP-14` は実機の耳から生えた。** 「`DEPTH` が多少の差すぎる」「遠い近いという
+変化には思えない」に対して測ったら、**`REQ-VDP-002` の「直接音の比 FAR ↓」が
+実装されていなかった** — Presence 帯を傾けるだけで広帯域のレベルを触っていな
+かった。直接/反射比が **+30 → +17 dB** しか動いていなかったのを
+**+25.6 → +2.3 dB** にした。**`VDP-5` がゲートのために狭めた `DEPTH` →
+`DAMPING` の幅も戻した**（それは判断のときに却下された手だった）。
 
 - `vocal-depth-core`: `reflections` / `direct` / `damping` / `width` /
   `clarity` / `depth` / `engine`。テスト 55 本 + 詰めの 2 バイナリ
@@ -401,7 +409,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| VDP-13 | **既定値と耳**（Vocal Depth。**耳が要る**）。測れるものは `defaults.rs` で固定してから | `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md` |
+| VDP-13 | **既定値と耳**（Vocal Depth。**耳が要る**）。測れるものは `defaults.rs` で固定してから。**`VDP-14` で効き幅が変わったので、まず聴き直しから** | `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md` |
 | — | **`NXE Vocal Depth` を実機で見る・聴く**（4 ホスト、窓の寸法、既定値）。`mise run install vocal-depth` | `vocal-depth-plan.md` |
 | — | **製品名の確定**（`REQ-VDP-014`）。`CLAP_ID` は出荷後に変えられない | `REQ-VDP.md` の概要 |
 | — | **Advanced の偏差**（Vocal Depth、`REQ-VDP-009`）。**前に `dsp.md`** | `vocal-depth-plan.md` |
@@ -594,6 +602,7 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | VDP-11 | 読み値・メーター・解析の配線 | ✅ 7 セル + メーター 4 本 `f67708c` |
 | VDP-12 | CPU 予算 | ✅ **20.9 µs / 予算 533** `3c91c95` |
 | VDP-13 | 既定値と耳 | 🟡 **耳が要る** |
+| VDP-14 | **距離の効き幅の作り直し**（実機で「遠い近いに聞こえない」と出た）。直接音の広帯域レベルを足し、反射と `DAMPING` の範囲を広げた | ✅ 比 +25.6 → +2.3 dB |
 | — | **Advanced の偏差**（`REQ-VDP-009`）。パラメータ 7 個とエンジンの変更。**前に `dsp.md` が各偏差の数を書く** | ⬜ |
 
 **`dsp.md` は書けた**（2026-08-28、

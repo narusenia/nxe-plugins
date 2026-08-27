@@ -31,28 +31,32 @@ const OPEN_HZ: f32 = 20_000.0;
 
 /// How far a corner may fall, in octaves, at `amount` = 1.
 ///
-/// **The ratio is the whole point** (`REQ-VDP-005`): 1.8 octaves apart at full
-/// travel, which at 48 kHz is 8.7 kHz against 2.5 kHz.
-const DIRECT_OCTAVES: f32 = 1.2;
-const REFLECTED_OCTAVES: f32 = 3.0;
+/// **The ratio is the whole point** (`REQ-VDP-005`): 1.6 octaves apart at full
+/// travel, which is 3.8 kHz against 1.25 kHz.
+///
+/// **The first version stopped at 1.2 and 3.0 octaves, and it was inaudible on
+/// a voice** (`VDP-14`): at the default `DAMPING` the direct corner moved
+/// 15.9 kHz to 13.2 kHz across the whole of `DEPTH`, and a voice has almost
+/// nothing up there. What distance actually sounds like starts rolling off
+/// somewhere around 4 to 8 kHz.
+const DIRECT_OCTAVES: f32 = 2.4;
+const REFLECTED_OCTAVES: f32 = 4.0;
 
 /// How much of `amount` each side feels at the near and far ends of
 /// `distance`. The direct sound holds on to more of its top when the voice is
 /// close; the reflections lose theirs either way.
 ///
-/// **The spans were narrowed in `VDP-5` to keep the loudness gate.** `DEPTH`
-/// moving the corners is what `REQ-VDP-002` asks for, but it is also what makes
-/// `DEPTH` move the level: a lowpass takes a different share out of every
-/// spectrum, so the normalisation cannot be right for all of them at once (the
-/// same wall `VDP-3` hit with the presence band). At `0.35 / 0.50` a sparse
-/// harmonic phrase moved **1.26 dB** across `DEPTH` with `DAMPING` open; at
-/// `0.55 / 0.70`, with `depth::DAMPING_COMPENSATION` at 0.5, it moves
-/// **0.98 dB** and pink noise 0.56 dB. **These are ear numbers otherwise** —
-/// how much of the distance cue lives in the top end.
-const DIRECT_NEAR: f32 = 0.55;
-const DIRECT_SPAN: f32 = 0.45;
-const REFLECTED_NEAR: f32 = 0.70;
-const REFLECTED_SPAN: f32 = 0.30;
+/// **`VDP-5` narrowed these to protect the loudness gate, and `VDP-14` put them
+/// back.** Narrowing them was the trade the gate decision had explicitly
+/// rejected — shrinking the effect rather than relaxing the tolerance — and it
+/// cost most of what `DEPTH` does to the top end. The gate is kept instead by
+/// spending the distance cue on the direct sound's **broadband** level
+/// (`crate::direct::LEVEL_FAR_DB`), which the normalisation compensates exactly
+/// for every material.
+const DIRECT_NEAR: f32 = 0.35;
+const DIRECT_SPAN: f32 = 0.65;
+const REFLECTED_NEAR: f32 = 0.40;
+const REFLECTED_SPAN: f32 = 0.60;
 
 /// How far a full transient opens the direct corner back up.
 const TRANSIENT_OCTAVES: f32 = 1.0;

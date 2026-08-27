@@ -58,15 +58,19 @@ const POWER_FLOOR: f32 = 1e-8;
 /// | 0.75 | 0.26 | 0.57 | 1.00 | 1.00 |
 /// | 1.00 | 0.14 | 0.19 | 1.39 | 1.39 |
 ///
-/// The best worst case is around 0.6 and lands at **0.8 dB**; dropping white,
-/// which is not vocal material, the best is **0.62 dB at 0.5**. Neither reaches
-/// 0.5 dB, and the other lever is the presence range itself: everything here
-/// scales with it, so halving `+4 / -8 dB` halves the whole table.
+/// **Re-tuned in `VDP-14`**, after the distance cue moved to the direct sound's
+/// broadband level — which the normalisation compensates *exactly* for every
+/// material, so less of the loudness change now has to come out of this term.
+/// Worst case across pink noise and a voice, over `DEPTH` at three `DAMPING`
+/// settings:
 ///
-/// **Left at 1.0 pending that decision**, which is the setting that keeps the
-/// promise on broadband material — and the reflection term, which is broadband
-/// and much larger, is compensated exactly at any value of this.
-const PRESENCE_COMPENSATION: f32 = 0.6;
+/// | presence | damping | worst |
+/// |---|---|---|
+/// | 0.6 | 0.5 | ±0.95 dB |
+/// | **0.8** | **0.5** | **±0.83 dB** |
+/// | 1.0 | 0.5 | ±0.86 dB |
+/// | 1.0 | 1.0 | ±1.27 dB |
+const PRESENCE_COMPENSATION: f32 = 0.8;
 
 /// The same idea as [`PRESENCE_COMPENSATION`], for `DAMPING`: how much of the
 /// corner's fall the normalisation takes out, counted in octaves.
@@ -178,6 +182,13 @@ impl Macros {
 pub struct Resolved {
     /// [`direct::Direct::presence_db`].
     pub presence_db: f32,
+    /// [`direct::Direct::target_level`], the broadband level of the direct sound.
+    ///
+    /// **The one term here that is exactly right for every material**, along
+    /// with the width factor: a broadband gain scales every spectrum
+    /// identically. This is why the distance cue is spent here rather than on
+    /// the presence band (`direct::LEVEL_FAR_DB`).
+    pub direct_level: f32,
     /// [`reflections::Reflections::tap_energy`], which already carries the
     /// bus's own gain.
     pub tap_energy: f32,
@@ -258,6 +269,11 @@ impl Probe {
             |hz: f32| damping_magnitude(resolved.direct_corner_hz, hz, sample_rate);
         let reflected_damping =
             |hz: f32| damping_magnitude(resolved.reflected_corner_hz, hz, sample_rate);
+        let level = if resolved.direct_level.is_finite() {
+            resolved.direct_level.clamp(0.0, 4.0)
+        } else {
+            1.0
+        };
         let tap_energy = if resolved.tap_energy.is_finite() {
             resolved.tap_energy.max(0.0)
         } else {
@@ -272,7 +288,7 @@ impl Probe {
         for &hz in &self.frequencies {
             // The direct path is minimum-phase sections in series, so their
             // magnitudes are the whole story.
-            let direct_magnitude = presence.magnitude(hz, sample_rate) * direct_damping(hz);
+            let direct_magnitude = level * presence.magnitude(hz, sample_rate) * direct_damping(hz);
 
             // The reflections: incoherent with the direct sound above roughly
             // 90 Hz, and highpassed at 200 so the band where that is untrue has
@@ -334,6 +350,7 @@ mod tests {
     fn resolved(presence_db: f32, tap_energy: f32) -> Resolved {
         Resolved {
             presence_db,
+            direct_level: 1.0,
             tap_energy,
             direct_corner_hz: None,
             reflected_corner_hz: None,
