@@ -358,7 +358,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| AIR-3 | **`BLEND` / `CHARACTER` / `FOCUS`**（2 系統を 1 個の対象にまとめる） | `../../plugins/air/docs/implementation/air-plan.md` |
+| AIR-4 | **ラッパとパラメータ**（ここで音が出る。**バックエンドの判断が要る**） | `../../plugins/air/docs/implementation/air-plan.md` |
 | SPK-18 | **既定値と耳** ✅ — 測れるものは全部固定。既定値は 1 つも動かす理由が出なかった | `sparkleur-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 
@@ -505,9 +505,9 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 
 | ID | 単位 | 状態 |
 |---|---|---|
-| AIR-1 | ノイズ層と `WIDTH`（**ゲート**）。`air-core` もここで作った | ✅ **ゲート通過** `b424052` |
-| AIR-2 | 倍音層（`nxe_audio::shaper` の借用 + 上蓋） | ✅ 折り返し −70.0 dB |
-| AIR-3 | `BLEND` / `CHARACTER` / `FOCUS`（層を 1 個の対象に） | ⬜ |
+| AIR-1 | ノイズ層と `WIDTH`（**ゲート**）。`air-core` もここで作った | ✅ **ゲート通過** `31f363f` |
+| AIR-2 | 倍音層（`nxe_audio::shaper` の借用 + 上蓋） | ✅ 折り返し −70.0 dB `1a6e01f` |
+| AIR-3 | `BLEND` / `CHARACTER` / `FOCUS`（層を 1 個の対象に） | ✅ `BLEND` の掃引 0.02 dB |
 | AIR-4 | ラッパとパラメータ（**ここで音が出る**。バックエンドの判断もここ） | ⬜ |
 | AIR-5 | Follow Engine（`ENVELOPE` / `BRIGHTNESS` / `TRANSIENT`） | ⬜ |
 | AIR-6 | 保護（Excess Guard） | ⬜ |

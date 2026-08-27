@@ -131,7 +131,7 @@ Sparkleur の `SPK-2` と同じ位置。
 
 ---
 
-### AIR-3 — BLEND / CHARACTER / FOCUS
+### AIR-3 — BLEND / CHARACTER / FOCUS ✅
 
 `layer.rs`。2 系統を 1 個の対象としてまとめる。
 
@@ -147,8 +147,12 @@ Sparkleur の `SPK-2` と同じ位置。
 - **依存**: AIR-1, AIR-2
 - **決めた**（`dsp.md`）: `CHARACTER` は**常に両系統へ同じ正規化値を渡す**。
   聞こえるのは `BLEND` が選んだ系統だけなので、意味は自動的に移る。分岐は要らない
-- **決めること**: `NOISE_TRIM` / `HARMONIC_TRIM`（測定。ピンクノイズ −18 dBFS で
-  `BLEND` を掃引して ±1 dB）
+- **測って決めた**: `NOISE_TRIM` = **0.0359**（−28.90 dB）、`HARMONIC_TRIM` =
+  1.0。`BLEND` の掃引が **0.02 dB** で平ら（入れる前は 28.9 dB 動いていた）
+- **踏んだ罠**: **広帯域素材では `CHARACTER` の効きが小さく出る。** 層の差分で
+  測ると `BLEND` 0 で −23.8 dB しかない。ノイズの倍音はノイズなので、膝を
+  動かしてもスペクトルの形が動かないため。**軸が効いている証拠は正弦で測る**
+  （`harmonic.rs` の H3/H1）
 
 ---
 

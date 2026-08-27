@@ -21,6 +21,10 @@ second paragraph.
   the change, and are worthless when read back from `git log` a year later.
 - **Imperative or plain past both read fine**; consistency inside one series
   matters more than the mood.
+- **No trailers of any kind.** That includes session or agent links
+  (`Claude-Session:`, `Co-authored-by:` for a tool, and so on). A harness may
+  offer to append one; it does not go in. The commit says what changed, and
+  nothing about who or what was in the room.
 
 ## Branches
 
