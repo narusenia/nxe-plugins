@@ -6,17 +6,22 @@
 //!
 //! **Adding a parameter later is safe** — nih-plug keys them by id, not by
 //! position — but **changing or removing an id is not**, so the ids below are
-//! as final as `CLAP_ID`. `FOLLOW` and its three deviations arrive in `AIR-5`
-//! and the guard's deviation in `AIR-6`; they are not declared here because a
-//! control that does nothing is worse than one that does not exist yet.
+//! as final as `CLAP_ID`. The guard's deviation arrives in `AIR-6`; it is not
+//! declared here because a control that does nothing is worse than one that
+//! does not exist yet.
 //!
 //! ## Two layers
 //!
 //! Seven everyday controls plus an output trim (`REQ-AIR-010`). `DRIVE` and
-//! `BIAS` are the Advanced pair the requirement names — the curve's own
-//! numbers, which `CHARACTER` deliberately does not reach.
+//! `BIAS` are Advanced — the curve's own numbers, which `CHARACTER`
+//! deliberately does not reach — and so are the three following deviations.
+//!
+//! **A deviation is bipolar and rests at zero**, meaning "as `FOLLOW` says".
+//! A control that rests on the macro is how two parameters avoid writing one
+//! value (`REQ-AIR-010`).
 
 use air_core::Shape;
+use air_core::follow::{BRIGHTNESS, DETECTORS, ENVELOPE, TRANSIENT};
 use nih_plug::prelude::*;
 use nxe_audio::oversample::Factor;
 use nxe_audio::shaper::{BIAS_MAX, DRIVE_MAX, DRIVE_MIN};
@@ -79,6 +84,12 @@ pub struct AirParams {
     /// How much of the layer to add. **It does not turn the original down**:
     /// the topology is additive, so `MIX` scales what was added
     /// (`REQ-AIR-012`).
+    /// How much of the input's movement the layer answers to. **This is what
+    /// Air is** (`REQ-AIR-002`): at zero the layer is static, which is Velour;
+    /// with only the transient deviation up it is Sparkleur's Sparkle.
+    #[id = "follow"]
+    pub follow: FloatParam,
+
     #[id = "mix"]
     pub mix: FloatParam,
 
@@ -91,6 +102,15 @@ pub struct AirParams {
     pub drive: FloatParam,
     #[id = "bias"]
     pub bias: FloatParam,
+
+    /// Advanced: each detector's depth **as a deviation from `FOLLOW`**
+    /// (`REQ-AIR-010`). Zero is "as the macro says".
+    #[id = "fol_env"]
+    pub follow_envelope: FloatParam,
+    #[id = "fol_brt"]
+    pub follow_brightness: FloatParam,
+    #[id = "fol_trn"]
+    pub follow_transient: FloatParam,
 
     #[id = "os"]
     pub oversample: EnumParam<FactorParam>,
@@ -125,6 +145,9 @@ impl Default for AirParams {
             // Wide, because the layer sitting around the source rather than on
             // it is what the product is for (`REQ-AIR-008`).
             width: percentage("Width", 0.60),
+            // Halfway: the layer answers to the music without disappearing
+            // between phrases. **Provisional** like every other default here.
+            follow: percentage("Follow", 0.50),
             mix: percentage("Mix", 1.0),
             output: decibels("Output"),
 
@@ -150,11 +173,29 @@ impl Default for AirParams {
             .with_smoother(SmoothingStyle::Linear(30.0))
             .with_value_to_string(formatters::v2s_f32_rounded(2)),
 
+            follow_envelope: bipolar("Follow Envelope"),
+            follow_brightness: bipolar("Follow Brightness"),
+            follow_transient: bipolar("Follow Transient"),
+
             // 4x by default: 2x is a cost saving, not an equal — it leaves
             // aliasing about 14 dB higher (`nxe_audio::oversample`).
             oversample: EnumParam::new("Oversample", FactorParam::Four),
         }
     }
+}
+
+/// A `-1..=1` control resting at zero, for a deviation from a macro.
+fn bipolar(name: &'static str) -> FloatParam {
+    FloatParam::new(
+        name,
+        0.0,
+        FloatRange::Linear {
+            min: -1.0,
+            max: 1.0,
+        },
+    )
+    .with_smoother(SmoothingStyle::Linear(30.0))
+    .with_value_to_string(formatters::v2s_f32_rounded(2))
 }
 
 /// A `0..=100%` control.
@@ -195,7 +236,28 @@ impl AirParams {
             width: self.width.smoothed.next_step(samples),
             drive: self.drive.smoothed.next_step(samples),
             bias: self.bias.smoothed.next_step(samples),
+            depths: self.depths(samples),
             factor: self.oversample.value().into(),
         }
+    }
+
+    /// `FOLLOW` plus each detector's deviation, clamped.
+    ///
+    /// **The macro and the deviation never write the same value**
+    /// (`REQ-AIR-010`): the deviation is relative, so moving `FOLLOW` leaves
+    /// every deviation where the user put it.
+    ///
+    /// **Order matters** — these go into an array the engine reads by position,
+    /// and `the_detector_order_matches_the_engine` is what holds it in place.
+    fn depths(&self, samples: u32) -> [f32; DETECTORS] {
+        let follow = self.follow.smoothed.next_step(samples);
+        let mut depths = [0.0; DETECTORS];
+        depths[ENVELOPE] =
+            (follow + self.follow_envelope.smoothed.next_step(samples)).clamp(0.0, 1.0);
+        depths[BRIGHTNESS] =
+            (follow + self.follow_brightness.smoothed.next_step(samples)).clamp(0.0, 1.0);
+        depths[TRANSIENT] =
+            (follow + self.follow_transient.smoothed.next_step(samples)).clamp(0.0, 1.0);
+        depths
     }
 }

@@ -195,6 +195,24 @@ mod tests {
         assert_ne!(first.seed, second.seed);
     }
 
+    /// **The engine reads the depths by position** (`params::depths`), so the
+    /// three deviations have to land in the order `air_core::follow` names.
+    #[test]
+    fn the_detector_order_matches_the_engine() {
+        use air_core::follow::{BRIGHTNESS, ENVELOPE, TRANSIENT};
+
+        let params = AirParams::default();
+        params.follow.smoothed.reset(0.0);
+        params.follow_envelope.smoothed.reset(1.0);
+        params.follow_brightness.smoothed.reset(0.5);
+        params.follow_transient.smoothed.reset(0.25);
+
+        let shape = params.shape(1);
+        assert_eq!(shape.depths[ENVELOPE], 1.0);
+        assert_eq!(shape.depths[BRIGHTNESS], 0.5);
+        assert_eq!(shape.depths[TRANSIENT], 0.25);
+    }
+
     /// A parameter id is as final as `CLAP_ID`: a host stores it in the project
     /// file. This is here so that renaming one is a failing test rather than a
     /// silent loss of every saved setting.
@@ -214,10 +232,14 @@ mod tests {
                 "character",
                 "focus",
                 "width",
+                "follow",
                 "mix",
                 "output",
                 "drive",
                 "bias",
+                "fol_env",
+                "fol_brt",
+                "fol_trn",
                 "os",
             ]
         );

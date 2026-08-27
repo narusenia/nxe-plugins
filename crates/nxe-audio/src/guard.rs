@@ -81,20 +81,14 @@ pub struct Settings<const N: usize> {
 /// A band-passed energy follower.
 struct Follower {
     band: BandPass,
-    energy: f32,
-    attack: f32,
-    release: f32,
+    power: crate::envelope::Power,
 }
 
 impl Follower {
     fn new(band: Band, attack_seconds: f32, release_seconds: f32, sample_rate: f32) -> Self {
         Self {
             band: BandPass::new(band.low_hz, band.high_hz, sample_rate),
-            energy: 0.0,
-            // A one-pole reaches `1 - 1/e` of a step in one time constant, which
-            // is the same definition the rest of the crate uses.
-            attack: 1.0 - (-1.0 / (attack_seconds * sample_rate)).exp(),
-            release: 1.0 - (-1.0 / (release_seconds * sample_rate)).exp(),
+            power: crate::envelope::Power::new(attack_seconds, release_seconds, sample_rate),
         }
     }
 
@@ -103,19 +97,12 @@ impl Follower {
     /// to threshold (`nxe_dsp::PanScope` reached the same conclusion).
     fn push(&mut self, input: f32) -> f32 {
         let filtered = self.band.process(input);
-        let squared = filtered * filtered;
-        let coefficient = if squared > self.energy {
-            self.attack
-        } else {
-            self.release
-        };
-        self.energy += (squared - self.energy) * coefficient;
-        self.energy
+        self.power.push(filtered * filtered)
     }
 
     fn reset(&mut self) {
         self.band.reset();
-        self.energy = 0.0;
+        self.power.reset();
     }
 }
 

@@ -413,9 +413,34 @@ RMS）: **`BLEND` 0 で −23.8 dB、0.5 で −5.2 dB、1 で −2.2 dB。**
 
 ```text
 検出値_env    = clamp((env_db − ENV_FLOOR_DB) / ENV_RANGE_DB, 0, 1)
-検出値_bright = clamp((ratio_db − BRIGHT_MIN_DB) / BRIGHT_RANGE_DB, 0, 1)
+検出値_bright = clamp((ratio_db − BRIGHT_FLOOR_DB) / BRIGHT_RANGE_DB, 0, 1)
 検出値_trans  = clamp(excess_db / TRANSIENT_RANGE_DB, 0, 1)
 ```
+
+### しきい値は分布から置いた（`AIR-5` の実測）
+
+検出帯 ÷ 参照帯のパワー比、素材 5 つを −18 dBFS で:
+
+| 素材 | 比の中央値 | `BRIGHTNESS` の読み |
+|---|---|---|
+| 220 Hz の正弦 | −43.3 dB | 0.00 |
+| ローパスしたピンク（1 kHz） | −27.2 dB | 0.00 |
+| **ピンク** | **−0.3 dB** | **0.65** |
+| ホワイト | +10.4 dB | 1.00 |
+| ハイパスしたピンク（4 kHz） | +24.6 dB | 1.00 |
+
+`BRIGHT_FLOOR_DB` = **−12 dB**、`BRIGHT_RANGE_DB` = **18 dB**。
+**床は普通の素材の上ではなく下に置く** — ピンクが 0.65 で「開いているが
+上がある」状態。床をピンクに合わせると、普通の素材で検出器が振り切って
+しまい `BRIGHTNESS` が何もしないノブになる。
+
+**入力ゲインには一切動かない**（実測）: 同じピンクを −6 dBFS と −30 dBFS で
+通して、比が **−0.284 dB と −0.284 dB**。比を見ているので分子と分母が一緒に
+動く。
+
+`TRANSIENT_RANGE_DB` = **6.0 dB**（Sparkleur から借りた数）は**確かめてから
+採った**: 8 Hz のバースト列でゲートが **1.000**、定常正弦で **0.023**。
+帯域通過を挟んだので借りられている。
 
 ### `TRANSIENT` は帯域通過してから見る — `SNAP_RANGE_DB` を借りるための条件
 
@@ -443,17 +468,22 @@ band 5 とほぼ同じ状況になり、**6.0 dB が「借りられる出発点�
 重ならない。Sparkleur は出荷時のしきい値でここが破れていて、**普通の素材から
 常時 1.3 dB 引いていた**（`SPK-18`）。`FOCUS` で両方が動く Air は踏みやすい。
 
-### `Power` を `nxe-audio` に上げる（`AIR-5`）
+### `Power` を `nxe-audio` に上げた（`AIR-5`）
 
-パワーフォロワ（二乗 → 非対称 1 次）の実装が **今 2 つある** —
+パワーフォロワ（二乗 → 非対称 1 次）の実装が **2 つあった** —
 `guard::Follower`（private）と `sparkle::Power`（private）。Air が 3 つ目を
-要求するので、**`nxe_audio::envelope::Power` として上げ、既存 2 つをそこへ
-差し替える**。「上げるのは 3 個目の客が来てから」という
-`docs/specifications/architecture.md` の規則そのもの。
+要求したので、**`nxe_audio::envelope::Power` として上げ、既存 2 つを差し替えた**。
+「上げるのは 3 個目の客が来てから」という
+`docs/specifications/architecture.md` の規則そのもの。1 次係数の式も 3 箇所に
+あったので `envelope::coefficient` にまとめた。
 
-**時定数は上げない。** 秒で受け取るだけにして、値は呼び出し側に残す
+**時定数は上げていない。** 秒で受け取るだけで、値は呼び出し側に残る
 （`SPK-1` で `envelope` の機構だけ移して Velour の 5 ms / 150 ms を
 `velour_core::envelope::vocal()` に置いたのと同じ）。
+
+**入力を消毒しないのも据え置き。** 手書きの 2 つがそうだったので、
+NaN を入れればラッチする。呼び出し側が既に消毒していて、二重にやると
+責任の在り処が消える。
 
 ## 保護（Excess Guard）
 
@@ -534,8 +564,8 @@ out = OUTPUT · (dry + MIX · layer)
 | `H_SOFT` / `H_HARD` | 0.10 / 0.90 | **耳。** 両端が別の質感か。Velour の `TEXTURE`、Sparkleur の `CHARACTER` と同じ問い |
 | `shaper` の `k` | 4.0 | **折り返しは測った**（`AIR-2`、**−70.0 dB**。許容まで 10 dB 余っている）。**艶が足りるかは耳** |
 | `ENV_FLOOR_DB` / `RANGE` | −48 / 36 dB | **耳。** 弱いフレーズで層が消えすぎないか |
-| `BRIGHT_MIN_DB` / `RANGE` | −18 / 15 dB | **測定で決める**（`AIR-5`）。ピンクノイズがどこに座るかを見てから |
-| `TRANSIENT_RANGE_DB` | 6 dB | **測定で決める**（`AIR-5`）。帯域通過を挟んだので Sparkleur の数が出発点として使える。ハットで開きパッドで開かないこと |
+| `BRIGHT_FLOOR_DB` / `RANGE` | **−12 / 18 dB** | **測定で決まった**（`AIR-5`、上の分布表）。ピンクが 0.65 |
+| `TRANSIENT_RANGE_DB` | 6 dB | **測定で確認した**（`AIR-5`）。バースト列 1.000 / 定常正弦 0.023 |
 | 保護のしきい値 | **未定** | **測定で決める**（`AIR-6`）。分布を並べてから置く |
 | 既定値（メイン 7 本） | — | **耳**（`AIR-13`）。プリセットが無いので既定値が製品の顔 |
 

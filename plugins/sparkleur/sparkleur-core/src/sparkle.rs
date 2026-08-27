@@ -36,6 +36,7 @@
 //! rate here for that reason (`INPUT_CEILING`).
 
 use nxe_audio::biquad::{BUTTERWORTH_Q, Biquad, Coefficients};
+use nxe_audio::envelope::{Power, coefficient};
 use nxe_audio::oversample::{Factor, Oversampler};
 use nxe_audio::shaper::Shaper;
 
@@ -139,38 +140,6 @@ impl Default for Settings {
             edge_hz: crate::crossover::EDGES[crate::crossover::BAND_COUNT - 2],
             factor: Factor::default(),
         }
-    }
-}
-
-/// A power follower with its own pair of time constants.
-#[derive(Clone, Copy, Default)]
-struct Power {
-    energy: f32,
-    attack: f32,
-    release: f32,
-}
-
-impl Power {
-    fn new(attack_seconds: f32, release_seconds: f32, sample_rate: f32) -> Self {
-        Self {
-            energy: 0.0,
-            attack: coefficient(attack_seconds, sample_rate),
-            release: coefficient(release_seconds, sample_rate),
-        }
-    }
-
-    fn push(&mut self, squared: f32) -> f32 {
-        let step = if squared > self.energy {
-            self.attack
-        } else {
-            self.release
-        };
-        self.energy += (squared - self.energy) * step;
-        self.energy
-    }
-
-    fn reset(&mut self) {
-        self.energy = 0.0;
     }
 }
 
@@ -323,10 +292,6 @@ fn opening_of(fast: f32, slow: f32) -> f32 {
     }
     let excess_db = DECIBELS_PER_OCTAVE_POWER * (fast / slow).max(1e-20).log2();
     (excess_db / SNAP_RANGE_DB).clamp(0.0, 1.0)
-}
-
-fn coefficient(seconds: f32, sample_rate: f32) -> f32 {
-    1.0 - (-1.0 / (seconds * sample_rate)).exp()
 }
 
 fn finite(value: f32, fallback: f32) -> f32 {

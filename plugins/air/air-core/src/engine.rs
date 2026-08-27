@@ -22,6 +22,7 @@
 
 use nxe_audio::oversample::Factor;
 
+use crate::follow::{self, Depths, Follow};
 use crate::layer::{self, Layer};
 
 /// Everything the engine needs once per block.
@@ -34,6 +35,10 @@ pub struct Shape {
     /// Advanced: the curve's drive and bias.
     pub drive: f32,
     pub bias: f32,
+    /// How much of each detector to use, in `follow`'s order. **All zero is a
+    /// static generator** — which is Velour, and the first half of the boundary
+    /// audit (`REQ-AIR-002`).
+    pub depths: Depths,
     pub factor: Factor,
 }
 
@@ -47,6 +52,7 @@ impl Default for Shape {
             width: settings.width,
             drive: settings.drive,
             bias: settings.bias,
+            depths: [0.0; follow::DETECTORS],
             factor: settings.factor,
         }
     }
@@ -55,6 +61,7 @@ impl Default for Shape {
 /// The layer, and the addition.
 pub struct Engine {
     layer: Layer,
+    follow: Follow,
     /// The last frame of layer, for the display and for the tests — **taken
     /// directly rather than by subtracting the dry back out**, which throws
     /// away most of the layer's precision when the source is louder
@@ -66,6 +73,7 @@ impl Engine {
     pub fn new(sample_rate: f32, seed: u32) -> Self {
         Self {
             layer: Layer::new(sample_rate, seed),
+            follow: Follow::new(sample_rate),
             generated: (0.0, 0.0),
         }
     }
@@ -80,6 +88,10 @@ impl Engine {
             drive: shape.drive,
             bias: shape.bias,
             factor: shape.factor,
+        });
+        self.follow.set(follow::Settings {
+            focus: shape.focus,
+            depths: shape.depths,
         });
     }
 
@@ -105,7 +117,12 @@ impl Engine {
             0.0
         };
 
-        self.generated = self.layer.process(left, right, surface);
+        // **The detectors read the input, not the output.** What the layer is
+        // made to follow is the music, and the layer is not the music.
+        self.follow.push((left + right) * 0.5);
+        self.generated = self
+            .layer
+            .process(left, right, surface * self.follow.gain());
         (
             left + mix * self.generated.0,
             right + mix * self.generated.1,
@@ -115,6 +132,12 @@ impl Engine {
     /// The layer alone, as of the last frame.
     pub fn layer(&self) -> (f32, f32) {
         self.generated
+    }
+
+    /// The three following coefficients, separately — one shut is the whole
+    /// layer gone, and only the display can say which (`REQ-AIR-018`).
+    pub fn follow_coefficients(&self) -> [f32; follow::DETECTORS] {
+        self.follow.coefficients()
     }
 
     /// Where the layer sits, in Hz.
@@ -129,6 +152,7 @@ impl Engine {
 
     pub fn reset(&mut self) {
         self.layer.reset();
+        self.follow.reset();
         self.generated = (0.0, 0.0);
     }
 }
@@ -237,6 +261,20 @@ mod tests {
             rms(&recovered) > 1e-6,
             "the engine went silent and stayed so"
         );
+    }
+
+    /// **The boundary, as arithmetic** (`REQ-AIR-002`). With every depth at
+    /// zero the layer's gain does not depend on the input at all — which is
+    /// Velour's behaviour, and the reason the requirement can name its
+    /// neighbours as coordinates rather than as a paragraph.
+    #[test]
+    fn every_depth_at_zero_is_a_static_generator() {
+        let mut engine = Engine::new(RATE, SEED);
+        engine.set_shape(&Shape::default());
+        for sample in material(48_000) {
+            engine.process((sample, sample), 1.0, 1.0);
+            assert_eq!(engine.follow_coefficients(), [1.0; 3]);
+        }
     }
 
     #[test]

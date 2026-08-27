@@ -1,11 +1,12 @@
-//! A peak follower with independent attack and release.
+//! Two followers with independent attack and release: one over amplitude, one
+//! over power.
 //!
 //! ## Peak, not RMS
 //!
 //! Asked "how hard is this being played", a peak follower with a slow release
-//! answers with one number that does not dip between events. Where the question
-//! is instead "is this band loud against that one", power is the right measure
-//! and [`crate::guard`] uses it.
+//! answers with one number that does not dip between events — that is
+//! [`Envelope`]. Where the question is instead "is this band loud against that
+//! one", power is the right measure, and that is [`Power`].
 //!
 //! ## The time constants belong to the caller
 //!
@@ -18,6 +19,79 @@
 /// The quietest level worth reporting. `20·log10` of zero is `-inf`, and an
 /// infinity multiplied by a knob is a NaN in the coefficients.
 const FLOOR: f32 = 1e-6;
+
+/// A one-pole's coefficient for a time constant in **seconds**.
+///
+/// One definition for the whole workspace: a one-pole reaches `1 - 1/e` of a
+/// step in one time constant. Three modules had their own copy of this line
+/// before it was shared.
+pub fn coefficient(seconds: f32, sample_rate: f32) -> f32 {
+    1.0 - (-1.0 / (seconds * sample_rate)).exp()
+}
+
+/// A follower over **power**, with independent attack and release.
+///
+/// ## Why this is not [`Envelope`]
+///
+/// [`Envelope`] answers "how hard is this being played" and follows the peak of
+/// an amplitude. This answers "how much energy is in this", which is the right
+/// measure whenever two readings are about to be compared as a ratio: the
+/// instantaneous ratio of two amplitudes swings from end to end on almost any
+/// material, and power holds still enough to threshold ([`crate::guard`],
+/// `nxe_dsp::PanScope`).
+///
+/// ## Why it lives here
+///
+/// It was written twice — once inside [`crate::guard`]'s band follower and once
+/// inside Sparkleur's transient gate — and Air asked for a third. The
+/// architecture's rule is that the third caller is what lifts a block, not the
+/// second (`docs/specifications/architecture.md`).
+///
+/// **The time constants stay with the caller**, the same split `SPK-1` made for
+/// [`Envelope`]: this is the mechanism, and which pair of numbers reads a
+/// syllable rather than a phrase is the product's decision.
+///
+/// **It does not sanitise its input.** A NaN pushed in latches it, exactly as
+/// the two hand-written copies did — the callers already clean what they read,
+/// and cleaning twice would hide where the responsibility sits.
+#[derive(Clone, Copy, Default)]
+pub struct Power {
+    energy: f32,
+    attack: f32,
+    release: f32,
+}
+
+impl Power {
+    pub fn new(attack_seconds: f32, release_seconds: f32, sample_rate: f32) -> Self {
+        Self {
+            energy: 0.0,
+            attack: coefficient(attack_seconds, sample_rate),
+            release: coefficient(release_seconds, sample_rate),
+        }
+    }
+
+    /// Feeds one **already squared** sample and returns the new energy.
+    ///
+    /// Squared rather than raw, because every caller either squares a filtered
+    /// sample or already holds the square.
+    pub fn push(&mut self, squared: f32) -> f32 {
+        let step = if squared > self.energy {
+            self.attack
+        } else {
+            self.release
+        };
+        self.energy += (squared - self.energy) * step;
+        self.energy
+    }
+
+    pub fn energy(&self) -> f32 {
+        self.energy
+    }
+
+    pub fn reset(&mut self) {
+        self.energy = 0.0;
+    }
+}
 
 /// A peak follower, in decibels.
 pub struct Envelope {
@@ -32,10 +106,8 @@ impl Envelope {
     pub fn new(attack_seconds: f32, release_seconds: f32, sample_rate: f32) -> Self {
         Self {
             level: 0.0,
-            // A one-pole reaches `1 - 1/e` of a step in one time constant, the
-            // definition the rest of the crate uses (`crate::guard`).
-            attack: 1.0 - (-1.0 / (attack_seconds * sample_rate)).exp(),
-            release: 1.0 - (-1.0 / (release_seconds * sample_rate)).exp(),
+            attack: coefficient(attack_seconds, sample_rate),
+            release: coefficient(release_seconds, sample_rate),
         }
     }
 

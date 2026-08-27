@@ -9,11 +9,13 @@
 //! with Velour and Sparkleur live in [`nxe_audio`].
 
 pub mod engine;
+pub mod follow;
 pub mod harmonic;
 pub mod layer;
 pub mod noise;
 
 pub use engine::{Engine, Shape};
+pub use follow::Follow;
 pub use harmonic::Harmonic;
 pub use layer::Layer;
 pub use noise::Noise;
