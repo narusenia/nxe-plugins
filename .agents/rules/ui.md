@@ -101,6 +101,13 @@ Every rule here was paid for. Where one has a scar, the scar is named.
 - **Anything the audio thread already publishes is already paid for.** Two of
   Sparkleur's handoffs were written every block and read by nothing. Before
   adding an analyser, check what is already in `analysis.rs`.
+- **And the mirror of that is worse: a handoff nobody writes.** The editor
+  binds to it, the heartbeat reads it thirty times a second, and every figure
+  sits at zero while the plugin makes sound — which looks exactly like a track
+  with no signal on it. Air shipped one build that way when the whole
+  publishing block was lost in an edit. **Nothing in the suite notices**, so
+  each plugin scans its own `analysis.rs` against its `lib.rs`
+  (`air::analysis::tests::every_handoff_is_published`).
 - **A protection that works invisibly is a control that does nothing.** If the
   plugin holds something back, the window says so — and says *how far*, because
   "it is being held back" does not tell anyone whether the setting is wrong or

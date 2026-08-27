@@ -63,3 +63,44 @@ pub struct Analysis {
     /// can be checked rather than taken on trust.
     pub correlation: Handoff<1>,
 }
+
+#[cfg(test)]
+mod tests {
+    /// **Every handoff is written by the audio thread.**
+    ///
+    /// A handoff nobody writes is a display that never moves, and **nothing
+    /// else notices**: it compiles, the editor binds to it, the heartbeat reads
+    /// it thirty times a second, and every figure sits at zero while the plugin
+    /// makes sound. That shipped once — the whole publishing block was lost in
+    /// an edit and the window looked exactly like a plugin with no signal.
+    ///
+    /// The mirror of Sparkleur's finding, which was two handoffs **written and
+    /// read by nothing** (`SPK-19`). Both directions are silent, so both are
+    /// worth a test.
+    #[test]
+    fn every_handoff_is_published() {
+        const ANALYSIS: &str = include_str!("analysis.rs");
+        const PLUGIN: &str = include_str!("lib.rs");
+
+        let fields: Vec<&str> = ANALYSIS
+            .lines()
+            .filter_map(|line| line.trim().strip_prefix("pub "))
+            .filter(|rest| rest.contains(": Handoff<"))
+            .filter_map(|rest| rest.split_once(':'))
+            .map(|(name, _)| name)
+            .collect();
+        assert_eq!(fields.len(), 7, "the handoff list moved: {fields:?}");
+
+        // **Whitespace removed first.** rustfmt breaks a long call across
+        // lines, so a scan for the literal text finds nothing the moment the
+        // line grows — which would make this test pass by being blind.
+        let plugin: String = PLUGIN.chars().filter(|c| !c.is_whitespace()).collect();
+        for field in fields {
+            let write = format!("analysis.{field}.write");
+            assert!(
+                plugin.contains(&write),
+                "{field} is never published, so whatever reads it never moves"
+            );
+        }
+    }
+}

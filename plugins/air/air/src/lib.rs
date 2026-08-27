@@ -183,9 +183,44 @@ impl Plugin for Air {
             let dry_right = if stereo { right[sample] } else { dry_left };
 
             let (out_left, out_right) = self.engine.process((dry_left, dry_right), surface, mix);
-            left[sample] = out_left * output;
-            right[sample] = out_right * output;
+            let (out_left, out_right) = (out_left * output, out_right * output);
+            left[sample] = out_left;
+            right[sample] = out_right;
+
+            // **After the output trim**, because the meters answer "is this
+            // louder than what went in" and the trim is part of the answer.
+            let (layer_left, layer_right) = self.engine.layer();
+            self.dry_spectrum.push((dry_left + dry_right) * 0.5);
+            // **The layer taken directly**, never `out − dry` (`analysis.rs`).
+            self.layer_spectrum.push((layer_left + layer_right) * 0.5);
+            self.correlation.push(layer_left, layer_right);
+            self.meters[0].push(dry_left);
+            self.meters[1].push(dry_right);
+            self.meters[2].push(out_left);
+            self.meters[3].push(out_right);
         }
+
+        // One frame per block. The editor reads whatever is there — a frame it
+        // misses is a frame nobody would have seen.
+        //
+        // **Reading, never writing** (`REQ-AIR-018`): everything here comes out
+        // of the engine, and nothing here goes back in. Stopping the analysis
+        // would not change a sample.
+        self.analysis.dry.write(&self.dry_spectrum.levels());
+        self.analysis.layer.write(&self.layer_spectrum.levels());
+        self.analysis
+            .peaks
+            .write(&std::array::from_fn(|index| self.meters[index].peak()));
+        self.analysis
+            .holds
+            .write(&std::array::from_fn(|index| self.meters[index].hold()));
+        self.analysis
+            .follow
+            .write(&self.engine.follow_coefficients());
+        self.analysis
+            .guard
+            .write(&[self.engine.guard_reduction_db()]);
+        self.analysis.correlation.write(&[self.correlation.value()]);
 
         ProcessStatus::Normal
     }

@@ -65,10 +65,15 @@ had to execute. The radius guards in `nxe_ui::theme` are the example.
 **A string replacement against a formatted file silently does nothing.**
 Editing by matching source text you wrote earlier fails the moment `rustfmt` has
 reflowed it — and unlike a bad edit, a no-op edit still compiles, so the only
-symptom is that the behaviour never changed. This has already produced one
-"fixed" claim that was not fixed and one feature that was never wired up. After
-any edit that is supposed to change behaviour, **grep the file for the new text
-before believing it landed.**
+symptom is that the behaviour never changed. After any edit that is supposed to
+change behaviour, **grep the file for the new text before believing it landed.**
+
+It keeps happening, and the failures are getting quieter: a "fixed" claim that
+was not fixed, a feature that was never wired up, a protection whose absence
+read as **"every material measures 0.00 dB"** — a result that looked like a pass
+— and a whole analysis-publishing block whose absence made a working plugin look
+like a track with no signal on it. **The cost is not the edit, it is the hours
+spent believing the measurement.**
 
 **Check the exit code, not the output.** `cargo clippy ... | tail` reports
 `tail`'s status, so a `&&` chain after it runs even though clippy failed. This
