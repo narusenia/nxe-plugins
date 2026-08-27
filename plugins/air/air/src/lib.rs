@@ -6,10 +6,13 @@
 //! The window is `ui`. **One screen, no tabs** (`REQ-AIR-013`).
 
 use air_core::Engine;
+use analysis::{Analysis, BANDS, HIGH_HZ, LOW_HZ, METERS};
 use nih_plug::prelude::*;
+use nxe_dsp::{Correlation, Level, Spectrum};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
+mod analysis;
 mod params;
 mod ui;
 
@@ -33,6 +36,16 @@ struct Air {
     params: Arc<AirParams>,
     /// The window's size and position, which the host saves with the project.
     editor_state: Arc<nih_plug_vizia::ViziaState>,
+    /// What the editor reads. **The audio thread writes; nothing else touches
+    /// the analysers below** (`analysis.rs`).
+    analysis: Arc<Analysis>,
+    dry_spectrum: Spectrum<BANDS>,
+    layer_spectrum: Spectrum<BANDS>,
+    /// IN L, IN R, OUT L, OUT R.
+    meters: [Level; METERS],
+    /// Of the **layer**, not the output: the promise is about what was added
+    /// (`REQ-AIR-008`).
+    correlation: Correlation,
     engine: Engine,
     seed: u32,
     sample_rate: f32,
@@ -50,6 +63,11 @@ impl Default for Air {
         Self {
             params: Arc::new(AirParams::default()),
             editor_state: ui::default_state(),
+            analysis: Arc::new(Analysis::default()),
+            dry_spectrum: Spectrum::new(FALLBACK_SAMPLE_RATE, LOW_HZ, HIGH_HZ),
+            layer_spectrum: Spectrum::new(FALLBACK_SAMPLE_RATE, LOW_HZ, HIGH_HZ),
+            meters: std::array::from_fn(|_| Level::new(FALLBACK_SAMPLE_RATE)),
+            correlation: Correlation::new(FALLBACK_SAMPLE_RATE),
             engine: Engine::new(FALLBACK_SAMPLE_RATE, seed),
             seed,
             sample_rate: FALLBACK_SAMPLE_RATE,
@@ -89,7 +107,11 @@ impl Plugin for Air {
     }
 
     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
-        ui::create(self.params.clone(), self.editor_state.clone())
+        ui::create(
+            self.params.clone(),
+            self.editor_state.clone(),
+            self.analysis.clone(),
+        )
     }
 
     /// The only place that allocates. Everything the audio thread touches is
@@ -112,12 +134,22 @@ impl Plugin for Air {
             // amplitude carries `√(fs / 48000)` — so the engine is rebuilt
             // rather than corrected (`air_core::noise`).
             self.engine = Engine::new(self.sample_rate, self.seed);
+            self.dry_spectrum = Spectrum::new(self.sample_rate, LOW_HZ, HIGH_HZ);
+            self.layer_spectrum = Spectrum::new(self.sample_rate, LOW_HZ, HIGH_HZ);
+            self.meters = std::array::from_fn(|_| Level::new(self.sample_rate));
+            self.correlation = Correlation::new(self.sample_rate);
         }
         true
     }
 
     fn reset(&mut self) {
         self.engine.reset();
+        self.dry_spectrum.reset();
+        self.layer_spectrum.reset();
+        self.correlation.reset();
+        for meter in &mut self.meters {
+            meter.reset();
+        }
     }
 
     fn process(

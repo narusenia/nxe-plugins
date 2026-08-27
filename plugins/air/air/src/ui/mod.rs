@@ -8,12 +8,18 @@ use nih_plug::prelude::*;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
 use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
+use nxe_ui::curve::Curve;
 use nxe_ui::{font, theme};
 use std::sync::Arc;
+use std::time::Duration;
 
+use crate::analysis::{Analysis, BANDS, HIGH_HZ, LOW_HZ, METERS};
 use crate::params::AirParams;
 
 mod advanced;
+mod field;
+mod meters;
+mod readout;
 
 /// The window.
 ///
@@ -24,6 +30,10 @@ mod advanced;
 const WIDTH: u32 = 720;
 const HEIGHT: u32 = (theme::SPACE_3 * 2.0
     + nxe_ui::header::HEIGHT
+    + theme::SPACE_3
+    + nxe_ui::readout::HEIGHT
+    + theme::SPACE_3
+    + field::HEIGHT
     + theme::SPACE_3
     + knob_block_height(MAIN_KNOB)
     + theme::SPACE_3
@@ -45,11 +55,100 @@ pub fn default_state() -> Arc<ViziaState> {
 #[derive(Lens)]
 pub(crate) struct Ui {
     params: Arc<AirParams>,
+    /// What the audio thread has published. Read on a heartbeat rather than
+    /// mapped from the `Arc`: the handoff's identity never changes, so nothing
+    /// would tell the binding system to look again.
+    analysis: Arc<Analysis>,
+    /// The reactive copies. Updating these is what makes the display move.
+    dry: Curve,
+    layer: Curve,
+    peaks: Vec<f32>,
+    holds: Vec<f32>,
 }
 
-impl Model for Ui {}
+pub(crate) enum UiEvent {
+    /// The heartbeat asking the model to re-read what the audio thread
+    /// published.
+    Poll,
+}
 
-pub fn create(params: Arc<AirParams>, state: Arc<ViziaState>) -> Option<Box<dyn Editor>> {
+impl Model for Ui {
+    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
+        event.map(|ui_event: &UiEvent, _| match ui_event {
+            UiEvent::Poll => {
+                self.dry = spectrum_curve(&self.analysis.dry.read());
+                self.layer = spectrum_curve(&self.analysis.layer.read());
+                let peaks = self.analysis.peaks.read();
+                let holds = self.analysis.holds.read();
+                self.peaks = peaks.iter().copied().map(meter_position).collect();
+                self.holds = holds.iter().copied().map(meter_position).collect();
+                // The readout strip is **not** copied here. It reads inside its
+                // own lenses, and any change to this model — this heartbeat
+                // included — re-evaluates them.
+            }
+        });
+    }
+}
+
+/// How often the display re-reads the analysis. 30 Hz is as fast as a figure
+/// needs to look alive, and half the work of matching the frame rate.
+const ANALYSIS_INTERVAL: Duration = Duration::from_millis(33);
+
+/// Why this is a thread and not `cx.add_timer`.
+///
+/// **vizia's timers never fire here.** `process_timers` is called by
+/// `vizia_winit` and by nothing else; the baseview backend — the one every
+/// plugin and the gallery run on — does not call it (`.agents/rules/vizia.md`).
+/// `cx.spawn` hands out a `ContextProxy`, which baseview *does* support, and
+/// emitting through it fails once the window is gone, which is the thread's
+/// signal to stop.
+fn start_heartbeat(cx: &mut Context) {
+    cx.spawn(|proxy| {
+        while proxy.emit(UiEvent::Poll).is_ok() {
+            std::thread::sleep(ANALYSIS_INTERVAL);
+        }
+    });
+}
+
+/// The floor of the spectra. Below this a band is drawn as silence — without a
+/// floor the curve sits on the noise of an idle track, and the grain field
+/// never empties (`nxe_ui::dots`).
+const SPECTRUM_FLOOR_DB: f32 = -72.0;
+
+/// The floor of the meters. Shallower than the spectra's: a meter is read for
+/// "how close to clipping", and 60 dB of travel puts a working mix in the top
+/// third where it can be read.
+pub(crate) const METER_FLOOR_DB: f32 = -60.0;
+
+/// An amplitude as a position on a meter.
+pub(crate) fn meter_position(amplitude: f32) -> f32 {
+    let db = 20.0 * amplitude.max(1e-9).log10();
+    ((db - METER_FLOOR_DB) / -METER_FLOOR_DB).clamp(0.0, 1.0)
+}
+
+/// One published band frame as a curve across the figure's axis.
+///
+/// **Both mappings live on this side of the widget**: `nxe-ui` knows nothing
+/// about hertz or decibels, and `nxe-dsp` knows nothing about the view it ends
+/// up in.
+fn spectrum_curve(levels: &[f32; BANDS]) -> Curve {
+    levels
+        .iter()
+        .enumerate()
+        .map(|(index, level)| {
+            let hz = LOW_HZ * (HIGH_HZ / LOW_HZ).powf(index as f32 / (BANDS - 1) as f32);
+            let db = 20.0 * level.max(1e-9).log10();
+            let y = ((db - SPECTRUM_FLOOR_DB) / -SPECTRUM_FLOOR_DB).clamp(0.0, 1.0);
+            (field::axis_x(hz), y)
+        })
+        .collect()
+}
+
+pub fn create(
+    params: Arc<AirParams>,
+    state: Arc<ViziaState>,
+    analysis: Arc<Analysis>,
+) -> Option<Box<dyn Editor>> {
     // `ViziaTheming::None`: the plugin brings its own stylesheet and wants none
     // of vizia's defaults leaking into it.
     create_vizia_editor(state, ViziaTheming::None, move |cx, _| {
@@ -57,14 +156,37 @@ pub fn create(params: Arc<AirParams>, state: Arc<ViziaState>) -> Option<Box<dyn 
 
         Ui {
             params: params.clone(),
+            analysis: analysis.clone(),
+            dry: Curve::new(),
+            layer: Curve::new(),
+            peaks: vec![0.0; METERS],
+            holds: vec![0.0; METERS],
         }
         .build(cx);
 
-        VStack::new(cx, |cx| {
-            nxe_ui::header::header(cx, "NXE AIR", "signal-driven texture");
-            main_row(cx);
-            Element::new(cx).class("rule");
-            advanced::view(cx);
+        // Parameter changes wake the binding system on their own; an idle
+        // window with audio running does not. The display needs its own
+        // heartbeat.
+        start_heartbeat(cx);
+
+        HStack::new(cx, |cx| {
+            VStack::new(cx, |cx| {
+                nxe_ui::header::header(cx, "NXE AIR", "signal-driven texture");
+                readout::view(cx, analysis.clone());
+                // The figure. It is what the plugin *is* (`ui.md`).
+                field::view(cx);
+                main_row(cx);
+                Element::new(cx).class("rule");
+                advanced::view(cx);
+            })
+            .width(Stretch(1.0))
+            .height(Stretch(1.0))
+            .row_between(Pixels(theme::SPACE_3));
+
+            // **Outside everything else**, because "is this louder or better"
+            // is a question asked while looking at any of it
+            // (`.agents/rules/ui.md`).
+            meters::view(cx);
         })
         // **`.root` is what paints the window.** Without it the ground is the
         // host's black while every `.panel` sits at `BACKGROUND`, so the panels
@@ -74,7 +196,7 @@ pub fn create(params: Arc<AirParams>, state: Arc<ViziaState>) -> Option<Box<dyn 
         .class("root")
         .width(Stretch(1.0))
         .height(Stretch(1.0))
-        .row_between(Pixels(theme::SPACE_3))
+        .col_between(Pixels(theme::SPACE_3))
         .child_space(Pixels(theme::SPACE_3));
     })
 }
@@ -175,7 +297,12 @@ mod tests {
     fn every_parameter_has_a_control() {
         const PARAMS: &str = include_str!("../params.rs");
         const COUNT: usize = 15;
-        const SOURCES: [&str; 2] = [include_str!("mod.rs"), include_str!("advanced.rs")];
+        const SOURCES: [&str; 4] = [
+            include_str!("mod.rs"),
+            include_str!("advanced.rs"),
+            include_str!("field.rs"),
+            include_str!("readout.rs"),
+        ];
 
         // **Only the fields carrying an `#[id]`.** A `params.rs` also holds
         // editor state and persisted switches, and those are not parameters —

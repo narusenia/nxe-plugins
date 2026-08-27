@@ -358,7 +358,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| AIR-10 | **読み値と解析の配線**（図を窓に載せる。`AIR-11` を含む） | `../../plugins/air/docs/implementation/air-plan.md` |
+| AIR-12 | **CPU 予算**（criterion。`Spectrum` 2 本が一番効く） | `../../plugins/air/docs/implementation/air-plan.md` |
 | SPK-18 | **既定値と耳** ✅ — 測れるものは全部固定。既定値は 1 つも動かす理由が出なかった | `sparkleur-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 
@@ -514,8 +514,8 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | AIR-7 | 詰め（レート・ブロック・極端値・確保・継ぎ目） | ✅ 継ぎ目は原音の −46 dB `80a3613` |
 | AIR-8 | UI マクロ層（メイン 7 本） | ⬜ |
 | AIR-9 | UI スペクトルの重ね描き（**画面の主役**） | ⬜ |
-| AIR-10 | UI 読み値と Advanced | ⬜ |
-| AIR-11 | 解析の配線 | ⬜ |
+| AIR-10 | UI 読み値・メーター・図と解析の配線（`AIR-11` を含む） | ✅ 新しく測るものは無し |
+| AIR-11 | 解析の配線 | ✅ `AIR-10` に含めた |
 | AIR-12 | CPU 予算 | ⬜ |
 | AIR-13 | 既定値と耳 | ⬜ |
 
