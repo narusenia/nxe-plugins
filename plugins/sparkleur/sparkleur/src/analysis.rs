@@ -58,3 +58,43 @@ pub struct Analysis {
     /// How far the Sparkle gate stands open, `0..=1`. The moment it lights.
     pub sparkle: Handoff<1>,
 }
+
+#[cfg(test)]
+mod tests {
+    /// **Every handoff is written by the audio thread.**
+    ///
+    /// A handoff nobody writes is a display that never moves, and **nothing
+    /// else notices**: it compiles, the editor binds to it, the heartbeat reads
+    /// it thirty times a second, and every figure sits at zero while the plugin
+    /// makes sound. Air shipped one build exactly that way, and it looked like
+    /// a track with no signal on it (`.agents/rules/ui.md`).
+    ///
+    /// The mirror of `SPK-19`'s finding, which was two handoffs **written and
+    /// read by nothing**. Both directions are silent, so both are worth a test.
+    #[test]
+    fn every_handoff_is_published() {
+        const ANALYSIS: &str = include_str!("analysis.rs");
+        const PLUGIN: &str = include_str!("lib.rs");
+
+        let fields: Vec<&str> = ANALYSIS
+            .lines()
+            .filter_map(|line| line.trim().strip_prefix("pub "))
+            .filter(|rest| rest.contains(": Handoff<"))
+            .filter_map(|rest| rest.split_once(':'))
+            .map(|(name, _)| name)
+            .collect();
+        assert_eq!(fields.len(), 7, "the handoff list moved: {fields:?}");
+
+        // **Whitespace removed first.** rustfmt breaks a long call across
+        // lines, so a scan for the literal text finds nothing the moment the
+        // line grows — which would make this test pass by being blind.
+        let plugin: String = PLUGIN.chars().filter(|c| !c.is_whitespace()).collect();
+        for field in fields {
+            let write = format!("analysis.{field}.write");
+            assert!(
+                plugin.contains(&write),
+                "{field} is never published, so whatever reads it never moves"
+            );
+        }
+    }
+}
