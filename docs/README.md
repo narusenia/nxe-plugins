@@ -49,7 +49,7 @@
 | Velour | ボーカルの存在感を生成するサチュレータ（並列 3 帯域） | [要件](../plugins/velour/docs/requirements/REQ-VEL.md) / [DSP 仕様](../plugins/velour/docs/specifications/dsp.md) / [UI 仕様](../plugins/velour/docs/specifications/ui.md) / [計画](../plugins/velour/docs/implementation/velour-plan.md) |
 | Sparkleur | マルチバンドダイナミクス + 動的な倍音生成（分割 5 帯域） | [要件](../plugins/sparkleur/docs/requirements/REQ-SPK.md) / [DSP 仕様](../plugins/sparkleur/docs/specifications/dsp.md) / [UI 仕様](../plugins/sparkleur/docs/specifications/ui.md) / [計画](../plugins/sparkleur/docs/implementation/sparkleur-plan.md) |
 | Air | 信号駆動の高域テクスチャ生成器（加算 2 系統） | [要件](../plugins/air/docs/requirements/REQ-AIR.md) / [DSP 仕様](../plugins/air/docs/specifications/dsp.md) / [UI 仕様](../plugins/air/docs/specifications/ui.md) / [計画](../plugins/air/docs/implementation/air-plan.md) |
-| Vocal Depth | 声の前後位置を作る（初期反射 + 直接音）**次に作るもの** | [要件](../plugins/vocal-depth/docs/requirements/REQ-VDP.md) / [DSP](../plugins/vocal-depth/docs/specifications/dsp.md) / [計画](../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md) |
+| Vocal Depth | 声の前後位置を作る（初期反射 + 直接音）**`VDP-12` まで実装済み** | [要件](../plugins/vocal-depth/docs/requirements/REQ-VDP.md) / [DSP](../plugins/vocal-depth/docs/specifications/dsp.md) / [UI](../plugins/vocal-depth/docs/specifications/ui.md) / [計画](../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md) |
 | Vocal Glue | ボーカルバスの結束（直列 5 段）**要件のみ** | [要件](../plugins/vocal-glue/docs/requirements/REQ-GLU.md) |
 
 ## 構想
