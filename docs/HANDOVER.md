@@ -2,26 +2,30 @@
 
 **2026-08-27 時点。4 本とも公開済み。テスト 466 本。**
 
-**Air は `AIR-13` まで完了して `air-v0.1.0` で出した。** DSP も窓も既定値も
-入っている。エンジンは **47.2 µs**（予算 533）。
+**次は Vocal Depth。** 要件は書けている（`REQ-VDP.md`）、実装計画も単位まで
+割ってある（`vocal-depth-plan.md`）。**最初にやるのは `dsp.md` を書くこと**で、
+そのあと `VDP-1`（初期反射）。詳しくは「次にやること」。
+
+出荷済み 4 本に手を入れる用事は無い。残っているのは Sparkleur の既定値の
+**主観サインオフだけ**（下のチェックリスト。**リリースの阻害要因ではない** —
+既定値の変更は既存セッションを壊さない）。
+
+## 2026-08-27 に出したもの — NXE Air `v0.1.0`
+
+要件 → `dsp.md` → `ui.md` → 実装 → 実機修正 → 既定値 → 出荷まで 1 日。
+`air-v0.1.0` の**下書き** Release に 3 OS ぶんの zip が付いている
+（公開は手動）。
 
 **既定値**（耳で確定、`defaults.rs` が測って固定）: `SURFACE` 0.50 /
 `BLEND` 0.50 / `CHARACTER` 0.72 / `FOCUS` −0.50 / `WIDTH` 0.60 /
 `FOLLOW` **1.00** / `MIX` 1.00。
 
-**`FOLLOW` = 1.00 の帰結を 2 つ測ってある**（`dsp.md` の「既定値」）:
-持続音と打点で層が **30 dB** 違い（パッド −54.6 dB / ハット列 −24.1 dB）、
-ハット列では保護が **9.2 dB** 引く。どちらも機構どおりだが、**パッドに使う
-なら Advanced の `TRN` を下げる**のが正しい操作。
+**`FOLLOW` = 1.00 の帰結を 2 つ測ってある**（`plugins/air/docs/specifications/dsp.md`
+の「既定値」）: 持続音と打点で層が **30 dB** 違い（パッド −54.6 dB /
+ハット列 −24.1 dB）、ハット列では保護が **9.2 dB** 引く。どちらも機構どおりだが、
+**パッドに使うなら Advanced の `TRN` を下げる**のが正しい操作。
 
-**次は Vocal Depth**（`implementation/roadmap.md`）。要件は書けている。
-
-## 出荷済み 4 本に手を入れる用事
-
-Sparkleur の既定値の**主観サインオフだけ**（下のチェックリスト。
-**リリースの阻害要因ではない** — 既定値の変更は既存セッションを壊さない）。
-
-## Air で分かったこと（`AIR-1`〜`AIR-12`）
+## Air で分かったこと（`AIR-1`〜`AIR-13`）
 
 **ゲートは通った。** `WIDTH` 全域でモノ和に櫛形が出ない（`REQ-AIR-008`）。
 位相を回す処理を 1 つも置かない設計なので構造的にそうなる、を測って固定した。
@@ -99,7 +103,9 @@ Sparkleur の既定値の**主観サインオフだけ**（下のチェックリ
 1. [`../AGENTS.md`](../AGENTS.md) — リポジトリの地図と規約
 2. [`implementation/backlog.md`](implementation/backlog.md) の「現在地」 — 今どこか
 3. 触るプラグインの `plugins/<name>/docs/implementation/<name>-plan.md` の
-   **該当単位の「決めたこと」と「踏んだ罠」** — ここに時間を溶かした記録がある
+   **該当単位の「決めたこと」と「踏んだ罠」** — ここに時間を溶かした記録がある。
+   Vocal Depth なら
+   [`vocal-depth-plan.md`](../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md)
 4. **UI を触るなら先に**: [`../.agents/rules/ui.md`](../.agents/rules/ui.md)
    （何を守るか）と [`../.agents/rules/vizia.md`](../.agents/rules/vizia.md)
    （この vizia が黙って何もしない箇所）
@@ -119,13 +125,13 @@ Sparkleur の既定値の**主観サインオフだけ**（下のチェックリ
 | `plugins/sparkleur/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`SPK-1`〜`SPK-19`）。`sparkleur-v0.1.1` **公開済み** |
 | `plugins/air/air-core` | **DSP は全部。** ノイズ層（生成・傾き・粒・`WIDTH`）、倍音層、2 系統のまとめ、Follow 3 本、保護 |
 | `plugins/air/air` | NXE Air。CLAP + VST3。パラメータ 15 個、**全部にコントロールがある**。UI は読み値の帯 + 点のスペクトラム + 7 ノブ + Advanced + メーター |
-| `plugins/air/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`AIR-1`〜`AIR-13`） |
-| `plugins/vocal-depth/docs` | **要件のみ。** 初期反射を作る本で、Glue と Impact に貸す |
+| `plugins/air/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`AIR-1`〜`AIR-13`）。`air-v0.1.0` **下書き Release まで** |
+| `plugins/vocal-depth/docs` | **要件と実装計画。次に作るもの**（`VDP-1`〜`VDP-13`）。初期反射を作る本で、Glue と Impact に貸す |
 | `plugins/vocal-glue/docs` | **要件のみ。** 新規 DSP がほぼ無い（`guard` の N 帯域化だけ） |
 | `concepts/` | まだ要件を書いていない構想 3 本（Bass Density / Impact / Growl） |
 | CI | `check`（PR と main への push）、`release`（`<plugin>-v<version>` タグ） |
 
-テスト 461 本。CPU は予算 533 µs に対し
+テスト 466 本。CPU は予算 533 µs に対し
 **Doubler 85 µs / Velour 128 µs / Sparkleur 129 µs / Air 47 µs**（Air はエンジンのみ）。
 Sparkleur の内訳（`SPK-17`）はエンジン 4x が **110**、`Spectrum` 32 バンドが
 **15.2**、`Level` × 4 が **3.9**。**2x にしても 11 µs しか減らない**ので 4x が
@@ -133,26 +139,60 @@ Sparkleur の内訳（`SPK-17`）はエンジン 4x が **110**、`Spectrum` 32 
 
 ## 次にやること
 
-### Vocal Depth（`roadmap.md` の順序で次）
+### 1. Vocal Depth の `dsp.md` を書く（`VDP-1` の前に）
 
-要件は [`../plugins/vocal-depth/docs/requirements/REQ-VDP.md`](../plugins/vocal-depth/docs/requirements/REQ-VDP.md)。
-**まだ `dsp.md` も実装計画も無い。** Air と同じ順で始める —
-`dsp.md` を書き、ゲート（`REQ-VDP-008`、`DEPTH` 全域でラウドネス ±0.5 dB）から。
+**要件は決着している** — [`../plugins/vocal-depth/docs/requirements/REQ-VDP.md`](../plugins/vocal-depth/docs/requirements/REQ-VDP.md)。
+21 要件、うち 2 つは `Won't (v1)` として理由付き。**先に「設計の中心にある
+5 つの判断」だけ読めば、残りはその帰結。**
 
-**新規 DSP は初期反射 1 つだけ**で、それは Glue と Impact にも貸す
-（`REQ-VDP-003`）。`vocal-depth-core` に置き、2 個目が要求したら `nxe-audio` へ。
+**Air と正面から違うのは 1 点**: **原音が処理を通る**（`REQ-VDP-001`）。
+遠ざけるとは Presence を削り高域を落とし Transient を鈍らせることなので、
+直接音を触らずに距離は作れない。`MIX` 用の原音だけを最初に分岐して、
+透明性の約束はそこに閉じ込める。
 
-**Air で足した共有部品**: `nxe_audio::envelope::Power` と
-`envelope::coefficient`、`guard::retune` / `set_thresholds`、
-`nxe_ui::dots::DotField`。
+足りないのは式と数。`dsp.md` に書くもの:
 
-### Air の残り（急がない）
+- **初期反射の構造** — タップの本数と時刻、オールパスの段数と係数。
+  **畳み込みも IR も使わない**（距離で連続的に動かすので補間できない）
+- **タップ時刻を `DEPTH` で動かすのか、量だけ動かすのか。** 動かすなら補間が
+  要る（整数サンプルで跳ばすとクリック）
+- **ラウドネス正規化の式** — **ここが一番難しい。** 連動する各項（Presence の
+  削り、高域の損失、反射の量、幅）が総エネルギーに与える寄与を打ち消す係数を、
+  **信号に依存せず**パラメータから計算する。`nxe_audio::shaper` の `g` と同じ
+  考え方で、プローブ信号に対する RMS を積分して割るのが素直な出発点
+- **`DAMPING` が直接音と反射に掛ける量の比**（同じ 1 本を両方に掛けると
+  「こもっただけ」になる）
+- **`CLARITY` が戻す量の決め方**と、それを公開する形
+- **距離依存の幅**（`VDP-6` は**位相を回す** — 反射は遅延そのものなので、
+  Air の「構造的に破れない」は使えない）
+- **耳で詰める定数の一覧**（Velour / Sparkleur / Air の `dsp.md` と同じ節）
 
-- **列が 32 で粗いと感じたら** `air::analysis::BANDS` を 48 に。CPU は
-  1 本あたり 15 → 22 µs 程度増えるが、予算には 450 µs 余っている
-- 図の高さ 200 は 4 本で共有している数。動かすなら 4 本とも
+### 2. `VDP-1` — 初期反射
 
-### 積み残し（Air とは独立、いつでも）
+計画は [`../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md`](../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md)。
+**`vocal-depth-core` クレートもこの単位で作る**（`VEL-1` / `SPK-2` /
+`AIR-1` と同じ位置）。
+
+**v1 で唯一の新規 DSP ブロック**で、**3 製品で共有される**（Vocal Depth /
+Vocal Glue の `Ambience Glue` / Impact の `SIZE`）。`vocal-depth-core` に置き、
+**Vocal Depth を知らない自立したモジュールとして書く** — `noise.rs` を Air で
+そう書いたのと同じで、2 個目が要求したらファイルの移動だけで済む。
+
+**ゲートは `VDP-1` ではなく `VDP-3`**（`DEPTH` 全域でラウドネス ±0.5 dB）。
+連動する項が全部揃って初めて測れるので 3 番目。**耳ではなく単体テストで通る。**
+
+### 3. Air から増えている道具
+
+**同じものを書き直さない。**
+
+| | 何 |
+|---|---|
+| `nxe_audio::envelope::Power` | 二乗 → 非対称 1 次のパワーフォロワ。時定数は呼び出し側 |
+| `nxe_audio::envelope::coefficient` | 秒 → 1 次係数 |
+| `nxe_audio::guard::retune` / `set_thresholds` | 帯としきい値を**状態を保ったまま**動かす |
+| `nxe_ui::dots::DotField` | **Vocal Depth では前提が違う** — 「足した層」の図で、こちらは原音が処理を通る。`VDP-10` で何を描くか決め直す |
+
+### 積み残し（次の 1 本とは独立、いつでも）
 
 **窓の高さは `SPK-19` で計算式にした**ので、手置きの定数の借金は消えている。
 残るのは `UI-3` の値の直接入力（gallery では動くがプラグインで editor が

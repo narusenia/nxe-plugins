@@ -358,7 +358,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| — | Air は `AIR-13` まで完了。次は Vocal Depth（`roadmap.md`） | `roadmap.md` |
+| VDP-1 | **初期反射**（Vocal Depth。`vocal-depth-core` もここで作る）。着手前に `dsp.md` を書く | `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md` |
 | SPK-18 | **既定値と耳** ✅ — 測れるものは全部固定。既定値は 1 つも動かす理由が出なかった | `sparkleur-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 
@@ -519,9 +519,40 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | AIR-12 | CPU 予算 | ✅ **エンジン 47.2 µs / 予算 533** |
 | AIR-13 | 既定値と耳 | ✅ 7 本確定、`defaults.rs` が測って固定 |
 
-### Vocal Depth / Vocal Glue
+### Vocal Depth — `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md`
+
+**ゲートは `VDP-3`**（`DEPTH` 全域で出力の RMS が ±0.5 dB、`REQ-VDP-008`）。
+**1 番目ではない** — 連動する項が全部揃って初めて測れるので、材料を 2 つ
+作ってから 3 番目に置く。崩れたら `DEPTH` を 1 本のマクロにした意味が消える。
+
+**`VDP-4`（ラッパ）が `VDP-5`〜`VDP-7` より前**なのは `VEL-5` / `AIR-4` と
+同じ判断 — `DAMPING` と `CLARITY` は効いたかの判断が耳寄り。
+
+**共有クレートの新規単位が無い。** 唯一の新規は初期反射で、
+`vocal-depth-core` に置く（`nxe-audio` に上げるのは Vocal Glue が要求したとき）。
+
+| ID | 単位 | 状態 |
+|---|---|---|
+| VDP-1 | 初期反射。`vocal-depth-core` もここで作る | ⬜ |
+| VDP-2 | 直接音（Presence のシェルフ + Transient） | ⬜ |
+| VDP-3 | `DEPTH` とラウドネス正規化（**ゲート**） | ⬜ |
+| VDP-4 | ラッパとパラメータ（**ここで音が出る**） | ⬜ |
+| VDP-5 | `DAMPING`（直接音と反射で違う量） | ⬜ |
+| VDP-6 | 距離依存のステレオ幅 | ⬜ |
+| VDP-7 | `CLARITY`（明瞭度の保持と公開） | ⬜ |
+| VDP-8 | 詰め（レート・ブロック・極端値・確保・継ぎ目） | ⬜ |
+| VDP-9 | UI マクロ層と Advanced（前に `ui.md`） | ⬜ |
+| VDP-10 | UI の図（**何を描くかが未定**） | ⬜ |
+| VDP-11 | 読み値・メーター・解析の配線 | ⬜ |
+| VDP-12 | CPU 予算 | ⬜ |
+| VDP-13 | 既定値と耳 | ⬜ |
+
+**着手前に `dsp.md` を書く。** 一番難しいのは `VDP-3` の正規化 —
+連動する各項が総エネルギーに与える寄与を打ち消す係数を、**信号に依存せず**
+パラメータから計算する（`nxe_audio::shaper` の `g` と同じ考え方）。
+
+### Vocal Glue
 
 **要件まで済み、実装単位はまだ無い。**
-[`REQ-VDP.md`](../../plugins/vocal-depth/docs/requirements/REQ-VDP.md) /
 [`REQ-GLU.md`](../../plugins/vocal-glue/docs/requirements/REQ-GLU.md)。
 着手順とその根拠は [`roadmap.md`](roadmap.md)。

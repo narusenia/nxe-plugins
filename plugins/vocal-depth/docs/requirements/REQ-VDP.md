@@ -533,7 +533,9 @@ Vocal Depth (ここ)     直接音は M にしか居ないので、モノ和で�
 - `../specifications/dsp.md` — 式・係数・時定数・**耳で詰める定数の一覧**
 - `../specifications/ui.md` — 画面・図・必要なコンポーネント
 
-**未作成**: 上記 2 つと `../implementation/vocal-depth-plan.md`。
+実装計画は [`../implementation/vocal-depth-plan.md`](../implementation/vocal-depth-plan.md)
+（`VDP-1`〜`VDP-13`）。**未作成は上の 2 つ** — `dsp.md` を `VDP-1` の前に、
+`ui.md` を `VDP-9` の前に書く。
 
 **着手順の根拠**は `../../../../docs/implementation/roadmap.md` の
 「Sparkleur の後 — 構想 6 本の順序」。構想は
