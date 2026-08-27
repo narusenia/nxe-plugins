@@ -13,6 +13,7 @@ members = [
     "plugins/sparkleur/sparkleur-core",
     "plugins/velour/velour-core",
     "plugins/velour/velour",
+    "plugins/vocal-depth/vocal-depth-core",
     "xtask",
 ]
 
@@ -32,6 +33,7 @@ air-core = { path = "plugins/air/air-core" }
 doubler-core = { path = "plugins/doubler/doubler-core" }
 sparkleur-core = { path = "plugins/sparkleur/sparkleur-core" }
 velour-core = { path = "plugins/velour/velour-core" }
+vocal-depth-core = { path = "plugins/vocal-depth/vocal-depth-core" }
 
 # nih-plug is not on crates.io. All three crates come from one repository, so
 # they must stay on the same revision — `nih_plug_vizia` and `nih_plug_xtask`

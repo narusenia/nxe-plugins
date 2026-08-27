@@ -123,7 +123,7 @@ impl PitchShifter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::DelayLine;
+    use nxe_audio::DelayLine;
 
     const SR: f32 = 48_000.0;
 

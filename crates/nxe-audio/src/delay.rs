@@ -1,7 +1,13 @@
 //! A fractional-delay ring buffer.
 //!
-//! Every voice reads from one of these at its own position; the buffer holds
-//! one source channel, not one voice (`docs/specifications/dsp.md`).
+//! One line holds one source channel. Doubler gives every voice its own read
+//! position on a shared line (`plugins/doubler/docs/specifications/dsp.md`);
+//! Vocal Depth reads a fixed set of taps off one
+//! (`plugins/vocal-depth/docs/specifications/dsp.md`).
+//!
+//! **Written inside `doubler-core` and moved here when Vocal Depth asked for
+//! it** (`VDP-1`) — a shared module is created by the second caller, not in
+//! anticipation of one (`docs/specifications/architecture.md`).
 //!
 //! Reads are interpolated with a 4-point Catmull-Rom (Hermite) kernel. Linear
 //! interpolation is not an option here: a voice's read position is fractional
@@ -90,6 +96,20 @@ impl DelayLine {
         let c = -0.5 * newer + 0.5 * y1;
 
         ((a * t + b) * t + c) * t + y0
+    }
+
+    /// Reads at a whole-sample delay, skipping the interpolator.
+    ///
+    /// For a caller whose read positions never move, which is where the
+    /// interpolation is pure cost: Vocal Depth reads 13 fixed taps per channel
+    /// per sample, and Catmull-Rom would be four times the arithmetic for an
+    /// answer it already has exactly (`REQ-VDP-003`).
+    ///
+    /// `delay` is clamped the same way [`read`](Self::read) clamps, so a
+    /// parameter-derived tap cannot index outside the line.
+    pub fn read_whole(&self, delay: usize) -> f32 {
+        let delay = delay.clamp(MIN_DELAY_SAMPLES as usize, self.max_delay_samples as usize);
+        self.at(delay)
     }
 
     /// The sample `delay` whole samples in the past. `delay` of one is the most
@@ -192,6 +212,28 @@ mod tests {
             assert!(
                 (got - expected).abs() < 0.05,
                 "delay {delay}: expected {expected}, got {got}"
+            );
+        }
+    }
+
+    /// The whole-sample read has to agree with the interpolating one at an
+    /// integer position, or the two paths through the same buffer disagree
+    /// about which sample a delay names. **This is the doubled-value case the
+    /// rules warn about** (`.agents/rules/rust.md`): the same index arithmetic
+    /// written twice.
+    #[test]
+    fn a_whole_read_matches_the_interpolated_one() {
+        let mut line = DelayLine::new(48_000.0, 0.1);
+
+        let ramp: Vec<f32> = (0..1024).map(|i| i as f32).collect();
+        feed(&mut line, &ramp);
+
+        for delay in [2usize, 8, 64, 100, 4_799] {
+            let whole = line.read_whole(delay);
+            let interpolated = line.read(delay as f32);
+            assert!(
+                (whole - interpolated).abs() < 1e-3,
+                "delay {delay}: whole {whole}, interpolated {interpolated}"
             );
         }
     }
