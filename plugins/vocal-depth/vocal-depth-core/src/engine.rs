@@ -30,10 +30,17 @@ use crate::reflections::Reflections;
 ///
 /// This is now the third place in the crate with a one-pole and a settled flag
 /// (`reflections` smooths an array of weights, `direct` a single band gain,
-/// this two gains and a normalisation). **They are not lifted into one block
-/// yet because the shapes still differ** — the same call the workspace made
-/// about the power followers, which waited until three callers agreed on what
-/// they wanted (`docs/HANDOVER.md`).
+/// this the normalisation). **They are not lifted into one block yet because
+/// the shapes still differ** — the same call the workspace made about the power
+/// followers, which waited until three callers agreed on what they wanted
+/// (`docs/HANDOVER.md`).
+///
+/// **`mix` and `output` are deliberately *not* smoothed here.** They arrive
+/// already smoothed from the caller, and smoothing them again breaks the one
+/// promise they carry: a session saved with `MIX` = 0 has to be bit-identical
+/// **from its first sample**, and an internal ramp from wherever the engine was
+/// last makes the first five milliseconds wet (`VDP-4` found this through the
+/// wrapper, where the engine's own test had hidden it by resetting afterwards).
 const GAIN_SECONDS: f32 = 0.005;
 
 /// Close enough to count as arrived. **Not smaller**: below about
@@ -94,8 +101,9 @@ pub struct Engine {
     macros: Macros,
     /// The loudness normalisation, resolved from the parameters only.
     normalisation: Smoothed,
-    mix: Smoothed,
-    output: Smoothed,
+    /// Taken as given, not smoothed — see [`GAIN_SECONDS`].
+    mix: f32,
+    output: f32,
     /// The resolved normalisation before smoothing, for tests and the display.
     resolved_gain: f32,
 }
@@ -116,14 +124,12 @@ impl Engine {
                 output: f32::NAN,
             },
             normalisation: Smoothed::new(1.0, sample_rate),
-            mix: Smoothed::new(1.0, sample_rate),
-            output: Smoothed::new(1.0, sample_rate),
+            mix: 1.0,
+            output: 1.0,
             resolved_gain: 1.0,
         };
         built.set(Macros::default());
         built.normalisation.snap();
-        built.mix.snap();
-        built.output.snap();
         built
     }
 
@@ -147,8 +153,8 @@ impl Engine {
             self.sample_rate,
         );
         self.normalisation.set(self.resolved_gain);
-        self.mix.set(macros.mix);
-        self.output.set(macros.output);
+        self.mix = macros.mix;
+        self.output = macros.output;
 
         self.macros = macros;
     }
@@ -162,8 +168,8 @@ impl Engine {
         let (wet_left, wet_right) = self.reflections.process(left, right);
 
         let normalisation = self.normalisation.next();
-        let mix = self.mix.next();
-        let output = self.output.next();
+        let mix = self.mix;
+        let output = self.output;
 
         let wet_left = normalisation * (direct_left + wet_left);
         let wet_right = normalisation * (direct_right + wet_right);
@@ -205,8 +211,6 @@ impl Engine {
         self.direct.reset();
         self.reflections.reset();
         self.normalisation.snap();
-        self.mix.snap();
-        self.output.snap();
     }
 }
 
@@ -409,12 +413,9 @@ mod tests {
             mix: 0.0,
             ..Macros::default()
         });
-        // **The way a host arrives at it.** nih-plug wakes its smoothers to the
-        // parameter's value in `initialize`, so a session that was saved with
-        // `MIX` = 0 starts there rather than sliding down to it — and the
-        // promise is about the resting state, not about the five milliseconds
-        // of a knob being turned (`REQ-VDP-001`).
-        engine.reset();
+        // **No `reset` first, on purpose.** `mix` is taken as given rather
+        // than smoothed here, so the promise holds from the first sample —
+        // which is what a session saved with `MIX` = 0 needs (`VDP-4`).
 
         let left_in = harmonics::noise(0.5, 8_192);
         let right_in: Vec<f32> = left_in.iter().rev().copied().collect();

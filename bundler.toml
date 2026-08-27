@@ -14,3 +14,9 @@ name = "NXE Velour"
 
 [sparkleur]
 name = "NXE Sparkleur"
+
+# **Provisional.** `REQ-VDP-014` wants the name settled before the first
+# release, because `CLAP_ID` cannot change once a host has stored it. Nothing
+# has shipped, so this is still free to move.
+[vocal-depth]
+name = "NXE Vocal Depth"

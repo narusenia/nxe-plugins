@@ -3585,6 +3585,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "vocal-depth"
+version = "0.1.0"
+dependencies = [
+ "nih_plug",
+ "vocal-depth-core",
+]
+
+[[package]]
 name = "vocal-depth-core"
 version = "0.1.0"
 dependencies = [
