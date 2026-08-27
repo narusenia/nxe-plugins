@@ -112,6 +112,7 @@ dependencies = [
 name = "air-core"
 version = "0.1.0"
 dependencies = [
+ "criterion",
  "nxe-audio",
  "nxe-dsp",
 ]
