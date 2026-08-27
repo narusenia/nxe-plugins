@@ -109,6 +109,9 @@ pub struct Macros {
     /// How far the space spreads. **The reflections only** — the voice stays
     /// where it is (`REQ-VDP-007`).
     pub width: f32,
+    /// How much intelligibility to put back. Exactly none at zero, and none at
+    /// all when the voice is close (`REQ-VDP-006`).
+    pub clarity: f32,
     /// Dry to wet. **Exactly dry at zero, bit for bit** (`REQ-VDP-001`).
     pub mix: f32,
     /// Final gain, linear. **Exactly 1.0 by default**, because the bit-identity
@@ -124,6 +127,7 @@ impl Default for Macros {
             room: 0.5,
             damping: 0.5,
             width: 0.6,
+            clarity: 0.0,
             mix: 1.0,
             output: 1.0,
         }
@@ -140,6 +144,7 @@ impl Macros {
             room: unit(self.room),
             damping: unit(self.damping),
             width: unit(self.width),
+            clarity: unit(self.clarity),
             mix: unit(self.mix),
             output: if self.output.is_finite() {
                 self.output.clamp(0.0, 4.0)
@@ -149,12 +154,12 @@ impl Macros {
         }
     }
 
-    /// What the direct path is asked for. `clarity_lift_db` is `VDP-7`'s.
-    pub fn direct_settings(self, clarity_lift_db: f32) -> direct::Settings {
+    /// What the direct path is asked for. What `CLARITY` puts back arrives
+    /// per sample instead, out of `crate::clarity`.
+    pub fn direct_settings(self) -> direct::Settings {
         direct::Settings {
             distance: self.depth,
             presence: self.direct,
-            clarity_lift_db,
         }
     }
 
@@ -430,6 +435,7 @@ mod tests {
             room: -1e9,
             damping: f32::NAN,
             width: f32::NEG_INFINITY,
+            clarity: 1e9,
             mix: 1e9,
             output: f32::NEG_INFINITY,
         }
@@ -442,6 +448,7 @@ mod tests {
         assert_eq!(sanitised.room, 0.0);
         assert_eq!(sanitised.damping, 0.0);
         assert_eq!(sanitised.width, 0.0);
+        assert_eq!(sanitised.clarity, 1.0);
         assert_eq!(sanitised.mix, 1.0);
         // `output` is the exception: 1.0 is the harmless reading there, since 0
         // would mute the plugin.

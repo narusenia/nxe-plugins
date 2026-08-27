@@ -114,8 +114,6 @@ pub struct Settings {
     /// neutral. Vocal Depth drives this from `DIRECT`, which `REQ-VDP-004`
     /// requires to move the band **and** the transient together.
     pub presence: f32,
-    /// What `CLARITY` is putting back, in dB (`VDP-7`). Zero until then.
-    pub clarity_lift_db: f32,
 }
 
 impl Default for Settings {
@@ -123,7 +121,6 @@ impl Default for Settings {
         Self {
             distance: 0.5,
             presence: 0.5,
-            clarity_lift_db: 0.0,
         }
     }
 }
@@ -257,7 +254,6 @@ impl Direct {
             settings: Settings {
                 distance: f32::NAN,
                 presence: f32::NAN,
-                clarity_lift_db: f32::NAN,
             },
             transient_span: 0.0,
             opening: 0.0,
@@ -300,7 +296,6 @@ impl Direct {
         let settings = Settings {
             distance: clamped(settings.distance),
             presence: clamped(settings.presence),
-            clarity_lift_db: finite(settings.clarity_lift_db).clamp(0.0, PRESENCE_LIMIT_DB),
         };
         if settings == self.settings {
             return;
@@ -310,9 +305,7 @@ impl Direct {
         // the transient together (`REQ-VDP-004`) instead of only the band.
         let closeness = ((1.0 - settings.distance) + (settings.presence - 0.5)).clamp(0.0, 1.0);
 
-        self.static_db = (PRESENCE_FAR_DB
-            + (PRESENCE_CLOSE_DB - PRESENCE_FAR_DB) * closeness
-            + settings.clarity_lift_db)
+        self.static_db = (PRESENCE_FAR_DB + (PRESENCE_CLOSE_DB - PRESENCE_FAR_DB) * closeness)
             .clamp(-PRESENCE_LIMIT_DB, PRESENCE_LIMIT_DB);
 
         self.settling = true;
@@ -321,7 +314,12 @@ impl Direct {
     }
 
     /// One stereo sample of direct sound. **Audio rate.**
-    pub fn process(&mut self, left: f32, right: f32) -> (f32, f32) {
+    ///
+    /// `clarity_lift_db` is what `crate::clarity` is putting back, in dB.
+    /// **It arrives per sample rather than per block** because it comes out of a
+    /// follower — and it lands on the same section as everything else, so it
+    /// costs a coefficient rebuild and no new filter.
+    pub fn process(&mut self, left: f32, right: f32, clarity_lift_db: f32) -> (f32, f32) {
         let left = finite(left);
         let right = finite(right);
 
@@ -342,7 +340,10 @@ impl Direct {
         // The transient, in dB because the gain lives in the coefficients now.
         // **Exactly zero when the detector is shut**, which is what lets the
         // normalisation in `VDP-3` leave it out.
-        let wanted_db = self.gain_db + TRANSIENT_DB * self.opening * self.transient_span;
+        let wanted_db = (self.gain_db
+            + TRANSIENT_DB * self.opening * self.transient_span
+            + finite(clarity_lift_db).clamp(0.0, PRESENCE_LIMIT_DB))
+        .clamp(-PRESENCE_LIMIT_DB, PRESENCE_LIMIT_DB);
         if (wanted_db - self.tuned_db).abs() > RETUNE_STEP_DB {
             let held = self.gain_db;
             self.gain_db = wanted_db;
@@ -406,15 +407,11 @@ mod tests {
     const DISCARD: usize = (RATE as usize) / 4;
 
     fn at(distance: f32, presence: f32) -> Settings {
-        Settings {
-            distance,
-            presence,
-            clarity_lift_db: 0.0,
-        }
+        Settings { distance, presence }
     }
 
     fn render(direct: &mut Direct, input: &[f32]) -> Vec<f32> {
-        input.iter().map(|&s| direct.process(s, s).0).collect()
+        input.iter().map(|&s| direct.process(s, s, 0.0).0).collect()
     }
 
     /// The band's energy in the presence range, measured by filtering the
@@ -509,7 +506,7 @@ mod tests {
                     .iter()
                     .enumerate()
                     .map(|(index, &s)| {
-                        let (left, _) = direct.process(s, s);
+                        let (left, _) = direct.process(s, s, 0.0);
                         if index < DISCARD { 0.0 } else { left * left }
                     })
                     .sum()
@@ -568,7 +565,7 @@ mod tests {
         let signal = bursts(RATE as usize);
         let mut peak = 0.0f32;
         for (index, &sample) in signal.iter().enumerate() {
-            direct.process(sample, sample);
+            direct.process(sample, sample, 0.0);
             if index > DISCARD {
                 peak = peak.max(direct.opening());
             }
@@ -588,7 +585,7 @@ mod tests {
 
             let mut peak = 0.0f32;
             for (index, &sample) in signal.iter().enumerate() {
-                direct.process(sample, sample);
+                direct.process(sample, sample, 0.0);
                 if index > DISCARD {
                     peak = peak.max(direct.opening());
                 }
@@ -711,7 +708,7 @@ mod tests {
                         extra = 10.0f32.powf(12.0 / 20.0);
                     }
                 }
-                rendered.push(extra * direct.process(sample, sample).0);
+                rendered.push(extra * direct.process(sample, sample, 0.0).0);
                 // One sample only: a *step* also raises everything after it,
                 // which lifts the background the seam is being compared
                 // against and hides itself (measured 1.05, `VDP-2`). What this
@@ -754,17 +751,14 @@ mod tests {
             Settings {
                 distance: f32::NAN,
                 presence: f32::NAN,
-                clarity_lift_db: f32::NAN,
             },
             Settings {
                 distance: f32::INFINITY,
                 presence: -1e9,
-                clarity_lift_db: 1e9,
             },
             Settings {
                 distance: 1e9,
                 presence: f32::NEG_INFINITY,
-                clarity_lift_db: f32::NEG_INFINITY,
             },
         ] {
             direct.set(settings);
@@ -775,7 +769,7 @@ mod tests {
         direct.reset();
         direct.set(at(0.5, 0.5));
         for sample in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, 1e9, -1e9, 0.5] {
-            let (left, right) = direct.process(sample, sample);
+            let (left, right) = direct.process(sample, sample, 0.0);
             assert!(left.is_finite() && right.is_finite(), "{sample} came back");
         }
 

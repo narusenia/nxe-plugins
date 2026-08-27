@@ -11,12 +11,10 @@
 //!
 //! ## Only what is wired
 //!
-//! `REQ-VDP-009` asks for seven main controls; all but `CLARITY` exist here.
-//! `CLARITY` is `VDP-7`, and a control that does nothing is worse than a
-//! control that is not there yet —
-//! **a plugin must not describe a planned feature as a working one**
-//! (`.agents/rules/documentation.md` says the same about documents). Adding
-//! them in their own units costs nothing, because ids are keys.
+//! `REQ-VDP-009`'s seven main controls are all here, plus the output trim.
+//! Nothing is declared that does not work: **a plugin must not describe a
+//! planned feature as a working one** (`.agents/rules/documentation.md` says the
+//! same about documents), and adding an id later is safe because ids are keys.
 
 use nih_plug::prelude::*;
 use vocal_depth_core::Macros;
@@ -62,6 +60,16 @@ pub struct VocalDepthParams {
     #[id = "width"]
     pub width: FloatParam,
 
+    /// How much intelligibility to put back when the voice is far away.
+    /// **Exactly nothing at zero, and nothing at all when the voice is close**
+    /// (`REQ-VDP-006`). How far it is working is on screen — a protection that
+    /// works invisibly is a control that does nothing.
+    ///
+    /// **Rests at zero.** What it does is measurable and bounded, but it is a
+    /// restoration, so the plugin does not perform one uninvited.
+    #[id = "clarity"]
+    pub clarity: FloatParam,
+
     /// Dry ↔ wet. **A crossfade, not an addition** — getting further away is
     /// taking presence off the voice, and leaving the untouched original in
     /// would put it straight back (`vocal_depth_core::engine`).
@@ -83,6 +91,7 @@ impl Default for VocalDepthParams {
             room: unit("Room", 0.5),
             damping: unit("Damping", 0.5),
             width: unit("Width", 0.6),
+            clarity: unit("Clarity", 0.0),
             mix: unit("Mix", 1.0),
             output: FloatParam::new(
                 "Output",
@@ -115,6 +124,7 @@ impl VocalDepthParams {
             room: self.room.smoothed.next_step(samples),
             damping: self.damping.smoothed.next_step(samples),
             width: self.width.smoothed.next_step(samples),
+            clarity: self.clarity.smoothed.next_step(samples),
             mix: self.mix.smoothed.next_step(samples),
             // **0 dB has to come out exactly 1.0** or the bit-identity at
             // `MIX` = 0 is off by a rounding error (`REQ-VDP-001`).
@@ -150,7 +160,7 @@ mod tests {
         assert_eq!(
             ids,
             [
-                "depth", "direct", "room", "damping", "width", "mix", "output"
+                "depth", "direct", "room", "damping", "width", "clarity", "mix", "output"
             ]
         );
     }
