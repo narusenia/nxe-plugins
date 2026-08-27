@@ -195,10 +195,20 @@ IN / OUT × L / R、ピークホールド付き）。
 ## ADVANCED
 
 ```text
-  DRIVE ──●──   FOLLOW  ENV ──●──   GUARD ──●──      OUTPUT
-  BIAS  ──●──           BRT ──●──   OVERSAMPLE          ◯
-                        TRN ──●──   [ 2x ][ 4x ]
+  DRIVE ──●──    ENV ──●──     OVERSAMPLE        OUTPUT
+  BIAS  ──●──    BRT ──●──     [ 2x ][ 4x ]        ◯
+  GUARD ──●──    TRN ──●──
 ```
+
+**2 列。3 列は窓に入らなかった**（`AIR-13` の実機確認）。148 px の列 3 本と
+側の列と隙間で 700 px になり、パネルが持っているのは 628 px。Morphorm は
+`Pixels` の子を縮めないので、**はみ出した分はそのまま端の外に描かれ**、
+`OUTPUT` のノブがメーターの下に潜っていた。**テストは 1 本も落ちない** —
+はみ出したレイアウトもレイアウトではある。
+
+`DRIVE` / `BIAS` / `GUARD` は名前だけで何かが分かるので、列に見出しは要らない。
+`ENV` / `BRT` / `TRN` は**読み値の帯と同じ 3 つの名前**で、そちらが今どれだけ
+開いているかを見せている。
 
 - `DRIVE` / `BIAS` はカーブそのものの数。**`CHARACTER` が届かない**のが
   設計（`REQ-AIR-010`）。`Bar`（左端から）
@@ -207,7 +217,10 @@ IN / OUT × L / R、ピークホールド付き）。
 - `GUARD` は保護の双極の偏差。**下端でちょうど無効、上端でしきい値 −9 dB**
   （`dsp.md`）。`Bar::bipolar`
 - `OVERSAMPLE` は `SegmentedControl`
-- `OUTPUT` は小さい `Knob`
+- `OUTPUT` は小さい `Knob`。**幅を明示する** — `knob_block` は
+  `Stretch(1.0)` を要求し、**`Auto` 幅の親の中では 0 に潰れる**ので、
+  ノブとラベルと数値が同じ原点から描かれて隣に重なった
+  （`.agents/rules/vizia.md`）
 - **バーには必ず高さを指定する。** Velour で指定を忘れて Advanced の表が
   「動かないコントロール」になった（`.agents/rules/vizia.md`）
 

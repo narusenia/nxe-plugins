@@ -22,6 +22,13 @@ const COLUMN_WIDTH: f32 = NAME_WIDTH + theme::SPACE_2 + BAR_WIDTH;
 /// bars. **It is the taller of the two**, so it decides the panel's height.
 const SIDE_HEIGHT: f32 = knob_block_height(OUTPUT_KNOB);
 
+/// Wide enough for the eyebrow over it and for both segments under it.
+const OVERSAMPLE_WIDTH: f32 = 104.0;
+/// Wide enough for the word `OUTPUT` under the knob, which is wider than the
+/// knob is.
+const OUTPUT_WIDTH: f32 = 72.0;
+const SIDE_WIDTH: f32 = OVERSAMPLE_WIDTH + theme::SPACE_4 + OUTPUT_WIDTH;
+
 /// How tall the whole panel is.
 ///
 /// **Part of the window's height, so it is arithmetic** (`.agents/rules/ui.md`).
@@ -37,9 +44,8 @@ pub fn view(cx: &mut Context) {
             .height(Pixels(theme::LINE_EYEBROW));
 
         HStack::new(cx, |cx| {
-            curve_column(cx);
+            settings_column(cx);
             follow_column(cx);
-            protect_column(cx);
             Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
             side(cx);
         })
@@ -53,8 +59,13 @@ pub fn view(cx: &mut Context) {
 }
 
 /// The curve's own two numbers — **the ones `CHARACTER` deliberately does not
-/// reach** (`REQ-AIR-010`).
-fn curve_column(cx: &mut Context) {
+/// reach** (`REQ-AIR-010`) — and the protection's deviation.
+///
+/// **Three columns did not fit.** Two of 148 px, the gaps and the side column
+/// come to 536 of the 628 the panel has; three came to 700, and the overflow
+/// put the output knob underneath the meters. Every name here says what it is
+/// on its own, so the column that holds them does not need one.
+fn settings_column(cx: &mut Context) {
     column(cx, |cx| {
         row(cx, "DRIVE", |cx| {
             bar(cx, "How hard the curve is driven", false, |params| {
@@ -64,6 +75,11 @@ fn curve_column(cx: &mut Context) {
         row(cx, "BIAS", |cx| {
             bar(cx, "How far off centre the curve sits", false, |params| {
                 &params.bias
+            })
+        });
+        row(cx, "GUARD", |cx| {
+            bar(cx, "Down to nothing, up to stricter", true, |params| {
+                &params.guard
             })
         });
     });
@@ -92,16 +108,11 @@ fn follow_column(cx: &mut Context) {
     });
 }
 
-fn protect_column(cx: &mut Context) {
-    column(cx, |cx| {
-        row(cx, "GUARD", |cx| {
-            bar(cx, "Down to nothing, up to stricter", true, |params| {
-                &params.guard
-            })
-        });
-    });
-}
-
+/// **Both halves are given a width.** `knob_block` asks for `Stretch(1.0)`, and
+/// **a stretching child of an `Auto`-sized parent resolves to zero** — so the
+/// knob, its label and its value all drew from the same origin, on top of the
+/// segmented control beside them and out past the meters
+/// (`.agents/rules/vizia.md`).
 fn side(cx: &mut Context) {
     HStack::new(cx, |cx| {
         VStack::new(cx, |cx| {
@@ -118,16 +129,23 @@ fn side(cx: &mut Context) {
             .width(Auto)
             .height(Auto);
         })
-        .width(Auto)
+        .width(Pixels(OVERSAMPLE_WIDTH))
         .height(Auto)
         .row_between(Pixels(theme::SPACE_1));
 
-        knob_block(cx, "OUTPUT", "Level out", OUTPUT_KNOB, |params| {
-            &params.output
-        });
+        HStack::new(cx, |cx| {
+            knob_block(cx, "OUTPUT", "Level out", OUTPUT_KNOB, |params| {
+                &params.output
+            });
+        })
+        .width(Pixels(OUTPUT_WIDTH))
+        .height(Pixels(SIDE_HEIGHT));
     })
-    .class("row")
-    .width(Auto)
+    // **Not `.class("row")`.** It carries `child-top: 1s` / `child-bottom: 1s`,
+    // which are two more stretches for a fixed height to be divided among, and
+    // both children here already have heights of their own
+    // (`.agents/rules/vizia.md`).
+    .width(Pixels(SIDE_WIDTH))
     .height(Pixels(SIDE_HEIGHT))
     .col_between(Pixels(theme::SPACE_4));
 }
@@ -159,7 +177,9 @@ fn row(cx: &mut Context, name: &'static str, build: impl Fn(&mut Context) + 'sta
             .child_top(Stretch(1.0))
             .child_bottom(Stretch(1.0));
     })
-    .class("row")
+    // **Not `.class("row")`**: both children have a height of their own, and
+    // the class's two stretches would divide what is left over between them
+    // (`.agents/rules/vizia.md`).
     .width(Stretch(1.0))
     .height(Pixels(ROW_HEIGHT))
     .col_between(Pixels(theme::SPACE_2));
@@ -175,4 +195,44 @@ where
         .tooltip(move |cx| theme::hint(cx, hint))
         .width(Stretch(1.0))
         .height(Pixels(BAR_HEIGHT));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ui::meters;
+
+    /// How much width the panel actually has: the window, less the root's
+    /// padding on both sides, less the meter strip and the gap before it.
+    const AVAILABLE: f32 =
+        super::super::WIDTH as f32 - theme::SPACE_3 * 2.0 - meters::WIDTH - theme::SPACE_3;
+
+    /// **The fixed content has to fit, and a stretch cannot rescue it.**
+    ///
+    /// Morphorm does not shrink a `Pixels` child: past the edge it simply draws
+    /// past the edge. Three bar columns came to 700 against 628 and the output
+    /// knob ended up underneath the meters — **and nothing in the suite
+    /// noticed**, because a layout that overflows still lays out
+    /// (`.agents/rules/ui.md`).
+    #[test]
+    fn the_panel_fits_the_window() {
+        const COLUMNS: f32 = 2.0;
+        // Two bar columns, the spacer, and the side: three gaps between four
+        // children.
+        let fixed = COLUMN_WIDTH * COLUMNS + SIDE_WIDTH + theme::SPACE_4 * 3.0;
+        assert!(
+            fixed <= AVAILABLE,
+            "the advanced panel is {fixed} wide in a {AVAILABLE} space"
+        );
+    }
+
+    /// The side column is the taller half, which is what the panel's height is
+    /// derived from.
+    #[test]
+    fn the_side_is_what_sets_the_height() {
+        const ROWS: f32 = 3.0;
+        let bars = ROW_HEIGHT * ROWS + theme::SPACE_2 * (ROWS - 1.0);
+        assert!(bars <= SIDE_HEIGHT, "{bars} against {SIDE_HEIGHT}");
+        assert_eq!(HEIGHT, theme::LINE_EYEBROW + theme::SPACE_2 + SIDE_HEIGHT);
+    }
 }
