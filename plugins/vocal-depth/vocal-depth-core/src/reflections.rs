@@ -106,7 +106,7 @@ const ALLPASS_LINE_SECONDS: f32 = 0.012;
 /// the band where the assumption fails is left with no energy in it; and it
 /// keeps the reflections out of the mid channel the direct sound owns
 /// (`REQ-VDP-007`).
-const HIGHPASS_HZ: f32 = 200.0;
+pub const HIGHPASS_HZ: f32 = 200.0;
 
 /// Reflection level at `distance` 0 and 1, relative to the direct sound.
 ///

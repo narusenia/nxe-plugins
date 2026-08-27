@@ -12,12 +12,26 @@
 //! because the promise it has to keep (a mono sum with no comb in it) is
 //! measured there, even though `dsp.md` draws it in this part of the chain.
 
-use nxe_audio::biquad::BandPass;
+use nxe_audio::biquad::{BandPass, Biquad, Coefficients};
 use nxe_audio::envelope::{Power, coefficient};
 
 /// The presence band. Where a vocal reads as near or far.
 pub const PRESENCE_LOW_HZ: f32 = 2_000.0;
 pub const PRESENCE_HIGH_HZ: f32 = 5_000.0;
+
+/// The band as one peaking section: its geometric centre, and the `Q` that
+/// gives it the same 1.32-octave width.
+pub const PRESENCE_CENTRE_HZ: f32 = 3_162.0;
+pub const PRESENCE_Q: f32 = 1.05;
+
+/// How far the gain may drift from the coefficients before they are rebuilt.
+///
+/// **A peaking section carries its gain in its coefficients**, so a smoothly
+/// moving gain means rebuilding them — and rebuilding costs a `sin_cos`. This
+/// is the compromise: the gain is smoothed per sample, the coefficients are
+/// rebuilt only when the two have drifted this far apart. 0.05 dB is 25 times
+/// finer than anything audible, and it bounds the step to that.
+const RETUNE_STEP_DB: f32 = 0.05;
 
 /// What the band is worth at the two ends of closeness.
 ///
@@ -179,56 +193,33 @@ impl Transient {
     }
 }
 
-/// One channel: the presence band and the gain that is smoothed onto it.
+/// One channel's presence section.
+///
+/// **A peaking section, not a subtracted band-pass.** `dsp.md` specified
+/// `x + (G - 1) · BandPass(x)` because `nxe_audio::biquad` had no shelf, and
+/// `VDP-3` measured what that costs: with `G < 1` the band-pass's phase turns
+/// the subtraction into a **boost** at the skirts — worst at 8.6 kHz, +0.57 dB
+/// — and a nominal 6 dB cut removed only 0.18 dB of pink-weighted power instead
+/// of 0.71 dB. Far away is supposed to be *less* presence, so the shape had to
+/// change and `Coefficients::peaking` was added
+/// (`nxe_audio::biquad::Coefficients::peaking` carries the numbers).
 struct Channel {
-    band: BandPass,
-    /// The static part of the band gain, linear. Smoothed toward `target`.
-    gain: f32,
-    target: f32,
-    settling: bool,
-    coefficient: f32,
+    section: Biquad,
 }
 
 impl Channel {
-    fn new(sample_rate: f32) -> Self {
+    fn new() -> Self {
         Self {
-            band: BandPass::new(PRESENCE_LOW_HZ, PRESENCE_HIGH_HZ, sample_rate),
-            gain: 1.0,
-            target: 1.0,
-            settling: false,
-            coefficient: coefficient(GAIN_SECONDS, sample_rate),
+            section: Biquad::new(Coefficients::PASS),
         }
     }
 
-    fn settle(&mut self) {
-        if !self.settling {
-            return;
-        }
-        let remaining = self.target - self.gain;
-        if remaining.abs() < GAIN_SETTLED {
-            self.gain = self.target;
-            self.settling = false;
-        } else {
-            self.gain += remaining * self.coefficient;
-        }
-    }
-
-    /// `x + (G - 1) · BandPass(x)`, where `G` is the static gain times what the
-    /// transient asks for.
-    ///
-    /// **A parallel band, not a shelf** — `nxe_audio::biquad` has no shelf, and
-    /// a shelf would move everything above 5 kHz too, which is `DAMPING`'s
-    /// band. `REQ-VDP-004` was corrected to say so when `dsp.md` was written.
-    fn process(&mut self, input: f32, transient_gain: f32) -> f32 {
-        self.settle();
-        let gain = self.gain * transient_gain;
-        input + (gain - 1.0) * self.band.process(input)
+    fn process(&mut self, input: f32) -> f32 {
+        self.section.process(input)
     }
 
     fn reset(&mut self) {
-        self.band.reset();
-        self.gain = self.target;
-        self.settling = false;
+        self.section.reset();
     }
 }
 
@@ -238,6 +229,7 @@ impl Channel {
 /// across the pair (`REQ-VDP-011`): one reading off the mono sum drives both
 /// channels, so a transient cannot move the image.
 pub struct Direct {
+    sample_rate: f32,
     transient: Transient,
     channels: [Channel; 2],
     settings: Settings,
@@ -245,14 +237,22 @@ pub struct Direct {
     transient_span: f32,
     /// The last opening, for the display (`REQ-VDP-018`).
     opening: f32,
+    /// What the parameters ask the band for, without the transient.
     static_db: f32,
+    /// Where the smoothed gain has got to, in dB.
+    gain_db: f32,
+    /// What the coefficients were last built for.
+    tuned_db: f32,
+    settling: bool,
+    coefficient: f32,
 }
 
 impl Direct {
     pub fn new(sample_rate: f32) -> Self {
         let mut built = Self {
+            sample_rate,
             transient: Transient::new(sample_rate),
-            channels: [Channel::new(sample_rate), Channel::new(sample_rate)],
+            channels: [Channel::new(), Channel::new()],
             // Not the default: `set` returns early when nothing moved.
             settings: Settings {
                 distance: f32::NAN,
@@ -262,13 +262,36 @@ impl Direct {
             transient_span: 0.0,
             opening: 0.0,
             static_db: 0.0,
+            gain_db: 0.0,
+            tuned_db: f32::NAN,
+            settling: false,
+            coefficient: coefficient(GAIN_SECONDS, sample_rate),
         };
         built.set(Settings::default());
-        for channel in &mut built.channels {
-            channel.gain = channel.target;
-            channel.settling = false;
-        }
+        built.snap();
         built
+    }
+
+    /// Puts the band where the parameters ask, without a ramp. For
+    /// construction and [`reset`](Self::reset).
+    fn snap(&mut self) {
+        self.gain_db = self.static_db;
+        self.settling = false;
+        self.retune();
+    }
+
+    /// Rebuilds the coefficients for the gain the band is at now.
+    fn retune(&mut self) {
+        let coefficients = Coefficients::peaking(
+            PRESENCE_CENTRE_HZ,
+            PRESENCE_Q,
+            self.gain_db,
+            self.sample_rate,
+        );
+        for channel in &mut self.channels {
+            channel.section.set(coefficients);
+        }
+        self.tuned_db = self.gain_db;
     }
 
     /// Resolves the settings into a band gain and a transient direction.
@@ -292,12 +315,7 @@ impl Direct {
             + settings.clarity_lift_db)
             .clamp(-PRESENCE_LIMIT_DB, PRESENCE_LIMIT_DB);
 
-        let target = 10.0f32.powf(self.static_db / 20.0);
-        for channel in &mut self.channels {
-            channel.target = target;
-            channel.settling = true;
-        }
-
+        self.settling = true;
         self.transient_span = 2.0 * closeness - 1.0;
         self.settings = settings;
     }
@@ -309,16 +327,32 @@ impl Direct {
 
         self.opening = self.transient.push((left + right) * 0.5);
 
-        // Linear in the opening rather than in dB: a `powf` per sample buys
-        // nothing over 3 dB, and the ends are exactly `TRANSIENT_DB` either
-        // way. At `opening` = 0 this is exactly 1.0, which the normalisation
-        // in `VDP-3` depends on.
-        let span = 10.0f32.powf(TRANSIENT_DB / 20.0) - 1.0;
-        let transient_gain = 1.0 + self.opening * span * self.transient_span;
+        // The static part, smoothed. `VDP-1` paid for this: a gain that steps
+        // at block rate is a seam.
+        if self.settling {
+            let remaining = self.static_db - self.gain_db;
+            if remaining.abs() < GAIN_SETTLED {
+                self.gain_db = self.static_db;
+                self.settling = false;
+            } else {
+                self.gain_db += remaining * self.coefficient;
+            }
+        }
+
+        // The transient, in dB because the gain lives in the coefficients now.
+        // **Exactly zero when the detector is shut**, which is what lets the
+        // normalisation in `VDP-3` leave it out.
+        let wanted_db = self.gain_db + TRANSIENT_DB * self.opening * self.transient_span;
+        if (wanted_db - self.tuned_db).abs() > RETUNE_STEP_DB {
+            let held = self.gain_db;
+            self.gain_db = wanted_db;
+            self.retune();
+            self.gain_db = held;
+        }
 
         (
-            self.channels[0].process(left, transient_gain),
-            self.channels[1].process(right, transient_gain),
+            self.channels[0].process(left),
+            self.channels[1].process(right),
         )
     }
 
@@ -344,6 +378,7 @@ impl Direct {
         for channel in &mut self.channels {
             channel.reset();
         }
+        self.snap();
     }
 }
 
@@ -641,10 +676,18 @@ mod tests {
         );
     }
 
-    /// A parameter step is smoothed, so the band gain does not arrive as a
-    /// seam. The control is the same move with the smoothing taken out
-    /// (`VDP-1` learned that a control which merely jumps *something* can
-    /// agree with the case under test by accident).
+    /// A parameter step, end to end in one sample, does not arrive as a seam.
+    ///
+    /// **Two things keep it smooth, and the second turned out to be the
+    /// stronger one.** The gain in dB is smoothed per sample; and a peaking
+    /// section is *retuned* rather than scaled, and retuning keeps the state,
+    /// so the output walks to its new level over the section's ring time
+    /// instead of jumping (`nxe_audio::biquad` says the same thing about
+    /// `FOCUS`). Taking the smoothing out is therefore **not** a usable
+    /// control — measured 0.99, no seam at all (`VDP-2`).
+    ///
+    /// **So the control jumps the output the way a plain gain would**, which is
+    /// what the measurement has to be able to catch (`VEL-10`).
     #[test]
     fn a_parameter_step_does_not_click() {
         let tone = harmonics::tone(0.5, 3_000.0, RATE, 24_000);
@@ -654,26 +697,27 @@ mod tests {
         // and even the control measured 1.00 (`VDP-2`).
         let step_at = 12_007;
 
-        let roughness = |snap: bool| {
+        let roughness = |as_a_plain_gain: bool| {
             let mut direct = Direct::new(RATE);
             direct.set(at(1.0, 0.0));
 
             let mut rendered = Vec::with_capacity(tone.len());
+            let mut extra = 1.0f32;
             for (index, &sample) in tone.iter().enumerate() {
                 if index == step_at {
-                    // End to end, so the control has something unambiguous to
-                    // show: a 6 dB move only put the control 2.15 times above
-                    // the background, which is too thin a margin to trust
-                    // (`VDP-2`).
+                    // End to end: -8 dB of presence to +4 dB.
                     direct.set(at(0.0, 1.0));
-                    if snap {
-                        for channel in &mut direct.channels {
-                            channel.gain = channel.target;
-                            channel.settling = false;
-                        }
+                    if as_a_plain_gain {
+                        extra = 10.0f32.powf(12.0 / 20.0);
                     }
                 }
-                rendered.push(direct.process(sample, sample).0);
+                rendered.push(extra * direct.process(sample, sample).0);
+                // One sample only: a *step* also raises everything after it,
+                // which lifts the background the seam is being compared
+                // against and hides itself (measured 1.05, `VDP-2`). What this
+                // control has to establish is that a discontinuity of this size
+                // would be seen.
+                extra = 1.0;
             }
 
             let second = |i: usize| rendered[i + 2] - 2.0 * rendered[i + 1] + rendered[i];
@@ -693,7 +737,6 @@ mod tests {
             "the control did not produce a seam: {control:.2}"
         );
 
-        // Measured 0.40 against a control of 3.17 (`VDP-2`).
         let measured = roughness(false);
         assert!(
             measured < 1.5,
