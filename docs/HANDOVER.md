@@ -1,6 +1,6 @@
 # 引き継ぎ
 
-**2026-08-27 時点。4 本とも公開済み（`v0.1.2` / Air は `v0.1.1`）。テスト 474 本。**
+**2026-08-27 時点。4 本とも公開済み（`v0.1.3` / Air は `v0.1.2`）。テスト 474 本。**
 
 **次は Vocal Depth。** 要件は書けている（`REQ-VDP.md`）、実装計画も単位まで
 割ってある（`vocal-depth-plan.md`）。**最初にやるのは `dsp.md` を書くこと**で、
@@ -57,8 +57,9 @@ macOS ではこのフレームタイマーが `CFRunLoopTimer` として**ホス
 ## ハートビートも漏れていた（別件、こちらも直した）
 
 **症状**: プラグインをインサートに挿すと Studio One の UI が重くなる。
-4 本とも、どれでも起きる。**`doubler-v0.1.2` / `velour-v0.1.2` /
-`sparkleur-v0.1.2` / `air-v0.1.1` で直っている** — それより前は全部影響を受ける。
+4 本とも、どれでも起きる。**`doubler-v0.1.2` / `velour-v0.1.2` / `sparkleur-v0.1.2` / `air-v0.1.1` で
+直っている**が、**重さの本命は下の vizia のほうで、そちらは `v0.1.3` /
+`air-v0.1.2`**。
 
 **原因**: 表示のハートビートを止める条件が**baseview では絶対に成立しない**。
 
@@ -182,18 +183,18 @@ push して**無条件に `Ok(())` を返す**。ユニット構造体で窓へ�
 
 | | |
 |---|---|
-| `plugins/doubler` | NXE Doubler。CLAP + VST3。`doubler-v0.1.2` **公開済み** |
-| `plugins/velour` | NXE Velour。CLAP + VST3。パラメータ 22 個。UI・解析・既定値まで完了。`velour-v0.1.2` **公開済み** |
+| `plugins/doubler` | NXE Doubler。CLAP + VST3。`doubler-v0.1.3` **公開済み** |
+| `plugins/velour` | NXE Velour。CLAP + VST3。パラメータ 22 個。UI・解析・既定値まで完了。`velour-v0.1.3` **公開済み** |
 | `crates/nxe-audio` | 共通の**処理**（`shaper` / `oversample` / `biquad` / `envelope` / `guard` / `harmonics`）。`SPK-1` で `velour-core` から抜いた |
 | `crates/nxe-ui` | 共通ウィジェット・テーマ・アイコン。`mise run gallery` |
 | `crates/nxe-plug-ui` | nih-plug のパラメータと `nxe-ui` の結線。**両方を知る唯一のクレート**（`SPK-11`） |
 | `crates/nxe-dsp` | 共通の解析（`Handoff` / `PanScope` / `Spectrum` / `Level`） |
 | `plugins/sparkleur/sparkleur-core` | **DSP は全部。** 5 帯域クロスオーバー、検波、上下コンプ、Sparkle、`CHARACTER`、De-Harsh / Sub Protect、エンジン |
 | `plugins/sparkleur/sparkleur` | NXE Sparkleur。CLAP + VST3。パラメータ 33 個、**全部にコントロールがある**。UI は MAIN の 7 ノブ + Band Field + 伝達曲線の小窓 + メーター + Advanced の表 |
-| `plugins/sparkleur/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`SPK-1`〜`SPK-19`）。`sparkleur-v0.1.2` **公開済み** |
+| `plugins/sparkleur/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`SPK-1`〜`SPK-19`）。`sparkleur-v0.1.3` **公開済み** |
 | `plugins/air/air-core` | **DSP は全部。** ノイズ層（生成・傾き・粒・`WIDTH`）、倍音層、2 系統のまとめ、Follow 3 本、保護 |
 | `plugins/air/air` | NXE Air。CLAP + VST3。パラメータ 15 個、**全部にコントロールがある**。UI は読み値の帯 + 点のスペクトラム + 7 ノブ + Advanced + メーター |
-| `plugins/air/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`AIR-1`〜`AIR-13`）。`air-v0.1.1` **公開済み** |
+| `plugins/air/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`AIR-1`〜`AIR-13`）。`air-v0.1.2` **公開済み** |
 | `plugins/vocal-depth/docs` | **要件と実装計画。次に作るもの**（`VDP-1`〜`VDP-13`）。初期反射を作る本で、Glue と Impact に貸す |
 | `plugins/vocal-glue/docs` | **要件のみ。** 新規 DSP がほぼ無い（`guard` の N 帯域化だけ） |
 | `concepts/` | まだ要件を書いていない構想 3 本（Bass Density / Impact / Growl） |

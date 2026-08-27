@@ -4,7 +4,7 @@ name = "velour"
 # `velour-v<version>`, so each plugin ships on its own schedule and a fix to one
 # does not re-release the others (`docs/implementation/infra-plan.md`).
 # `velour-core` moves with it: they are one shipping unit.
-version = "0.1.2"
+version = "0.1.3"
 edition.workspace = true
 # Links `vst3-sys` through `nih_plug`, which is GPLv3. See `LICENSING.md`.
 license = "GPL-3.0-only"
