@@ -23,6 +23,7 @@ use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
 use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
 use nxe_ui::curve::Curve;
+use nxe_ui::heartbeat::Lifeline;
 use nxe_ui::{font, theme};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -55,6 +56,12 @@ pub fn default_state() -> Arc<ViziaState> {
 #[derive(Lens)]
 pub(crate) struct Ui {
     params: Arc<VelourParams>,
+    /// Keeps the display's heartbeat running. Dropped with the window,
+    /// which is what stops the thread (`nxe_ui::heartbeat`).
+    ///
+    /// **Never read on purpose**: what it does, it does by being dropped.
+    #[allow(dead_code)]
+    heartbeat: Lifeline,
     /// Which band the pointer is over, so the Advanced row and the region can
     /// mark each other. One value, both directions — the Doubler's
     /// `Ui::hovered` (`plugins/doubler/docs/specifications/ui.md`).
@@ -77,22 +84,6 @@ pub(crate) struct Ui {
 /// How often the display re-reads the analysis. 30 Hz is as fast as a meter
 /// needs to look alive, and half the work of matching the frame rate.
 const ANALYSIS_INTERVAL: Duration = Duration::from_millis(33);
-
-/// Why this is a thread and not `cx.add_timer`.
-///
-/// **vizia's timers never fire here.** `process_timers` is called by
-/// `vizia_winit` and by nothing else; the baseview backend — the one every
-/// plugin and the gallery run on — does not call it (`.agents/rules/vizia.md`).
-/// `cx.spawn` hands out a `ContextProxy`, which baseview *does* support, and
-/// emitting through it fails once the window is gone, which is the thread's
-/// signal to stop.
-fn start_heartbeat(cx: &mut Context) {
-    cx.spawn(|proxy| {
-        while proxy.emit(UiEvent::Poll).is_ok() {
-            std::thread::sleep(ANALYSIS_INTERVAL);
-        }
-    });
-}
 
 /// The floor of the spectrum curves. Below this a band is drawn as silence —
 /// without a floor the curve sits on the noise of an idle track.
@@ -130,6 +121,7 @@ fn meter_position(amplitude: f32) -> f32 {
     ((db - METER_FLOOR_DB) / -METER_FLOOR_DB).clamp(0.0, 1.0)
 }
 
+#[derive(Clone)]
 pub(crate) enum UiEvent {
     Hover(Option<usize>),
     /// The heartbeat asking the model to re-read what the audio thread
@@ -178,6 +170,11 @@ pub fn create(
         // work for a case that does not happen mid-session.
         let host_rate = f32::from_bits(sample_rate.load(Ordering::Relaxed));
 
+        // **Started before the model, because the model holds what stops
+        // it.** The lifeline dies with the window's context, and the
+        // thread ends within one interval (`nxe_ui::heartbeat`).
+        let heartbeat = nxe_ui::heartbeat::start(cx, ANALYSIS_INTERVAL, UiEvent::Poll);
+
         Ui {
             hovered: None,
             analysis: analysis.clone(),
@@ -186,12 +183,9 @@ pub fn create(
             peaks: vec![0.0; METERS],
             holds: vec![0.0; METERS],
             params: params.clone(),
+            heartbeat,
         }
         .build(cx);
-
-        // Parameter changes wake the binding system on their own; an idle window
-        // with audio running does not. The display needs its own heartbeat.
-        start_heartbeat(cx);
 
         HStack::new(cx, |cx| {
             VStack::new(cx, |cx| {

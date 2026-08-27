@@ -134,8 +134,34 @@ the value type in `vizia_style` before assuming the rule did not match.
 `emit_scheduled_events` with it — is called by `vizia_winit` and by nothing else.
 Every plugin editor and the gallery run on baseview, so a timer compiles, starts,
 and does nothing at all. For a periodic update use `cx.spawn`, which hands out a
-`ContextProxy`; baseview does install an event proxy, and `proxy.emit` returns
-`Err` once the window is gone, which is the thread's cue to stop.
+`ContextProxy`; baseview does install an event proxy.
+
+**But `ContextProxy::emit` never fails on baseview, so it is not an exit
+condition.** `vizia_baseview::proxy::BaseviewProxy::send` pushes onto a
+`lazy_static` queue and returns `Ok(())` unconditionally — it is a unit struct
+and holds no reference to a window, so it cannot know whether one is still
+there. The obvious loop
+
+```rust
+while proxy.emit(Poll).is_ok() {
+    std::thread::sleep(interval);
+}
+```
+
+**never ends.** A host opening a plugin window starts a thread; closing it stops
+nothing. All four plugins shipped that way, and the threads accumulated for the
+life of the host — each pushing an event thirty times a second onto a queue that
+is **process-global, mutex-guarded and unbounded**, shared by every vizia window
+in the process.
+
+**And that queue is drained only by `Application::on_frame_update`**, so while
+every editor is closed nothing drains it at all: it grows without limit, and the
+next window to open pays for the whole backlog in one frame. This is what made
+a host's own interface go sluggish with the plugins merely inserted.
+
+The exit condition has to be something the caller owns. `nxe_ui::heartbeat`
+returns a `Lifeline` for exactly this — **put it in the model**, which the
+context drops when the window closes.
 
 (If a timer is ever used on a backend that does run them: **`TimerAction::Tick`
 carries the elapsed time, not the interval**, so `action == TimerAction::Tick(interval)`

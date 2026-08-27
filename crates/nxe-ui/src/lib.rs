@@ -14,6 +14,7 @@ pub mod dots;
 pub mod entry;
 pub mod font;
 pub mod header;
+pub mod heartbeat;
 pub mod icon;
 pub mod input;
 pub mod knob;

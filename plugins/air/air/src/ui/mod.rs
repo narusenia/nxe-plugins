@@ -9,6 +9,7 @@ use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
 use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
 use nxe_ui::curve::Curve;
+use nxe_ui::heartbeat::Lifeline;
 use nxe_ui::{font, theme};
 use std::sync::Arc;
 use std::time::Duration;
@@ -55,6 +56,12 @@ pub fn default_state() -> Arc<ViziaState> {
 #[derive(Lens)]
 pub(crate) struct Ui {
     params: Arc<AirParams>,
+    /// Keeps the display's heartbeat running. Dropped with the window,
+    /// which is what stops the thread (`nxe_ui::heartbeat`).
+    ///
+    /// **Never read on purpose**: what it does, it does by being dropped.
+    #[allow(dead_code)]
+    heartbeat: Lifeline,
     /// What the audio thread has published. Read on a heartbeat rather than
     /// mapped from the `Arc`: the handoff's identity never changes, so nothing
     /// would tell the binding system to look again.
@@ -66,6 +73,7 @@ pub(crate) struct Ui {
     holds: Vec<f32>,
 }
 
+#[derive(Clone)]
 pub(crate) enum UiEvent {
     /// The heartbeat asking the model to re-read what the audio thread
     /// published.
@@ -93,22 +101,6 @@ impl Model for Ui {
 /// How often the display re-reads the analysis. 30 Hz is as fast as a figure
 /// needs to look alive, and half the work of matching the frame rate.
 const ANALYSIS_INTERVAL: Duration = Duration::from_millis(33);
-
-/// Why this is a thread and not `cx.add_timer`.
-///
-/// **vizia's timers never fire here.** `process_timers` is called by
-/// `vizia_winit` and by nothing else; the baseview backend — the one every
-/// plugin and the gallery run on — does not call it (`.agents/rules/vizia.md`).
-/// `cx.spawn` hands out a `ContextProxy`, which baseview *does* support, and
-/// emitting through it fails once the window is gone, which is the thread's
-/// signal to stop.
-fn start_heartbeat(cx: &mut Context) {
-    cx.spawn(|proxy| {
-        while proxy.emit(UiEvent::Poll).is_ok() {
-            std::thread::sleep(ANALYSIS_INTERVAL);
-        }
-    });
-}
 
 /// The floor of the spectra. Below this a band is drawn as silence — without a
 /// floor the curve sits on the noise of an idle track, and the grain field
@@ -154,6 +146,11 @@ pub fn create(
     create_vizia_editor(state, ViziaTheming::None, move |cx, _| {
         theme::install(cx);
 
+        // **Started before the model, because the model holds what stops
+        // it.** The lifeline dies with the window's context, and the
+        // thread ends within one interval (`nxe_ui::heartbeat`).
+        let heartbeat = nxe_ui::heartbeat::start(cx, ANALYSIS_INTERVAL, UiEvent::Poll);
+
         Ui {
             params: params.clone(),
             analysis: analysis.clone(),
@@ -161,13 +158,9 @@ pub fn create(
             layer: Curve::new(),
             peaks: vec![0.0; METERS],
             holds: vec![0.0; METERS],
+            heartbeat,
         }
         .build(cx);
-
-        // Parameter changes wake the binding system on their own; an idle
-        // window with audio running does not. The display needs its own
-        // heartbeat.
-        start_heartbeat(cx);
 
         HStack::new(cx, |cx| {
             VStack::new(cx, |cx| {

@@ -20,6 +20,7 @@ use crate::params::DoublerParams;
 use nih_plug::prelude::Editor;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
+use nxe_ui::heartbeat::Lifeline;
 use nxe_ui::segmented::SegmentedControl;
 use nxe_ui::{font, icon, theme};
 use std::sync::Arc;
@@ -74,6 +75,12 @@ const TAB_DETAIL: usize = 1;
 #[derive(Lens)]
 pub(crate) struct Ui {
     params: Arc<DoublerParams>,
+    /// Keeps the display's heartbeat running. Dropped with the window,
+    /// which is what stops the thread (`nxe_ui::heartbeat`).
+    ///
+    /// **Never read on purpose**: what it does, it does by being dropped.
+    #[allow(dead_code)]
+    heartbeat: Lifeline,
     /// Which tab is showing. The reactive copy of `params.detail_tab`: an
     /// `AtomicBool` cannot be observed by a lens, so the display binds to this
     /// and the atomic follows it for persistence.
@@ -102,22 +109,6 @@ pub(crate) struct Ui {
 /// needs to look alive, and half the work of matching the frame rate.
 const ANALYSIS_INTERVAL: Duration = Duration::from_millis(33);
 
-/// Why this is a thread and not `cx.add_timer`.
-///
-/// **vizia's timers never fire here.** `process_timers` is called by
-/// `vizia_winit` and by nothing else; the baseview backend — the one every
-/// plugin and the gallery run on — does not call it (`.agents/rules/vizia.md`).
-/// `cx.spawn` hands out a `ContextProxy`, which baseview *does* support, and
-/// emitting through it fails once the window is gone, which is the thread's
-/// signal to stop.
-fn start_heartbeat(cx: &mut Context) {
-    cx.spawn(|proxy| {
-        while proxy.emit(UiEvent::Poll).is_ok() {
-            std::thread::sleep(ANALYSIS_INTERVAL);
-        }
-    });
-}
-
 /// The floor of the spectrum display. Below this a band is drawn as silence —
 /// without a floor the curve sits on the noise of an idle track.
 const SPECTRUM_FLOOR_DB: f32 = -72.0;
@@ -141,6 +132,7 @@ pub(crate) enum MirrorAxis {
     Gain,
 }
 
+#[derive(Clone)]
 pub(crate) enum UiEvent {
     SelectTab(usize),
     Hover(Option<usize>),
@@ -243,6 +235,11 @@ pub fn create(
     create_vizia_editor(state, ViziaTheming::None, move |cx, _| {
         theme::install(cx);
 
+        // **Started before the model, because the model holds what stops
+        // it.** The lifeline dies with the window's context, and the
+        // thread ends within one interval (`nxe_ui::heartbeat`).
+        let heartbeat = nxe_ui::heartbeat::start(cx, ANALYSIS_INTERVAL, UiEvent::Poll);
+
         Ui {
             tab: if params.detail_tab.load(Ordering::Relaxed) {
                 TAB_DETAIL
@@ -258,12 +255,9 @@ pub fn create(
             density: vec![0.0; PAN_BINS],
             spectrum: Vec::new(),
             params: params.clone(),
+            heartbeat,
         }
         .build(cx);
-
-        // Parameter changes wake the binding system on their own; an idle
-        // window with audio running does not. The meter needs its own heartbeat.
-        start_heartbeat(cx);
 
         VStack::new(cx, |cx| {
             header(cx);
