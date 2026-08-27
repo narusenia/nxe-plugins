@@ -186,6 +186,7 @@ mod tests {
         params.direct.smoothed.reset(params.direct.value());
         params.room.smoothed.reset(params.room.value());
         params.damping.smoothed.reset(params.damping.value());
+        params.width.smoothed.reset(params.width.value());
         params.mix.smoothed.reset(params.mix.value());
         params.output.smoothed.reset(params.output.value());
         plugin
@@ -216,6 +217,7 @@ mod tests {
         assert_eq!(macros.direct, 0.5);
         assert_eq!(macros.room, 0.5);
         assert_eq!(macros.damping, 0.5);
+        assert_eq!(macros.width, 0.6);
         assert_eq!(macros.mix, 1.0);
         assert_eq!(macros.output, 1.0);
     }

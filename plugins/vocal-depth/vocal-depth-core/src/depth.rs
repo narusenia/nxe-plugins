@@ -106,6 +106,9 @@ pub struct Macros {
     /// How much high-frequency loss distance brings. Exactly none at zero
     /// (`REQ-VDP-005`).
     pub damping: f32,
+    /// How far the space spreads. **The reflections only** — the voice stays
+    /// where it is (`REQ-VDP-007`).
+    pub width: f32,
     /// Dry to wet. **Exactly dry at zero, bit for bit** (`REQ-VDP-001`).
     pub mix: f32,
     /// Final gain, linear. **Exactly 1.0 by default**, because the bit-identity
@@ -120,6 +123,7 @@ impl Default for Macros {
             direct: 0.5,
             room: 0.5,
             damping: 0.5,
+            width: 0.6,
             mix: 1.0,
             output: 1.0,
         }
@@ -135,6 +139,7 @@ impl Macros {
             direct: unit(self.direct),
             room: unit(self.room),
             damping: unit(self.damping),
+            width: unit(self.width),
             mix: unit(self.mix),
             output: if self.output.is_finite() {
                 self.output.clamp(0.0, 4.0)
@@ -177,6 +182,10 @@ pub struct Resolved {
     pub direct_corner_hz: Option<f32>,
     /// [`crate::damping::Damping::reflected_corner_hz`].
     pub reflected_corner_hz: Option<f32>,
+    /// [`crate::width::Width::reflected_power_factor`]. **The one term here
+    /// that is exactly right for every material**, because the reflections'
+    /// correlation is this design's property rather than the signal's.
+    pub width_power_factor: f32,
 }
 
 /// The fixed grid the wet power is resolved on.
@@ -246,6 +255,10 @@ impl Probe {
             resolved.tap_energy.max(0.0)
         } else {
             0.0
+        } * if resolved.width_power_factor.is_finite() {
+            resolved.width_power_factor.clamp(0.0, 1.0)
+        } else {
+            1.0
         };
 
         let mut power = 0.0;
@@ -316,6 +329,7 @@ mod tests {
             tap_energy,
             direct_corner_hz: None,
             reflected_corner_hz: None,
+            width_power_factor: 1.0,
         }
     }
 
@@ -415,6 +429,7 @@ mod tests {
             direct: f32::INFINITY,
             room: -1e9,
             damping: f32::NAN,
+            width: f32::NEG_INFINITY,
             mix: 1e9,
             output: f32::NEG_INFINITY,
         }
@@ -426,6 +441,7 @@ mod tests {
         assert_eq!(sanitised.direct, 0.0);
         assert_eq!(sanitised.room, 0.0);
         assert_eq!(sanitised.damping, 0.0);
+        assert_eq!(sanitised.width, 0.0);
         assert_eq!(sanitised.mix, 1.0);
         // `output` is the exception: 1.0 is the harmless reading there, since 0
         // would mute the plugin.

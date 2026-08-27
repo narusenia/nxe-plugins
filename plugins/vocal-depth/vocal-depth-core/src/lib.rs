@@ -12,9 +12,11 @@ pub mod depth;
 pub mod direct;
 pub mod engine;
 pub mod reflections;
+pub mod width;
 
 pub use damping::Damping;
 pub use depth::Macros;
 pub use direct::Direct;
 pub use engine::Engine;
 pub use reflections::Reflections;
+pub use width::Width;

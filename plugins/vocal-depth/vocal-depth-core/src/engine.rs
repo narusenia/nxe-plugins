@@ -15,14 +15,14 @@
 //!
 //! Specified in `plugins/vocal-depth/docs/specifications/dsp.md`.
 //!
-//! **The stereo width (`VDP-6`) and `CLARITY` (`VDP-7`) are not wired yet.**
-//! The normalisation is written so each one drops into the sum in
-//! `depth::Probe::gain` as another magnitude.
+//! **`CLARITY` (`VDP-7`) is not wired yet.** The normalisation is written so it
+//! drops into the sum in `depth::Probe::gain` like the others.
 
 use crate::damping::Damping;
 use crate::depth::{Macros, Probe, Resolved};
 use crate::direct::Direct;
 use crate::reflections::Reflections;
+use crate::width::Width;
 
 /// How fast the engine's own gains follow the parameters.
 ///
@@ -100,6 +100,7 @@ pub struct Engine {
     direct: Direct,
     reflections: Reflections,
     damping: Damping,
+    width: Width,
     macros: Macros,
     /// The loudness normalisation, resolved from the parameters only.
     normalisation: Smoothed,
@@ -118,12 +119,14 @@ impl Engine {
             direct: Direct::new(sample_rate),
             reflections: Reflections::new(sample_rate),
             damping: Damping::new(sample_rate),
+            width: Width::new(sample_rate),
             // Not the default: `set` returns early when nothing moved.
             macros: Macros {
                 depth: f32::NAN,
                 direct: f32::NAN,
                 room: f32::NAN,
                 damping: f32::NAN,
+                width: f32::NAN,
                 mix: f32::NAN,
                 output: f32::NAN,
             },
@@ -148,6 +151,7 @@ impl Engine {
         self.direct.set(macros.direct_settings(0.0));
         self.reflections.set(macros.reflection_settings());
         self.damping.set(macros.damping, macros.depth);
+        self.width.set(macros.width, macros.depth);
 
         // **After the stages, not before.** The normalisation is resolved from
         // what they were actually given, so there is one place that decides
@@ -158,6 +162,7 @@ impl Engine {
                 tap_energy: self.reflections.tap_energy(),
                 direct_corner_hz: self.damping.direct_corner_hz(),
                 reflected_corner_hz: self.damping.reflected_corner_hz(),
+                width_power_factor: self.width.reflected_power_factor(),
             },
             self.sample_rate,
         );
@@ -180,9 +185,13 @@ impl Engine {
         let (direct_left, direct_right) =
             self.damping
                 .process_direct(direct_left, direct_right, self.direct.opening());
+        // **Last on the direct path**, and the one operation here a mono sum
+        // cannot see (`crate::width`).
+        let (direct_left, direct_right) = self.width.direct(direct_left, direct_right);
 
         let (wet_left, wet_right) = self.reflections.process(left, right);
         let (wet_left, wet_right) = self.damping.process_reflected(wet_left, wet_right);
+        let (wet_left, wet_right) = self.width.reflected(wet_left, wet_right);
 
         let normalisation = self.normalisation.next();
         let mix = self.mix;
@@ -237,6 +246,7 @@ impl Engine {
         self.direct.reset();
         self.reflections.reset();
         self.damping.reset();
+        self.width.reset();
         self.normalisation.snap();
     }
 }
@@ -557,6 +567,7 @@ mod tests {
                 direct: f32::NAN,
                 room: f32::NAN,
                 damping: f32::NAN,
+                width: f32::NAN,
                 mix: f32::NAN,
                 output: f32::NAN,
             },
@@ -565,6 +576,7 @@ mod tests {
                 direct: -1e9,
                 room: 1e9,
                 damping: f32::INFINITY,
+                width: -1e9,
                 mix: f32::NEG_INFINITY,
                 output: 1e9,
             },
