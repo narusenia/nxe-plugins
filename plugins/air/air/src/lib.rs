@@ -3,10 +3,7 @@
 //!
 //! No DSP lives here (`.agents/rules/rust.md`).
 //!
-//! **There is no editor yet** (`AIR-4`). The host's generic parameter list is
-//! enough to hear the layer, and hearing it is what the following units are
-//! judged against — the same order `VEL-5` used, and for the same reason: the
-//! Follow Engine is the part whose success is judged by ear (`air-plan.md`).
+//! The window is `ui`. **One screen, no tabs** (`REQ-AIR-013`).
 
 use air_core::Engine;
 use nih_plug::prelude::*;
@@ -14,6 +11,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 mod params;
+mod ui;
 
 use params::AirParams;
 
@@ -33,6 +31,8 @@ static INSTANCES: AtomicU32 = AtomicU32::new(0);
 
 struct Air {
     params: Arc<AirParams>,
+    /// The window's size and position, which the host saves with the project.
+    editor_state: Arc<nih_plug_vizia::ViziaState>,
     engine: Engine,
     seed: u32,
     sample_rate: f32,
@@ -49,6 +49,7 @@ impl Default for Air {
             ^ 0x4149_5230;
         Self {
             params: Arc::new(AirParams::default()),
+            editor_state: ui::default_state(),
             engine: Engine::new(FALLBACK_SAMPLE_RATE, seed),
             seed,
             sample_rate: FALLBACK_SAMPLE_RATE,
@@ -85,6 +86,10 @@ impl Plugin for Air {
 
     fn params(&self) -> Arc<dyn Params> {
         self.params.clone()
+    }
+
+    fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
+        ui::create(self.params.clone(), self.editor_state.clone())
     }
 
     /// The only place that allocates. Everything the audio thread touches is
