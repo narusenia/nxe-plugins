@@ -23,6 +23,7 @@
 use nxe_audio::oversample::Factor;
 
 use crate::follow::{self, Depths, Follow};
+use crate::guard::Excess;
 use crate::layer::{self, Layer};
 
 /// Everything the engine needs once per block.
@@ -39,6 +40,9 @@ pub struct Shape {
     /// static generator** — which is Velour, and the first half of the boundary
     /// audit (`REQ-AIR-002`).
     pub depths: Depths,
+    /// Advanced: the protection's bipolar deviation, resting at zero
+    /// (`REQ-AIR-009`).
+    pub guard: f32,
     pub factor: Factor,
 }
 
@@ -53,6 +57,7 @@ impl Default for Shape {
             drive: settings.drive,
             bias: settings.bias,
             depths: [0.0; follow::DETECTORS],
+            guard: 0.0,
             factor: settings.factor,
         }
     }
@@ -62,6 +67,11 @@ impl Default for Shape {
 pub struct Engine {
     layer: Layer,
     follow: Follow,
+    excess: Excess,
+    /// The previous frame's output, summed. **The protection judges the
+    /// result**, so it has to read what came out — which makes it a feedback
+    /// loop, and one sample of delay is what makes that safe.
+    previous: f32,
     /// The last frame of layer, for the display and for the tests — **taken
     /// directly rather than by subtracting the dry back out**, which throws
     /// away most of the layer's precision when the source is louder
@@ -74,6 +84,8 @@ impl Engine {
         Self {
             layer: Layer::new(sample_rate, seed),
             follow: Follow::new(sample_rate),
+            excess: Excess::new(sample_rate),
+            previous: 0.0,
             generated: (0.0, 0.0),
         }
     }
@@ -93,6 +105,7 @@ impl Engine {
             focus: shape.focus,
             depths: shape.depths,
         });
+        self.excess.set(shape.focus, shape.guard);
     }
 
     /// One frame. **Audio rate.**
@@ -120,13 +133,19 @@ impl Engine {
         // **The detectors read the input, not the output.** What the layer is
         // made to follow is the music, and the layer is not the music.
         self.follow.push((left + right) * 0.5);
-        self.generated = self
-            .layer
-            .process(left, right, surface * self.follow.gain());
-        (
+        // **The protection reads the output.** The question is whether the
+        // result is too bright, and one sample of delay is what keeps that from
+        // being a loop that feeds itself (`crate::guard`).
+        self.excess.push(self.previous);
+
+        let gain = surface * self.follow.gain() * self.excess.gain();
+        self.generated = self.layer.process(left, right, gain);
+        let output = (
             left + mix * self.generated.0,
             right + mix * self.generated.1,
-        )
+        );
+        self.previous = (output.0 + output.1) * 0.5;
+        output
     }
 
     /// The layer alone, as of the last frame.
@@ -138,6 +157,13 @@ impl Engine {
     /// layer gone, and only the display can say which (`REQ-AIR-018`).
     pub fn follow_coefficients(&self) -> [f32; follow::DETECTORS] {
         self.follow.coefficients()
+    }
+
+    /// How far the protection is pulling, in dB. **It has to be on screen**:
+    /// pulled hard, the layer disappears, and a layer that disappeared without
+    /// saying why reads as a broken plugin (`REQ-AIR-009`).
+    pub fn guard_reduction_db(&self) -> f32 {
+        self.excess.reduction_db()
     }
 
     /// Where the layer sits, in Hz.
@@ -153,6 +179,8 @@ impl Engine {
     pub fn reset(&mut self) {
         self.layer.reset();
         self.follow.reset();
+        self.excess.reset();
+        self.previous = 0.0;
         self.generated = (0.0, 0.0);
     }
 }

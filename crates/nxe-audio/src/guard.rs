@@ -164,6 +164,30 @@ impl<const N: usize> RelativeGuard<N> {
         }
     }
 
+    /// Moves the thresholds without disturbing anything else.
+    ///
+    /// **A threshold is a number, not a filter**, so changing one costs a
+    /// conversion and keeps every follower's state. A guard whose threshold is
+    /// a control needs this: rebuilding to change it would empty the reference
+    /// follower, and a relative detector with an empty reference reads
+    /// **infinitely** harsh until it fills (`SPK-18`).
+    pub fn set_thresholds(&mut self, thresholds_db: [f32; N]) {
+        self.thresholds = thresholds_db.map(power_ratio);
+    }
+
+    /// Moves where the followers listen, keeping their state.
+    ///
+    /// The same reason [`crate::biquad::BandPass::retune`] exists: an edge that
+    /// follows a control has to move while signal is running through it.
+    pub fn retune(&mut self, reference: Band, bands: [Band; N], sample_rate: f32) {
+        self.reference
+            .band
+            .retune(reference.low_hz, reference.high_hz, sample_rate);
+        for (follower, band) in self.bands.iter_mut().zip(bands) {
+            follower.band.retune(band.low_hz, band.high_hz, sample_rate);
+        }
+    }
+
     /// The gain whatever the band guards should be multiplied by.
     pub fn gain(&self, index: usize) -> f32 {
         self.gains[index]

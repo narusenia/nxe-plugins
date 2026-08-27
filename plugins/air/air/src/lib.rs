@@ -240,6 +240,7 @@ mod tests {
                 "fol_env",
                 "fol_brt",
                 "fol_trn",
+                "guard",
                 "os",
             ]
         );

@@ -358,7 +358,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| AIR-6 | **保護（Excess Guard）**。`nxe_audio::guard` の値違い、検出帯は `FOCUS` に追従 | `../../plugins/air/docs/implementation/air-plan.md` |
+| AIR-7 | **詰め**（レート・ブロックサイズ・極端値・確保・ジッパー） | `../../plugins/air/docs/implementation/air-plan.md` |
 | SPK-18 | **既定値と耳** ✅ — 測れるものは全部固定。既定値は 1 つも動かす理由が出なかった | `sparkleur-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 
@@ -509,8 +509,8 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | AIR-2 | 倍音層（`nxe_audio::shaper` の借用 + 上蓋） | ✅ 折り返し −70.0 dB `1a6e01f` |
 | AIR-3 | `BLEND` / `CHARACTER` / `FOCUS`（層を 1 個の対象に） | ✅ `BLEND` の掃引 0.02 dB `58a269c` |
 | AIR-4 | ラッパとパラメータ（**ここで音が出る**） | ✅ nih-plug のまま `7f8ac9b` |
-| AIR-5 | Follow Engine（`ENVELOPE` / `BRIGHTNESS` / `TRANSIENT`）。`nxe_audio::envelope::Power` を上げた | ✅ しきい値は分布から |
-| AIR-6 | 保護（Excess Guard） | ⬜ |
+| AIR-5 | Follow Engine（`ENVELOPE` / `BRIGHTNESS` / `TRANSIENT`）。`nxe_audio::envelope::Power` を上げた | ✅ `0f998f5` |
+| AIR-6 | 保護（Excess Guard） | ✅ ピンクと倍音列で 0.00 dB |
 | AIR-7 | 詰め（レート・ブロック・極端値） | ⬜ |
 | AIR-8 | UI マクロ層（メイン 7 本） | ⬜ |
 | AIR-9 | UI スペクトルの重ね描き（**画面の主役**） | ⬜ |

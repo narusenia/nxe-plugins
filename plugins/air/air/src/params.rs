@@ -6,9 +6,7 @@
 //!
 //! **Adding a parameter later is safe** — nih-plug keys them by id, not by
 //! position — but **changing or removing an id is not**, so the ids below are
-//! as final as `CLAP_ID`. The guard's deviation arrives in `AIR-6`; it is not
-//! declared here because a control that does nothing is worse than one that
-//! does not exist yet.
+//! as final as `CLAP_ID`.
 //!
 //! ## Two layers
 //!
@@ -112,6 +110,12 @@ pub struct AirParams {
     #[id = "fol_trn"]
     pub follow_transient: FloatParam,
 
+    /// Advanced: the protection's bipolar deviation (`REQ-AIR-009`). Zero is
+    /// the shipped threshold; **the bottom of the range is exactly off** and
+    /// the top is stricter.
+    #[id = "guard"]
+    pub guard: FloatParam,
+
     #[id = "os"]
     pub oversample: EnumParam<FactorParam>,
 }
@@ -176,6 +180,7 @@ impl Default for AirParams {
             follow_envelope: bipolar("Follow Envelope"),
             follow_brightness: bipolar("Follow Brightness"),
             follow_transient: bipolar("Follow Transient"),
+            guard: bipolar("Guard"),
 
             // 4x by default: 2x is a cost saving, not an equal — it leaves
             // aliasing about 14 dB higher (`nxe_audio::oversample`).
@@ -237,6 +242,7 @@ impl AirParams {
             drive: self.drive.smoothed.next_step(samples),
             bias: self.bias.smoothed.next_step(samples),
             depths: self.depths(samples),
+            guard: self.guard.smoothed.next_step(samples),
             factor: self.oversample.value().into(),
         }
     }

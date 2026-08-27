@@ -10,12 +10,14 @@
 
 pub mod engine;
 pub mod follow;
+pub mod guard;
 pub mod harmonic;
 pub mod layer;
 pub mod noise;
 
 pub use engine::{Engine, Shape};
 pub use follow::Follow;
+pub use guard::Excess;
 pub use harmonic::Harmonic;
 pub use layer::Layer;
 pub use noise::Noise;
