@@ -254,8 +254,10 @@ impl Probe {
         // **The corners the parameters ask for, not the ones the transient
         // opens.** That one is signal-dependent, and it only ever lets more
         // through — bounded, and measured in `VDP-2`.
-        let direct_damping = lowpass_or_pass(resolved.direct_corner_hz, sample_rate);
-        let reflected_damping = lowpass_or_pass(resolved.reflected_corner_hz, sample_rate);
+        let direct_damping =
+            |hz: f32| damping_magnitude(resolved.direct_corner_hz, hz, sample_rate);
+        let reflected_damping =
+            |hz: f32| damping_magnitude(resolved.reflected_corner_hz, hz, sample_rate);
         let tap_energy = if resolved.tap_energy.is_finite() {
             resolved.tap_energy.max(0.0)
         } else {
@@ -270,14 +272,12 @@ impl Probe {
         for &hz in &self.frequencies {
             // The direct path is minimum-phase sections in series, so their
             // magnitudes are the whole story.
-            let direct_magnitude =
-                presence.magnitude(hz, sample_rate) * direct_damping.magnitude(hz, sample_rate);
+            let direct_magnitude = presence.magnitude(hz, sample_rate) * direct_damping(hz);
 
             // The reflections: incoherent with the direct sound above roughly
             // 90 Hz, and highpassed at 200 so the band where that is untrue has
             // no energy in it.
-            let reflected =
-                highpass.magnitude(hz, sample_rate) * reflected_damping.magnitude(hz, sample_rate);
+            let reflected = highpass.magnitude(hz, sample_rate) * reflected_damping(hz);
 
             power += self.weight
                 * (direct_magnitude * direct_magnitude + tap_energy * reflected * reflected);
@@ -298,17 +298,20 @@ impl Default for Probe {
     }
 }
 
-/// A lowpass, or a pass-through when the caller says there is none.
+/// What a damping side does at `hz`, or nothing when the caller says there is
+/// none.
 ///
-/// The corner is moved back up by `DAMPING_COMPENSATION` before it is modelled;
-/// see that constant.
-fn lowpass_or_pass(hz: Option<f32>, sample_rate: f32) -> Coefficients {
-    match hz {
-        Some(hz) => {
-            let modelled = hz * 2.0f32.powf((OPEN_HZ / hz).log2() * (1.0 - DAMPING_COMPENSATION));
-            Coefficients::lowpass(modelled.min(OPEN_HZ), BUTTERWORTH_Q, sample_rate)
+/// **The shape comes from `crate::damping`**, so this cannot drift away from the
+/// filters it describes. The corner is moved back up by `DAMPING_COMPENSATION`
+/// first; see that constant.
+fn damping_magnitude(corner_hz: Option<f32>, hz: f32, sample_rate: f32) -> f32 {
+    match corner_hz {
+        Some(corner) => {
+            let modelled =
+                corner * 2.0f32.powf((OPEN_HZ / corner).log2() * (1.0 - DAMPING_COMPENSATION));
+            crate::damping::Damping::magnitude(modelled.min(OPEN_HZ), hz, sample_rate)
         }
-        None => Coefficients::PASS,
+        None => 1.0,
     }
 }
 

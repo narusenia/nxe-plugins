@@ -99,6 +99,40 @@ impl Coefficients {
         }
     }
 
+    /// A one-pole lowpass, expressed as a section so it costs no new type.
+    ///
+    /// **For a corner that moves while signal is running through it.** A
+    /// second-order lowpass near Nyquist has its poles close to the negative
+    /// real axis, and replacing its coefficients leaves the `y` history
+    /// inconsistent with the new ones — which **excites that Nyquist-adjacent
+    /// mode**. The result is a burst of ringing at half the sample rate every
+    /// time the corner is retuned, and it gets *worse* the more often you
+    /// retune: Vocal Depth's damping measured 7 to 12 times the background
+    /// roughness that way, rising as the retune step was made finer (`VDP-8`).
+    ///
+    /// A one-pole has a single real pole and nothing to ring. `b1`, `b2` and
+    /// `a2` are zero, so [`Biquad::process`] runs it unchanged and
+    /// [`magnitude`](Self::magnitude) describes it correctly.
+    pub fn one_pole_lowpass(hz: f32, sample_rate: f32) -> Self {
+        if !(hz.is_finite() && hz > 0.0) {
+            return Self::SILENT;
+        }
+        if hz >= sample_rate * NYQUIST_MARGIN {
+            return Self::PASS;
+        }
+
+        // `1 - e^{-ω}`, which is the same coefficient a one-pole follower uses
+        // for a time constant (`crate::envelope::coefficient`).
+        let g = 1.0 - (-TAU * hz / sample_rate).exp();
+        Self {
+            b0: g,
+            b1: 0.0,
+            b2: 0.0,
+            a1: g - 1.0,
+            a2: 0.0,
+        }
+    }
+
     /// A peaking section: `gain_db` at `hz`, unity away from it.
     ///
     /// **Written for a band that has to come *down*** (`VDP-3`). Everything
@@ -279,6 +313,58 @@ impl BandPass {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A one-pole lowpass is 3.01 dB down at its corner and falls at 6 dB an
+    /// octave, and — the reason it exists — **retuning it does not ring**
+    /// (`VDP-8`).
+    #[test]
+    fn a_one_pole_lowpass_falls_at_six_decibels_an_octave() {
+        const RATE: f32 = 48_000.0;
+        let coefficients = Coefficients::one_pole_lowpass(1_000.0, RATE);
+
+        let at_corner = 20.0 * coefficients.magnitude(1_000.0, RATE).log10();
+        assert!(
+            (at_corner + 3.01).abs() < 0.3,
+            "at the corner: {at_corner:.2} dB"
+        );
+
+        let one_octave = 20.0 * coefficients.magnitude(2_000.0, RATE).log10();
+        let two_octaves = 20.0 * coefficients.magnitude(4_000.0, RATE).log10();
+        let slope = two_octaves - one_octave;
+        assert!(
+            (slope + 6.0).abs() < 1.0,
+            "the second octave fell {slope:.2} dB, not 6"
+        );
+
+        // And a moving corner leaves no ringing: sweep it across a tone,
+        // retuning every sample, and look for a second difference bigger than
+        // the tone's own. A second-order section does this at 7 to 12 times the
+        // background (`VDP-8`).
+        let tone: Vec<f32> = (0..24_000)
+            .map(|index| (index as f32 * TAU * 700.0 / RATE).sin() * 0.5)
+            .collect();
+        let mut filter = Biquad::new(Coefficients::one_pole_lowpass(20_000.0, RATE));
+        let mut rendered = Vec::with_capacity(tone.len());
+        for (index, &sample) in tone.iter().enumerate() {
+            // 20 kHz down to 2 kHz over a fifth of a second, retuned every
+            // sample — far harsher than a parameter smoother would ask for.
+            let travel = (index as f32 / 9_600.0).min(1.0);
+            let hz = 20_000.0 * (2.0f32).powf(-3.32 * travel);
+            filter.set(Coefficients::one_pole_lowpass(hz, RATE));
+            rendered.push(filter.process(sample));
+        }
+        let second = |i: usize| rendered[i + 2] - 2.0 * rendered[i + 1] + rendered[i];
+        let worst = (100..rendered.len() - 3)
+            .map(|i| second(i).abs())
+            .fold(0.0f32, f32::max);
+        // The tone's own curvature at 700 Hz and 0.5 amplitude.
+        let own = (TAU * 700.0 / RATE).powi(2) * 0.5;
+        assert!(
+            worst < 2.0 * own,
+            "sweeping the corner rang at {:.1} times the tone's own curvature",
+            worst / own
+        );
+    }
 
     /// A peaking section hits its gain at its centre, comes back to unity away
     /// from it, and — the reason it exists — **a cut actually removes power**

@@ -57,10 +57,21 @@ const SLOPE: f32 = 1.0;
 const ATTACK_SECONDS: f32 = 0.030;
 const RELEASE_SECONDS: f32 = 0.200;
 
+/// How fast `CLARITY · DEPTH` travels toward what the parameters ask for.
+///
+/// **The guard's own followers smooth its response to the *signal*, not to the
+/// *controls*.** Multiplying its output by an amount that jumps puts a step
+/// straight into the presence band — `VDP-8` saw it as 20 times the background
+/// roughness after the damping side had been fixed.
+const TRAVEL_SECONDS: f32 = 0.020;
+
 pub struct Clarity {
     guard: RelativeGuard<1>,
     /// `CLARITY · distance`, which is what makes both ends exact.
+    target: f32,
+    /// Where the amount has got to. Smoothed at audio rate.
     amount: f32,
+    travel: f32,
     lift_db: f32,
 }
 
@@ -88,7 +99,9 @@ impl Clarity {
                 },
                 sample_rate,
             ),
+            target: 0.0,
             amount: 0.0,
+            travel: nxe_audio::envelope::coefficient(TRAVEL_SECONDS, sample_rate),
             lift_db: 0.0,
         }
     }
@@ -100,7 +113,7 @@ impl Clarity {
     /// mechanism nobody can switch off is one nobody can hear (`REQ-VDP-006`),
     /// and `DEPTH` = close because there is nothing to put back there.
     pub fn set(&mut self, amount: f32, distance: f32) {
-        self.amount = unit(amount) * unit(distance);
+        self.target = unit(amount) * unit(distance);
     }
 
     /// One sample of the mono sum, returning how much to lift the presence
@@ -109,6 +122,13 @@ impl Clarity {
     /// Detection is linked across the pair (`REQ-VDP-011`): one reading drives
     /// both channels, so this cannot move the image.
     pub fn push(&mut self, mono: f32) -> f32 {
+        let remaining = self.target - self.amount;
+        self.amount = if remaining.abs() < 1e-4 {
+            self.target
+        } else {
+            self.amount + remaining * self.travel
+        };
+
         self.guard.push(mono, [self.amount]);
         // The guard reports a reduction, which is negative or zero. The deficit
         // is its magnitude.
@@ -125,6 +145,7 @@ impl Clarity {
 
     pub fn reset(&mut self) {
         self.guard.reset();
+        self.amount = self.target;
         self.lift_db = 0.0;
     }
 }

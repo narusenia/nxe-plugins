@@ -11,8 +11,20 @@
 //! further than the body of a note does, and without that the far end is a
 //! cloth over the voice. The detector is already running for the presence band
 //! (`crate::direct`), so this costs a coefficient rebuild and nothing else.
+//!
+//! ## Two one-poles, not one biquad
+//!
+//! **The corner moves while signal is running through it**, and that rules out
+//! a second-order section: its poles sit near the negative real axis, so
+//! replacing its coefficients leaves the `y` history inconsistent with them and
+//! **rings at half the sample rate**. `VDP-8` measured 7 to 12 times the
+//! background roughness that way, and *finer* retuning made it worse.
+//!
+//! Two one-poles in series give the same 12 dB an octave with nothing but real
+//! poles, so there is no mode to excite
+//! (`nxe_audio::biquad::Coefficients::one_pole_lowpass`).
 
-use nxe_audio::biquad::{BUTTERWORTH_Q, Biquad, Coefficients};
+use nxe_audio::biquad::{Biquad, Coefficients};
 
 /// Where a corner sits with nothing asked of it.
 const OPEN_HZ: f32 = 20_000.0;
@@ -57,102 +69,134 @@ const NYQUIST_CEILING: f32 = 0.45;
 /// that — the same trade `crate::direct` makes for the presence gain.
 const RETUNE_STEP: f32 = 1.035;
 
+/// How fast a corner travels toward what the parameters ask for.
+///
+/// **Retuning keeps a filter's state, but it does not make the change smooth**:
+/// `y[n]` starts with `b0 · x[n]`, so a `b0` that jumps puts a step in the
+/// output — and switching the whole section in and out of bypass starts it from
+/// empty state, which is worse. `VDP-8` measured a step in every macro at once
+/// as **66 times** the background roughness, and this side was most of it.
+const TRAVEL_SECONDS: f32 = 0.020;
+
+/// Below this many octaves the section is given `Coefficients::PASS`, so zero
+/// is exactly transparent.
+///
+/// **The sections keep running either way.** Skipping `process` while the corner
+/// is open leaves their state empty, and the sample where they engage again then
+/// starts from zeros in the middle of a waveform — which is a step, and was the
+/// last one left in `VDP-8` at **31 times** the background roughness. With
+/// `PASS` the state stays filled with the signal, and a near-identity filter
+/// handed that history continues smoothly.
+const BYPASS_OCTAVES: f32 = 1e-3;
+
+/// How many one-poles each side puts in series. Two gives 12 dB an octave.
+const STAGES: usize = 2;
+
 pub struct Damping {
     sample_rate: f32,
-    direct: [Biquad; 2],
-    reflected: [Biquad; 2],
+    /// `[channel][stage]`.
+    direct: [[Biquad; STAGES]; 2],
+    reflected: [[Biquad; STAGES]; 2],
     /// How far each side is asked to fall, in octaves below [`OPEN_HZ`].
+    ///
     /// **Octaves rather than hertz**, because the transient adds to this and
     /// adding hertz to a corner is not what "one octave back" means — the first
     /// version added them in the wrong direction and opened the corner a whole
     /// octave too far (`VDP-5`).
+    direct_target: f32,
+    reflected_target: f32,
+    /// Where the two corners have got to. Smoothed toward the targets at audio
+    /// rate ([`TRAVEL_SECONDS`]).
     direct_octaves: f32,
     reflected_octaves: f32,
-    /// What the direct coefficients were last built for.
-    tuned_hz: f32,
-    /// Whether either side is doing anything at all.
-    active: bool,
+    travel: f32,
+    /// What each side's coefficients were last built for, in hertz.
+    tuned_direct_hz: f32,
+    tuned_reflected_hz: f32,
 }
 
 impl Damping {
     pub fn new(sample_rate: f32) -> Self {
         let mut built = Self {
             sample_rate,
-            direct: [Biquad::new(Coefficients::PASS); 2],
-            reflected: [Biquad::new(Coefficients::PASS); 2],
+            direct: [[Biquad::new(Coefficients::PASS); STAGES]; 2],
+            reflected: [[Biquad::new(Coefficients::PASS); STAGES]; 2],
+            direct_target: 0.0,
+            reflected_target: 0.0,
             direct_octaves: 0.0,
             reflected_octaves: 0.0,
-            tuned_hz: f32::NAN,
-            active: false,
+            travel: nxe_audio::envelope::coefficient(TRAVEL_SECONDS, sample_rate),
+            tuned_direct_hz: f32::NAN,
+            tuned_reflected_hz: f32::NAN,
         };
         built.set(0.0, 0.5);
+        built.reset();
         built
     }
 
-    /// Resolves both corners. **Block rate.**
+    /// Resolves both targets. **Block rate.**
     ///
     /// `amount` is `DAMPING` and `distance` is `DEPTH`; both are expected in
     /// `0..=1` and clamped anyway (`REQ-VDP-016`).
+    ///
+    /// **Exactly nothing at zero** — a control that cannot be switched off is
+    /// one nobody can hear the effect of (`REQ-VDP-006` says the same about
+    /// `CLARITY`) — and the corners *travel* there rather than jumping, so
+    /// switching it off is not a step either.
     pub fn set(&mut self, amount: f32, distance: f32) {
         let amount = unit(amount);
         let distance = unit(distance);
 
-        // **Exactly nothing at zero.** A control that cannot be switched off is
-        // a control nobody can hear the effect of (`REQ-VDP-006` says the same
-        // about `CLARITY`).
-        self.active = amount > 0.0;
-        if !self.active {
-            self.direct_octaves = 0.0;
-            self.reflected_octaves = 0.0;
-            self.tune(Coefficients::PASS, Coefficients::PASS);
-            self.tuned_hz = f32::NAN;
-            return;
-        }
-
         let direct_amount = amount * (DIRECT_NEAR + DIRECT_SPAN * distance);
         let reflected_amount = amount * (REFLECTED_NEAR + REFLECTED_SPAN * distance);
 
-        self.direct_octaves = DIRECT_OCTAVES * direct_amount;
-        self.reflected_octaves = REFLECTED_OCTAVES * reflected_amount;
-
-        let reflected = Coefficients::lowpass(
-            self.corner(self.reflected_octaves),
-            BUTTERWORTH_Q,
-            self.sample_rate,
-        );
-        for section in &mut self.reflected {
-            section.set(reflected);
-        }
-        self.retune(self.corner(self.direct_octaves));
+        self.direct_target = DIRECT_OCTAVES * direct_amount;
+        self.reflected_target = REFLECTED_OCTAVES * reflected_amount;
     }
 
     /// The direct sound, with the corner opened by however far the transient
     /// detector stands open. **Audio rate.**
     pub fn process_direct(&mut self, left: f32, right: f32, opening: f32) -> (f32, f32) {
-        if !self.active {
-            return (left, right);
-        }
+        self.direct_octaves = travel(self.direct_octaves, self.direct_target, self.travel);
 
-        // **Minus, not plus.** `direct_octaves` counts octaves *down*, and the
-        // transient's job is to give some of them back.
+        // **Minus, not plus.** The octaves count *down*, and the transient's job
+        // is to give some of them back.
         let wanted = self.corner(self.direct_octaves - TRANSIENT_OCTAVES * opening.clamp(0.0, 1.0));
-        let ratio = wanted / self.tuned_hz;
-        if !(1.0 / RETUNE_STEP..RETUNE_STEP).contains(&ratio) {
-            self.retune(wanted);
+        if needs_retune(wanted, self.tuned_direct_hz) {
+            let coefficients = self.coefficients(self.direct_octaves, wanted);
+            for channel in &mut self.direct {
+                for stage in channel {
+                    stage.set(coefficients);
+                }
+            }
+            self.tuned_direct_hz = wanted;
         }
 
-        (self.direct[0].process(left), self.direct[1].process(right))
+        (
+            run(&mut self.direct[0], left),
+            run(&mut self.direct[1], right),
+        )
     }
 
     /// The reflection bus. **Audio rate.** No transient opening here — a
     /// consonant that arrives from far away arrives on the direct sound.
     pub fn process_reflected(&mut self, left: f32, right: f32) -> (f32, f32) {
-        if !self.active {
-            return (left, right);
+        self.reflected_octaves = travel(self.reflected_octaves, self.reflected_target, self.travel);
+
+        let wanted = self.corner(self.reflected_octaves);
+        if needs_retune(wanted, self.tuned_reflected_hz) {
+            let coefficients = self.coefficients(self.reflected_octaves, wanted);
+            for channel in &mut self.reflected {
+                for stage in channel {
+                    stage.set(coefficients);
+                }
+            }
+            self.tuned_reflected_hz = wanted;
         }
+
         (
-            self.reflected[0].process(left),
-            self.reflected[1].process(right),
+            run(&mut self.reflected[0], left),
+            run(&mut self.reflected[1], right),
         )
     }
 
@@ -160,26 +204,62 @@ impl Damping {
     /// normalisation (`VDP-3`) and the readout (`REQ-VDP-018`).
     ///
     /// **`None` when `DAMPING` is zero**, which is not the same as a corner at
-    /// 20 kHz: the audio path uses `Coefficients::PASS` there, and a
-    /// normalisation that modelled a real 20 kHz lowpass instead would ask for
-    /// 0.08 dB of gain on a chain that does nothing (`VDP-5`).
+    /// 20 kHz: the audio path bypasses the section there, and a normalisation
+    /// that modelled a real 20 kHz lowpass instead would ask for 0.08 dB of gain
+    /// on a chain that does nothing (`VDP-5`).
     ///
-    /// **Without the transient**, which is signal-dependent and therefore not
-    /// something the normalisation may see.
+    /// **The target, not where the corner has got to**, and **without the
+    /// transient** — both of those move per sample, and the normalisation is
+    /// resolved from the parameters (`REQ-VDP-008`).
     pub fn direct_corner_hz(&self) -> Option<f32> {
-        self.active.then(|| self.corner(self.direct_octaves))
+        (self.direct_target >= BYPASS_OCTAVES).then(|| self.corner(self.direct_target))
     }
 
     pub fn reflected_corner_hz(&self) -> Option<f32> {
-        self.active.then(|| self.corner(self.reflected_octaves))
+        (self.reflected_target >= BYPASS_OCTAVES).then(|| self.corner(self.reflected_target))
     }
 
+    /// The magnitude a side with this corner has at `hz`.
+    ///
+    /// **One owner for the shape.** The loudness normalisation has to model
+    /// exactly what the audio path does (`crate::depth::Probe::gain`), and a
+    /// second copy of "two one-poles, each widened by `STAGE_WIDENING`" is the
+    /// doubled arithmetic the rules warn about.
+    pub fn magnitude(corner_hz: f32, hz: f32, sample_rate: f32) -> f32 {
+        let stage = Coefficients::one_pole_lowpass(corner_hz * STAGE_WIDENING, sample_rate);
+        stage.magnitude(hz, sample_rate).powi(STAGES as i32)
+    }
+
+    /// Clears the filters and puts both corners where the parameters ask,
+    /// without a ramp — what a host does when it loads a session.
     pub fn reset(&mut self) {
-        for section in &mut self.direct {
-            section.reset();
+        for channel in &mut self.direct {
+            for stage in channel {
+                stage.reset();
+            }
         }
-        for section in &mut self.reflected {
-            section.reset();
+        for channel in &mut self.reflected {
+            for stage in channel {
+                stage.reset();
+            }
+        }
+        self.direct_octaves = self.direct_target;
+        self.reflected_octaves = self.reflected_target;
+        self.tuned_direct_hz = f32::NAN;
+        self.tuned_reflected_hz = f32::NAN;
+    }
+
+    /// One stage's coefficients, or `PASS` when the corner is fully open.
+    ///
+    /// **The corner is raised so that two stages together are 3 dB down where
+    /// one stage would be.** Cascading two identical one-poles doubles the
+    /// attenuation in dB, so without this the pair would sit 6 dB down at the
+    /// number the readout shows.
+    fn coefficients(&self, octaves: f32, wanted: f32) -> Coefficients {
+        if octaves < BYPASS_OCTAVES {
+            Coefficients::PASS
+        } else {
+            Coefficients::one_pole_lowpass(wanted * STAGE_WIDENING, self.sample_rate)
         }
     }
 
@@ -188,23 +268,43 @@ impl Damping {
         let hz = OPEN_HZ * 2.0f32.powf(-octaves.max(0.0));
         hz.min(self.sample_rate * NYQUIST_CEILING)
     }
+}
 
-    fn retune(&mut self, hz: f32) {
-        let direct = Coefficients::lowpass(hz, BUTTERWORTH_Q, self.sample_rate);
-        for section in &mut self.direct {
-            section.set(direct);
-        }
-        self.tuned_hz = hz;
-    }
+/// How much higher each stage's corner sits so that [`STAGES`] of them are
+/// 3 dB down where the readout says.
+///
+/// For two one-poles: each has to be 1.5 dB down at the corner, which is at
+/// `1.55` times its own.
+const STAGE_WIDENING: f32 = 1.55;
 
-    fn tune(&mut self, direct: Coefficients, reflected: Coefficients) {
-        for section in &mut self.direct {
-            section.set(direct);
-        }
-        for section in &mut self.reflected {
-            section.set(reflected);
-        }
+/// Runs one channel through its stages.
+fn run(stages: &mut [Biquad; STAGES], input: f32) -> f32 {
+    let mut value = input;
+    for stage in stages {
+        value = stage.process(value);
     }
+    value
+}
+
+/// One step of a corner toward its target, snapping when a one-pole would
+/// otherwise stall (`VDP-1`).
+fn travel(value: f32, target: f32, coefficient: f32) -> f32 {
+    let remaining = target - value;
+    if remaining.abs() < 1e-4 {
+        target
+    } else {
+        value + remaining * coefficient
+    }
+}
+
+/// Whether a corner has drifted far enough from its coefficients to be worth a
+/// rebuild.
+fn needs_retune(wanted: f32, tuned: f32) -> bool {
+    if !tuned.is_finite() {
+        return true;
+    }
+    let ratio = wanted / tuned;
+    !(1.0 / RETUNE_STEP..RETUNE_STEP).contains(&ratio)
 }
 
 fn unit(value: f32) -> f32 {
@@ -226,7 +326,7 @@ mod tests {
     /// skirt is not what is being read (`AIR-2` paid for the single-stage
     /// version of this).
     fn energy_above(signal: &[f32], hz: f32) -> f32 {
-        let coefficients = Coefficients::highpass(hz, BUTTERWORTH_Q, RATE);
+        let coefficients = Coefficients::highpass(hz, nxe_audio::biquad::BUTTERWORTH_Q, RATE);
         let mut stages = [Biquad::new(coefficients); 4];
         signal
             .iter()
