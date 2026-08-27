@@ -1,6 +1,6 @@
 # REQ-VDP — Vocal Depth 要件定義
 
-> 最終更新: 2026-08-27
+> 最終更新: 2026-08-28
 
 ## 概要
 
@@ -171,7 +171,12 @@ Input ─┬───────────────────── dry 
 - **ステータス**: Draft
 - **説明**: 近さを作る側。Presence、Transient、子音の明瞭さ。
 
-- **Presence は 2〜5 kHz の動的なシェルフ**。`nxe_audio::biquad`。
+- **Presence は 2〜5 kHz の動的な帯域**。`nxe_audio::biquad::BandPass` を
+  並列に足す（`x + (g − 1) · BP(x)`）。**シェルフではない** — `nxe-audio` に
+  シェルフが無いのと、シェルフだと 5 kHz より上も動いて `DAMPING`
+  （`REQ-VDP-005`）と同じ帯域を 2 つのパラメータが書くことになるため。
+  **`dsp.md` を書く時点でこの 1 行を直した**（元は「動的なシェルフ」）。
+  Velour と Sparkleur が同じ形をしている。
 - **Transient は既存の検出器**（速い/遅いフォロワの比、`nxe_audio::envelope`）。
   CLOSE で立て、FAR で鈍らせる。**新しい検出器を作らない。**
 - **`DIRECT` は直接音の近さ**。`DEPTH` から独立して触れる。
@@ -530,12 +535,13 @@ Vocal Depth (ここ)     直接音は M にしか居ないので、モノ和で�
 
 ## 対応する仕様
 
-- `../specifications/dsp.md` — 式・係数・時定数・**耳で詰める定数の一覧**
-- `../specifications/ui.md` — 画面・図・必要なコンポーネント
+- [`../specifications/dsp.md`](../specifications/dsp.md) — 式・係数・時定数・
+  **耳で詰める定数の一覧**。**書けた**（2026-08-28）。数字はまだ 1 つも
+  測っていない
+- `../specifications/ui.md` — 画面・図・必要なコンポーネント。**未作成**
 
 実装計画は [`../implementation/vocal-depth-plan.md`](../implementation/vocal-depth-plan.md)
-（`VDP-1`〜`VDP-13`）。**未作成は上の 2 つ** — `dsp.md` を `VDP-1` の前に、
-`ui.md` を `VDP-9` の前に書く。
+（`VDP-1`〜`VDP-13`）。**未作成は `ui.md` だけ** — `VDP-9` の前に書く。
 
 **着手順の根拠**は `../../../../docs/implementation/roadmap.md` の
 「Sparkleur の後 — 構想 6 本の順序」。構想は

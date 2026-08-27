@@ -10,7 +10,7 @@
 - **順序の判断は [`roadmap.md`](roadmap.md)**。この表は「何があるか」、
   ロードマップは「どの順でやるか、なぜその順か」
 
-最終更新: 2026-08-26
+最終更新: 2026-08-28
 
 ## 凡例
 
@@ -23,6 +23,31 @@
 | ❌ | 判断の結果やらないことにした（根拠は計画書に記録） |
 
 ## 現在地
+
+**4 本とも実装完了・公開済み**（2026-08-28）。`doubler-v0.1.3` /
+`velour-v0.1.3` / `sparkleur-v0.1.3` / `air-v0.1.2`。**テスト 474 本、
+`mise run check` は通っている。**
+
+| | 状態 |
+|---|---|
+| Doubler / Velour / Sparkleur / Air | **全単位 ✅**。残るのは `DBL-13`（既定値、耳）と Sparkleur の既定値の主観サインオフだけ。**どちらもリリースの阻害要因ではない** |
+| Vocal Depth | **要件・実装計画・`dsp.md` まで。** 次は **`VDP-1`**（初期反射）。`ui.md` は `VDP-9` の前 |
+| Vocal Glue | 要件のみ。実装単位はまだ無い |
+| CPU（予算 533 µs） | Doubler 85 / Velour 128 / Sparkleur 129 / **Air 47**（エンジンのみ） |
+| 共通クレート | `nxe-audio`（処理）/ `nxe-dsp`（解析）/ `nxe-ui`（ウィジェット）/ `nxe-plug-ui`（結線） |
+
+**この節から下は追記ログで、同じ内容が
+[`../HANDOVER.md`](../HANDOVER.md) にもある。** 状態の正は上の表と
+下の全単位表で、**罠と授業料の正は `HANDOVER.md`**。
+
+**Air と、4 本まとめての重さ修正が入った**（2026-08-27）。`AIR-1`〜`AIR-13` が
+全部 ✅（下の表）。そのあとホストの UI が重くなる不具合を直して 0.1.3 世代を
+公開した — **本命は vizia のバグ 2 つ**（baseview が `should_redraw` を読まず
+毎フレーム全画面を再描画、`fontdb::Database::query` が無キャッシュ）で、
+`narusenia/vizia` の `nxe-2026-08-27` を `[patch]` で当てて**アイドル
+27.7 % → 0.9 %**。別件で表示のハートビートがスレッドを漏らしていたのも直した
+（`nxe_ui::heartbeat::start` が `Lifeline` を返す形）。**詳細と測定値は
+`HANDOVER.md`。**
 
 **Doubler は一通り動いていて、見た目も含めて実機で確認済み**（2026-08-26）。
 残りは下の「今すぐ着手できるもの」と「積み残し」だけ。
@@ -358,8 +383,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| VDP-1 | **初期反射**（Vocal Depth。`vocal-depth-core` もここで作る）。着手前に `dsp.md` を書く | `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md` |
-| SPK-18 | **既定値と耳** ✅ — 測れるものは全部固定。既定値は 1 つも動かす理由が出なかった | `sparkleur-plan.md` |
+| VDP-1 | **初期反射**（Vocal Depth。`vocal-depth-core` もここで作る）。`dsp.md` は書けた | `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 
 Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`）は完了。
@@ -512,8 +536,8 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | AIR-5 | Follow Engine（`ENVELOPE` / `BRIGHTNESS` / `TRANSIENT`）。`nxe_audio::envelope::Power` を上げた | ✅ `0f998f5` |
 | AIR-6 | 保護（Excess Guard） | ✅ ピンクと倍音列で 0.00 dB `6f28afd` |
 | AIR-7 | 詰め（レート・ブロック・極端値・確保・継ぎ目） | ✅ 継ぎ目は原音の −46 dB `80a3613` |
-| AIR-8 | UI マクロ層（メイン 7 本） | ⬜ |
-| AIR-9 | UI スペクトルの重ね描き（**画面の主役**） | ⬜ |
+| AIR-8 | UI マクロ層（メイン 7 本）。**Advanced もここで入れた** | ✅ `e73f56e` |
+| AIR-9 | UI スペクトルの重ね描き（**画面の主役**）。`nxe_ui::dots::DotField` と gallery | ✅ ウィジェットまで `dc39cbe`。窓への配線は `AIR-10` |
 | AIR-10 | UI 読み値・メーター・図と解析の配線（`AIR-11` を含む） | ✅ `a30d3cc` |
 | AIR-11 | 解析の配線 | ✅ `AIR-10` に含めた |
 | AIR-12 | CPU 予算 | ✅ **エンジン 47.2 µs / 予算 533** |
@@ -528,14 +552,17 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 **`VDP-4`（ラッパ）が `VDP-5`〜`VDP-7` より前**なのは `VEL-5` / `AIR-4` と
 同じ判断 — `DAMPING` と `CLARITY` は効いたかの判断が耳寄り。
 
-**共有クレートの新規単位が無い。** 唯一の新規は初期反射で、
+**共有クレートに上げるものが 2 つある**（`dsp.md` で出た）。どちらも数十行なので
+単位は起こさず、`VDP-1` と `VDP-3` の中で片付ける — `doubler-core` の
+`DelayLine`（**2 個目の客が要求した**）と `biquad::Coefficients::magnitude`
+（信号を見ない正規化が振幅特性を要求する）。**唯一の新規 DSP は初期反射**で、
 `vocal-depth-core` に置く（`nxe-audio` に上げるのは Vocal Glue が要求したとき）。
 
 | ID | 単位 | 状態 |
 |---|---|---|
-| VDP-1 | 初期反射。`vocal-depth-core` もここで作る | ⬜ |
-| VDP-2 | 直接音（Presence のシェルフ + Transient） | ⬜ |
-| VDP-3 | `DEPTH` とラウドネス正規化（**ゲート**） | ⬜ |
+| VDP-1 | 初期反射。`vocal-depth-core` もここで作る。**`DelayLine` を `doubler-core` から `nxe-audio` に上げる** | 🟡 |
+| VDP-2 | 直接音（Presence の並列帯 + Transient） | ⬜ |
+| VDP-3 | `DEPTH` とラウドネス正規化（**ゲート**）。`Coefficients::magnitude` を足す | ⬜ |
 | VDP-4 | ラッパとパラメータ（**ここで音が出る**） | ⬜ |
 | VDP-5 | `DAMPING`（直接音と反射で違う量） | ⬜ |
 | VDP-6 | 距離依存のステレオ幅 | ⬜ |
@@ -547,9 +574,14 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | VDP-12 | CPU 予算 | ⬜ |
 | VDP-13 | 既定値と耳 | ⬜ |
 
-**着手前に `dsp.md` を書く。** 一番難しいのは `VDP-3` の正規化 —
-連動する各項が総エネルギーに与える寄与を打ち消す係数を、**信号に依存せず**
-パラメータから計算する（`nxe_audio::shaper` の `g` と同じ考え方）。
+**`dsp.md` は書けた**（2026-08-28、
+[`specifications/dsp.md`](../../plugins/vocal-depth/docs/specifications/dsp.md)）。
+計画書が投げていた 5 つの問いに答えが入っている — **タップ時刻は動かさず
+`DEPTH` は重み包絡を動かす**、13 本 × 2 チャネルの素数 ms、オールパス 3 段、
+`DAMPING` の比 1.2 : 3.0 oct、そして `VDP-3` の正規化は**固定した 32 点の
+ピンク重み格子の上で振幅特性の 2 乗和を解析的に足して割る**形。
+**数字は 1 つも測っていない** — どれが測定でどれが耳かは `dsp.md` の
+「耳で詰める定数」が正。**`ui.md` は未作成**（`VDP-9` の前に書く）。
 
 ### Vocal Glue
 
