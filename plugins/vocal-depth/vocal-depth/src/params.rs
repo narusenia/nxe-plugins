@@ -11,9 +11,9 @@
 //!
 //! ## Only what is wired
 //!
-//! `REQ-VDP-009` asks for seven main controls; five of them exist here.
-//! `DAMPING`, `WIDTH` and `CLARITY` are `VDP-5`, `VDP-6` and `VDP-7`, and a
-//! control that does nothing is worse than a control that is not there yet —
+//! `REQ-VDP-009` asks for seven main controls; six of them exist here.
+//! `WIDTH` and `CLARITY` are `VDP-6` and `VDP-7`, and a control that does
+//! nothing is worse than a control that is not there yet —
 //! **a plugin must not describe a planned feature as a working one**
 //! (`.agents/rules/documentation.md` says the same about documents). Adding
 //! them in their own units costs nothing, because ids are keys.
@@ -50,6 +50,13 @@ pub struct VocalDepthParams {
     #[id = "room"]
     pub room: FloatParam,
 
+    /// How much high-frequency loss the distance brings. **Exactly none at
+    /// zero** (`REQ-VDP-005`), and it lands on the direct sound and the
+    /// reflections in **different amounts** — the same filter on both is
+    /// muffled rather than distant.
+    #[id = "damping"]
+    pub damping: FloatParam,
+
     /// Dry ↔ wet. **A crossfade, not an addition** — getting further away is
     /// taking presence off the voice, and leaving the untouched original in
     /// would put it straight back (`vocal_depth_core::engine`).
@@ -69,6 +76,7 @@ impl Default for VocalDepthParams {
             depth: unit("Depth", 0.5),
             direct: unit("Direct", 0.5),
             room: unit("Room", 0.5),
+            damping: unit("Damping", 0.5),
             mix: unit("Mix", 1.0),
             output: FloatParam::new(
                 "Output",
@@ -99,6 +107,7 @@ impl VocalDepthParams {
             depth: self.depth.smoothed.next_step(samples),
             direct: self.direct.smoothed.next_step(samples),
             room: self.room.smoothed.next_step(samples),
+            damping: self.damping.smoothed.next_step(samples),
             mix: self.mix.smoothed.next_step(samples),
             // **0 dB has to come out exactly 1.0** or the bit-identity at
             // `MIX` = 0 is off by a rounding error (`REQ-VDP-001`).
@@ -131,7 +140,7 @@ mod tests {
             .into_iter()
             .map(|(id, _, _)| id)
             .collect();
-        assert_eq!(ids, ["depth", "direct", "room", "mix", "output"]);
+        assert_eq!(ids, ["depth", "direct", "room", "damping", "mix", "output"]);
     }
 
     /// **0 dB is exactly unity.** The transparency promise is a bit comparison,

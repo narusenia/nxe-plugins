@@ -68,6 +68,30 @@ const POWER_FLOOR: f32 = 1e-8;
 /// and much larger, is compensated exactly at any value of this.
 const PRESENCE_COMPENSATION: f32 = 0.6;
 
+/// The same idea as [`PRESENCE_COMPENSATION`], for `DAMPING`: how much of the
+/// corner's fall the normalisation takes out, counted in octaves.
+///
+/// **Measured the same way and it has the same wall** (`VDP-5`). What a lowpass
+/// removes depends entirely on where the material's energy is, and the spread
+/// across materials is wider here than for the presence band — white noise,
+/// whose energy density *rises* with frequency, moves **4.4 dB** across `DEPTH`
+/// with `DAMPING` open however this is set. That is why the probe is pink and
+/// why white is not in the gate: it is not a stand-in for any voice
+/// (`harmonics::pink` exists for the same reason).
+///
+/// Across `DEPTH` with `DAMPING` open, at `damping::DIRECT_NEAR` 0.55:
+///
+/// | compensation | pink | phrase | phrase + breath |
+/// |---|---|---|---|
+/// | 1.0 | 0.39 | 1.16 | 1.11 |
+/// | **0.5** | **0.56** | **0.98** | **0.93** |
+const DAMPING_COMPENSATION: f32 = 0.5;
+
+/// Where a damping corner sits with nothing asked of it
+/// (`crate::damping::OPEN_HZ`, repeated here so the modelling does not depend
+/// on the module it models).
+const OPEN_HZ: f32 = 20_000.0;
+
 /// The main controls. All `0..=1` except where noted, all clamped: they arrive
 /// from a host (`REQ-VDP-016`).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -79,6 +103,9 @@ pub struct Macros {
     pub direct: f32,
     /// How much reflection there is. Exactly none at zero.
     pub room: f32,
+    /// How much high-frequency loss distance brings. Exactly none at zero
+    /// (`REQ-VDP-005`).
+    pub damping: f32,
     /// Dry to wet. **Exactly dry at zero, bit for bit** (`REQ-VDP-001`).
     pub mix: f32,
     /// Final gain, linear. **Exactly 1.0 by default**, because the bit-identity
@@ -92,6 +119,7 @@ impl Default for Macros {
             depth: 0.5,
             direct: 0.5,
             room: 0.5,
+            damping: 0.5,
             mix: 1.0,
             output: 1.0,
         }
@@ -106,6 +134,7 @@ impl Macros {
             depth: unit(self.depth),
             direct: unit(self.direct),
             room: unit(self.room),
+            damping: unit(self.damping),
             mix: unit(self.mix),
             output: if self.output.is_finite() {
                 self.output.clamp(0.0, 4.0)
@@ -131,6 +160,23 @@ impl Macros {
             amount: self.room,
         }
     }
+}
+
+/// What the stages resolved to, which is all the normalisation is allowed to
+/// know (`REQ-VDP-008`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Resolved {
+    /// [`direct::Direct::presence_db`].
+    pub presence_db: f32,
+    /// [`reflections::Reflections::tap_energy`], which already carries the
+    /// bus's own gain.
+    pub tap_energy: f32,
+    /// [`crate::damping::Damping::direct_corner_hz`]. **`None` means the
+    /// audio path is using `Coefficients::PASS`**, which is not the same as a
+    /// corner at 20 kHz.
+    pub direct_corner_hz: Option<f32>,
+    /// [`crate::damping::Damping::reflected_corner_hz`].
+    pub reflected_corner_hz: Option<f32>,
 }
 
 /// The fixed grid the wet power is resolved on.
@@ -171,10 +217,9 @@ impl Probe {
 
     /// The gain that puts the wet chain back at the level it started from.
     ///
-    /// `presence_db` is the direct path's static band gain
-    /// ([`direct::Direct::presence_db`]) and `tap_energy` is the reflection
-    /// bus's incoherent power ([`reflections::Reflections::tap_energy`], which
-    /// already carries its own gain).
+    /// Everything it needs comes out of the stages themselves ([`Resolved`]),
+    /// so the tap table, the presence band and the damping corners each have
+    /// exactly one owner.
     ///
     /// **Two things are deliberately not in here**, both because they depend on
     /// the signal and this may not (`REQ-VDP-008`): the transient's few
@@ -184,30 +229,37 @@ impl Probe {
     /// **The diffusion allpasses are not in here either**, and that one is
     /// free: an allpass does not change the total energy, so its coefficients
     /// can be retuned without touching this.
-    pub fn gain(&self, presence_db: f32, tap_energy: f32, sample_rate: f32) -> f32 {
+    pub fn gain(&self, resolved: Resolved, sample_rate: f32) -> f32 {
         let presence = Coefficients::peaking(
             direct::PRESENCE_CENTRE_HZ,
             direct::PRESENCE_Q,
-            presence_db * PRESENCE_COMPENSATION,
+            resolved.presence_db * PRESENCE_COMPENSATION,
             sample_rate,
         );
         let highpass = Coefficients::highpass(reflections::HIGHPASS_HZ, BUTTERWORTH_Q, sample_rate);
-        let tap_energy = if tap_energy.is_finite() {
-            tap_energy.max(0.0)
+        // **The corners the parameters ask for, not the ones the transient
+        // opens.** That one is signal-dependent, and it only ever lets more
+        // through — bounded, and measured in `VDP-2`.
+        let direct_damping = lowpass_or_pass(resolved.direct_corner_hz, sample_rate);
+        let reflected_damping = lowpass_or_pass(resolved.reflected_corner_hz, sample_rate);
+        let tap_energy = if resolved.tap_energy.is_finite() {
+            resolved.tap_energy.max(0.0)
         } else {
             0.0
         };
 
         let mut power = 0.0;
         for &hz in &self.frequencies {
-            // The direct path is one minimum-phase section, so its magnitude is
-            // the whole story.
-            let direct_magnitude = presence.magnitude(hz, sample_rate);
+            // The direct path is minimum-phase sections in series, so their
+            // magnitudes are the whole story.
+            let direct_magnitude =
+                presence.magnitude(hz, sample_rate) * direct_damping.magnitude(hz, sample_rate);
 
             // The reflections: incoherent with the direct sound above roughly
             // 90 Hz, and highpassed at 200 so the band where that is untrue has
             // no energy in it.
-            let reflected = highpass.magnitude(hz, sample_rate);
+            let reflected =
+                highpass.magnitude(hz, sample_rate) * reflected_damping.magnitude(hz, sample_rate);
 
             power += self.weight
                 * (direct_magnitude * direct_magnitude + tap_energy * reflected * reflected);
@@ -228,6 +280,20 @@ impl Default for Probe {
     }
 }
 
+/// A lowpass, or a pass-through when the caller says there is none.
+///
+/// The corner is moved back up by `DAMPING_COMPENSATION` before it is modelled;
+/// see that constant.
+fn lowpass_or_pass(hz: Option<f32>, sample_rate: f32) -> Coefficients {
+    match hz {
+        Some(hz) => {
+            let modelled = hz * 2.0f32.powf((OPEN_HZ / hz).log2() * (1.0 - DAMPING_COMPENSATION));
+            Coefficients::lowpass(modelled.min(OPEN_HZ), BUTTERWORTH_Q, sample_rate)
+        }
+        None => Coefficients::PASS,
+    }
+}
+
 fn unit(value: f32) -> f32 {
     if value.is_finite() {
         value.clamp(0.0, 1.0)
@@ -242,12 +308,23 @@ mod tests {
 
     const RATE: f32 = 48_000.0;
 
+    /// A resolved chain with only the presence band and the taps doing
+    /// anything — the damping corners wide open.
+    fn resolved(presence_db: f32, tap_energy: f32) -> Resolved {
+        Resolved {
+            presence_db,
+            tap_energy,
+            direct_corner_hz: None,
+            reflected_corner_hz: None,
+        }
+    }
+
     /// A chain that does nothing has to be left alone. If this drifts, every
     /// other measurement is offset by whatever it drifted.
     #[test]
     fn a_transparent_chain_needs_no_gain() {
         let probe = Probe::new();
-        let gain = probe.gain(0.0, 0.0, RATE);
+        let gain = probe.gain(resolved(0.0, 0.0), RATE);
         assert!(
             (gain - 1.0).abs() < 1e-3,
             "a flat chain asked for {gain} of gain"
@@ -260,15 +337,15 @@ mod tests {
     fn the_gain_opposes_the_chain() {
         let probe = Probe::new();
 
-        let lifted = probe.gain(6.0, 0.0, RATE);
-        let cut = probe.gain(-6.0, 0.0, RATE);
+        let lifted = probe.gain(resolved(6.0, 0.0), RATE);
+        let cut = probe.gain(resolved(-6.0, 0.0), RATE);
         assert!(lifted < 1.0, "a lifted band was not pulled down: {lifted}");
         assert!(cut > 1.0, "a cut band was not pushed up: {cut}");
 
         // And adding reflections pulls it down further, monotonically.
-        let mut previous = probe.gain(0.0, 0.0, RATE);
+        let mut previous = probe.gain(resolved(0.0, 0.0), RATE);
         for energy in [0.05f32, 0.1, 0.25, 0.5, 1.0] {
-            let gain = probe.gain(0.0, energy, RATE);
+            let gain = probe.gain(resolved(0.0, energy), RATE);
             assert!(gain < previous, "tap energy {energy} did not pull down");
             previous = gain;
         }
@@ -305,7 +382,7 @@ mod tests {
 
         let probe = Probe::new();
         for (presence_db, tap_energy) in [(0.0f32, 0.0f32), (4.0, 0.1), (-8.0, 0.5)] {
-            let coarse = probe.gain(presence_db, tap_energy, RATE);
+            let coarse = probe.gain(resolved(presence_db, tap_energy), RATE);
             let fine = dense(presence_db, tap_energy);
             let difference = 20.0 * (coarse / fine).log10();
             assert!(
@@ -328,7 +405,7 @@ mod tests {
             (1e9, 1e9),
             (-1e9, -1e9),
         ] {
-            let gain = probe.gain(presence_db, tap_energy, RATE);
+            let gain = probe.gain(resolved(presence_db, tap_energy), RATE);
             assert!(gain.is_finite(), "{presence_db} / {tap_energy} gave {gain}");
             assert!(gain > 0.0, "{presence_db} / {tap_energy} gave {gain}");
         }
@@ -337,6 +414,7 @@ mod tests {
             depth: f32::NAN,
             direct: f32::INFINITY,
             room: -1e9,
+            damping: f32::NAN,
             mix: 1e9,
             output: f32::NEG_INFINITY,
         }
@@ -347,6 +425,7 @@ mod tests {
         assert_eq!(sanitised.depth, 0.0);
         assert_eq!(sanitised.direct, 0.0);
         assert_eq!(sanitised.room, 0.0);
+        assert_eq!(sanitised.damping, 0.0);
         assert_eq!(sanitised.mix, 1.0);
         // `output` is the exception: 1.0 is the harmless reading there, since 0
         // would mute the plugin.

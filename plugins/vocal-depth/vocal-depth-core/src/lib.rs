@@ -7,11 +7,13 @@
 //! `plugins/vocal-depth/docs/specifications/dsp.md` and built in units `VDP-1`
 //! onward (`plugins/vocal-depth/docs/implementation/vocal-depth-plan.md`).
 
+pub mod damping;
 pub mod depth;
 pub mod direct;
 pub mod engine;
 pub mod reflections;
 
+pub use damping::Damping;
 pub use depth::Macros;
 pub use direct::Direct;
 pub use engine::Engine;

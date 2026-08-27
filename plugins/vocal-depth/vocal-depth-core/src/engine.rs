@@ -15,11 +15,12 @@
 //!
 //! Specified in `plugins/vocal-depth/docs/specifications/dsp.md`.
 //!
-//! **`DAMPING` (`VDP-5`), the stereo width (`VDP-6`) and `CLARITY` (`VDP-7`)
-//! are not wired yet.** The normalisation is written so each one drops into the
-//! sum in `depth::Probe::gain` as another magnitude.
+//! **The stereo width (`VDP-6`) and `CLARITY` (`VDP-7`) are not wired yet.**
+//! The normalisation is written so each one drops into the sum in
+//! `depth::Probe::gain` as another magnitude.
 
-use crate::depth::{Macros, Probe};
+use crate::damping::Damping;
+use crate::depth::{Macros, Probe, Resolved};
 use crate::direct::Direct;
 use crate::reflections::Reflections;
 
@@ -98,6 +99,7 @@ pub struct Engine {
     probe: Probe,
     direct: Direct,
     reflections: Reflections,
+    damping: Damping,
     macros: Macros,
     /// The loudness normalisation, resolved from the parameters only.
     normalisation: Smoothed,
@@ -115,11 +117,13 @@ impl Engine {
             probe: Probe::new(),
             direct: Direct::new(sample_rate),
             reflections: Reflections::new(sample_rate),
+            damping: Damping::new(sample_rate),
             // Not the default: `set` returns early when nothing moved.
             macros: Macros {
                 depth: f32::NAN,
                 direct: f32::NAN,
                 room: f32::NAN,
+                damping: f32::NAN,
                 mix: f32::NAN,
                 output: f32::NAN,
             },
@@ -143,13 +147,18 @@ impl Engine {
 
         self.direct.set(macros.direct_settings(0.0));
         self.reflections.set(macros.reflection_settings());
+        self.damping.set(macros.damping, macros.depth);
 
         // **After the stages, not before.** The normalisation is resolved from
         // what they were actually given, so there is one place that decides
         // what `DEPTH` means.
         self.resolved_gain = self.probe.gain(
-            self.direct.presence_db(),
-            self.reflections.tap_energy(),
+            Resolved {
+                presence_db: self.direct.presence_db(),
+                tap_energy: self.reflections.tap_energy(),
+                direct_corner_hz: self.damping.direct_corner_hz(),
+                reflected_corner_hz: self.damping.reflected_corner_hz(),
+            },
             self.sample_rate,
         );
         self.normalisation.set(self.resolved_gain);
@@ -165,7 +174,15 @@ impl Engine {
         let dry = (left, right);
 
         let (direct_left, direct_right) = self.direct.process(left, right);
+        // **The damping is after the presence band, and it reads the same
+        // opening** — a consonant that has to survive the distance is the same
+        // event that sharpens the band (`REQ-VDP-005`).
+        let (direct_left, direct_right) =
+            self.damping
+                .process_direct(direct_left, direct_right, self.direct.opening());
+
         let (wet_left, wet_right) = self.reflections.process(left, right);
+        let (wet_left, wet_right) = self.damping.process_reflected(wet_left, wet_right);
 
         let normalisation = self.normalisation.next();
         let mix = self.mix;
@@ -207,9 +224,19 @@ impl Engine {
         self.macros
     }
 
+    /// The two damping corners, for the display (`REQ-VDP-018`). `None` on a
+    /// side means it is passing everything through.
+    pub fn damping_corners_hz(&self) -> (Option<f32>, Option<f32>) {
+        (
+            self.damping.direct_corner_hz(),
+            self.damping.reflected_corner_hz(),
+        )
+    }
+
     pub fn reset(&mut self) {
         self.direct.reset();
         self.reflections.reset();
+        self.damping.reset();
         self.normalisation.snap();
     }
 }
@@ -265,6 +292,19 @@ mod tests {
         signal
     }
 
+    /// The same phrase with breath in it, which is what a voice actually has
+    /// above 8 kHz. **It barely changes the answer** (`VDP-5` measured 1.26
+    /// against 1.21 dB before the constants moved), which is how the sparse
+    /// stack was ruled out as "too top-poor to be fair".
+    fn phrase_with_breath(length: usize) -> Vec<f32> {
+        let breath = harmonics::pink(1.0, length);
+        phrase(length)
+            .iter()
+            .zip(&breath)
+            .map(|(voice, noise)| voice + 0.06 * noise)
+            .collect()
+    }
+
     fn rms(engine: &mut Engine, signal: &[f32]) -> f32 {
         let mut energy = 0.0;
         let mut counted = 0usize;
@@ -303,20 +343,70 @@ mod tests {
     /// 1.0 dB with `depth::PRESENCE_COMPENSATION` at 0.6, which is the setting
     /// that minimises the worst case.
     ///
-    /// Measured: **pink 0.48 dB, phrase 0.77 dB, white 0.80 dB** (`VDP-3`).
+    /// **The materials are the ones `REQ-VDP-008` names — pink noise and a
+    /// voice.** White is measured too, in its own test, and deliberately not in
+    /// the gate: its energy density *rises* with frequency, so it is not a
+    /// stand-in for anything a vocal processor will see, and the probe is pink
+    /// for exactly that reason.
+    ///
+    /// Measured with `DAMPING` at its default: **pink 0.40, phrase 0.89,
+    /// phrase + breath 0.85 dB**; with `DAMPING` open, **0.56 / 0.98 / 0.93**
+    /// (`VDP-5`).
     #[test]
     fn depth_does_not_move_the_loudness() {
+        let length = 2 * RATE as usize;
         for (name, signal) in [
-            ("pink", harmonics::pink(0.3, 2 * RATE as usize)),
-            ("white", harmonics::noise(0.3, 2 * RATE as usize)),
-            ("phrase", phrase(2 * RATE as usize)),
+            ("pink", harmonics::pink(0.3, length)),
+            ("phrase", phrase(length)),
+            ("phrase + breath", phrase_with_breath(length)),
         ] {
-            let spread = spread_db(&signal, |depth| at(depth, 0.5));
-            assert!(
-                spread < 1.0,
-                "{name}: DEPTH moved the level by {spread:.2} dB"
-            );
+            for damping in [0.0f32, 0.5, 1.0] {
+                let spread = spread_db(&signal, |depth| Macros {
+                    depth,
+                    room: 0.5,
+                    damping,
+                    ..Macros::default()
+                });
+                assert!(
+                    spread < 1.0,
+                    "{name} at DAMPING {damping}: DEPTH moved the level by {spread:.2} dB"
+                );
+            }
         }
+    }
+
+    /// **What the normalisation cannot do, recorded rather than hidden.**
+    /// White noise moves **4.4 dB** across `DEPTH` with `DAMPING` open, and no
+    /// setting of `depth::DAMPING_COMPENSATION` reaches it — a lowpass takes
+    /// most of white's energy and a fraction of a voice's, and a gain that may
+    /// not look at the signal (`REQ-VDP-008`) has to pick one.
+    ///
+    /// This exists so the number cannot drift without somebody noticing.
+    #[test]
+    fn white_noise_is_outside_what_the_normalisation_can_hold() {
+        let signal = harmonics::noise(0.3, 2 * RATE as usize);
+
+        let closed = spread_db(&signal, |depth| Macros {
+            depth,
+            room: 0.5,
+            damping: 0.0,
+            ..Macros::default()
+        });
+        assert!(
+            closed < 1.0,
+            "with DAMPING shut even white holds (0.80 on record): {closed:.2} dB"
+        );
+
+        let open = spread_db(&signal, |depth| Macros {
+            depth,
+            room: 0.5,
+            damping: 1.0,
+            ..Macros::default()
+        });
+        assert!(
+            (2.0..6.0).contains(&open),
+            "white with DAMPING open moved {open:.2} dB, not the 4.4 on record"
+        );
     }
 
     /// And it holds at every point of `MIX`, not only fully wet.
@@ -335,6 +425,36 @@ mod tests {
                 "mix {mix}: DEPTH moved the level by {spread:.2} dB"
             );
         }
+    }
+
+    /// **The gate holds with `DAMPING` open too** (`REQ-VDP-005`'s last
+    /// condition). The corners are in the normalisation, so this is the test
+    /// that they are wired into it rather than merely computed.
+    #[test]
+    fn damping_does_not_move_the_loudness() {
+        let signal = harmonics::pink(0.3, 2 * RATE as usize);
+
+        let spread = spread_db(&signal, |depth| Macros {
+            depth,
+            room: 0.5,
+            damping: 1.0,
+            ..Macros::default()
+        });
+        assert!(
+            spread < 1.0,
+            "with DAMPING open, DEPTH moved the level by {spread:.2} dB"
+        );
+
+        let across_damping = spread_db(&signal, |amount| Macros {
+            depth: 0.7,
+            room: 0.5,
+            damping: amount,
+            ..Macros::default()
+        });
+        assert!(
+            across_damping < 1.0,
+            "DAMPING itself moved the level by {across_damping:.2} dB"
+        );
     }
 
     /// `ROOM` is an amount, not a level (`REQ-VDP-008`).
@@ -436,6 +556,7 @@ mod tests {
                 depth: f32::NAN,
                 direct: f32::NAN,
                 room: f32::NAN,
+                damping: f32::NAN,
                 mix: f32::NAN,
                 output: f32::NAN,
             },
@@ -443,6 +564,7 @@ mod tests {
                 depth: f32::INFINITY,
                 direct: -1e9,
                 room: 1e9,
+                damping: f32::INFINITY,
                 mix: f32::NEG_INFINITY,
                 output: 1e9,
             },

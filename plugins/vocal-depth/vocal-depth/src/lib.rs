@@ -185,6 +185,7 @@ mod tests {
         params.depth.smoothed.reset(params.depth.value());
         params.direct.smoothed.reset(params.direct.value());
         params.room.smoothed.reset(params.room.value());
+        params.damping.smoothed.reset(params.damping.value());
         params.mix.smoothed.reset(params.mix.value());
         params.output.smoothed.reset(params.output.value());
         plugin
@@ -214,6 +215,7 @@ mod tests {
         assert_eq!(macros.depth, 0.5);
         assert_eq!(macros.direct, 0.5);
         assert_eq!(macros.room, 0.5);
+        assert_eq!(macros.damping, 0.5);
         assert_eq!(macros.mix, 1.0);
         assert_eq!(macros.output, 1.0);
     }
@@ -227,6 +229,7 @@ mod tests {
         plugin.params.mix.smoothed.reset(0.0);
         plugin.params.depth.smoothed.reset(0.9);
         plugin.params.room.smoothed.reset(1.0);
+        plugin.params.damping.smoothed.reset(1.0);
         plugin.engine.reset();
 
         let left_in: Vec<f32> = (0..4_096)
