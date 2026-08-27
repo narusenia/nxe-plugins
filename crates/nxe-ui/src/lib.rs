@@ -10,6 +10,7 @@
 pub mod band;
 pub mod bar;
 pub mod curve;
+pub mod dots;
 pub mod entry;
 pub mod font;
 pub mod header;

@@ -12,6 +12,7 @@
 use nxe_ui::band::{Band, BandField, BandFieldModifiers, BandGesture};
 use nxe_ui::bar::Bar;
 use nxe_ui::curve::{Curve, CurveView, CurveViewModifiers, Grip, Span};
+use nxe_ui::dots::DotField;
 use nxe_ui::entry::ValueEntry;
 use nxe_ui::input::Gesture;
 use nxe_ui::knob::Knob;
@@ -81,6 +82,11 @@ struct Demo {
     /// Stands in for a signal level, so the meters have something to do. The
     /// guards below bite when it gets loud.
     meter: f32,
+    /// The grain field's two spectra and how coherent the grains are. The
+    /// layer is a stand-in for something an additive plugin adds; `alignment`
+    /// is what a `BLEND`-like control would move.
+    grains: Curve,
+    alignment: f32,
 }
 
 enum DemoEvent {
@@ -102,6 +108,7 @@ enum DemoEvent {
     SetBand(usize, f32),
     ResetBand(usize),
     SetFocus(f32),
+    SetAlignment(f32),
     HoverBand(Option<usize>),
     SetSolo(usize),
     SetMeter(f32),
@@ -205,6 +212,7 @@ impl Model for Demo {
                 self.bands[*index].level = [0.55, 0.70, 0.45][*index];
                 self.added = added_curve(&self.bands);
             }
+            DemoEvent::SetAlignment(value) => self.alignment = *value,
             DemoEvent::SetFocus(value) => {
                 self.focus = *value;
                 self.refresh_bands();
@@ -308,6 +316,8 @@ fn main() {
             dry: sample_analysis(),
             added: Vec::new(),
             meter: 0.62,
+            grains: sample_grains(),
+            alignment: 0.35,
         };
         demo.refresh();
         demo.refresh_bands();
@@ -327,6 +337,7 @@ fn main() {
                 field(cx);
                 curves(cx);
                 band_field(cx);
+                dot_field(cx);
                 meters(cx);
                 detail(cx);
                 icons(cx);
@@ -945,6 +956,56 @@ fn band_field(cx: &mut Context) {
         Label::new(
             cx,
             "drag a region vertically · drag the rail at the bottom to move all three",
+        )
+        .class("subtle");
+    });
+}
+
+/// A stand-in for a generated layer: a broad rise with a couple of peaks in it,
+/// so the field has something with shape to draw.
+fn sample_grains() -> Curve {
+    const COLUMNS: usize = 32;
+    (0..COLUMNS)
+        .map(|index| {
+            let x = index as f32 / (COLUMNS - 1) as f32;
+            // A hump toward the top, with two harmonics standing out of it.
+            let hump = (1.0 - (x - 0.72).abs() * 2.4).max(0.0);
+            let peak = |at: f32| (1.0 - (x - at).abs() * 22.0).max(0.0) * 0.5;
+            ((hump * 0.8 + peak(0.55) + peak(0.78)) * 0.9).clamp(0.0, 1.0)
+        })
+        .enumerate()
+        .map(|(index, level)| (index as f32 / (COLUMNS - 1) as f32, level))
+        .collect()
+}
+
+fn dot_field(cx: &mut Context) {
+    panel(cx, "DOT FIELD", |cx| {
+        DotField::new(cx, Demo::analysis, Demo::grains, Demo::alignment)
+            .height(Pixels(150.0))
+            .width(Stretch(1.0));
+
+        HStack::new(cx, |cx| {
+            Label::new(cx, "ALIGNMENT").class("label");
+            Bar::new(cx, Demo::alignment, |cx, gesture| {
+                if let Gesture::Change(value) = gesture {
+                    cx.emit(DemoEvent::SetAlignment(value));
+                }
+                if let Gesture::Reset = gesture {
+                    cx.emit(DemoEvent::SetAlignment(0.35));
+                }
+                cx.emit(DemoEvent::Gesture(name_of(gesture)));
+            })
+            .width(Pixels(160.0))
+            .height(Pixels(10.0));
+            font::value(cx, Demo::alignment.map(|value| format!("{value:.2}")));
+        })
+        .class("row")
+        .height(Auto);
+
+        Label::new(
+            cx,
+            "the line is what came in · the grains are what was added · \
+             alignment pulls them onto their columns",
         )
         .class("subtle");
     });

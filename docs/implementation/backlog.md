@@ -358,7 +358,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| AIR-9 | **点のスペクトラム**（`nxe_ui::dots::DotField` + gallery） | `../../plugins/air/docs/implementation/air-plan.md` |
+| AIR-10 | **読み値と解析の配線**（図を窓に載せる。`AIR-11` を含む） | `../../plugins/air/docs/implementation/air-plan.md` |
 | SPK-18 | **既定値と耳** ✅ — 測れるものは全部固定。既定値は 1 つも動かす理由が出なかった | `sparkleur-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 
