@@ -3,6 +3,9 @@
 #
 # Every plugin ships as `NXE <name>` (`AGENTS.md`). The crate keeps the bare
 # name so paths stay short.
+[air]
+name = "NXE Air"
+
 [doubler]
 name = "NXE Doubler"
 

@@ -5,6 +5,7 @@ members = [
     "crates/nxe-dsp",
     "crates/nxe-plug-ui",
     "crates/nxe-ui",
+    "plugins/air/air",
     "plugins/air/air-core",
     "plugins/doubler/doubler-core",
     "plugins/doubler/doubler",
@@ -26,6 +27,7 @@ nxe-audio = { path = "crates/nxe-audio" }
 nxe-dsp = { path = "crates/nxe-dsp" }
 nxe-plug-ui = { path = "crates/nxe-plug-ui" }
 nxe-ui = { path = "crates/nxe-ui" }
+air = { path = "plugins/air/air" }
 air-core = { path = "plugins/air/air-core" }
 doubler-core = { path = "plugins/doubler/doubler-core" }
 sparkleur-core = { path = "plugins/sparkleur/sparkleur-core" }
@@ -75,6 +77,9 @@ lto = "thin"
 # so a debug build is useless in a DAW unless the DSP itself is optimized.
 # Scope the cost to the crates that do per-sample work.
 [profile.dev.package.nxe-audio]
+opt-level = 2
+
+[profile.dev.package.air]
 opt-level = 2
 
 [profile.dev.package.air-core]

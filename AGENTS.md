@@ -42,12 +42,18 @@ with the code, and fix the document in the same change.
 - `plugins/velour/velour`: the Velour nih-plug wrapper — parameter
   declarations, the Vizia UI, and the binding between them
 - `plugins/sparkleur/sparkleur-core`: the Sparkleur DSP — five-band multiband
-  dynamics with a transient-gated harmonic generator. **Being built**: the
-  crossover gate (`SPK-2`) is in, the dynamics are not. Host-agnostic,
+  dynamics with a transient-gated harmonic generator. Host-agnostic,
   allocation-free on the audio path
-- `plugins/sparkleur/docs`: Sparkleur's requirements, specifications and plan.
-  There is no `sparkleur` wrapper crate yet — `SPK-8` creates it, and that is
-  where sound first comes out
+- `plugins/sparkleur/sparkleur`: the Sparkleur nih-plug wrapper — parameter
+  declarations, the Vizia UI, and the binding between them
+- `plugins/air/air-core`: the Air DSP — a high-frequency texture generated from
+  the input and placed where the input is not. Host-agnostic, allocation-free
+  on the audio path. `noise` is the only block written for it, and it is
+  written not to know what Air is: two more plugins want a noise generator, and
+  the second to ask moves the file into `nxe-audio` unchanged
+- `plugins/air/air`: the Air nih-plug wrapper. **Being built**: parameters and
+  `process` are in (`AIR-4`), the Follow Engine, the protection and the whole
+  interface are not
 - `docs/`: monorepo-wide documents (architecture, cross-plugin backlog and
   roadmap). Indexed by `docs/README.md`
 - `plugins/<name>/docs/`: that plugin's own requirements, specifications, and

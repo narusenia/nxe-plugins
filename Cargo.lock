@@ -96,6 +96,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "air"
+version = "0.1.0"
+dependencies = [
+ "air-core",
+ "nih_plug",
+ "nxe-audio",
+]
+
+[[package]]
 name = "air-core"
 version = "0.1.0"
 dependencies = [

@@ -493,6 +493,52 @@ mod tests {
         assert!(returned < -18.0, "the source came back at {returned:.1} dB");
     }
 
+    /// **What the layer's delay costs the dry** (`REQ-AIR-012`).
+    ///
+    /// Only this half goes through an oversampler, and the plugin reports no
+    /// latency — so the layer arrives a little after the source it was made
+    /// from. Measured at 48 kHz with the curve linear (`DRIVE_MIN`), so what is
+    /// left is the halfbands and the four filters: the impulse response peaks
+    /// at sample **11 at 2x and 12 at 4x**, centroid 10.6 and 11.4 — about
+    /// **0.24 ms**.
+    ///
+    /// That is not a comb: what survives the output corner is harmonics, which
+    /// are not in the dry to interfere with. What is left of the source itself
+    /// is 23.7 dB down (above), and a quarter-millisecond offset on something
+    /// that far under is inaudible.
+    #[test]
+    fn the_layer_arrives_a_quarter_of_a_millisecond_late() {
+        use nxe_audio::shaper::DRIVE_MIN;
+
+        for factor in [Factor::Two, Factor::Four] {
+            let mut harmonic = Harmonic::new(RATE);
+            harmonic.set(Settings {
+                drive: DRIVE_MIN,
+                bias: 0.0,
+                character: 0.0,
+                factor,
+                ..Settings::default()
+            });
+            let response: Vec<f32> = (0..256)
+                .map(|index| {
+                    let input = if index == 0 { 1.0 } else { 0.0 };
+                    harmonic.process(input, input, GAIN).0
+                })
+                .collect();
+            let energy: f32 = response.iter().map(|value| value * value).sum();
+            let centroid: f32 = response
+                .iter()
+                .enumerate()
+                .map(|(index, value)| index as f32 * value * value)
+                .sum::<f32>()
+                / energy;
+            assert!(
+                centroid < 16.0,
+                "{factor:?} put the layer {centroid:.1} samples behind"
+            );
+        }
+    }
+
     #[test]
     fn hostile_settings_neither_panic_nor_produce_nonsense() {
         let wild = [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, -1e9, 1e9];

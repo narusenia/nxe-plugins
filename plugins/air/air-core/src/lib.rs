@@ -8,10 +8,12 @@
 //! built in are in `plugins/air/docs/implementation/air-plan.md`. Blocks shared
 //! with Velour and Sparkleur live in [`nxe_audio`].
 
+pub mod engine;
 pub mod harmonic;
 pub mod layer;
 pub mod noise;
 
+pub use engine::{Engine, Shape};
 pub use harmonic::Harmonic;
 pub use layer::Layer;
 pub use noise::Noise;

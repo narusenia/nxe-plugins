@@ -60,9 +60,22 @@ Steinberg Media Technologies GmbH`）。`vst3-sys` が GPLv3 を選んだ理由 
 
 **その道は既にある。** `coupler-rs/vst3-rs` が MIT のヘッダから生成した
 `vst3` クレート（MIT OR Apache-2.0）を出していて、nice-plug（ISC）がそれを
-使っている。移行を検討する場合の判断材料は
-`plugins/air/docs/requirements/REQ-AIR.md` の `REQ-AIR-014` と
-`docs/implementation/roadmap.md`。
+使っている。
+
+**Air で試すのは見送った**（`AIR-4`、2026-08-27）。理由はライセンスではなく
+範囲で、**移行は 1 本では終わらない**:
+
+- ワークスペースの `vizia` は `nih_plug_vizia` が引くフォークと**バイト単位で
+  一致していないとコンパイルが通らない**（Cargo にとって別 git ソースは
+  別クレート）。`Cargo.toml` にその理由が書いてある
+- Air だけ vizia-plug に載せると `nxe-ui` の vizia も動く。**Doubler /
+  Velour / Sparkleur の UI と gallery が全部巻き添え**になり、実質 3 本の
+  再検証が付いてくる
+- さもなくば Air は `nxe-ui` を一切使えず、ウィジェットを自前で持つ
+
+「駄目なら戻すのはラッパだけ」が成り立つのは **`air-core` まで**（テストごと
+無傷）で、UI 層はそうではない。**やるなら UI が固まってからワークスペース
+一括で**、`VST3_CLASS_ID` と状態のシリアライズ形式の一致を先に測ってから。
 
 ## 貢献するとき
 

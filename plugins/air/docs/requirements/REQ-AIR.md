@@ -533,10 +533,15 @@ WIDTH 1    L と R が独立なノイズ列      → 最大幅、モノ和で �
   `com.nxe.air`（`AGENTS.md`）。
 - **`CLAP_ID` と `VST3_CLASS_ID` は出荷後に変えられない。** ホストが
   プロジェクトに保存するため。
-- **バックエンドは実装計画のラッパ単位まで決めない。** nih-plug から
-  nice-plug（ISC）+ vizia-plug への移行が検討対象にある。`air-core` は
-  フレームワークを知らないので、この要件のどれもラッパの選択に依存しない。
-  Air は出荷済み ID もセッションも無いので、**移行を試すならここが一番安い**。
+- **バックエンドは nih-plug**（`AIR-4` で決定）。nice-plug（ISC）+ vizia-plug は
+  見送った。理由は範囲で、ライセンスではない — **ワークスペースの `vizia` は
+  `nih_plug_vizia` が引くフォークとバイト単位で一致していないとコンパイルが
+  通らない**（別 git ソースは別クレート）。Air だけ vizia-plug に載せると
+  `nxe-ui` の vizia も動き、**Doubler / Velour / Sparkleur の UI と gallery が
+  全部巻き添え**になる。「駄目なら戻すのはラッパだけ」が成り立つのは
+  `air-core` までで、UI 層はそうではない。
+- **`air-core` はフレームワークを知らない**ので、この要件のどれもラッパの
+  選択に依存しない。移行をやるなら UI が固まってから**ワークスペース一括**で。
 - **受入条件**:
   - [ ] Bitwig / Ableton Live / Reaper / Studio One で CLAP と VST3 の
         両方が読み込まれる
