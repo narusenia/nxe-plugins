@@ -13,6 +13,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 mod analysis;
+#[cfg(test)]
+mod defaults;
 mod params;
 mod ui;
 

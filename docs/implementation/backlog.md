@@ -358,7 +358,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| AIR-13 | **既定値と耳**（**耳が要る**。測れるものは先に測る） | `../../plugins/air/docs/implementation/air-plan.md` |
+| — | Air は `AIR-13` まで完了。次は Vocal Depth（`roadmap.md`） | `roadmap.md` |
 | SPK-18 | **既定値と耳** ✅ — 測れるものは全部固定。既定値は 1 つも動かす理由が出なかった | `sparkleur-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 
@@ -517,7 +517,7 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | AIR-10 | UI 読み値・メーター・図と解析の配線（`AIR-11` を含む） | ✅ `a30d3cc` |
 | AIR-11 | 解析の配線 | ✅ `AIR-10` に含めた |
 | AIR-12 | CPU 予算 | ✅ **エンジン 47.2 µs / 予算 533** |
-| AIR-13 | 既定値と耳 | ⬜ |
+| AIR-13 | 既定値と耳 | ✅ 7 本確定、`defaults.rs` が測って固定 |
 
 ### Vocal Depth / Vocal Glue
 

@@ -123,17 +123,27 @@ pub struct AirParams {
 impl Default for AirParams {
     fn default() -> Self {
         Self {
-            // **Provisional.** The plugin has no presets (`REQ-AIR-022`), so the
-            // defaults are the product's face and `AIR-13` settles them by ear.
-            surface: percentage("Surface", 0.35),
+            // **Settled by ear** (`AIR-13`). The plugin has no presets
+            // (`REQ-AIR-022`), so these are the product's face: what it sounds
+            // like when someone drops it on a track and turns one knob.
+            //
+            // Half, so `SURFACE` has somewhere to go in both directions.
+            surface: percentage("Surface", 0.50),
             // The middle, because the two halves are the product's two answers
             // and shipping against one stop would hide the other.
             blend: percentage("Blend", 0.5),
-            character: percentage("Character", 0.35),
+            // **Toward the hard knee and the grain.** The soft end is close to
+            // what Velour already does; what is Air about the sound is nearer
+            // this end (`REQ-AIR-002`).
+            character: percentage("Character", 0.72),
 
+            // **Half an octave down**, so the layer starts around 2.1 kHz
+            // rather than 3. Up there it is only ever air; down here it reaches
+            // the region that makes a source read as *present*, and `FOCUS`
+            // still has a full octave of travel above it.
             focus: FloatParam::new(
                 "Focus",
-                0.0,
+                -0.50,
                 FloatRange::Linear {
                     min: -1.0,
                     max: 1.0,
@@ -149,9 +159,11 @@ impl Default for AirParams {
             // Wide, because the layer sitting around the source rather than on
             // it is what the product is for (`REQ-AIR-008`).
             width: percentage("Width", 0.60),
-            // Halfway: the layer answers to the music without disappearing
-            // between phrases. **Provisional** like every other default here.
-            follow: percentage("Follow", 0.50),
+            // **All the way.** Following the input is what Air is
+            // (`REQ-AIR-002`), and a default that only half does it ships the
+            // half of the product that Velour already covers. The three
+            // deviations are how someone takes it back.
+            follow: percentage("Follow", 1.00),
             mix: percentage("Mix", 1.0),
             output: decibels("Output"),
 
