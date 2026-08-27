@@ -184,7 +184,7 @@ push して**無条件に `Ok(())` を返す**。ユニット構造体で窓へ�
 **反射側は素材によらず正確に補正できている**（広帯域なので）。**壊れているのは
 帯域 EQ の項だけ。**
 
-## Vocal Depth で分かったこと（`VDP-1`〜`VDP-3`）
+## Vocal Depth で分かったこと（`VDP-1`〜`VDP-4`）
 
 **2 単位通った。** `VDP-1` はタップ 10 本 × 2 チャネル + 拡散 3 段 + 200 Hz HP、
 `VDP-2` は Presence の並列帯（2〜5 kHz）+ Transient の検出（2〜8 kHz）。
@@ -258,6 +258,24 @@ push して**無条件に `Ok(())` を返す**。ユニット構造体で窓へ�
 - **段の対照実験が「段なし」になった。** ピーキングは**係数を差し替えても
   状態が残る**ので、出力は段ではなくリング時間で歩く。スムージングを外しても
   段が出ず（0.99）、**対照実験を「素直なゲインとして跳ばす」形に作り直した**
+
+### `VDP-4` — ラッパ
+
+**音が出る。** CLAP と VST3、パラメータ **5 個**（`DEPTH` / `DIRECT` / `ROOM` /
+`MIX` / `OUTPUT`）。`DAMPING` / `WIDTH` / `CLARITY` は宣言していない —
+**何もしないコントロールを先に出さない**。id は鍵なので後から足すのは安全。
+
+- **レイテンシは 0 で申告もしない。** 遅延線はあるが**反射は原音より遅れて
+  来るもの**で、直接音の経路にバルク遅延が無い（`REQ-VDP-012`）
+- **`MIX` = 0 のビット一致がエンジン単体のテストでは隠れていた。**
+  エンジンが `mix` を内部で 5 ms スムーズしていて、**セッションを `MIX` = 0 で
+  開いた最初の 5 ms が wet になる**。エンジンのテストは `set` のあとに
+  `reset()` を呼んでいたので気づかなかった。**`mix` と `output` は呼び出し側が
+  スムーズ済みの値を渡す**形に直した（正規化だけは内部でスムーズする）。
+  **ラッパを書いて初めて出るバグ**で、`VEL-5` / `AIR-4` を早い順番に置いている
+  理由がまた 1 つ増えた
+- **`ParamPtr::update_smoother` は private。** `primed()` は Air と同じく
+  フィールドごとに `smoothed.reset(value())` で書く
 
 ### `VDP-2` — 直接音
 
@@ -442,7 +460,8 @@ Vocal Glue の `Ambience Glue` / Impact の `SIZE`）。`vocal-depth-core` に�
 | `plugins/air/air-core` | **DSP は全部。** ノイズ層（生成・傾き・粒・`WIDTH`）、倍音層、2 系統のまとめ、Follow 3 本、保護 |
 | `plugins/air/air` | NXE Air。CLAP + VST3。パラメータ 15 個、**全部にコントロールがある**。UI は読み値の帯 + 点のスペクトラム + 7 ノブ + Advanced + メーター |
 | `plugins/air/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`AIR-1`〜`AIR-13`）。`air-v0.1.2` **公開済み** |
-| `plugins/vocal-depth/vocal-depth-core` | **初期反射**（`VDP-1`）。タップ 10 本 × 2 チャネル + 拡散 3 段 + 200 Hz HP。**Vocal Depth を知らない**（`Settings` を取るだけ） |
+| `plugins/vocal-depth/vocal-depth-core` | **DSP は `VDP-3` まで。** 初期反射（タップ 10 本 × 2 + 拡散 3 段 + 200 Hz HP。**Vocal Depth を知らない**）、直接音（Presence のピーキング + Transient）、`DEPTH` とラウドネス正規化、エンジン |
+| `plugins/vocal-depth/vocal-depth` | NXE Vocal Depth。CLAP + VST3。**パラメータ 5 個**（`DAMPING` / `WIDTH` / `CLARITY` は `VDP-5`〜`VDP-7`）。**UI はまだ無い**。**製品名は暫定** |
 | `plugins/vocal-depth/docs` | **要件・DSP 仕様・実装計画**（`VDP-1` ✅、次は `VDP-2`）。初期反射を作る本で、Glue と Impact に貸す。`ui.md` は `VDP-9` の前 |
 | `plugins/vocal-glue/docs` | **要件のみ。** 新規 DSP がほぼ無い（`guard` の N 帯域化だけ） |
 | `concepts/` | まだ要件を書いていない構想 3 本（Bass Density / Impact / Growl） |
@@ -456,31 +475,40 @@ Sparkleur の内訳（`SPK-17`）はエンジン 4x が **110**、`Spectrum` 32 
 
 ## 次にやること
 
-### 1. `VDP-3` — `DEPTH` とラウドネス正規化（**ゲート**）
+### 1. `VDP-5` — DAMPING
 
-**`VDP-1` と `VDP-2` は通った**（実測と踏んだ罠は「Vocal Depth で分かったこと」）。
-**ここが製品の主張**（`REQ-VDP-008`）: `DEPTH` を回してもラウドネスが動かない。
-**耳ではなく単体テストで通す。**
+**`VDP-4` まで通って音が出ている**（実測と踏んだ罠は「Vocal Depth で
+分かったこと」）。`DAMPING` は**直接音と反射で違う量**のローパスで、比は
+[`dsp.md`](../plugins/vocal-depth/docs/specifications/dsp.md) が
+**1.2 : 3.0 オクターブ**（全開で直接音 8.7 kHz、反射 2.5 kHz）と決めている。
+**Transient のときだけ直接音の高域を戻す**（`TRANS_KEEP_OCT` = 1 oct）—
+これが無いと FAR が「布を被せた音」になる。
 
-式は [`dsp.md`](../plugins/vocal-depth/docs/specifications/dsp.md) の
-「ラウドネス正規化」にある — **固定 32 点のピンク重み格子の上で、直接音と反射の
-パワーを解析的に足して割る**。材料は揃っている:
+**`Direct::opening()` はもう出ている**ので、戻す機構は係数の作り直しだけ。
+**`VDP-3` の正規化に `|H_damp|²` を 2 本足すのを忘れないこと**（`dsp.md` の
+式にはもう書いてある）。
 
-- `Reflections::tap_energy()` が反射側の項を返す（**バスのゲインを含む**）
-- `Direct::presence_db()` が直接音側の静的なゲインを返す
-- **足すのは `biquad::Coefficients::magnitude`**（6 行）。まだ書いていない
+### 2. 実機で 4 ホストに読み込ませる（`VDP-4` の最後の完了条件）
 
-**予算の残りはほぼ全部使える。** `±0.5 dB` のうち Transient に割り振った
-0.3 dB は**実測 0.045 dB で済んでいる**（上）。残るのは `CLARITY`（`VDP-7`）と
-M/S の項の残差。
+```bash
+mise run install vocal-depth   # ~/Library/Audio/Plug-Ins にコピーする
+```
 
-### 2. 急がないが決めておきたいこと
+**まだ実行していない** — ユーザーのプラグインフォルダに触るため。
+**UI は無い**（`VDP-9`）ので、ホストの既定パラメータ UI で
+`DEPTH` / `DIRECT` / `ROOM` / `MIX` / `OUTPUT` の 5 個を回す。
+
+**聴きどころは「`DEPTH` を回して音量が動くと感じるか」。** 測定は
+0.48〜0.80 dB で、**これが耳に「音色の変化」として通るかがゲート改訂の賭け**。
+通らないなら Presence の可動域を狭める手が残っている（上）。
+
+### 3. 急がないが決めておきたいこと
 
 **オーバーサンプリングの倍率をホストレートから決めるか**（下の「残っている
 宿題」）。192 kHz で使うなら効くが、上蓋と一緒に設計し直す必要がある。
 **今すぐの回避策は `OVERSAMPLE` を 2x にすること**で、これは画面に出ている。
 
-### 3. Air から増えている道具
+### 4. Air から増えている道具
 
 **同じものを書き直さない。**
 

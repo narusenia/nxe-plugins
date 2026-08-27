@@ -25,7 +25,7 @@
 ## 現在地
 
 **4 本とも実装完了・公開済み**（2026-08-28）。`doubler-v0.1.3` /
-`velour-v0.1.3` / `sparkleur-v0.1.3` / `air-v0.1.2`。**テスト 511 本、
+`velour-v0.1.3` / `sparkleur-v0.1.3` / `air-v0.1.2`。**テスト 516 本、
 `mise run check` は通っている。**
 
 **5 本目 Vocal Depth が始まった。** `dsp.md` を書き、`VDP-1`（初期反射）・
@@ -43,7 +43,7 @@
 | | 状態 |
 |---|---|
 | Doubler / Velour / Sparkleur / Air | **全単位 ✅**。残るのは `DBL-13`（既定値、耳）と Sparkleur の既定値の主観サインオフだけ。**どちらもリリースの阻害要因ではない** |
-| Vocal Depth | **`VDP-3` まで完了**（初期反射 + 直接音 + 正規化。**ゲート通過**）。次は **`VDP-4`**（ラッパ）。`ui.md` は `VDP-9` の前 |
+| Vocal Depth | **`VDP-4` まで完了**（音が出る。CLAP + VST3、パラメータ 5 個）。次は **`VDP-5`**（`DAMPING`）。`ui.md` は `VDP-9` の前 |
 | Vocal Glue | 要件のみ。実装単位はまだ無い |
 | CPU（予算 533 µs） | Doubler 85 / Velour 128 / Sparkleur 129 / **Air 47**（エンジンのみ） |
 | 共通クレート | `nxe-audio`（処理。`delay` が `VDP-1` で増えた）/ `nxe-dsp`（解析）/ `nxe-ui`（ウィジェット）/ `nxe-plug-ui`（結線） |
@@ -395,7 +395,8 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| VDP-4 | **ラッパとパラメータ**（**ここで音が出る**）。`VDP-3` まで通ったので依存が解けた | `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md` |
+| VDP-5 | **`DAMPING`**（直接音と反射で違う量）。`VDP-4` で音が出たので依存が解けた | `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md` |
+| — | **`NXE Vocal Depth` を実機で読み込む**（4 ホスト、`VDP-4` の最後の完了条件）。`mise run install vocal-depth` | `vocal-depth-plan.md` の `VDP-4` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 
 Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`）は完了。
@@ -575,8 +576,8 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | VDP-1 | 初期反射。`vocal-depth-core` もここで作った。`DelayLine` を `doubler-core` から `nxe-audio` に上げた | ✅ 120 ms 以降 −25.5 dB、段 0.36 対 88 `e60ffa4` |
 | VDP-2 | 直接音（Presence の並列帯 + Transient） | ✅ 帯域差 14.79 dB、定常への寄与 0.045 dB `84419ac` |
 | VDP-3 | `DEPTH` とラウドネス正規化（**ゲート**）。`Coefficients::response` / `magnitude` / `peaking` を足した | ✅ **許容を ±1.0 dB に改訂して通過** — ピンク 0.48 / ホワイト 0.80 / フレーズ 0.77 dB `0402d71` |
-| VDP-4 | ラッパとパラメータ（**ここで音が出る**） | 🟡 |
-| VDP-5 | `DAMPING`（直接音と反射で違う量） | ⬜ |
+| VDP-4 | ラッパとパラメータ（**ここで音が出る**）。パラメータは 5 個（`DAMPING` / `WIDTH` / `CLARITY` は `VDP-5`〜`VDP-7`） | ✅ **実機確認だけ残り** `5c29f43` |
+| VDP-5 | `DAMPING`（直接音と反射で違う量） | 🟡 |
 | VDP-6 | 距離依存のステレオ幅 | ⬜ |
 | VDP-7 | `CLARITY`（明瞭度の保持と公開） | ⬜ |
 | VDP-8 | 詰め（レート・ブロック・極端値・確保・継ぎ目） | ⬜ |
