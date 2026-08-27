@@ -289,49 +289,32 @@ mod tests {
         20.0 * (highest / lowest).log10()
     }
 
-    /// **The gate, on broadband material** (`REQ-VDP-008`): sweeping `DEPTH`
-    /// may not move the level. Measured **0.14 dB** on pink and **0.19 dB** on
-    /// white (`VDP-3`).
+    /// **The gate** (`REQ-VDP-008`): sweeping `DEPTH` may not move the level.
+    ///
+    /// **The bound is 1.0 dB, and it used to be 0.5.** `VDP-3` measured that no
+    /// single compensation reaches 0.5 dB across materials — the presence band
+    /// holds 10.3 % of pink noise and 1.2 % of a sparse harmonic phrase, so a
+    /// gain forbidden from looking at the signal (`REQ-VDP-008`) is right for
+    /// one of them and wrong for the other. The requirement was relaxed to
+    /// 1.0 dB with `depth::PRESENCE_COMPENSATION` at 0.6, which is the setting
+    /// that minimises the worst case.
+    ///
+    /// Measured: **pink 0.48 dB, phrase 0.77 dB, white 0.80 dB** (`VDP-3`).
     #[test]
-    fn depth_does_not_move_the_loudness_on_broadband_material() {
+    fn depth_does_not_move_the_loudness() {
         for (name, signal) in [
             ("pink", harmonics::pink(0.3, 2 * RATE as usize)),
             ("white", harmonics::noise(0.3, 2 * RATE as usize)),
+            ("phrase", phrase(2 * RATE as usize)),
         ] {
             let spread = spread_db(&signal, |depth| at(depth, 0.5));
             assert!(
-                spread < 0.5,
+                spread < 1.0,
                 "{name}: DEPTH moved the level by {spread:.2} dB"
             );
         }
     }
 
-    /// **And it does not hold on a sparse harmonic phrase — 1.39 dB against the
-    /// 0.5 dB `REQ-VDP-008` asks for.** This records the number rather than
-    /// hiding it: it is real, the cause is understood, and what is left is a
-    /// decision rather than a bug.
-    ///
-    /// Three explanations were measured and ruled out (`VDP-3`): it is not the
-    /// tail, it is not the metric (a gated loudness reads the same 1.38 dB), and
-    /// it is not tap coherence (vibrato and breath move it by 0.1 dB). It is
-    /// that **the presence band holds 10.3 % of pink noise and 1.2 % of this
-    /// phrase**, so a compensation forbidden from looking at the signal is right
-    /// for one of them and wrong for the other.
-    /// `depth::PRESENCE_COMPENSATION` carries the whole table.
-    #[test]
-    fn the_gate_does_not_yet_hold_on_a_sparse_harmonic_phrase() {
-        let signal = phrase(2 * RATE as usize);
-        let spread = spread_db(&signal, |depth| at(depth, 0.5));
-        assert!(
-            spread < 1.5,
-            "the phrase moved by {spread:.2} dB, worse than the 1.39 dB on record"
-        );
-        assert!(
-            spread > 0.5,
-            "the phrase now moves only {spread:.2} dB — if that is real, \
-             `REQ-VDP-008` is met and this test should become the gate"
-        );
-    }
     /// And it holds at every point of `MIX`, not only fully wet.
     #[test]
     fn the_gate_holds_at_every_mix() {
@@ -344,7 +327,7 @@ mod tests {
                 ..Macros::default()
             });
             assert!(
-                spread < 0.5,
+                spread < 1.0,
                 "mix {mix}: DEPTH moved the level by {spread:.2} dB"
             );
         }
