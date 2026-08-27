@@ -70,6 +70,27 @@ vizia = { git = "https://github.com/robbert-vdh/vizia.git", tag = "patched-2024-
     "x11",
 ] }
 
+# **The vizia both of the above resolve to is ours** (`nxe-2026-08-27`, which is
+# `patched-2024-05-06` plus two commits). `[patch]` rewrites the source for the
+# whole graph, so `nih_plug_vizia`'s vizia and ours stay the same crate — which
+# is the constraint the note above is about.
+#
+# Two fixes, both measured on `mise run gallery` (an idle window, no host, no
+# audio): **27.7 % of a core down to 0.9 %**.
+#
+# 1. **`vizia_baseview` redrew every frame whether or not anything changed.**
+#    `Application::on_frame_update` computes `should_redraw` and `on_frame`
+#    never read it. `vizia_winit` does read it — the same flag, honoured. On
+#    macOS the frame timer runs on the **host's** run loop, so every redraw was
+#    stalling the DAW's own interface.
+# 2. **`TextContext::sync_styles` ran a `fontdb` query per text view per
+#    frame**, uncached, over a database holding every system font. A quarter of
+#    the drawing time.
+#
+# Both are worth sending upstream; neither has been yet.
+[patch."https://github.com/robbert-vdh/vizia.git"]
+vizia = { git = "https://github.com/narusenia/vizia.git", tag = "nxe-2026-08-27" }
+
 [profile.release]
 lto = "thin"
 

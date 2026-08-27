@@ -2846,7 +2846,7 @@ dependencies = [
 [[package]]
 name = "selectors"
 version = "0.23.0"
-source = "git+https://github.com/robbert-vdh/vizia.git?tag=patched-2024-05-06#e3fab5530cda9cb90f679508d9f058bd62189d36"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
 dependencies = [
  "bitflags 1.3.2",
  "cssparser",
@@ -3450,7 +3450,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "vizia"
 version = "0.1.0"
-source = "git+https://github.com/robbert-vdh/vizia.git?tag=patched-2024-05-06#e3fab5530cda9cb90f679508d9f058bd62189d36"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
 dependencies = [
  "vizia_baseview",
  "vizia_core",
@@ -3460,7 +3460,7 @@ dependencies = [
 [[package]]
 name = "vizia_baseview"
 version = "0.1.0"
-source = "git+https://github.com/robbert-vdh/vizia.git?tag=patched-2024-05-06#e3fab5530cda9cb90f679508d9f058bd62189d36"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
 dependencies = [
  "baseview",
  "femtovg",
@@ -3474,7 +3474,7 @@ dependencies = [
 [[package]]
 name = "vizia_core"
 version = "0.1.0"
-source = "git+https://github.com/robbert-vdh/vizia.git?tag=patched-2024-05-06#e3fab5530cda9cb90f679508d9f058bd62189d36"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
 dependencies = [
  "accesskit",
  "bitflags 2.13.1",
@@ -3505,7 +3505,7 @@ dependencies = [
 [[package]]
 name = "vizia_derive"
 version = "0.1.0"
-source = "git+https://github.com/robbert-vdh/vizia.git?tag=patched-2024-05-06#e3fab5530cda9cb90f679508d9f058bd62189d36"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3515,12 +3515,12 @@ dependencies = [
 [[package]]
 name = "vizia_id"
 version = "0.1.0"
-source = "git+https://github.com/robbert-vdh/vizia.git?tag=patched-2024-05-06#e3fab5530cda9cb90f679508d9f058bd62189d36"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
 
 [[package]]
 name = "vizia_input"
 version = "0.1.0"
-source = "git+https://github.com/robbert-vdh/vizia.git?tag=patched-2024-05-06#e3fab5530cda9cb90f679508d9f058bd62189d36"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
 dependencies = [
  "bitflags 1.3.2",
  "keyboard-types",
@@ -3530,7 +3530,7 @@ dependencies = [
 [[package]]
 name = "vizia_storage"
 version = "0.1.0"
-source = "git+https://github.com/robbert-vdh/vizia.git?tag=patched-2024-05-06#e3fab5530cda9cb90f679508d9f058bd62189d36"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
 dependencies = [
  "morphorm",
  "vizia_id",
@@ -3539,7 +3539,7 @@ dependencies = [
 [[package]]
 name = "vizia_style"
 version = "0.1.0"
-source = "git+https://github.com/robbert-vdh/vizia.git?tag=patched-2024-05-06#e3fab5530cda9cb90f679508d9f058bd62189d36"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
 dependencies = [
  "bitflags 2.13.1",
  "cssparser",
@@ -3552,7 +3552,7 @@ dependencies = [
 [[package]]
 name = "vizia_window"
 version = "0.1.0"
-source = "git+https://github.com/robbert-vdh/vizia.git?tag=patched-2024-05-06#e3fab5530cda9cb90f679508d9f058bd62189d36"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
 dependencies = [
  "accesskit",
  "morphorm",
@@ -3563,7 +3563,7 @@ dependencies = [
 [[package]]
 name = "vizia_winit"
 version = "0.1.0"
-source = "git+https://github.com/robbert-vdh/vizia.git?tag=patched-2024-05-06#e3fab5530cda9cb90f679508d9f058bd62189d36"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
 dependencies = [
  "accesskit",
  "accesskit_winit",

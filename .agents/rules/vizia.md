@@ -55,7 +55,9 @@ structure — is [`ui.md`](ui.md).
 ## What this vizia revision does and does not do
 
 `nih_plug_vizia` pins vizia to Robbert van der Helm's fork at tag
-`patched-2024-05-06` (see `docs/specifications/architecture.md`). These are
+`patched-2024-05-06`, and the workspace `[patch]`es that to
+`narusenia/vizia` at `nxe-2026-08-27` — the same tree plus two performance
+fixes to the baseview backend (`docs/specifications/architecture.md`). These are
 things that cost real time to find. Read this section before assuming something
 does not work because you wrote it wrong.
 
@@ -93,6 +95,16 @@ on mouse-down (`hovered == triggered`). A pressable box with two labels in it
 therefore fires only when the pointer happens not to cross from one label to
 the other — which reads as "the button needs several clicks", not as a layout
 problem. Put `.class("decoration")` on anything inside something pressable.
+
+**The baseview backend redrew every frame, and text cost a font-database
+query per view per frame.** Both are fixed in the fork the workspace patches to
+(`nxe-2026-08-27`), and both were **invisible until an idle window was measured
+with `sample`**: `mise run gallery` sat at **27.7 % of a core doing nothing**,
+of which a quarter was `fontdb::Database::query`. It is 0.9 % now.
+
+The lesson is the measurement, not the patch: **an idle window should cost
+nothing, so if it costs something, that is the bug.** `ps -o %cpu` on
+`mise run gallery` is the whole test.
 
 **Vizia's default text colour is black.** A `Label` with no colour disappears on
 a dark surface. The stylesheet has a base `label` element rule for exactly this;
