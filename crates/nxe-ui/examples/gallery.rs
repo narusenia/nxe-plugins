@@ -86,6 +86,11 @@ struct Demo {
     /// layer is a stand-in for something an additive plugin adds; `alignment`
     /// is what a `BLEND`-like control would move.
     grains: Curve,
+    /// A stand-in for an early-reflection pattern: where each arrival lands and
+    /// how loud it is, plus the direct sound that did not travel.
+    taps: Vec<nxe_ui::taps::Tap>,
+    direct: f32,
+    distance: f32,
     alignment: f32,
 }
 
@@ -109,6 +114,7 @@ enum DemoEvent {
     ResetBand(usize),
     SetFocus(f32),
     SetAlignment(f32),
+    SetDistance(f32),
     HoverBand(Option<usize>),
     SetSolo(usize),
     SetMeter(f32),
@@ -213,6 +219,13 @@ impl Model for Demo {
                 self.added = added_curve(&self.bands);
             }
             DemoEvent::SetAlignment(value) => self.alignment = *value,
+            // **Derived when the input changes, not in a lens** — a lens can
+            // only map one field, and the pattern comes from the distance and
+            // the tap table together (`.agents/rules/vizia.md`).
+            DemoEvent::SetDistance(value) => {
+                self.distance = *value;
+                self.taps = sample_taps(*value);
+            }
             DemoEvent::SetFocus(value) => {
                 self.focus = *value;
                 self.refresh_bands();
@@ -317,6 +330,9 @@ fn main() {
             added: Vec::new(),
             meter: 0.62,
             grains: sample_grains(),
+            taps: sample_taps(0.5),
+            direct: 0.85,
+            distance: 0.5,
             alignment: 0.35,
         };
         demo.refresh();
@@ -338,6 +354,7 @@ fn main() {
                 curves(cx);
                 band_field(cx);
                 dot_field(cx);
+                tap_field(cx);
                 meters(cx);
                 detail(cx);
                 icons(cx);
@@ -963,6 +980,23 @@ fn band_field(cx: &mut Context) {
 
 /// A stand-in for a generated layer: a broad rise with a couple of peaks in it,
 /// so the field has something with shape to draw.
+/// Ten arrivals with a window over them, the shape Vocal Depth's reflections
+/// have. `distance` slides the window, which is what its `DEPTH` does.
+fn sample_taps(distance: f32) -> Vec<nxe_ui::taps::Tap> {
+    const MS: [f32; 10] = [11.0, 13.0, 17.0, 23.0, 31.0, 43.0, 53.0, 67.0, 79.0, 89.0];
+    MS.iter()
+        .map(|&ms| {
+            let position = (ms - 10.0) / 110.0;
+            let offset = position - distance;
+            let window = (-(offset * offset) / (2.0 * 0.45 * 0.45)).exp();
+            nxe_ui::taps::Tap {
+                position,
+                level: window * (11.0f32 / ms).sqrt() * 0.8,
+            }
+        })
+        .collect()
+}
+
 fn sample_grains() -> Curve {
     const COLUMNS: usize = 32;
     (0..COLUMNS)
@@ -976,6 +1010,31 @@ fn sample_grains() -> Curve {
         .enumerate()
         .map(|(index, level)| (index as f32 / (COLUMNS - 1) as f32, level))
         .collect()
+}
+
+fn tap_field(cx: &mut Context) {
+    panel(cx, "TAP FIELD", |cx| {
+        nxe_ui::taps::TapField::new(cx, Demo::taps, Demo::direct)
+            .height(Pixels(150.0))
+            .width(Stretch(1.0));
+
+        HStack::new(cx, |cx| {
+            Label::new(cx, "DISTANCE").class("label");
+            Bar::new(cx, Demo::distance, |cx, gesture| {
+                if let Gesture::Change(value) = gesture {
+                    cx.emit(DemoEvent::SetDistance(value));
+                }
+                if let Gesture::Reset = gesture {
+                    cx.emit(DemoEvent::SetDistance(0.5));
+                }
+                cx.emit(DemoEvent::Gesture(name_of(gesture)));
+            })
+            .width(Pixels(160.0))
+            .height(Pixels(10.0));
+        })
+        .class("row")
+        .col_between(Pixels(theme::SPACE_2));
+    });
 }
 
 fn dot_field(cx: &mut Context) {

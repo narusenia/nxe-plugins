@@ -113,6 +113,11 @@ pub struct Engine {
     output: f32,
     /// The resolved normalisation before smoothing, for tests and the display.
     resolved_gain: f32,
+    /// The last sample of each bus, **taken directly rather than as
+    /// `out - dry`**: a subtraction throws away most of the quieter one's
+    /// precision (`VEL-*` learned that measuring Velour's layer).
+    last_direct: (f32, f32),
+    last_reflected: (f32, f32),
 }
 
 impl Engine {
@@ -140,6 +145,8 @@ impl Engine {
             mix: 1.0,
             output: 1.0,
             resolved_gain: 1.0,
+            last_direct: (0.0, 0.0),
+            last_reflected: (0.0, 0.0),
         };
         built.set(Macros::default());
         built.normalisation.snap();
@@ -208,6 +215,11 @@ impl Engine {
         let mix = self.mix;
         let output = self.output;
 
+        // **After the normalisation**, because the meters answer "what is
+        // coming out" and the normalisation is part of the answer.
+        self.last_direct = (normalisation * direct_left, normalisation * direct_right);
+        self.last_reflected = (normalisation * wet_left, normalisation * wet_right);
+
         let wet_left = normalisation * (direct_left + wet_left);
         let wet_right = normalisation * (direct_right + wet_right);
 
@@ -233,6 +245,17 @@ impl Engine {
     /// **A function of the parameters alone** (`REQ-VDP-008`).
     pub fn normalisation(&self) -> f32 {
         self.resolved_gain
+    }
+
+    /// The two buses as of the last sample, for the meters and the figure
+    /// (`REQ-VDP-018`).
+    pub fn buses(&self) -> ((f32, f32), (f32, f32)) {
+        (self.last_direct, self.last_reflected)
+    }
+
+    /// Where each reflection arrives and how loud it is (`REQ-VDP-013`).
+    pub fn pattern(&self) -> [(f32, f32); crate::reflections::TAPS] {
+        self.reflections.pattern()
     }
 
     /// How far `CLARITY` is lifting, in dB. **Shown on screen** — a protection

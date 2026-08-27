@@ -3,19 +3,22 @@
 //!
 //! No DSP lives here (`.agents/rules/rust.md`).
 //!
-//! **No window yet.** `VDP-4` is where the sound comes out; the interface is
-//! `VDP-9`, and `ui.md` has to be written before it.
+//! The window is `ui`. **One screen, no tabs** (`REQ-VDP-013`).
 //!
 //! **The product name is provisional** (`REQ-VDP-014`). `NXE Vocal Depth` is a
 //! descriptive name in a line that otherwise uses invented ones, and
 //! `CLAP_ID` cannot change once a host has stored it — so the name has to be
 //! settled **before the first release**, not before this unit.
 
+use analysis::{Analysis, METERS};
 use nih_plug::prelude::*;
+use nxe_dsp::{Correlation, Level};
 use std::sync::Arc;
 use vocal_depth_core::Engine;
 
+mod analysis;
 mod params;
+mod ui;
 
 use params::VocalDepthParams;
 
@@ -25,6 +28,20 @@ const FALLBACK_SAMPLE_RATE: f32 = 48_000.0;
 
 struct VocalDepth {
     params: Arc<VocalDepthParams>,
+    /// The window's size and position, which the host saves with the project.
+    editor_state: Arc<nih_plug_vizia::ViziaState>,
+    /// What the editor reads. **The audio thread writes; nothing else touches
+    /// the analysers below** (`analysis.rs`).
+    analysis: Arc<Analysis>,
+    /// IN L, IN R, OUT L, OUT R.
+    meters: [Level; METERS],
+    /// The two buses, so the readout can print the ratio that *is* the distance
+    /// (`REQ-VDP-018`).
+    direct_level: Level,
+    reflected_level: Level,
+    /// Of the **reflections**, not the output: the promise is about what the
+    /// room does (`REQ-VDP-007`).
+    correlation: Correlation,
     engine: Engine,
     sample_rate: f32,
     /// How many input channels the host actually negotiated. Under the mono
@@ -36,6 +53,12 @@ impl Default for VocalDepth {
     fn default() -> Self {
         Self {
             params: Arc::new(VocalDepthParams::default()),
+            editor_state: ui::default_state(),
+            analysis: Arc::new(Analysis::default()),
+            meters: std::array::from_fn(|_| Level::new(FALLBACK_SAMPLE_RATE)),
+            direct_level: Level::new(FALLBACK_SAMPLE_RATE),
+            reflected_level: Level::new(FALLBACK_SAMPLE_RATE),
+            correlation: Correlation::new(FALLBACK_SAMPLE_RATE),
             engine: Engine::new(FALLBACK_SAMPLE_RATE),
             sample_rate: FALLBACK_SAMPLE_RATE,
             input_channels: 2,
@@ -74,6 +97,14 @@ impl Plugin for VocalDepth {
         self.params.clone()
     }
 
+    fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
+        ui::create(
+            self.params.clone(),
+            self.editor_state.clone(),
+            self.analysis.clone(),
+        )
+    }
+
     /// The only place that allocates. The reflection delay lines are sized from
     /// the rate the host has just committed to (`REQ-VDP-016`).
     ///
@@ -97,12 +128,22 @@ impl Plugin for VocalDepth {
             // new rate is a new set of lines rather than a correction
             // (`REQ-VDP-017`).
             self.engine = Engine::new(self.sample_rate);
+            self.meters = std::array::from_fn(|_| Level::new(self.sample_rate));
+            self.direct_level = Level::new(self.sample_rate);
+            self.reflected_level = Level::new(self.sample_rate);
+            self.correlation = Correlation::new(self.sample_rate);
         }
         true
     }
 
     fn reset(&mut self) {
         self.engine.reset();
+        self.direct_level.reset();
+        self.reflected_level.reset();
+        self.correlation.reset();
+        for meter in &mut self.meters {
+            meter.reset();
+        }
     }
 
     fn process(
@@ -135,10 +176,72 @@ impl Plugin for VocalDepth {
             let (out_left, out_right) = self.engine.process(dry_left, dry_right);
             left[sample] = out_left;
             right[sample] = out_right;
+
+            // **The buses taken directly**, never `out − dry` (`analysis.rs`).
+            let ((direct_left, direct_right), (room_left, room_right)) = self.engine.buses();
+            self.direct_level.push((direct_left + direct_right) * 0.5);
+            self.reflected_level.push((room_left + room_right) * 0.5);
+            self.correlation.push(room_left, room_right);
+            self.meters[0].push(dry_left);
+            self.meters[1].push(dry_right);
+            self.meters[2].push(out_left);
+            self.meters[3].push(out_right);
         }
+
+        // One frame per block. The editor reads whatever is there — a frame it
+        // misses is a frame nobody would have seen.
+        //
+        // **Reading, never writing** (`REQ-VDP-018`): everything here comes out
+        // of the engine, and nothing here goes back in. Stopping the analysis
+        // would not change a sample.
+        self.analysis
+            .peaks
+            .write(&std::array::from_fn(|index| self.meters[index].peak()));
+        self.analysis
+            .holds
+            .write(&std::array::from_fn(|index| self.meters[index].hold()));
+        self.analysis.buses.write(&[
+            decibels(self.direct_level.rms()),
+            decibels(self.reflected_level.rms()),
+        ]);
+
+        let pattern = self.engine.pattern();
+        self.analysis
+            .arrivals
+            .write(&std::array::from_fn(|index| pattern[index].0));
+        // **Against the loudest weight the design can produce**, so the figure
+        // does not rescale itself as `ROOM` is turned down — a picture whose
+        // ceiling moves cannot be read for level.
+        self.analysis
+            .arrival_levels
+            .write(&std::array::from_fn(|index| {
+                (pattern[index].1 / ARRIVAL_CEILING).clamp(0.0, 1.0)
+            }));
+
+        self.analysis
+            .clarity
+            .write(&[self.engine.clarity_lift_db()]);
+        self.analysis.correlation.write(&[self.correlation.value()]);
+        let (corner, _) = self.engine.damping_corners_hz();
+        self.analysis.damping.write(&[corner.unwrap_or(0.0)]);
 
         ProcessStatus::Normal
     }
+}
+
+/// The tap weight the figure treats as full height.
+///
+/// **A fixed ceiling, not the loudest weight of the moment.** A figure that
+/// rescales itself cannot be read for level — turning `ROOM` down would leave
+/// the picture unchanged, which is exactly the thing it is there to show. The
+/// number is the earliest tap at full amount and `ROOM` at its top
+/// (`vocal_depth_core::reflections`).
+const ARRIVAL_CEILING: f32 = 2.0;
+
+/// An amplitude in dB, floored so a silent bus reads as silence rather than as
+/// a very large negative number.
+fn decibels(amplitude: f32) -> f32 {
+    20.0 * amplitude.max(1e-9).log10()
 }
 
 impl ClapPlugin for VocalDepth {

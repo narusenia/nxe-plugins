@@ -14,9 +14,10 @@ description = "A mix processor that moves a voice forward and back"
 # formats only ever load the `cdylib`.
 crate-type = ["cdylib", "rlib"]
 
-# **No Vizia yet.** `VDP-4` ships without a window on purpose — the host's own
-# parameter list is enough to hear whether the sound is right, and the interface
-# is `VDP-9` once `ui.md` exists.
 [dependencies]
 vocal-depth-core = { workspace = true }
+nxe-dsp = { workspace = true }
 nih_plug = { workspace = true }
+nih_plug_vizia = { workspace = true }
+nxe-plug-ui = { workspace = true }
+nxe-ui = { workspace = true }

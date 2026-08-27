@@ -436,6 +436,25 @@ impl Reflections {
         self.gain
     }
 
+    /// Where each tap arrives and how loud it is, for the figure
+    /// (`REQ-VDP-013`).
+    ///
+    /// **The left channel's set**, normalised: the position is a share of
+    /// `SPAN_MAX_MS` and the level is the weight against the loudest one the
+    /// design can produce. Drawing both channels would put two stems on almost
+    /// every arrival and say nothing the readout does not.
+    ///
+    /// **From the weights, not from the parameters.** A figure computed from
+    /// `DEPTH` would agree with the sound only as long as nobody changed the
+    /// window; this one cannot disagree.
+    pub fn pattern(&self) -> [(f32, f32); TAPS] {
+        let channel = &self.channels[0];
+        std::array::from_fn(|index| {
+            let position = channel.tap_ms[index] / SPAN_MAX_MS;
+            (position, channel.weights[index].abs())
+        })
+    }
+
     /// `Σ wᵢ²`, averaged over the two channels — the incoherent tap energy the
     /// loudness normalisation needs (`VDP-3`). **The bus gain is already in
     /// it**, so this is the whole `(gain · r)² · Σ wᵢ² aᵢ²` term of the
