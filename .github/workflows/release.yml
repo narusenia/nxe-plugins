@@ -15,9 +15,18 @@
 
 name: release
 
+# **Push one tag at a time.** GitHub creates no workflow runs at all when a
+# single push carries more than three tags — four went up together once and
+# nothing built, with no error anywhere to say so. `workflow_dispatch` is the
+# way back from that without deleting and re-pushing a tag.
 on:
   push:
     tags: ["*-v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The tag to build, e.g. air-v0.1.1"
+        required: true
 
 permissions:
   contents: write
@@ -40,6 +49,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
 
       # `doubler-v0.1.0` names both what to build and what to call it. Split
       # once, in bash, so every later step reads the same two values.
@@ -47,7 +58,7 @@ jobs:
         id: tag
         shell: bash
         run: |
-          tag="${{ github.ref_name }}"
+          tag="${{ inputs.tag || github.ref_name }}"
           plugin="${tag%-v*}"
           version="${tag##*-v}"
           echo "plugin=$plugin" >> "$GITHUB_OUTPUT"

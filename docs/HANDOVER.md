@@ -475,10 +475,19 @@ release 150 ms と `REFERENCE_DB` は `velour-core` の `envelope::vocal()` に
 ## リリースのしかた
 
 ```bash
-git tag -a doubler-v0.1.1 -m 'NXE Doubler 0.1.1'
-git push origin doubler-v0.1.1
+git tag -a doubler-v0.1.2 -m 'NXE Doubler 0.1.2'
+git push origin doubler-v0.1.2
 ```
 
 タグからプラグイン名とバージョンを読み、3 OS でビルドして**下書き** Release に
 zip を付ける。**バージョンはプラグインの `Cargo.toml` が持つ**ので、タグと
-食い違うと CI が落ちる（わざとそうしてある）。
+食い違うと CI が落ちる（わざとそうしてある）。**`-core` も同じ出荷単位**なので
+一緒に上げる。
+
+**タグは 1 本ずつ push する。** GitHub は **1 回の push に 4 本以上タグが
+入っていると run を 1 つも作らない** — 4 本まとめて出したとき、タグは全部
+上がったのに**ビルドが 1 つも始まらず、どこにもエラーが出なかった**。
+やり直すには remote のタグを消して 1 本ずつ push し直すことになる。
+
+**戻り道を用意してある**: ワークフローに `workflow_dispatch` を足したので、
+タグを消さずに `gh workflow run release -f tag=<tag>` で回せる。
