@@ -7,6 +7,8 @@
 //! `plugins/vocal-depth/docs/specifications/dsp.md` and built in units `VDP-1`
 //! onward (`plugins/vocal-depth/docs/implementation/vocal-depth-plan.md`).
 
+pub mod direct;
 pub mod reflections;
 
-pub use reflections::{Reflections, Settings};
+pub use direct::Direct;
+pub use reflections::Reflections;
