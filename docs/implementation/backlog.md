@@ -25,19 +25,24 @@
 ## 現在地
 
 **4 本とも実装完了・公開済み**（2026-08-28）。`doubler-v0.1.3` /
-`velour-v0.1.3` / `sparkleur-v0.1.3` / `air-v0.1.2`。**テスト 495 本、
+`velour-v0.1.3` / `sparkleur-v0.1.3` / `air-v0.1.2`。**テスト 511 本、
 `mise run check` は通っている。**
 
-**5 本目 Vocal Depth が始まった。** `dsp.md` を書き、**`VDP-1`（初期反射）と
-`VDP-2`（直接音）が通った** — `vocal-depth-core` に `reflections.rs` と
-`direct.rs`、テスト 20 本。`doubler-core` の `DelayLine` は**2 個目の客が
-要求したので `nxe-audio` に上げた**（整数読み `read_whole` を足した）。
-次は **`VDP-3`（ゲート。`DEPTH` とラウドネス正規化）**。
+**5 本目 Vocal Depth が始まった。** `dsp.md` を書き、`VDP-1`（初期反射）・
+`VDP-2`（直接音）・`VDP-3`（正規化）を実装した — `vocal-depth-core` に
+`reflections.rs` / `direct.rs` / `depth.rs` / `engine.rs`、テスト 32 本。
+`nxe-audio` は `delay`（`doubler-core` から。**2 個目の客が要求した**）と
+`biquad` の `response` / `magnitude` / `peaking` が増えた。
+
+**`VDP-3` のゲートは通っていない。** 広帯域素材では 0.14 dB だが、**疎な倍音列
+のフレーズで 1.39 dB**（要求 0.5 dB）。原因は判明していて
+（Presence 帯の割合が素材で 10 倍違う）、**残っているのは判断**
+（`plugins/vocal-depth/docs/specifications/dsp.md` の「ゲートが通らない」）。
 
 | | 状態 |
 |---|---|
 | Doubler / Velour / Sparkleur / Air | **全単位 ✅**。残るのは `DBL-13`（既定値、耳）と Sparkleur の既定値の主観サインオフだけ。**どちらもリリースの阻害要因ではない** |
-| Vocal Depth | **`VDP-2` まで実装済み**（初期反射 + 直接音）。次は **`VDP-3`**（ゲート）。`ui.md` は `VDP-9` の前 |
+| Vocal Depth | **`VDP-3` まで実装済み**（初期反射 + 直接音 + 正規化）。**ゲートは判断待ち**。`ui.md` は `VDP-9` の前 |
 | Vocal Glue | 要件のみ。実装単位はまだ無い |
 | CPU（予算 533 µs） | Doubler 85 / Velour 128 / Sparkleur 129 / **Air 47**（エンジンのみ） |
 | 共通クレート | `nxe-audio`（処理。`delay` が `VDP-1` で増えた）/ `nxe-dsp`（解析）/ `nxe-ui`（ウィジェット）/ `nxe-plug-ui`（結線） |
@@ -389,7 +394,8 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| VDP-3 | **`DEPTH` とラウドネス正規化**（**ゲート**）。`VDP-1` と `VDP-2` が終わったので依存が解けた | `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md` |
+| VDP-3 | **ゲートの判断**（`PRESENCE_COMPENSATION` を下げるか、Presence の可動域を狭めるか、要求を緩めるか）。**実装は入っている** | `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md` |
+| VDP-4 | ラッパとパラメータ（**ここで音が出る**）。`VDP-3` の判断とは独立に進められる | `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 
 Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`）は完了。
@@ -568,8 +574,8 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 |---|---|---|
 | VDP-1 | 初期反射。`vocal-depth-core` もここで作った。`DelayLine` を `doubler-core` から `nxe-audio` に上げた | ✅ 120 ms 以降 −25.5 dB、段 0.36 対 88 `e60ffa4` |
 | VDP-2 | 直接音（Presence の並列帯 + Transient） | ✅ 帯域差 14.79 dB、定常への寄与 0.045 dB `84419ac` |
-| VDP-3 | `DEPTH` とラウドネス正規化（**ゲート**）。`Coefficients::magnitude` を足す | 🟡 |
-| VDP-4 | ラッパとパラメータ（**ここで音が出る**） | ⬜ |
+| VDP-3 | `DEPTH` とラウドネス正規化（**ゲート**）。`Coefficients::response` / `magnitude` / `peaking` を足した | 🟡 **実装済み、判断待ち** — 広帯域は 0.14 dB、疎な倍音列で 1.39 dB `0402d71` |
+| VDP-4 | ラッパとパラメータ（**ここで音が出る**） | 🟡 |
 | VDP-5 | `DAMPING`（直接音と反射で違う量） | ⬜ |
 | VDP-6 | 距離依存のステレオ幅 | ⬜ |
 | VDP-7 | `CLARITY`（明瞭度の保持と公開） | ⬜ |
