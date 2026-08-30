@@ -24,6 +24,16 @@
 
 ## 現在地
 
+**次は `v0.2.0` — 5 本を作り直して同時に出す**（2026-08-31 に計画）。中身は
+**5 本の窓の作り直し**（fors 方向、`UI-15`〜`UI-20`）、**Hard モード**
+（Sparkleur と Velour だけ）、**`PUNCH`** の v2 からの回収。**Parallax
+（旧 Vocal Depth）はこの版で初出荷**する — 旧 UI で 1 本だけ出さないため。
+順序の根拠は [`roadmap.md`](roadmap.md) の「v0.2.0」。
+
+**先頭は「測る」2 単位**（`SPK-20` / `VEL-18`）。「かかりが弱い」は耳の不満で、
+そこから実装に届く道は測定しかない。Hard は写像を持ち上げるものなので、
+止めているのが写像でなければ効かない。
+
 **4 本とも実装完了・公開済み**（2026-08-31）。`doubler-v0.1.4` /
 `velour-v0.1.4` / `sparkleur-v0.1.4` / `air-v0.1.3`。**テスト 558 本、
 `mise run check` は通っている。**
@@ -409,14 +419,18 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| VDP-13 | **既定値と耳**（Vocal Depth。**耳が要る**）。測れるものは `defaults.rs` で固定してから。**`VDP-14` で効き幅が変わったので、まず聴き直しから** | `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md` |
-| — | **`NXE Vocal Depth` を実機で見る・聴く**（4 ホスト、窓の寸法、既定値）。`mise run install vocal-depth` | `vocal-depth-plan.md` |
-| — | **製品名の確定**（`REQ-VDP-014`）。`CLAP_ID` は出荷後に変えられない | `REQ-VDP.md` の概要 |
-| — | **Advanced の偏差**（Vocal Depth、`REQ-VDP-009`）。**前に `dsp.md`** | `vocal-depth-plan.md` |
-| DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
+| SPK-20 | **天井の所在を測る**（Sparkleur）。GR 到達量・生成成分・guard の介入量。**Hard の前提** | `../../plugins/sparkleur/docs/implementation/sparkleur-plan.md` |
+| VEL-18 | **天井の所在を測る**（Velour）。`AIR_INPUT_CEILING` が第一容疑。**Hard の前提** | `../../plugins/velour/docs/implementation/velour-plan.md` |
+| VDP-15 | **Parallax への改名**。商標と既存プラグインの衝突を確認してから確定する | `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md` |
+| UI-15 | **アクセントを本ごとに渡す**。重さの本体は色の選定ではなく、自前描画から色を辿る道 | `nxe-ui-plan.md` |
+| UI-16 | **Inter への差し替え**。`assets/inter/` の OFL と `LICENSING.md` の追記が義務 | `nxe-ui-plan.md` |
+| — | **`VDP-14` の効き幅を実機で聴き直す**（**耳が要る**）。08-28 に一度聴いているが、それは直す前の版。`mise run install vocal-depth` | `vocal-depth-plan.md` |
+| PAR-13 | **既定値と耳**（旧 `VDP-13`。**耳が要る**）。**聴き直しのあと** | `vocal-depth-plan.md` |
+| — | **Advanced の偏差**（Parallax、`REQ-VDP-009`）。**前に `dsp.md`** | `vocal-depth-plan.md` |
+| DBL-13 | 既定値の詰めと実機確認（**耳が要る**） | `doubler-plan.md` |
 
-Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`）は完了。
-**gallery で見る**（`mise run gallery`）。
+**`v0.2.0` のタグを打つ前に人が要るもの**: `VDP-14` の聴き直し、`PAR-13` の
+既定値、5 本の窓の実機確認、Sparkleur の既定値の主観サインオフ（`SPK-18`）。
 
 ## 積み残し（どれも単位を持っていない小物）
 
@@ -468,6 +482,12 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | UI-14 | **UI を開くと DAW が重くなる問題。** 体感の原因は `baseview` が**ホストのプロセス全体**でマウス合成を切っていたこと（1 行、誰も戻していなかった）。あわせて窓が開いている間の描画コストも 7 つ直した | ✅ 実機で症状消失、gallery で **22.6 → 約 9 %** `#2`（[調査](../investigations/ui-frame-cost.md)） |
 | — | **上流に投げる。** いちばん効くのは `setMouseCoalescingEnabled` の 1 つ（baseview を使う全プラグインに効いているはず） | ⬜ |
 | — | **femtovg の隣接 draw call マージ。** 部分再描画で 219 → 68 になったので、優先度は下がった。やるなら測り直してから | ⬜ |
+| UI-15 | **アクセントを本ごとに渡す**（`theme::install(cx, palette)`。明度・彩度を揃えた 5 色） | ⬜ |
+| UI-16 | **Inter への差し替え**（Light / Regular / Bold。数字は Geist Mono 継続） | ⬜ |
+| UI-17 | **ピクトグラム 10〜16 個**（femtovg のパス。常に語と併記） | ⬜ |
+| UI-18 | **反転面**（地がアクセント・描画が `BACKGROUND`。1 窓に 1 枚） | ⬜ |
+| UI-19 | **ヘッダの拡張**（`MODE` の枠 + ホバー中のコントロールの 1 行説明） | ⬜ |
+| UI-20 | **幅と、窓の高さの計算**（720 → 840〜900。手置きの定数を部品の合計に） | ⬜ |
 
 ### Doubler — `../../plugins/doubler/docs/implementation/doubler-plan.md`
 
@@ -489,6 +509,7 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | DBL-12 | CPU 予算の確認（criterion） | ✅ 69.4 µs / 予算 533 µs |
 | DBL-16 | 通っている音の表示（`REQ-DBL-015`） | ✅ |
 | DBL-13 | 既定値の詰めと実機確認 | 🟡 |
+| DBL-17 | 窓の追随（`SPK-23` の型に合わせる。**タブは残す**、`MODE` は置かない） | ⬜ |
 
 ### Velour — `../../plugins/velour/docs/implementation/velour-plan.md`
 
@@ -515,6 +536,9 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | VEL-14 | UI Advanced タブ | ✅ |
 | VEL-16 | CPU 予算の確認（criterion） | ✅ 128 µs / 予算 533 µs |
 | VEL-17 | 既定値の詰めと実機確認（**耳が要る**） | ✅ |
+| VEL-18 | **天井の所在を測る**（`AIR_INPUT_CEILING` が第一容疑。Hard の前提） | 🟡 |
+| VEL-19 | **MODE（Soft / Hard）**。既定 Soft、Soft は v0.1.4 とビット一致 | ⬜ |
+| VEL-20 | 窓の追随（`SPK-23` の型に合わせる） | ⬜ |
 
 ### Sparkleur — `../../plugins/sparkleur/docs/implementation/sparkleur-plan.md`
 
@@ -546,6 +570,10 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | SPK-17 | CPU 予算 | ✅ **129 µs / 予算 533** |
 | SPK-18 | 既定値と耳 | ✅ 測定分は全部。**主観サインオフのみ未了**（リリースの阻害要因ではない） |
 | SPK-19 | **1 画面と、既にある数字を出す** — スイス様式への作り直し。3 つ全部に及んだ | ✅ |
+| SPK-20 | **天井の所在を測る**（GR 到達量・生成成分・guard の介入量。Hard の前提） | 🟡 |
+| SPK-21 | **MODE（Soft / Hard）**。既定 Soft、Soft は v0.1.4 とビット一致 | ⬜ |
+| SPK-22 | **PUNCH**（`REQ-SPK-020` を v2 から回収。受入は crest factor） | ⬜ |
+| SPK-23 | **窓の作り直し**（**5 本の型をここで決める**） | ⬜ |
 
 ### Air — `../../plugins/air/docs/implementation/air-plan.md`
 
@@ -575,6 +603,7 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | AIR-11 | 解析の配線 | ✅ `AIR-10` に含めた |
 | AIR-12 | CPU 予算 | ✅ **エンジン 47.2 µs / 予算 533** |
 | AIR-13 | 既定値と耳 | ✅ 7 本確定、`defaults.rs` が測って固定 |
+| AIR-14 | 窓の追随（`SPK-23` の型に合わせる。`MODE` は置かない） | ⬜ |
 
 ### Vocal Depth — `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md`
 
@@ -607,6 +636,8 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | VDP-12 | CPU 予算 | ✅ **20.9 µs / 予算 533** `3c91c95` |
 | VDP-13 | 既定値と耳 | 🟡 **耳が要る** |
 | VDP-14 | **距離の効き幅の作り直し**（実機で「遠い近いに聞こえない」と出た）。直接音の広帯域レベルを足し、反射と `DAMPING` の範囲を広げた | ✅ 比 +25.6 → +2.3 dB |
+| VDP-15 | **Parallax への改名**（ディレクトリ・crate・文書・ID・`CLAP_ID`）。**出荷前に必須** | 🟡 |
+| PAR-16 | 窓の追随（`SPK-23` の型に合わせる。**見た目の実機確認を含む**） | ⬜ |
 | — | **Advanced の偏差**（`REQ-VDP-009`）。パラメータ 7 個とエンジンの変更。**前に `dsp.md` が各偏差の数を書く** | ⬜ |
 
 **`dsp.md` は書けた**（2026-08-28、

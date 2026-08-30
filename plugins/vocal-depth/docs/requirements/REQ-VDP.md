@@ -1,6 +1,6 @@
 # REQ-VDP — Vocal Depth 要件定義
 
-> 最終更新: 2026-08-28
+> 最終更新: 2026-08-31
 
 ## 概要
 
@@ -15,9 +15,12 @@ Presence・高域の損失・初期反射・Transient の明瞭さ・ステレ�
 対象は Bitwig / Ableton Live / Reaper / Studio One。**AU は対象外**
 （`REQ-VDP-014`）。
 
-**製品名は暫定。** `NXE Vocal Depth` は Doubler と同じ記述的な名前で、
-Velour / Sparkleur / Air の並びとは register が違う。**ラッパを作る単位までに
-決める** — `CLAP_ID` は出荷後に変えられないため（`AGENTS.md`）。
+**製品名は `NXE Parallax` に決めた**（2026-08-31、`VDP-15`）。「奥行きに
+よって見え方が変わる」を名で言う語で、Velour / Sparkleur / Air と同じ
+**喚起的な 1 語**の register に乗る。`NXE Vocal Depth` は Doubler と同じ
+記述的な名前で、ラインの中で 2 系統になっていた。**改名は出荷より前に済ませる**
+— `CLAP_ID` は出荷後に変えられないため（`AGENTS.md`）。改名の単位は
+`VDP-15` で、そこでこの文書も `REQ-PAR.md` になり `VDP-*` は `PAR-*` になる。
 
 ## 設計の中心にある 5 つの判断
 
@@ -425,13 +428,16 @@ Vocal Depth (ここ)     直接音は M にしか居ないので、モノ和で�
 - **優先度**: Must
 - **ステータス**: Draft
 - **説明**: **CLAP と VST3**。AU は出さない。
-- **製品名とクレート名は未確定**（概要を参照）。`CLAP_ID` と
-  `VST3_CLASS_ID` は出荷後に変えられないので、**ラッパの単位までに決める**。
+- **製品名は `NXE Parallax`、crate は `parallax` / `parallax-core`、
+  `CLAP_ID` は `com.nxe.parallax`**（`VDP-15`）。`VST3_CLASS_ID` は改名の
+  単位で新規に生成する。どちらも出荷後には変えられない。
+- **確定の条件**: 商標と既存プラグインの名前の衝突を確認したうえで確定する。
 - **バックエンドも同じ単位で決める。** nih-plug から nice-plug への移行が
   検討対象にある（`LICENSING.md`）。`vocal-depth-core` はフレームワークを
   知らないので、この要件のどれも選択に依存しない。
 - **受入条件**:
   - [ ] 4 ホストで CLAP と VST3 の両方が読み込まれる
+  - [ ] 出荷までに改名が済んでいる（`VDP-15`）
 - **依存**: なし
 
 ---

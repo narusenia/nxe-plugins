@@ -1,6 +1,6 @@
 # Air — 実装計画
 
-> 最終更新: 2026-08-27
+> 最終更新: 2026-08-31
 
 要件は [`../requirements/REQ-AIR.md`](../requirements/REQ-AIR.md)。
 DSP 仕様は [`../specifications/dsp.md`](../specifications/dsp.md)（式・係数・
@@ -438,3 +438,16 @@ Follow の 3 係数、保護の引き量、相関、IN / OUT。Advanced の偏�
   **Air は加算型なので層を直接取れる** — テスト用に取り出せる形で書く
 - **テスト信号は自分でも測る。** `SPK-18` の DC が乗ったノイズ
 - **測定が失敗できることを同じテストで確かめる。** `VEL-10`
+
+---
+
+### AIR-14 — 窓の追随
+
+`SPK-23` が決めた型に合わせて組み直す。**Air には `MODE` を置かない**
+（弱いと判断した 2 本に限る、`docs/implementation/roadmap.md`）。
+
+- **完了条件**: 17 個すべてに控えがある。主図が反転面に載っている。
+  Sparkleur と同じ幅・同じグリッドに乗る。`analysis` の全ハンドオフが
+  publish されている既存テストが通る
+- **要件**: REQ-AIR-013
+- **依存**: SPK-23
