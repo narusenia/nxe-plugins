@@ -144,12 +144,27 @@ vizia = { git = "https://github.com/robbert-vdh/vizia.git", tag = "patched-2024-
 #    losing the tear-free guarantee is 6 — only the box that changed is drawn,
 #    so a tear has nowhere large to happen.
 #
-# All eight are worth sending upstream; none has been yet.
+# **baseview, the one that was aimed at the wrong thing (9):**
+#
+# 9. **The editor put an `NSOpenGLView` in the host's window**, and a window
+#    that has held one stays sluggish for the life of the process — long after
+#    the plugin is removed, in Studio One badly and in Ableton Live mildly.
+#    macOS is drawn into an `IOSurface` now, shown by an ordinary `CALayer`
+#    sublayer, so nothing of ours is in the host's view hierarchy and there is
+#    no swap to wait on either.
+#
+#    **It did not fix the host.** The lag survives it, so the diagnosis behind
+#    this change was wrong. It is kept because it is better on its own terms —
+#    the moving gallery went from 22.6 % of a core to 6.0 %, and the frame no
+#    longer blocks on the window server — but the thing it was written for is
+#    still open (`docs/investigations/ui-frame-cost.md`).
+#
+# All nine are worth sending upstream; none has been yet.
 [patch."https://github.com/RustAudio/baseview.git"]
-baseview = { git = "https://github.com/narusenia/baseview.git", tag = "nxe-2026-08-30c" }
+baseview = { git = "https://github.com/narusenia/baseview.git", tag = "nxe-2026-08-30j" }
 
 [patch."https://github.com/robbert-vdh/vizia.git"]
-vizia = { git = "https://github.com/narusenia/vizia.git", tag = "nxe-2026-08-30d" }
+vizia = { git = "https://github.com/narusenia/vizia.git", tag = "nxe-2026-08-30g" }
 
 [profile.release]
 lto = "thin"
