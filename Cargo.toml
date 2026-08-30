@@ -132,12 +132,24 @@ vizia = { git = "https://github.com/robbert-vdh/vizia.git", tag = "patched-2024-
 #    view is sized by its contents — which is why `nxe_ui::readout::cell` fixes
 #    both of its dimensions.
 #
-# All seven are worth sending upstream; none has been yet.
+# **baseview, the one that was actually felt (frame block, not CPU):**
+#
+# 8. **Every frame waited on the window server.** `flushBuffer` on a
+#    double-buffered context hands the surface over and blocks until the server
+#    takes it — **0.6 ms typically, 13 ms at worst**, forty times a second, on
+#    the host's run loop. A host stopped in chunks that long stops tracking the
+#    pointer and slides after it, which is what "the DAW's interface moves
+#    smoothly instead of instantly" was. The context is single-buffered now, so
+#    there is no swap: **0.04 ms typically, 0.2 ms at worst**. What pays for
+#    losing the tear-free guarantee is 6 — only the box that changed is drawn,
+#    so a tear has nowhere large to happen.
+#
+# All eight are worth sending upstream; none has been yet.
 [patch."https://github.com/RustAudio/baseview.git"]
-baseview = { git = "https://github.com/narusenia/baseview.git", tag = "nxe-2026-08-30b" }
+baseview = { git = "https://github.com/narusenia/baseview.git", tag = "nxe-2026-08-30c" }
 
 [patch."https://github.com/robbert-vdh/vizia.git"]
-vizia = { git = "https://github.com/narusenia/vizia.git", tag = "nxe-2026-08-30b" }
+vizia = { git = "https://github.com/narusenia/vizia.git", tag = "nxe-2026-08-30c" }
 
 [profile.release]
 lto = "thin"
