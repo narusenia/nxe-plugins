@@ -138,11 +138,6 @@ pub struct Palette {
     pub deep: Token,
     /// The accent at 18 % — a wash behind something, not a colour of its own.
     pub dim: Token,
-    /// The pale end — light enough to read as white while still being the hue.
-    ///
-    /// **The far stop of every accent gradient.** What changes along a filled
-    /// bar is lightness, not colour.
-    pub wash: Token,
 
     // The surface roles. Identical in all five palettes — and **not** identical
     // on an inverted surface, which is the whole reason they live here rather
@@ -163,13 +158,12 @@ pub struct Palette {
 }
 
 impl Palette {
-    const fn ramp(wash: Token, bright: Token, accent: Token, deep: Token) -> Self {
+    const fn ramp(bright: Token, accent: Token, deep: Token) -> Self {
         Self {
             accent,
             bright,
             deep,
             dim: Token::rgba(accent.red, accent.green, accent.blue, 0.18),
-            wash,
             ground: BACKGROUND,
             track: ELEVATED,
             line: BORDER,
@@ -189,14 +183,8 @@ impl Palette {
     ///
     /// The hue roles collapse to ink, because **on a coloured ground the accent
     /// has nowhere to go** — the ground is already the accent. What is left to
-    /// say with is darkness, so a mark is near-black and the ramp runs in alpha
-    /// rather than in lightness.
-    ///
-    /// **The far end of a fill is not the ground.** It was, on the first
-    /// attempt — "paler means further" taken literally, the fill fading into
-    /// the surface. On screen the right half of every bar and meter simply
-    /// vanished, and a bar you cannot see the end of is not measuring anything.
-    /// The pale end stops at 45 % instead: still paler, still there.
+    /// say with is darkness, so a mark is near-black and the ramp that tells
+    /// kinds apart runs in alpha rather than in lightness.
     ///
     /// **One way.** Inverting an inverted palette does not give the first one
     /// back, and a window that wanted that has two subjects rather than one.
@@ -209,7 +197,6 @@ impl Palette {
             // rather than in lightness.
             deep: ink.at(0.55),
             dim: ink.at(0.18),
-            wash: ink.at(0.45),
             ground: self.accent,
             track: ink.at(0.22),
             line: ink.at(0.35),
@@ -221,7 +208,6 @@ impl Palette {
 
     /// Jade. Hue 158.
     pub const DOUBLER: Self = Self::ramp(
-        Token::rgb(0xE2, 0xF4, 0xE9),
         Token::rgb(0x8C, 0xDB, 0xAD),
         Token::rgb(0x53, 0xC9, 0x8D),
         Token::rgb(0x00, 0x77, 0x49),
@@ -229,7 +215,6 @@ impl Palette {
 
     /// Violet. Hue 300.
     pub const VELOUR: Self = Self::ramp(
-        Token::rgb(0xF1, 0xEC, 0xFE),
         Token::rgb(0xD0, 0xB8, 0xFF),
         Token::rgb(0xBD, 0x9A, 0xFA),
         Token::rgb(0x6E, 0x51, 0x9C),
@@ -244,7 +229,6 @@ impl Palette {
     /// 35 puts `deep` at brick red and leaves the accent a coral, still 50°
     /// clear of Parallax's rose.
     pub const SPARKLEUR: Self = Self::ramp(
-        Token::rgb(0xFF, 0xEA, 0xE4),
         Token::rgb(0xFF, 0xB0, 0x9C),
         Token::rgb(0xFA, 0x8C, 0x71),
         Token::rgb(0x9B, 0x46, 0x31),
@@ -255,7 +239,6 @@ impl Palette {
     /// ramp's hue wandered from 230 to 243 across its four stops, and the
     /// family test below needs one hue per palette.
     pub const AIR: Self = Self::ramp(
-        Token::rgb(0xDF, 0xF2, 0xFD),
         Token::rgb(0x7F, 0xD2, 0xFE),
         Token::rgb(0x38, 0xBD, 0xF8),
         Token::rgb(0x00, 0x6C, 0x94),
@@ -263,7 +246,6 @@ impl Palette {
 
     /// Rose. Hue 345.
     pub const PARALLAX: Self = Self::ramp(
-        Token::rgb(0xFC, 0xE9, 0xF3),
         Token::rgb(0xF7, 0xAC, 0xD6),
         Token::rgb(0xED, 0x89, 0xC3),
         Token::rgb(0x91, 0x44, 0x73),
@@ -278,28 +260,6 @@ impl Palette {
         ("Air", Self::AIR),
         ("Parallax", Self::PARALLAX),
     ];
-
-    /// The accent fill, as a paint for a custom-drawn widget.
-    ///
-    /// **One helper so the drawn fills and the stylesheet cannot disagree.**
-    /// `Bar`, `Meter` and `Knob` all fill with the accent, and each drew it its
-    /// own way: two flat, one with a gradient across its bounding box. A filled
-    /// control now looks the same whichever of them it is.
-    ///
-    /// **A gradient means a quantity.** Use it where the fill measures
-    /// something — how far a bar got, how loud a meter is, how far a knob has
-    /// turned. A state that is simply on stays [`Palette::accent`] flat: there
-    /// is no "further" for the pale end to mean, and a word sitting on a ramp
-    /// changes contrast across its own width (a selected segment read badly,
-    /// which is how the rule got written).
-    ///
-    /// The coordinates are the **span of the fill**, not the widget's bounds —
-    /// the gradient runs from where the fill starts to where it could reach, so
-    /// a quarter-full bar shows the first quarter of the ramp rather than the
-    /// whole of it squeezed. `(x0, y0)` is the resting end.
-    pub fn paint(&self, x0: f32, y0: f32, x1: f32, y1: f32) -> vg::Paint {
-        vg::Paint::linear_gradient(x0, y0, x1, y1, self.accent.vg(), self.wash.vg())
-    }
 }
 
 /// The palette is model data, so `DrawContext` can reach it.
@@ -318,20 +278,6 @@ impl Model for Palette {}
 /// noise to a failure that is impossible to miss.
 pub fn palette(cx: &impl DataContext) -> Palette {
     cx.data::<Palette>().copied().unwrap_or(Palette::AIR)
-}
-
-/// A two-stop linear gradient, for `background-image`.
-///
-/// **`background-image`, not `background-color`** — vizia parses
-/// `linear-gradient` only there, and a rule that sets both draws the colour
-/// under the gradient rather than instead of it. Only linear gradients exist in
-/// this revision; there is no radial.
-pub fn gradient(direction: &str, from: Token, to: Token) -> String {
-    format!(
-        "linear-gradient(to {direction}, {}, {})",
-        from.css(),
-        to.css()
-    )
 }
 
 /// Corner radii. **Zero — the corners are square**, and they stay that way.
@@ -445,8 +391,6 @@ pub fn stylesheet(palette: Palette) -> String {
     let subtle = SUBTLE.css();
     let accent = palette.accent.css();
     let accent_dim = palette.dim.css();
-    let accent_fill = gradient("right", palette.accent, palette.wash);
-    let accent_fill_up = gradient("top", palette.accent, palette.wash);
     let inverted = palette.inverted();
     let ink = inverted.ink.css();
     let ink_muted = inverted.muted.css();
@@ -542,18 +486,12 @@ label {{
     border-radius: {RADIUS_CONTROL}px;
 }}
 
-/* A filled part of a control. **A gradient along the fill, not a flat block**:
-   the pale end marks where the value got to, so a bar reads as a quantity with
-   a direction rather than as a coloured rectangle. Still one hue — what moves
-   is lightness. */
+/* A filled part of a control. **Flat.** The length of the fill is the quantity;
+   a ramp along it says the same thing a second time, and made four bars at four
+   values end in the same pale colour. It also does not need a direction, so
+   there is one class here rather than one per axis. */
 .accent {{
-    background-image: {accent_fill};
-    border-radius: {RADIUS_CONTROL}px;
-}}
-
-/* The same fill for something that grows upward rather than rightward. */
-.accent-up {{
-    background-image: {accent_fill_up};
+    background-color: {accent};
     border-radius: {RADIUS_CONTROL}px;
 }}
 
@@ -831,8 +769,7 @@ mod tests {
     /// palette.
     type Stop = (&'static str, fn(Palette) -> Token);
 
-    const STOPS: [Stop; 4] = [
-        ("wash", |p| p.wash),
+    const STOPS: [Stop; 3] = [
         ("bright", |p| p.bright),
         ("accent", |p| p.accent),
         ("deep", |p| p.deep),
@@ -891,12 +828,12 @@ mod tests {
         }
     }
 
-    /// A palette's ramp has to run in one direction, or "paler means further"
-    /// stops being true of one of them.
+    /// A palette's ramp has to run in one direction, or two things told apart
+    /// along it swap places in one window and not in another.
     #[test]
-    fn every_ramp_runs_from_deep_to_wash() {
+    fn every_ramp_runs_from_deep_to_bright() {
         for (name, palette) in Palette::ALL {
-            let steps = [palette.deep, palette.accent, palette.bright, palette.wash];
+            let steps = [palette.deep, palette.accent, palette.bright];
             for pair in steps.windows(2) {
                 assert!(
                     oklch(pair[0]).0 < oklch(pair[1]).0,

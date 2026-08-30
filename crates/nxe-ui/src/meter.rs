@@ -133,14 +133,7 @@ impl View for Meter {
         if w > 0.0 && h > 0.0 {
             let mut fill = vg::Path::new();
             fill.rect(x, y, w, h);
-            // The ramp spans the whole track, so a level reads against the
-            // scale rather than against its own height
-            // (`Palette::paint`).
-            let paint = if self.vertical {
-                palette.paint(bounds.x, bounds.y + bounds.h, bounds.x, bounds.y)
-            } else {
-                palette.paint(bounds.x, bounds.y, bounds.x + bounds.w, bounds.y)
-            };
+            let paint = vg::Paint::color(palette.accent.vg());
             canvas.fill_path(&fill, &paint);
         }
 

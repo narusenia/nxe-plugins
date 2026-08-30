@@ -75,14 +75,17 @@ Every rule here was paid for. Where one has a scar, the scar is named.
   generated stylesheet is flat and cannot say "labels inside this panel", so
   forgetting the class leaves near white on the accent. **Put few enough words
   there that a miss is obvious.**
-- **A gradient means a quantity.** Use `palette.paint` where the fill
-  measures something: how far a bar got, how loud a meter is, how far a knob
-  turned. Pass **the whole track**, not the filled part, so two controls at
-  different values are the same colour where they overlap.
-- **A state is flat.** On/off has no "further" for the pale end to mean, and a
-  word sitting on a ramp changes contrast across its own width — a selected
-  segment read badly, which is how this rule got written (`SPK-19`). Traces and
-  rules are flat too: neither is a quantity.
+- **Every fill is flat** (`UI-21`). The length of a bar is the quantity; a ramp
+  running along it says the same thing twice, and it made four bars at four
+  values all end in the same pale colour — **the end of the fill stopped telling
+  you anything**. The reference this design follows uses no gradients at all.
+- **This replaced a rule with a boundary in it.** "A gradient means a quantity,
+  a state is flat" failed once at that boundary: a selected segment's label sat
+  on a ramp and changed contrast across its own width (`SPK-19`). There is no
+  boundary now.
+- **`bright` and `deep` are for telling kinds apart, not for filling.** Where
+  several of the same thing sit side by side — voice pairs, bands — step between
+  them with `Token::mix`. That is the only ramp left.
 - **The window is painted by `.class("root")`.** Forget it and the ground is
   the host's black while every `.panel` sits at `BACKGROUND`, so the panels read
   as lighter boxes. The theme's "two levels, not three" needs the window to be

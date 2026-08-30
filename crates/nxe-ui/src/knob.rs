@@ -113,8 +113,7 @@ impl View for Knob {
         if self.value > 0.0 {
             let mut filled = vg::Path::new();
             filled.arc(centre_x, centre_y, radius, start, angle, vg::Solidity::Hole);
-            let mut paint =
-                palette.paint(bounds.x, bounds.y + bounds.h, bounds.x + bounds.w, bounds.y);
+            let mut paint = vg::Paint::color(palette.accent.vg());
             paint.set_line_width(width);
             paint.set_line_cap(vg::LineCap::Butt);
             canvas.stroke_path(&filled, &paint);

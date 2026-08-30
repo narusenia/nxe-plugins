@@ -191,16 +191,13 @@ impl View for DotField {
         }
         let cell_w = bounds.w / columns as f32;
         let cell_h = bounds.h / ROWS as f32;
-        // **The ramp spans the whole plot**, so two grains at the same height
-        // are the same colour whatever else is on screen (`Palette::paint`).
-        let paint = palette.paint(bounds.x, bottom, bounds.x, bounds.y);
+        let paint = vg::Paint::color(palette.accent.vg());
         let wander = 1.0 - self.alignment;
 
         // **Every grain in one path, filled once.** They all take the same
-        // paint — the ramp is a gradient over the whole plot, not a colour per
-        // grain — and femtovg gives every `fill_path` its own draw call
-        // whatever is in it. A grain each was up to `columns * ROWS` draw
-        // calls for one picture (`docs/investigations/ui-frame-cost.md`).
+        // paint, and femtovg gives every `fill_path` its own draw call whatever
+        // is in it. A grain each was up to `columns * ROWS` draw calls for one
+        // picture (`docs/investigations/ui-frame-cost.md`).
         let mut grains = vg::Path::new();
         for column in 0..columns {
             let level = level_at(&self.layer, column);
@@ -215,8 +212,8 @@ impl View for DotField {
                 let y = bottom - (row as f32 + 0.5) * cell_h + dy * cell_h * SCATTER * wander;
 
                 // The partial top row is drawn smaller rather than dimmer: a
-                // dimmer grain reads as a quieter band, and the ramp already
-                // means height.
+                // dimmer grain reads as a quieter band, and height is what the
+                // figure already means.
                 grains.circle(x, y, DOT * scale * fill.max(0.35));
             }
         }

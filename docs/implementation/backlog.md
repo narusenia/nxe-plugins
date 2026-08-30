@@ -486,6 +486,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | UI-18 | **反転面**（地がアクセント・描画が `BACKGROUND`。1 窓に 1 枚） | ✅ `49aaff1` |
 | UI-19 | **ヘッダの拡張**（`MODE` の枠 + ホバー中のコントロールの 1 行説明） | ⬜ |
 | UI-20 | **幅と、窓の高さの計算**（720 → 840〜900。手置きの定数を部品の合計に） | ⬜ |
+| UI-21 | **勾配を外す**（塗りは全部フラット。`wash` と `.accent-up` も落とした） | ✅ |
 
 ### Doubler — `../../plugins/doubler/docs/implementation/doubler-plan.md`
 

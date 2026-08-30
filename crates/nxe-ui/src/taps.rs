@@ -135,9 +135,7 @@ impl View for TapField {
             &vg::Paint::color(palette.line.vg()).with_line_width(line),
         );
 
-        // **The ramp spans the whole plot**, so two stems of the same height are
-        // the same colour whatever else is on screen (`Palette::paint`).
-        let paint = palette.paint(bounds.x, bottom, bounds.x, bounds.y);
+        let paint = vg::Paint::color(palette.accent.vg());
 
         // **Every stem in one path, filled once.** They all take the same
         // paint, and femtovg gives every `fill_path` its own draw call whatever

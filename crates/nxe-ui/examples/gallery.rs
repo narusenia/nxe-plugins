@@ -604,8 +604,8 @@ fn readouts(cx: &mut Context) {
     });
 }
 
-/// The Swiss layer: eyebrows over rules, one readout per region, and the accent
-/// as a gradient rather than a block.
+/// The Swiss layer: eyebrows over rules, one readout per region, and the flat
+/// accent fill.
 ///
 /// **This panel is the design, not a widget.** Everything below it is a control
 /// that happens to be styled; this is the grid those controls sit on, shown on
@@ -653,7 +653,9 @@ fn grid(cx: &mut Context) {
         .height(Auto)
         .row_between(Pixels(theme::SPACE_2));
 
-        // The gradient fill, horizontal and vertical.
+        // The fill, lying down and standing up. **One class for both**: a flat
+        // fill has no direction to get wrong, which is half of why it replaced
+        // the ramp.
         HStack::new(cx, |cx| {
             VStack::new(cx, |cx| {
                 Label::new(cx, "accent").class("subtle");
@@ -664,9 +666,9 @@ fn grid(cx: &mut Context) {
             .row_between(Pixels(theme::SPACE_1));
 
             VStack::new(cx, |cx| {
-                Label::new(cx, "accent-up").class("subtle");
+                Label::new(cx, "accent · upright").class("subtle");
                 Element::new(cx)
-                    .class("accent-up")
+                    .class("accent")
                     .width(Pixels(10.0))
                     .height(Pixels(48.0));
             })
@@ -759,11 +761,11 @@ fn palettes(cx: &mut Context) {
             for (name, palette) in theme::Palette::ALL {
                 VStack::new(cx, move |cx| {
                     palette.build(cx);
-                    // Four stops, no labels on them: five ramps side by side do
-                    // not have room for twenty words, and the point of the row
-                    // is the comparison rather than the names.
+                    // Three stops, no labels on them: five ramps side by side
+                    // do not have room for fifteen words, and the point of the
+                    // row is the comparison rather than the names.
                     HStack::new(cx, move |cx| {
-                        for stop in [palette.wash, palette.bright, palette.accent, palette.deep] {
+                        for stop in [palette.bright, palette.accent, palette.deep] {
                             Element::new(cx)
                                 .width(Stretch(1.0))
                                 .height(Pixels(36.0))

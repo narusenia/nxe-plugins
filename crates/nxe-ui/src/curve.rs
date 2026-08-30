@@ -328,11 +328,7 @@ impl View for CurveView {
                     path.line_to(px, py);
                 }
             }
-            // The ramp runs left to right across the plot, so the curve says
-            // which way it is read — the far end of the axis is the pale end,
-            // the same as a bar filled to the far end
-            // (`Palette::paint`).
-            let mut paint = palette.paint(bounds.x, bounds.y, bounds.x + bounds.w, bounds.y);
+            let mut paint = vg::Paint::color(palette.accent.vg());
             paint.set_line_width(CURVE_WIDTH * scale);
             paint.set_line_cap(vg::LineCap::Butt);
             canvas.stroke_path(&path, &paint);

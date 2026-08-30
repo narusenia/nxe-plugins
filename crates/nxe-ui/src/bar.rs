@@ -136,23 +136,7 @@ impl View for Bar {
                 (bounds.h - inset * 2.0).max(0.0),
                 (radius - inset).max(0.0),
             );
-            // **The ramp spans the whole track, not the filled part.** A bar
-            // at a quarter then shows the first quarter of it, so two bars at
-            // different values are the same colour where they overlap and the
-            // pale end always means "further" (`Palette::paint`).
-            let (from, to) = if self.centred {
-                // Outward from the middle, because that is where the fill
-                // starts: a bipolar bar reads as distance from rest.
-                let middle = bounds.x + bounds.w * 0.5;
-                if self.value >= 0.5 {
-                    (middle, bounds.x + bounds.w)
-                } else {
-                    (middle, bounds.x)
-                }
-            } else {
-                (bounds.x, bounds.x + bounds.w)
-            };
-            canvas.fill_path(&fill, &palette.paint(from, bounds.y, to, bounds.y));
+            canvas.fill_path(&fill, &vg::Paint::color(palette.accent.vg()));
         }
 
         // The centre mark stays visible under the fill, so "at rest" is legible
