@@ -150,6 +150,21 @@ impl Plugin for Velour {
         // curve's normalisation (`velour_core::Engine::set_shape`).
         self.engine.set_shape(&self.params.shape(samples as u32));
 
+        // **The spectra are the one analyser worth switching off.** Every
+        // handoff on this plugin is written whether or not anybody is looking,
+        // which is right for the meters — they cost a follower per sample and
+        // they have to be truthful the instant the window opens. A band bank is
+        // a different size of thing: it is a biquad and a follower *per band*
+        // per sample, and it is the only figure a closed window cannot want.
+        //
+        // One bool, read once per block, hoisted out of the sample loop
+        // (`docs/investigations/ui-frame-cost.md`).        //
+        // A closed window's bank goes stale, and the followers take their
+        // release time (250 ms) to be right again after it opens. That is a
+        // quarter of a second of a figure settling, on a figure nobody was
+        // looking at.
+        let watched = self.editor_state.is_open();
+
         let channels = buffer.as_slice();
         let stereo = channels.len() >= 2 && self.input_channels >= 2;
 
@@ -171,9 +186,11 @@ impl Plugin for Velour {
                 // **After the output trim**, because the meters answer "is this
                 // louder than what went in" and the trim is part of the answer
                 // (`ui.md`).
-                let layer = self.engine.wet();
-                self.dry_spectrum.push((in_left + in_right) * 0.5);
-                self.wet_spectrum.push((layer.0 + layer.1) * 0.5);
+                if watched {
+                    let layer = self.engine.wet();
+                    self.dry_spectrum.push((in_left + in_right) * 0.5);
+                    self.wet_spectrum.push((layer.0 + layer.1) * 0.5);
+                }
                 self.meters[0].push(in_left);
                 self.meters[1].push(in_right);
                 self.meters[2].push(out_left);
@@ -202,8 +219,10 @@ impl Plugin for Velour {
                 // the two bars sitting exactly on top of each other is itself
                 // information (`ui.md`).
                 let layer = self.engine.wet();
-                self.dry_spectrum.push(input);
-                self.wet_spectrum.push(layer.0);
+                if watched {
+                    self.dry_spectrum.push(input);
+                    self.wet_spectrum.push(layer.0);
+                }
                 self.meters[0].push(input);
                 self.meters[1].push(input);
                 self.meters[2].push(result);

@@ -165,6 +165,21 @@ impl Plugin for Air {
         // resolves the curve (`air_core::Engine::set_shape`).
         self.engine.set_shape(&self.params.shape(samples as u32));
 
+        // **The spectra are the one analyser worth switching off.** Every
+        // handoff on this plugin is written whether or not anybody is looking,
+        // which is right for the meters — they cost a follower per sample and
+        // they have to be truthful the instant the window opens. A band bank is
+        // a different size of thing: it is a biquad and a follower *per band*
+        // per sample, and it is the only figure a closed window cannot want.
+        //
+        // One bool, read once per block, hoisted out of the sample loop
+        // (`docs/investigations/ui-frame-cost.md`).        //
+        // A closed window's bank goes stale, and the followers take their
+        // release time (250 ms) to be right again after it opens. That is a
+        // quarter of a second of a figure settling, on a figure nobody was
+        // looking at.
+        let watched = self.editor_state.is_open();
+
         let channels = buffer.as_slice();
         // Both layouts hand back two output channels, so this cannot fail.
         // Bail rather than index, because a wrong guess here would be a panic
@@ -192,9 +207,12 @@ impl Plugin for Air {
             // **After the output trim**, because the meters answer "is this
             // louder than what went in" and the trim is part of the answer.
             let (layer_left, layer_right) = self.engine.layer();
-            self.dry_spectrum.push((dry_left + dry_right) * 0.5);
-            // **The layer taken directly**, never `out − dry` (`analysis.rs`).
-            self.layer_spectrum.push((layer_left + layer_right) * 0.5);
+            if watched {
+                self.dry_spectrum.push((dry_left + dry_right) * 0.5);
+                // **The layer taken directly**, never `out − dry`
+                // (`analysis.rs`).
+                self.layer_spectrum.push((layer_left + layer_right) * 0.5);
+            }
             self.correlation.push(layer_left, layer_right);
             self.meters[0].push(dry_left);
             self.meters[1].push(dry_right);

@@ -133,6 +133,21 @@ impl Plugin for Doubler {
         _aux: &mut AuxiliaryBuffers,
         _context: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
+        // **The spectra are the one analyser worth switching off.** Every
+        // handoff on this plugin is written whether or not anybody is looking,
+        // which is right for the meters — they cost a follower per sample and
+        // they have to be truthful the instant the window opens. A band bank is
+        // a different size of thing: it is a biquad and a follower *per band*
+        // per sample, and it is the only figure a closed window cannot want.
+        //
+        // One bool, read once per block, hoisted out of the sample loop
+        // (`docs/investigations/ui-frame-cost.md`).        //
+        // A closed window's bank goes stale, and the followers take their
+        // release time (250 ms) to be right again after it opens. That is a
+        // quarter of a second of a figure settling, on a figure nobody was
+        // looking at.
+        let watched = self.params.editor_state.is_open();
+
         let channels = buffer.as_slice();
         // `AUDIO_IO_LAYOUTS` only offers stereo, so this cannot happen. Bail
         // rather than index, because a wrong guess here would be a panic on the
@@ -183,7 +198,9 @@ impl Plugin for Doubler {
             // The spectrum is of the wet bus, because `Tone` is what the Filter
             // View draws and the wet bus is what `Tone` acts on. Summed to mono:
             // one curve cannot say two things.
-            self.spectrum.push((wet_left + wet_right) * 0.5);
+            if watched {
+                self.spectrum.push((wet_left + wet_right) * 0.5);
+            }
         }
 
         // Once per block, not per sample: the editor redraws at 30 Hz and these
