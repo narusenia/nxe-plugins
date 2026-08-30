@@ -35,6 +35,17 @@
 //! reported, and guessing at it is how this investigation went wrong twice.
 //!
 //! Unset or `0` leaves the window idle, which stays the default.
+//!
+//! ## Palettes
+//!
+//! `NXE_GALLERY_PALETTE` picks which plugin's palette the **stylesheet** is
+//! built from (`doubler` / `velour` / `sparkleur` / `air` / `parallax`;
+//! `air` is the default). It has to be chosen at startup because vizia has no
+//! way to replace a stylesheet once it is added.
+//!
+//! **The custom-drawn widgets do not need it.** They read the palette from the
+//! nearest `Palette` model above them, so the PALETTES panel shows all five at
+//! once — that is the half of `theme::install` the plugins never exercise.
 
 use nxe_ui::band::{Band, BandField, BandFieldModifiers, BandGesture};
 use nxe_ui::bar::Bar;
@@ -407,9 +418,23 @@ fn motion_hz() -> u32 {
     rate_from("NXE_GALLERY_HZ")
 }
 
+/// Which palette the stylesheet is built from, out of `NXE_GALLERY_PALETTE`.
+///
+/// **Only the stylesheet.** Everything drawn by hand follows whichever
+/// `Palette` model is nearest above it, which is why the PALETTES panel can
+/// show five at once.
+fn palette_from_env() -> theme::Palette {
+    let name = std::env::var("NXE_GALLERY_PALETTE").unwrap_or_default();
+    theme::Palette::ALL
+        .into_iter()
+        .find(|(plugin, _)| plugin.eq_ignore_ascii_case(&name))
+        .map(|(_, palette)| palette)
+        .unwrap_or(theme::Palette::AIR)
+}
+
 fn main() {
     Application::new(|cx| {
-        theme::install(cx);
+        theme::install(cx, palette_from_env());
 
         // **Started before the model, because the model holds what stops it**
         // (`nxe_ui::heartbeat`).
@@ -664,17 +689,51 @@ fn colours(cx: &mut Context) {
         .height(Auto);
     });
 
-    panel(cx, "TEXT AND ACCENT", |cx| {
+    panel(cx, "TEXT", |cx| {
         HStack::new(cx, |cx| {
             swatch(cx, "foreground", theme::FOREGROUND);
             swatch(cx, "muted", theme::MUTED);
             swatch(cx, "subtle", theme::SUBTLE);
-            swatch(cx, "accent", theme::ACCENT);
-            swatch(cx, "accent-bright", theme::ACCENT_BRIGHT);
-            swatch(cx, "accent-dim", theme::ACCENT_DIM);
         })
         .class("row")
         .height(Auto);
+    });
+
+    palettes(cx);
+}
+
+/// The five accent ramps, and the same drawn widget under each of them.
+///
+/// **The swatches prove the values; the bars prove the path.** A swatch is an
+/// `Element` with its colour set directly, so it would look right even if
+/// nothing could reach the palette at draw time. The `Bar` under each nested
+/// `Palette` model is the actual mechanism the plugins use — if that path
+/// breaks, this row goes uniform and the swatches above it do not.
+fn palettes(cx: &mut Context) {
+    panel(cx, "PALETTES", |cx| {
+        HStack::new(cx, |cx| {
+            for (name, palette) in theme::Palette::ALL {
+                VStack::new(cx, move |cx| {
+                    palette.build(cx);
+                    HStack::new(cx, move |cx| {
+                        swatch(cx, "wash", palette.wash);
+                        swatch(cx, "bright", palette.bright);
+                        swatch(cx, "accent", palette.accent);
+                        swatch(cx, "deep", palette.deep);
+                    })
+                    .class("row")
+                    .height(Auto);
+                    Bar::new(cx, 0.62, |_, _| {});
+                    Label::new(cx, name).class("label");
+                })
+                .width(Auto)
+                .height(Auto)
+                .row_between(Pixels(theme::SPACE_2));
+            }
+        })
+        .class("row")
+        .height(Auto)
+        .col_between(Pixels(theme::SPACE_5));
     });
 }
 
@@ -1421,12 +1480,11 @@ fn icons(cx: &mut Context) {
 
         // Size and colour are `font-size` and `color`, like any other text.
         HStack::new(cx, |cx| {
+            let accent = theme::palette(cx).accent.vizia();
             for size in [12.0, 16.0, 20.0, 28.0] {
                 icon::label(cx, icon::WAVES).font_size(size);
             }
-            icon::label(cx, icon::WAVES)
-                .font_size(28.0)
-                .color(theme::ACCENT.vizia());
+            icon::label(cx, icon::WAVES).font_size(28.0).color(accent);
         })
         .class("row")
         .height(Auto);
@@ -1472,11 +1530,12 @@ fn spacing(cx: &mut Context) {
             ("24", theme::SPACE_5),
         ] {
             HStack::new(cx, |cx| {
+                let accent = theme::palette(cx).accent.vizia();
                 Label::new(cx, name).class("subtle").width(Pixels(24.0));
                 for _ in 0..4 {
                     Element::new(cx)
                         .size(Pixels(16.0))
-                        .background_color(theme::ACCENT.vizia())
+                        .background_color(accent)
                         .border_radius(Pixels(theme::RADIUS_CONTROL));
                 }
             })

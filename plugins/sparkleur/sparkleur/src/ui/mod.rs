@@ -180,7 +180,7 @@ pub fn create(
     // `ViziaTheming::None`: the plugin brings its own stylesheet and wants none
     // of vizia's defaults leaking into it.
     create_vizia_editor(state, ViziaTheming::None, move |cx, _| {
-        theme::install(cx);
+        theme::install(cx, theme::Palette::SPARKLEUR);
 
         // **Read once, when the window opens.** The rate decides where the top
         // boundary is capped (`sparkleur_core::crossover`), and that is the

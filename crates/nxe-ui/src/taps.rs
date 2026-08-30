@@ -111,6 +111,7 @@ impl View for TapField {
     }
 
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
+        let palette = theme::palette(cx);
         let bounds = cx.bounds();
         let scale = cx.scale_factor();
         let line = scale.max(1.0);
@@ -135,8 +136,8 @@ impl View for TapField {
         );
 
         // **The ramp spans the whole plot**, so two stems of the same height are
-        // the same colour whatever else is on screen (`theme::accent_paint`).
-        let paint = theme::accent_paint(bounds.x, bottom, bounds.x, bounds.y);
+        // the same colour whatever else is on screen (`Palette::paint`).
+        let paint = palette.paint(bounds.x, bottom, bounds.x, bounds.y);
 
         // **Every stem in one path, filled once.** They all take the same
         // paint, and femtovg gives every `fill_path` its own draw call whatever

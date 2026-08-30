@@ -96,7 +96,7 @@ mod tests {
     /// renders fallback glyphs, and `label` is the reason it does not have to.
     #[test]
     fn the_icon_class_does_not_claim_to_set_the_family() {
-        let css = crate::theme::stylesheet();
+        let css = crate::theme::stylesheet(crate::theme::Palette::AIR);
         let rule = css
             .split_once(".icon {")
             .expect("no .icon rule")

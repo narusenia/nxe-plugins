@@ -150,6 +150,7 @@ impl View for DotField {
     }
 
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
+        let palette = theme::palette(cx);
         let bounds = cx.bounds();
         let scale = cx.scale_factor();
         let line = scale.max(1.0);
@@ -191,8 +192,8 @@ impl View for DotField {
         let cell_w = bounds.w / columns as f32;
         let cell_h = bounds.h / ROWS as f32;
         // **The ramp spans the whole plot**, so two grains at the same height
-        // are the same colour whatever else is on screen (`theme::accent_paint`).
-        let paint = theme::accent_paint(bounds.x, bottom, bounds.x, bounds.y);
+        // are the same colour whatever else is on screen (`Palette::paint`).
+        let paint = palette.paint(bounds.x, bottom, bounds.x, bounds.y);
         let wander = 1.0 - self.alignment;
 
         // **Every grain in one path, filled once.** They all take the same

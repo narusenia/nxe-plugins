@@ -113,40 +113,141 @@ pub const FOREGROUND: Token = Token::rgb(0xFA, 0xFA, 0xFA);
 pub const MUTED: Token = Token::rgb(0xA3, 0xA3, 0xA3);
 pub const SUBTLE: Token = Token::rgb(0x73, 0x73, 0x73);
 
-// One accent, and no other hue anywhere.
-pub const ACCENT: Token = Token::rgb(0x38, 0xBD, 0xF8);
-pub const ACCENT_BRIGHT: Token = Token::rgb(0x7D, 0xD3, 0xFC);
-/// The dark end of the accent ramp. Used with [`ACCENT_BRIGHT`] to tell groups
-/// of the same kind of thing apart — four voice pairs, say — **without adding a
-/// second hue**, which is the one thing this palette does not allow.
-pub const ACCENT_DEEP: Token = Token::rgb(0x03, 0x69, 0xA1);
-pub const ACCENT_DIM: Token = Token::rgba(0x38, 0xBD, 0xF8, 0.18);
-/// The pale end of the accent — blue so light it reads as white.
+/// One accent, and no other hue anywhere **inside a window**.
 ///
-/// **The far stop of every accent gradient.** Still the same hue, so the
-/// "one accent and no other" rule holds: what changes along a filled bar is
-/// lightness, not colour.
-pub const ACCENT_WASH: Token = Token::rgb(0xE0, 0xF2, 0xFE);
+/// **The hue is the only thing that changes between plugins.** Every stop is
+/// built at the same OKLCH lightness and chroma and differs only in hue, so a
+/// bar at half fill has the same weight in all five windows. Told apart at a
+/// glance, one product群 when opened side by side — the same reason the
+/// windows share a width (`.agents/rules/ui.md`).
+///
+/// **Reached at draw time through the tree, not through a global.** The
+/// palette is a vizia `Model` built by [`install`], and `DrawContext`
+/// implements `DataContext`, so a custom-drawn widget calls [`palette`] and
+/// gets whichever palette is nearest above it. That is what lets
+/// `examples/gallery` put all five side by side.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct Palette {
+    /// The accent itself. A state that is simply on is this, flat.
+    pub accent: Token,
+    /// The light end of the ramp, for telling things of the same kind apart.
+    pub bright: Token,
+    /// The dark end of the ramp. Used with [`Palette::bright`] to tell groups of
+    /// the same kind of thing apart — four voice pairs, say — **without adding
+    /// a second hue**, which is the one thing this palette does not allow.
+    pub deep: Token,
+    /// The accent at 18 % — a wash behind something, not a colour of its own.
+    pub dim: Token,
+    /// The pale end — light enough to read as white while still being the hue.
+    ///
+    /// **The far stop of every accent gradient.** What changes along a filled
+    /// bar is lightness, not colour.
+    pub wash: Token,
+}
 
-/// The accent fill, as a paint for a custom-drawn widget.
+impl Palette {
+    const fn ramp(wash: Token, bright: Token, accent: Token, deep: Token) -> Self {
+        Self {
+            accent,
+            bright,
+            deep,
+            dim: Token::rgba(accent.red, accent.green, accent.blue, 0.18),
+            wash,
+        }
+    }
+
+    /// Jade. Hue 158.
+    pub const DOUBLER: Self = Self::ramp(
+        Token::rgb(0xE2, 0xF4, 0xE9),
+        Token::rgb(0x8C, 0xDB, 0xAD),
+        Token::rgb(0x53, 0xC9, 0x8D),
+        Token::rgb(0x00, 0x77, 0x49),
+    );
+
+    /// Violet. Hue 300.
+    pub const VELOUR: Self = Self::ramp(
+        Token::rgb(0xF1, 0xEC, 0xFE),
+        Token::rgb(0xD0, 0xB8, 0xFF),
+        Token::rgb(0xBD, 0x9A, 0xFA),
+        Token::rgb(0x6E, 0x51, 0x9C),
+    );
+
+    /// Coral. Hue 50.
+    pub const SPARKLEUR: Self = Self::ramp(
+        Token::rgb(0xFE, 0xEB, 0xE0),
+        Token::rgb(0xFC, 0xB3, 0x8B),
+        Token::rgb(0xF4, 0x93, 0x59),
+        Token::rgb(0x97, 0x4B, 0x17),
+    );
+
+    /// Sky. Hue 232.7 — **the accent every plugin shipped with**, kept for the
+    /// one whose subject is air. The other three stops moved a little: the old
+    /// ramp's hue wandered from 230 to 243 across its four stops, and the
+    /// family test below needs one hue per palette.
+    pub const AIR: Self = Self::ramp(
+        Token::rgb(0xDF, 0xF2, 0xFD),
+        Token::rgb(0x7F, 0xD2, 0xFE),
+        Token::rgb(0x38, 0xBD, 0xF8),
+        Token::rgb(0x00, 0x6C, 0x94),
+    );
+
+    /// Rose. Hue 345.
+    pub const PARALLAX: Self = Self::ramp(
+        Token::rgb(0xFC, 0xE9, 0xF3),
+        Token::rgb(0xF7, 0xAC, 0xD6),
+        Token::rgb(0xED, 0x89, 0xC3),
+        Token::rgb(0x91, 0x44, 0x73),
+    );
+
+    /// Every palette with the name of the plugin that wears it. For the gallery
+    /// and for the test that keeps them one family.
+    pub const ALL: [(&'static str, Self); 5] = [
+        ("Doubler", Self::DOUBLER),
+        ("Velour", Self::VELOUR),
+        ("Sparkleur", Self::SPARKLEUR),
+        ("Air", Self::AIR),
+        ("Parallax", Self::PARALLAX),
+    ];
+
+    /// The accent fill, as a paint for a custom-drawn widget.
+    ///
+    /// **One helper so the drawn fills and the stylesheet cannot disagree.**
+    /// `Bar`, `Meter` and `Knob` all fill with the accent, and each drew it its
+    /// own way: two flat, one with a gradient across its bounding box. A filled
+    /// control now looks the same whichever of them it is.
+    ///
+    /// **A gradient means a quantity.** Use it where the fill measures
+    /// something — how far a bar got, how loud a meter is, how far a knob has
+    /// turned. A state that is simply on stays [`Palette::accent`] flat: there
+    /// is no "further" for the pale end to mean, and a word sitting on a ramp
+    /// changes contrast across its own width (a selected segment read badly,
+    /// which is how the rule got written).
+    ///
+    /// The coordinates are the **span of the fill**, not the widget's bounds —
+    /// the gradient runs from where the fill starts to where it could reach, so
+    /// a quarter-full bar shows the first quarter of the ramp rather than the
+    /// whole of it squeezed. `(x0, y0)` is the resting end.
+    pub fn paint(&self, x0: f32, y0: f32, x1: f32, y1: f32) -> vg::Paint {
+        vg::Paint::linear_gradient(x0, y0, x1, y1, self.accent.vg(), self.wash.vg())
+    }
+}
+
+/// The palette is model data, so `DrawContext` can reach it.
+impl Model for Palette {}
+
+/// The palette in force where this view sits.
 ///
-/// **One helper so the drawn fills and the stylesheet cannot disagree.** `Bar`,
-/// `Meter` and `Knob` all fill with the accent, and each drew it its own way:
-/// two flat, one with a gradient across its bounding box. A filled control now
-/// looks the same whichever of them it is.
+/// Takes any `DataContext`, so the same call works while building the tree
+/// (`Context`), while handling an event (`EventContext`) and while drawing
+/// (`DrawContext`) — the lookup walks up the tree in all three.
 ///
-/// **A gradient means a quantity.** Use it where the fill measures something —
-/// how far a bar got, how loud a meter is, how far a knob has turned. A state
-/// that is simply on stays [`ACCENT`] flat: there is no "further" for the pale
-/// end to mean, and a word sitting on a ramp changes contrast across its own
-/// width (a selected segment read badly, which is how the rule got written).
-///
-/// The coordinates are the **span of the fill**, not the widget's bounds — the
-/// gradient runs from where the fill starts to where it could reach, so a
-/// quarter-full bar shows the first quarter of the ramp rather than the whole
-/// of it squeezed. `(x0, y0)` is the resting end.
-pub fn accent_paint(x0: f32, y0: f32, x1: f32, y1: f32) -> vg::Paint {
-    vg::Paint::linear_gradient(x0, y0, x1, y1, ACCENT.vg(), ACCENT_WASH.vg())
+/// **Falls back to [`Palette::AIR`] rather than to something obviously wrong.**
+/// A widget can only miss the model by being built outside the subtree
+/// [`install`] was called in — and in that case there is no stylesheet either,
+/// so the window is already visibly broken. A debug colour here would only add
+/// noise to a failure that is impossible to miss.
+pub fn palette(cx: &impl DataContext) -> Palette {
+    cx.data::<Palette>().copied().unwrap_or(Palette::AIR)
 }
 
 /// A two-stop linear gradient, for `background-image`.
@@ -265,17 +366,17 @@ pub const SEGMENT: f32 = 18.0;
 pub const TRANSITION_MS: u32 = 150;
 
 /// The stylesheet, built from the constants above.
-pub fn stylesheet() -> String {
+pub fn stylesheet(palette: Palette) -> String {
     let background = BACKGROUND.css();
     let elevated = ELEVATED.css();
     let border = BORDER.css();
     let foreground = FOREGROUND.css();
     let muted = MUTED.css();
     let subtle = SUBTLE.css();
-    let accent = ACCENT.css();
-    let accent_dim = ACCENT_DIM.css();
-    let accent_fill = gradient("right", ACCENT, ACCENT_WASH);
-    let accent_fill_up = gradient("top", ACCENT, ACCENT_WASH);
+    let accent = palette.accent.css();
+    let accent_dim = palette.dim.css();
+    let accent_fill = gradient("right", palette.accent, palette.wash);
+    let accent_fill_up = gradient("top", palette.accent, palette.wash);
 
     format!(
         "
@@ -386,7 +487,7 @@ label {{
 /* A rule that marks the subject of a region.
    **Flat, not faded.** It was a gradient that ran out along its length, which
    put the design's one directional device on something with no direction —
-   the same rule that keeps a selected segment flat (`accent_paint`). A line
+   the same rule that keeps a selected segment flat (`Palette::paint`). A line
    that fades also reads as unfinished at the end it fades into. */
 .rule-accent {{
     height: 2px;
@@ -560,10 +661,21 @@ pub fn hint(cx: &mut Context, text: &'static str) {
     Label::new(cx, text).class("decoration");
 }
 
-pub fn install(cx: &mut Context) {
+/// The fonts, the icons, the palette and the stylesheet. Call once, at the top
+/// of the window, before any view is built.
+///
+/// **The palette goes in twice, and it has to.** The stylesheet is generated
+/// from it (vizia has no way to remove or replace a stylesheet once added, so
+/// there is one per window), and the same palette is built as a `Model` so that
+/// custom-drawn widgets can read it at draw time. The gallery leans on the
+/// second half: a nested `Palette` model re-colours everything drawn under it,
+/// which is how five palettes are seen at once even though the stylesheet can
+/// only hold one.
+pub fn install(cx: &mut Context, palette: Palette) {
     font::install(cx);
     icon::install(cx);
-    cx.add_stylesheet(CSS::String(stylesheet()))
+    palette.build(cx);
+    cx.add_stylesheet(CSS::String(stylesheet(palette)))
         .expect("the generated stylesheet is built from constants and cannot fail to parse");
 }
 
@@ -575,17 +687,126 @@ mod tests {
     /// from a token — that is the whole point of generating it.
     #[test]
     fn the_stylesheet_has_no_colour_literals() {
-        let css = stylesheet();
-        assert!(!css.contains('#'), "a hex colour reached the stylesheet");
+        for (name, palette) in Palette::ALL {
+            let css = stylesheet(palette);
+            assert!(
+                !css.contains('#'),
+                "a hex colour reached {name}'s stylesheet"
+            );
+        }
     }
 
     /// Every token has to survive the round trip into CSS, or a typo in `css`
     /// would silently produce a transparent or black surface.
     #[test]
     fn tokens_render_as_rgba() {
-        assert_eq!(ACCENT.css(), "rgba(56, 189, 248, 1)");
-        assert_eq!(ACCENT_DIM.css(), "rgba(56, 189, 248, 0.18)");
+        assert_eq!(Palette::AIR.accent.css(), "rgba(56, 189, 248, 1)");
+        assert_eq!(Palette::AIR.dim.css(), "rgba(56, 189, 248, 0.18)");
         assert_eq!(BACKGROUND.css(), "rgba(10, 10, 10, 1)");
+    }
+
+    /// sRGB → OKLCh. The palettes were generated in this space; this is what
+    /// keeps a hand-edited hex from quietly leaving it.
+    fn oklch(token: Token) -> (f32, f32, f32) {
+        fn linear(channel: u8) -> f32 {
+            let c = f32::from(channel) / 255.0;
+            if c <= 0.04045 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            }
+        }
+        let (r, g, b) = (linear(token.red), linear(token.green), linear(token.blue));
+        let l = (0.412_221_5 * r + 0.536_332_55 * g + 0.051_445_995 * b).cbrt();
+        let m = (0.211_903_5 * r + 0.680_699_5 * g + 0.107_396_96 * b).cbrt();
+        let s = (0.088_302_46 * r + 0.281_718_85 * g + 0.629_978_7 * b).cbrt();
+        let lightness = 0.210_454_26 * l + 0.793_617_8 * m - 0.004_072_047 * s;
+        let a = 1.977_998_5 * l - 2.428_592_2 * m + 0.450_593_7 * s;
+        let b = 0.025_904_037 * l + 0.782_771_77 * m - 0.808_675_77 * s;
+        (
+            lightness,
+            a.hypot(b),
+            b.atan2(a).to_degrees().rem_euclid(360.0),
+        )
+    }
+
+    /// One stop of the ramp: what it is called, and how to get it out of a
+    /// palette.
+    type Stop = (&'static str, fn(Palette) -> Token);
+
+    const STOPS: [Stop; 4] = [
+        ("wash", |p| p.wash),
+        ("bright", |p| p.bright),
+        ("accent", |p| p.accent),
+        ("deep", |p| p.deep),
+    ];
+
+    /// **The five palettes differ in hue and in nothing else.** Same lightness,
+    /// same chroma, stop for stop — that is what lets a bar at half fill carry
+    /// the same weight in all five windows, and it is the whole reason five
+    /// accents do not read as five different designs.
+    ///
+    /// `deep` gets a looser bound on chroma: at that lightness the blue and the
+    /// green run out of sRGB before the others do, so they are clipped into
+    /// gamut rather than being made lighter.
+    #[test]
+    fn the_palettes_are_one_family() {
+        for (stop, of) in STOPS {
+            let mut lightness: Vec<f32> = Vec::new();
+            let mut chroma: Vec<f32> = Vec::new();
+            for (_, palette) in Palette::ALL {
+                let (l, c, _) = oklch(of(palette));
+                lightness.push(l);
+                chroma.push(c);
+            }
+            let spread = |values: &[f32]| {
+                values.iter().copied().fold(f32::MIN, f32::max)
+                    - values.iter().copied().fold(f32::MAX, f32::min)
+            };
+            assert!(
+                spread(&lightness) <= 0.01,
+                "{stop} is not one lightness across the palettes: {lightness:?}"
+            );
+            let allowed = if stop == "deep" { 0.02 } else { 0.005 };
+            assert!(
+                spread(&chroma) <= allowed,
+                "{stop} is not one chroma across the palettes: {chroma:?}"
+            );
+        }
+    }
+
+    /// And they have to be far enough apart to be the thing that tells the
+    /// windows apart at a glance.
+    #[test]
+    fn the_palettes_are_told_apart_by_hue() {
+        let hues: Vec<(&str, f32)> = Palette::ALL
+            .into_iter()
+            .map(|(name, palette)| (name, oklch(palette.accent).2))
+            .collect();
+        for (index, (name, hue)) in hues.iter().enumerate() {
+            for (other, other_hue) in &hues[index + 1..] {
+                let apart = (hue - other_hue).abs().min(360.0 - (hue - other_hue).abs());
+                assert!(
+                    apart >= 40.0,
+                    "{name} and {other} are {apart:.0}° apart — too close to tell"
+                );
+            }
+        }
+    }
+
+    /// A palette's ramp has to run in one direction, or "paler means further"
+    /// stops being true of one of them.
+    #[test]
+    fn every_ramp_runs_from_deep_to_wash() {
+        for (name, palette) in Palette::ALL {
+            let steps = [palette.deep, palette.accent, palette.bright, palette.wash];
+            for pair in steps.windows(2) {
+                assert!(
+                    oklch(pair[0]).0 < oklch(pair[1]).0,
+                    "{name}'s ramp does not get lighter at every step"
+                );
+            }
+        }
     }
 
     /// The surfaces and the text have to be neutral: the accent is the only
@@ -612,7 +833,7 @@ mod tests {
     /// that forgot a class disappears into the background.
     #[test]
     fn labels_have_a_default_colour() {
-        let css = stylesheet();
+        let css = stylesheet(Palette::AIR);
         let base = css
             .split_once("label {")
             .expect("no base rule for labels")
@@ -625,7 +846,7 @@ mod tests {
 
     #[test]
     fn the_stylesheet_mentions_every_class_it_documents() {
-        let css = stylesheet();
+        let css = stylesheet(Palette::AIR);
         for class in [
             ".root",
             ".panel",
@@ -663,7 +884,7 @@ mod tests {
     /// for as long as it took to notice the sizes never moved.
     #[test]
     fn font_sizes_carry_no_unit() {
-        let css = stylesheet();
+        let css = stylesheet(Palette::AIR);
         for declaration in css.match_indices("font-size:") {
             let rest = &css[declaration.0 + "font-size:".len()..];
             let value = rest.split(';').next().unwrap_or("").trim();

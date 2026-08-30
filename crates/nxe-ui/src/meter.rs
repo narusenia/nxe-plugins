@@ -120,6 +120,7 @@ impl View for Meter {
     }
 
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
+        let palette = theme::palette(cx);
         let bounds = cx.bounds();
         let scale = cx.scale_factor();
         let line = scale.max(1.0);
@@ -134,11 +135,11 @@ impl View for Meter {
             fill.rect(x, y, w, h);
             // The ramp spans the whole track, so a level reads against the
             // scale rather than against its own height
-            // (`theme::accent_paint`).
+            // (`Palette::paint`).
             let paint = if self.vertical {
-                theme::accent_paint(bounds.x, bounds.y + bounds.h, bounds.x, bounds.y)
+                palette.paint(bounds.x, bounds.y + bounds.h, bounds.x, bounds.y)
             } else {
-                theme::accent_paint(bounds.x, bounds.y, bounds.x + bounds.w, bounds.y)
+                palette.paint(bounds.x, bounds.y, bounds.x + bounds.w, bounds.y)
             };
             canvas.fill_path(&fill, &paint);
         }
@@ -165,7 +166,7 @@ impl View for Meter {
             let colour = if self.hold >= 1.0 {
                 theme::FOREGROUND
             } else {
-                theme::ACCENT_BRIGHT
+                palette.bright
             };
             let thickness = MARKER * scale;
             let (mx, my) = self.at(bounds, self.hold);

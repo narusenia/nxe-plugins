@@ -458,6 +458,7 @@ impl View for BandField {
     }
 
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
+        let palette = theme::palette(cx);
         let bounds = cx.bounds();
         let scale = cx.scale_factor();
         let line = scale.max(1.0);
@@ -516,7 +517,7 @@ impl View for BandField {
             let tint = if soloing && !band.soloed {
                 theme::SUBTLE
             } else {
-                theme::ACCENT_DEEP.mix(theme::ACCENT_BRIGHT, band.tint.clamp(0.0, 1.0))
+                palette.deep.mix(palette.bright, band.tint.clamp(0.0, 1.0))
             };
 
             // What was asked for, from the baseline to it.
@@ -572,7 +573,7 @@ impl View for BandField {
                     path.line_to(px, py);
                 }
             }
-            let mut paint = vg::Paint::color(theme::ACCENT.vg());
+            let mut paint = vg::Paint::color(palette.accent.vg());
             paint.set_line_width(WET_WIDTH * scale);
             paint.set_line_cap(vg::LineCap::Butt);
             canvas.stroke_path(&path, &paint);
@@ -589,7 +590,7 @@ impl View for BandField {
             let (right, _) = at(band.low.max(band.high), 0.0);
             let mut ring = vg::Path::new();
             ring.rect(left, plot.y, (right - left).max(0.0), plot.h);
-            let mut paint = vg::Paint::color(theme::ACCENT.vg());
+            let mut paint = vg::Paint::color(palette.accent.vg());
             paint.set_line_width(line);
             canvas.stroke_path(&ring, &paint);
         }
@@ -601,7 +602,7 @@ impl View for BandField {
             // Inert when there is nothing to write: it should not look grabbable.
             (false, _) => theme::BACKGROUND,
             (true, false) => theme::ELEVATED,
-            (true, true) => theme::ACCENT_DIM,
+            (true, true) => palette.dim,
         };
         canvas.fill_path(&strip, &vg::Paint::color(colour.vg()));
 

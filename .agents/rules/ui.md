@@ -46,10 +46,21 @@ Every rule here was paid for. Where one has a scar, the scar is named.
 
 ## Colour
 
-- **One accent, and no second hue anywhere.** Things of the same kind are told
-  apart along the accent's own ramp (`ACCENT_DEEP` → `ACCENT_BRIGHT`), never by
-  introducing a colour.
-- **A gradient means a quantity.** Use `theme::accent_paint` where the fill
+- **One accent, and no second hue anywhere — inside a window.** Things of the
+  same kind are told apart along the accent's own ramp (`palette.deep` →
+  `palette.bright`), never by introducing a colour.
+- **Between windows, the hue is the only thing that changes.** Each plugin wears
+  its own `theme::Palette`, and the five are built at the same OKLCH lightness
+  and chroma stop for stop, so a bar at half fill carries the same weight in all
+  of them. A test fixes it (`the_palettes_are_one_family`); a hand-edited hex
+  that leaves the family fails it. **Five accents that were not one family would
+  read as five different designs**, which is the thing the shared width exists
+  to prevent.
+- **A custom-drawn widget reads the palette, never a constant.**
+  `theme::palette(cx)` walks up to the nearest `Palette` model. There are no
+  `ACCENT*` constants to reach for — that is deliberate, because a constant is
+  how five windows would quietly become one colour again.
+- **A gradient means a quantity.** Use `palette.paint` where the fill
   measures something: how far a bar got, how loud a meter is, how far a knob
   turned. Pass **the whole track**, not the filled part, so two controls at
   different values are the same colour where they overlap.

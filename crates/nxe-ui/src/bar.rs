@@ -114,6 +114,7 @@ impl View for Bar {
     }
 
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
+        let palette = theme::palette(cx);
         let bounds = cx.bounds();
         let scale = cx.scale_factor();
         let radius = theme::RADIUS_CONTROL * scale;
@@ -138,7 +139,7 @@ impl View for Bar {
             // **The ramp spans the whole track, not the filled part.** A bar
             // at a quarter then shows the first quarter of it, so two bars at
             // different values are the same colour where they overlap and the
-            // pale end always means "further" (`theme::accent_paint`).
+            // pale end always means "further" (`Palette::paint`).
             let (from, to) = if self.centred {
                 // Outward from the middle, because that is where the fill
                 // starts: a bipolar bar reads as distance from rest.
@@ -151,7 +152,7 @@ impl View for Bar {
             } else {
                 (bounds.x, bounds.x + bounds.w)
             };
-            canvas.fill_path(&fill, &theme::accent_paint(from, bounds.y, to, bounds.y));
+            canvas.fill_path(&fill, &palette.paint(from, bounds.y, to, bounds.y));
         }
 
         // The centre mark stays visible under the fill, so "at rest" is legible

@@ -24,13 +24,18 @@ mise run gallery
 ウィンドウを組むとき最初に 1 回、テーマとアイコンフォントを入れる。
 
 ```rust
-use nxe_ui::theme;
+use nxe_ui::theme::{self, Palette};
 
 Application::new(|cx| {
-    theme::install(cx);   // スタイルシート + Lucide フォント
+    theme::install(cx, Palette::SPARKLEUR);   // 書体 + アイコン + パレット + CSS
     // ...
 })
 ```
+
+**パレットは本ごとに 1 つ。** `Palette::DOUBLER` / `VELOUR` / `SPARKLEUR` /
+`AIR` / `PARALLAX` の 5 つがあり、**色相だけが違う** — OKLCH の明度と彩度は
+stop ごとに揃えてあるので、半分まで塗ったバーはどの窓でも同じ重さに見える。
+テストが固定している（`theme::tests::the_palettes_are_one_family`）。
 
 ## ウィジェット
 
@@ -96,16 +101,38 @@ Application::new(|cx| {
 
 ## アクセントの塗り
 
-**塗りは 1 色ではなくグラデーション**（`ACCENT` → `ACCENT_WASH`）。同じ色相の
-まま明度だけ動くので「アクセントは 1 色」の規則はそのままで、**淡いほうが
+**塗りは 1 色ではなくグラデーション**（`accent` → `wash`）。同じ色相のまま明度
+だけ動くので「1 つの窓にアクセントは 1 色」の規則はそのままで、**淡いほうが
 「遠い」**を意味する。
 
-自前描画のウィジェットは `theme::accent_paint(x0, y0, x1, y1)` を使う。
+**自前描画のウィジェットは描画時にパレットを引く。**
+
+```rust
+fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
+    let palette = theme::palette(cx);
+    // ... palette.accent / palette.bright / palette.deep / palette.dim
+    canvas.fill_path(&fill, &palette.paint(x0, y0, x1, y1));
+}
+```
+
+`theme::palette` は木を遡って**一番近い `Palette` モデル**を返す。`install` が
+窓の根に 1 つ建てるので、通常はそれが見つかる。**`DataContext` を取るので、
+組み立て中（`Context`）・イベント中（`EventContext`）・描画中（`DrawContext`）の
+どれでも同じ呼び方**でよい。
+
+**部分木に別のパレットを建てると、その下の自前描画だけ色が変わる。**
+gallery の PALETTES パネルが 5 色を同時に見せているのはこれで、プラグインは
+使わない道。**CSS 側は切り替わらない** — vizia はスタイルシートを差し替える
+手段を持たないので、生成する CSS は `install` に渡した 1 つぶんだけ
+（gallery は `NXE_GALLERY_PALETTE` で選ぶ）。
+
+`palette.paint(x0, y0, x1, y1)` を使う。
 `(x0, y0)` が**静止端**、`(x1, y1)` が**振り切った端**で、渡すのは
 **トラック全体の範囲**（塗った部分ではない）。そうすると 1/4 まで塗ったバーは
 ランプの 1/4 を見せるので、**値の違うバー同士が重なる範囲で同じ色**になる。
 
-CSS 側は `.accent`（左→右）と `.accent-up`（下→上）。
+CSS 側は `.accent`（左→右）と `.accent-up`（下→上）。**こちらは `install` した
+パレットで焼き込まれている。**
 
 **勾配は「量」にだけ使う。** バーがどこまで行ったか、メーターがどれだけ大きいか、
 ノブがどこまで回ったか。**単に on / off の状態はフラットな `ACCENT`** —
@@ -150,9 +177,9 @@ CSS 側は `.accent`（左→右）と `.accent-up`（下→上）。
 二重管理になる。
 
 ```rust
-theme::ACCENT.vg()      // View::draw 用（femtovg）
-theme::ACCENT.vizia()   // vizia の Color が要るところ
-theme::ACCENT.css()     // 生成される CSS 用
+theme::palette(cx).accent.vg()      // View::draw 用（femtovg）
+theme::palette(cx).accent.vizia()   // vizia の Color が要るところ
+theme::Palette::AIR.accent.css()    // 生成される CSS 用
 ```
 
 - **色のリテラルを書かない。** CSS にも `View::draw` にも。生成された CSS に
@@ -164,8 +191,8 @@ theme::ACCENT.css()     // 生成される CSS 用
   何が鳴っているかは、一目で区別できないと重ねる意味が無い
 - **信号は「明るくする」層。** 中間色のグレーで塗ると、下に色が付いている
   ところで濁る。低い不透明度の光なら下を持ち上げるだけで済む
-- 同種のものの組を見分けたいときは**色相を増やさず** `ACCENT_DEEP` と
-  `ACCENT_BRIGHT` の間を `Token::mix` で刻む（`PolarField` の `FieldPoint::tint`）
+- 同種のものの組を見分けたいときは**色相を増やさず** `palette.deep` と
+  `palette.bright` の間を `Token::mix` で刻む（`PolarField` の `FieldPoint::tint`）
 - **角丸は無し**（`RADIUS_CONTROL` / `RADIUS_CARD` とも 0）。丸めようとすると
   コンパイル時アサーションで止まる。定数は残してあるので、気が変われば 1 行
 - 間隔は 4px グリッドの 5 段（`SPACE_1`..`SPACE_5`）。この 5 つ以外を使わない
