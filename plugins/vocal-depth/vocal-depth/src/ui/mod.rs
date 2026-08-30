@@ -165,7 +165,7 @@ pub fn create(
 
         HStack::new(cx, |cx| {
             VStack::new(cx, |cx| {
-                nxe_ui::header::header(cx, "NXE VOCAL DEPTH", "forward and back");
+                nxe_ui::header::header(cx, "Vocal Depth", "forward and back", |_| {});
                 readout::view(cx);
                 // The figure. It is what the plugin *is* (`ui.md`).
                 field::view(cx);

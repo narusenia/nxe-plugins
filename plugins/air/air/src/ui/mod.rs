@@ -171,7 +171,7 @@ pub fn create(
 
         HStack::new(cx, |cx| {
             VStack::new(cx, |cx| {
-                nxe_ui::header::header(cx, "NXE AIR", "signal-driven texture");
+                nxe_ui::header::header(cx, "Air", "signal-driven texture", |_| {});
                 readout::view(cx);
                 // The figure. It is what the plugin *is* (`ui.md`).
                 field::view(cx);

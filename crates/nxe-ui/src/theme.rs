@@ -339,7 +339,13 @@ pub const FONT_VALUE: f32 = 10.0;
 
 /// The wordmark, and nothing else. A third size exists only because a plugin's
 /// name is not a label — it names the window, not a control in it.
-pub const FONT_TITLE: f32 = 17.0;
+///
+/// **It was 17, set bold.** At that size one weight of a grotesque reads as
+/// another label with the volume turned up, so the wordmark had to shout to be
+/// a wordmark. Set at 26 in the light face it does not have to: **size carries
+/// it, the way size carries everything else here** (`UI-19`). The vendor moved
+/// out of the wordmark in the same change, which is what made room for it.
+pub const FONT_TITLE: f32 = 26.0;
 
 /// The height a one-line label occupies at each size.
 ///
@@ -360,7 +366,7 @@ pub const LINE_VALUE: f32 = 14.0;
 /// with the audio (`docs/investigations/ui-frame-cost.md`).
 pub const LINE_READOUT: f32 = 16.0;
 pub const LINE_LABEL: f32 = 16.0;
-pub const LINE_TITLE: f32 = 24.0;
+pub const LINE_TITLE: f32 = 32.0;
 
 const _: () = assert!(LINE_EYEBROW > FONT_EYEBROW, "the eyebrow will clip");
 const _: () = assert!(LINE_VALUE > FONT_VALUE, "the value will clip");
@@ -458,7 +464,8 @@ label {{
     font-size: {FONT_VALUE};
 }}
 
-/* The plugin's name. Set apart by size alone, like everything else here. */
+/* The plugin's name. Set apart by size alone, like everything else here — the
+   light face it is set in is the modifier's job (`font::title`). */
 .title {{
     color: {foreground};
     font-size: {FONT_TITLE};
@@ -699,6 +706,10 @@ pub fn hint(cx: &mut Context, text: &'static str) {
 /// The fonts, the icons, the palette and the stylesheet. Call once, at the top
 /// of the window, before any view is built.
 ///
+/// It also builds the [`hint`](crate::hint) model, for the same reason the
+/// palette is a model: `header` shows it and any control anywhere under the
+/// window writes to it, so it has to sit above both.
+///
 /// **The palette goes in twice, and it has to.** The stylesheet is generated
 /// from it (vizia has no way to remove or replace a stylesheet once added, so
 /// there is one per window), and the same palette is built as a `Model` so that
@@ -710,6 +721,7 @@ pub fn install(cx: &mut Context, palette: Palette) {
     font::install(cx);
     icon::install(cx);
     palette.build(cx);
+    crate::hint::Hint::default().build(cx);
     cx.add_stylesheet(CSS::String(stylesheet(palette)))
         .expect("the generated stylesheet is built from constants and cannot fail to parse");
 }

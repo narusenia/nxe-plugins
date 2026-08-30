@@ -101,12 +101,17 @@ Every rule here was paid for. Where one has a scar, the scar is named.
   is what fixing the decimal count was meant to prevent. **Inter's tabular
   figures are not a way out**: `tnum` is an OpenType feature and this vizia
   revision has no way to turn one on.
-- **Two weights carry meaning, and no more.** Bold is the wordmark
-  (`font::title`); Light is text large enough to carry it (`font::display`).
-  **Light at label size is thin rather than quiet** — on a dark ground it goes
-  fragile before it goes elegant. A third use for a weight means "size and
+- **One weight carries meaning: the wordmark, set light and large**
+  (`font::title`, 26). Bold shipped for exactly one commit and was dropped when
+  this landed — it existed so a 17 px name would not read as another label, and
+  **size solves that better than weight does**. **Light at label size is thin
+  rather than quiet**: on a dark ground it goes fragile before it goes elegant,
+  so it stays where it is large. A second use for a weight means "size and
   colour" was the wrong principle, and the principle gets rewritten rather than
   worked around.
+- **The wordmark is the product's name with no vendor on it.** `Sparkleur`, not
+  `NXE Sparkleur` — the plugin list has already been read by the time the window
+  is open. `NXE` sits to its left as its own small mark.
 - **Corners are square.** `RADIUS_CONTROL` and `RADIUS_CARD` are zero and a
   compile-time assertion keeps them near it. A grid is drawn with straight
   lines.

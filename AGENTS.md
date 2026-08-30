@@ -78,6 +78,10 @@ and how it appears in a host's plugin list. The **crate** keeps the bare name
 (`doubler`, `doubler-core`) so paths stay short, and the documents use the bare
 name as shorthand.
 
+**The window's wordmark is the bare name** — `Doubler`, with `NXE` beside it as
+its own small mark (`UI-19`). The list has already been read by the time the
+window is open, so repeating the vendor inside it buys nothing.
+
 The vendor is `NXE`. CLAP ids are `com.nxe.<name>`. **A shipped `CLAP_ID` or
 `VST3_CLASS_ID` must never change** — a host stores it in the project file, so
 changing it silently breaks every session that used the plugin.

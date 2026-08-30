@@ -253,7 +253,7 @@ fn header(cx: &mut Context) {
     // **No wrapping row.** `.class("row")` centres its children vertically, and
     // the header wants the whole of the height it asks for
     // (`.agents/rules/vizia.md`).
-    nxe_ui::header::header(cx, "NXE VELOUR", "vocal presence saturator");
+    nxe_ui::header::header(cx, "Velour", "vocal presence saturator", |_| {});
 }
 
 /// The knob sizes. The six that shape the sound are the large ones; the two

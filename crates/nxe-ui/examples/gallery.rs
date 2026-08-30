@@ -52,6 +52,7 @@ use nxe_ui::bar::Bar;
 use nxe_ui::curve::{Curve, CurveView, CurveViewModifiers, Grip, Span};
 use nxe_ui::dots::DotField;
 use nxe_ui::entry::ValueEntry;
+use nxe_ui::hint::Describe;
 use nxe_ui::input::Gesture;
 use nxe_ui::knob::Knob;
 use nxe_ui::meter::Meter;
@@ -75,6 +76,8 @@ struct Demo {
     rows: Vec<f32>,
     voices: usize,
     source: usize,
+    /// What the mode slot in the header holds on the two plugins that have one.
+    mode: usize,
     /// The Doubler's default shape, read as pan and delay.
     field: Vec<FieldPoint>,
     /// How far the source markers sit from the origin. Dragging one moves them
@@ -171,6 +174,7 @@ enum DemoEvent {
     SetRow(usize, f32),
     SetVoices(usize),
     SetSource(usize),
+    SetMode(usize),
     MovePoint {
         index: usize,
         angle: f32,
@@ -330,6 +334,7 @@ impl Model for Demo {
                 self.source = *index;
                 self.anchors = anchors_of(self.source, self.anchor_radius);
             }
+            DemoEvent::SetMode(index) => self.mode = *index,
             DemoEvent::Gesture(name) => self.last_gesture = (*name).to_owned(),
             DemoEvent::ToggleDetail => self.detail_open = !self.detail_open,
             DemoEvent::SetBand(index, level) => {
@@ -475,6 +480,7 @@ fn main() {
             ],
             voices: 1,
             source: 0,
+            mode: 0,
             field: default_field(),
             anchor_radius: 0.10,
             anchors: anchors_of(0, 0.10),
@@ -520,7 +526,12 @@ fn main() {
         // the start rather than when someone notices it has stopped fitting.
         ScrollView::new(cx, 0.0, 0.0, false, true, |cx| {
             VStack::new(cx, |cx| {
-                nxe_ui::header::header(cx, "nxe-ui", "tokens and widgets");
+                nxe_ui::header::header(cx, "nxe-ui", "tokens and widgets", |cx| {
+                    SegmentedControl::new(cx, Demo::mode, &["Soft", "Hard"], |cx, index| {
+                        cx.emit(DemoEvent::SetMode(index));
+                    })
+                    .describe("how far the macros are allowed to reach");
+                });
 
                 grid(cx);
                 readouts(cx);
@@ -901,7 +912,8 @@ fn segments(cx: &mut Context) {
             Label::new(cx, "VOICES").class("label");
             SegmentedControl::new(cx, Demo::voices, &["2", "4", "8"], |cx, index| {
                 cx.emit(DemoEvent::SetVoices(index));
-            });
+            })
+            .describe("how many copies of the voice are generated");
 
             Label::new(cx, "SOURCE").class("label");
             SegmentedControl::new(
@@ -909,7 +921,8 @@ fn segments(cx: &mut Context) {
                 Demo::source,
                 &["Mono Sum", "True Stereo"],
                 |cx, index| cx.emit(DemoEvent::SetSource(index)),
-            );
+            )
+            .describe("whether the two channels are summed before the split");
         })
         .class("row")
         .height(Auto);
@@ -1602,11 +1615,10 @@ fn spacing(cx: &mut Context) {
 
 fn text(cx: &mut Context) {
     panel(cx, "TEXT", |cx| {
-        // All three weights together: the two that carry meaning are exceptions
-        // to the plain one, so the panel has to show what they look like beside
-        // it rather than on their own.
-        font::display(cx, "DISPLAY — large text, light").class("title");
-        font::title(cx, "TITLE — the wordmark, 17, bold");
+        // Both weights together: the light one carries only the wordmark, so
+        // the panel has to show what it looks like beside the plain face it is
+        // an exception to rather than on its own.
+        font::title(cx, "TITLE — the wordmark, 26, light");
         Label::new(cx, "TITLE — the same class, regular").class("title");
         Label::new(cx, "LABEL — names a thing, 12, muted").class("label");
         Label::new(cx, "Value — says what it is, 10, Inter").class("value");

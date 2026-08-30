@@ -162,15 +162,30 @@ CSS は平坦で「この面の中のラベル」を書く手段が無いため�
 
 ## ヘッダ
 
-`nxe_ui::header::header(cx, "NXE SPARKLEUR", "five-band dynamics + sparkle")`。
-ワードマーク・役割の一行・その下の `rule-accent` の 3 点セット。
+```rust
+nxe_ui::header::header(cx, "Sparkleur", "five-band dynamics + sparkle", |cx| {
+    // MODE を持つ本だけここに置く。持たない本は空のクロージャ
+});
+```
+
+**ワードマークは製品名だけ。** `NXE` は左に小さく別で出る。ホストのリストは
+窓を開く前に読み終わっているので、窓の中で製品名の前にベンダーを繰り返す意味が
+無い。
+
+**帯の右は「今ポインタが乗っているもの」の 1 行**（`nxe_ui::hint`）。何にも
+乗っていなければ `role` に戻る。
+
+```rust
+use nxe_ui::hint::Describe;
+
+Knob::new(cx, lens, gesture).describe("how hard the curve is driven");
+```
+
+説明は**呼び出し側が書く** — `Knob` は自分が `DRIVE` だと知らない。**短く保つ**:
+切り詰めの手段が無いので、長すぎる文はワードマークを押しのける。
 
 **3 つのプラグインが同じものを 3 回書いていた**ので上げた。偶然同じなのと
 意図して同じなのは別で、片方が罫線を欲しがった瞬間にずれる。
-
-右の一行は**その窓が何のためのものか**。ホストのプラグイン一覧は名前しか
-くれないが、窓が開いた時点で名前は既に知っている唯一のことなので、名前だけの
-ヘッダは何も足していない。
 
 ## スイスの層
 
@@ -241,20 +256,19 @@ Panel / Section / Row / Label / Divider をウィジェットにしていない�
 
 語は [Inter](https://rsms.me/inter/)、数値は
 [Geist Mono](https://vercel.com/font)（どちらも SIL OFL 1.1）。Inter は
-Light / Regular / Bold の 3 面。この設計は階層を**サイズと色**で作り、
-**ウェイトが意味を持つのは 2 箇所だけ**。
+Light と Regular の 2 面。この設計は階層を**サイズと色**で作り、
+**ウェイトが意味を持つのはワードマーク 1 箇所だけ**。
 
 - 既定は Inter Regular。`theme::install` が `set_default_font` で入れるので、
   普通の `Label` はそのまま Inter になる
 - **数値は Geist Mono。** `font::value(cx, text)` を使う。Inter の tabular
   figures（`tnum`）は OpenType feature で、**この vizia には feature を
   立てる道が無い**
-- **プラグイン名は `font::title(cx, "NXE …")`。** ここだけ Bold。
-  17 px の 1 ウェイトだとただのラベルに見えたので足した
-- **大きい文字は `font::display(cx, …)`。** ここだけ Light。**ラベルの大きさに
-  使わない** — 小さい Light は静かではなく細いだけで、暗い地の上では上品に
-  なる前に脆くなる
-- **3 つ目のウェイトの用途を作らない。** 要るなら「サイズと色で作る」という
+- **プラグイン名は `font::title(cx, "Sparkleur")`。** ここだけ Light、26 px。
+  **`NXE` は付けない** — ベンダーは左に小さく別で置く（`nxe_ui::header`）
+- **Light をラベルの大きさに使わない。** 小さい Light は静かではなく細いだけで、
+  暗い地の上では上品になる前に脆くなる（17 px で実際にそう見えた）
+- **2 つ目のウェイトの用途を作らない。** 要るなら「サイズと色で作る」という
   原則が間違っていたということなので、そのときは原則ごと書き換える
 
 ```rust

@@ -304,7 +304,7 @@ fn header(cx: &mut Context) {
     // **No wrapping row.** `.class("row")` centres its children vertically, and
     // the header wants the whole of the height it asks for
     // (`.agents/rules/vizia.md`).
-    nxe_ui::header::header(cx, "NXE DOUBLER", "multi-voice doubler");
+    nxe_ui::header::header(cx, "Doubler", "multi-voice doubler", |_| {});
 
     // **How many voices and what they double**, under the rule rather than on
     // the wordmark's line. They sat beside the name until the shared header

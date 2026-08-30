@@ -13,11 +13,12 @@
 //! with its tabular figures, but `tnum` is an OpenType feature and **this vizia
 //! revision has no way to turn one on**, so the mono face is still the answer.
 //!
-//! Three weights of Inter. Hierarchy comes mostly from size and colour;
-//! [`title`] and [`display`] are the two places a weight carries meaning, and
-//! both are deliberate. Nothing else reaches for a weight — if a third thing
-//! needs one, the rule was wrong and should be rewritten rather than worked
-//! around.
+//! Two weights of Inter. Hierarchy comes from size and colour; [`title`] is
+//! the one place a weight carries meaning. **Bold was embedded for one commit
+//! and then dropped** — it existed for the wordmark, and once the wordmark went
+//! large and light nothing was left that wanted it (`UI-19`). Nothing else may
+//! reach for a weight; if something does, the rule was wrong and should be
+//! rewritten rather than worked around.
 //!
 //! **Inter Light's `name` table says family `Inter Light`, subfamily
 //! `Regular`** — only its *typographic* family (name ID 16) says `Inter`.
@@ -37,7 +38,6 @@ pub const MONO: &str = "Geist Mono";
 
 const LIGHT_BYTES: &[u8] = include_bytes!("../assets/inter/Inter-Light.ttf");
 const SANS_BYTES: &[u8] = include_bytes!("../assets/inter/Inter-Regular.ttf");
-const BOLD_BYTES: &[u8] = include_bytes!("../assets/inter/Inter-Bold.ttf");
 const MONO_BYTES: &[u8] = include_bytes!("../assets/geist/GeistMono-Regular.ttf");
 
 /// Registers every face and makes Inter the default. `theme::install` already
@@ -49,36 +49,25 @@ const MONO_BYTES: &[u8] = include_bytes!("../assets/geist/GeistMono-Regular.ttf"
 pub fn install(cx: &mut Context) {
     cx.add_font_mem(LIGHT_BYTES);
     cx.add_font_mem(SANS_BYTES);
-    cx.add_font_mem(BOLD_BYTES);
     cx.add_font_mem(MONO_BYTES);
     cx.set_default_font(&[SANS]);
 }
 
-/// Large text set light — the fors register, where size does the work and the
-/// stroke gets out of the way.
-///
-/// **For text that is big enough to carry it.** Light at label size is thin
-/// rather than quiet, and on a dark ground it goes fragile before it goes
-/// elegant. The window's large headings are what this is for.
-pub fn display<T>(cx: &mut Context, text: impl Res<T> + Clone) -> Handle<'_, Label>
-where
-    T: ToStringLocalized,
-{
-    Label::new(cx, text).font_weight(FontWeightKeyword::Light)
-}
-
-/// The wordmark: the plugin's name, in the one bold face this design has.
+/// The wordmark: the plugin's name, in the one light face this design has.
 ///
 /// **The weight is set by the modifier, not by CSS.** `font-weight` does parse
 /// in this vizia revision, but keeping it here means the `.title` class stays
 /// one thing — the size and the colour — and there is exactly one place that
 /// knows the exception exists.
+///
+/// **The name only.** `Sparkleur`, not `NXE Sparkleur`: the vendor sits beside
+/// it as its own small mark (`crate::header`).
 pub fn title<T>(cx: &mut Context, text: impl Res<T> + Clone) -> Handle<'_, Label>
 where
     T: ToStringLocalized,
 {
     Label::new(cx, text)
-        .font_weight(FontWeightKeyword::Bold)
+        .font_weight(FontWeightKeyword::Light)
         .class("title")
 }
 
@@ -106,7 +95,6 @@ mod tests {
         for (name, bytes) in [
             ("light", LIGHT_BYTES),
             ("sans", SANS_BYTES),
-            ("bold", BOLD_BYTES),
             ("mono", MONO_BYTES),
         ] {
             assert!(bytes.len() > 50_000, "{name} looks truncated");
@@ -128,7 +116,7 @@ mod tests {
     /// `font_weight(Light)` would render Regular without a word.
     #[test]
     fn the_faces_land_in_the_family_the_modifier_asks_for() {
-        for (bytes, weight) in [(LIGHT_BYTES, 300), (SANS_BYTES, 400), (BOLD_BYTES, 700)] {
+        for (bytes, weight) in [(LIGHT_BYTES, 300), (SANS_BYTES, 400)] {
             let (family, class) = family_and_weight(bytes);
             assert_eq!(family, SANS, "a face left the {SANS} family");
             assert_eq!(class, weight, "{family} at the wrong weight");

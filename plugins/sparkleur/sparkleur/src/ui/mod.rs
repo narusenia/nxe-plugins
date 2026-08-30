@@ -276,7 +276,7 @@ fn header(cx: &mut Context) {
     // **No wrapping row.** `.class("row")` centres its children vertically, and
     // the header wants the whole of the height it asks for
     // (`.agents/rules/vizia.md`).
-    nxe_ui::header::header(cx, "NXE SPARKLEUR", "five-band dynamics + sparkle");
+    nxe_ui::header::header(cx, "Sparkleur", "five-band dynamics + sparkle", |_| {});
 }
 
 /// The seven controls that shape the sound, on one line.
