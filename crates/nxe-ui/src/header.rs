@@ -7,7 +7,7 @@
 //! what a window's top looks like is one edit.
 //!
 //! ```text
-//! ⬔  Sparkleur   [SOFT|HARD]          how much of the effect is applied
+//! ⬔  Sparkleur   [SOFT|HARD]              five-band dynamics + sparkle
 //! ─────────────────────────────────────────────────
 //! ```
 //!
@@ -25,13 +25,12 @@
 //! rather than three letters of the UI face, it reads as a mark instead of as
 //! one more short label.
 //!
-//! **The right of the band is one line about whatever the pointer is on**
-//! ([`crate::hint`]), falling back to what the window is for when the pointer
-//! is on nothing. A plugin window is a wall of abbreviations and this is the
-//! cheapest way out of it that does not put a second layer over the plane.
+//! **The right of the band says what the window is for.** The line about
+//! whatever the pointer is on lives at the bottom instead
+//! ([`crate::status`]) — it was here first, and at the eyebrow size on the
+//! black ground it was hard to read.
 
 use crate::font;
-use crate::hint::Hint;
 use crate::logo;
 use crate::theme;
 use vizia::prelude::*;
@@ -48,13 +47,12 @@ pub const VENDOR_HEIGHT: f32 = 13.0;
 /// rather than something to measure on screen (`theme::LINE_TITLE`).
 pub const HEIGHT: f32 = theme::LINE_TITLE + theme::SPACE_2 + theme::RULE;
 
-/// The vendor mark, the wordmark, the mode slot, the hint, and the rule under
+/// The vendor mark, the wordmark, the mode slot, the role, and the rule under
 /// all of it.
 ///
 /// `name` is the **product's** name — `Sparkleur`, not `NXE Sparkleur` and not
 /// the crate name. `role` is what the window is for, in the fewest words that
-/// distinguish it from its siblings; it is what the right of the band says when
-/// the pointer is describing nothing.
+/// distinguish it from its siblings.
 ///
 /// `mode` builds whatever belongs beside the wordmark — the `Soft` / `Hard`
 /// switch on the two plugins that have one. **A window without one passes an
@@ -91,21 +89,12 @@ pub fn header(
             // Bottom-aligned against the wordmark rather than centred: the two
             // sit on the same baseline that way, which is the point of putting
             // them on one line.
-            Label::new(
-                cx,
-                Hint::text.map(move |text| {
-                    if text.is_empty() {
-                        role.to_owned()
-                    } else {
-                        text.clone()
-                    }
-                }),
-            )
-            .class("eyebrow")
-            .width(Auto)
-            .height(Pixels(theme::LINE_EYEBROW))
-            .top(Stretch(1.0))
-            .bottom(Pixels(theme::SPACE_1));
+            Label::new(cx, role)
+                .class("eyebrow")
+                .width(Auto)
+                .height(Pixels(theme::LINE_EYEBROW))
+                .top(Stretch(1.0))
+                .bottom(Pixels(theme::SPACE_1));
         })
         .height(Pixels(theme::LINE_TITLE))
         .width(Stretch(1.0))

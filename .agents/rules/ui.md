@@ -63,12 +63,15 @@ Every rule here was paid for. Where one has a scar, the scar is named.
   `theme::palette(cx)` walks up to the nearest `Palette` model. There are no
   `ACCENT*` constants to reach for — that is deliberate, because a constant is
   how five windows would quietly become one colour again.
-- **A window has at most one inverted panel** (`nxe_ui::surface::inverted`),
-  and the figure the window exists to show is what goes on it. Rows of controls
-  and tables of figures stay on the black ground — a coloured field under a
-  column of numbers costs legibility and buys nothing. **A second inverted panel
-  means the window has two subjects**, which is a layout problem, not a colour
-  one.
+- **A window has exactly one inverted surface, and it is the status bar**
+  (`nxe_ui::status`). The strip along the bottom carries the line about whatever
+  the pointer is on, and it is the only place the plugin's colour appears before
+  anything is touched.
+- **Do not invert a figure.** It was tried, on Sparkleur, and the transfer curve
+  beside the band field went *completely black*: a figure is drawn by hand **and
+  styled by CSS**, its traces followed the nested palette and its ground came
+  from `.panel`, which cannot see one. **Only surfaces that are a ground and a
+  word can be inverted safely** — a strip has no halves to disagree.
 - **Inversion is a palette, not a second concept.** The surface builds
   `Palette::inverted` as a nested model and everything under it comes out right
   without knowing the surface exists. On that ground the accent has nowhere to

@@ -41,13 +41,14 @@ const HEIGHT: u32 = (theme::SPACE_3 * 2.0
     + theme::SPACE_3
     + nxe_ui::readout::HEIGHT
     + theme::SPACE_3
-    + FIGURE_HEIGHT
+    + field::HEIGHT
     + theme::SPACE_3
     + knob_block_height(SHAPE_KNOB)
     + theme::SPACE_3
     + theme::RULE
     + theme::SPACE_3
-    + advanced::HEIGHT) as u32;
+    + advanced::HEIGHT
+    + nxe_ui::status::HEIGHT) as u32;
 
 /// The knob sizes. The five that shape the sound are the large ones; the two
 /// that decide how much of it arrives are smaller and sit apart, because they
@@ -214,76 +215,82 @@ pub fn create(
         }
         .build(cx);
 
-        HStack::new(cx, |cx| {
-            VStack::new(cx, |cx| {
-                header(cx);
+        VStack::new(cx, |cx| {
+            HStack::new(cx, |cx| {
+                VStack::new(cx, |cx| {
+                    header(cx);
 
-                // **The three numbers a compressor is read by**, above
-                // everything and never hidden (`SPK-19`).
-                readout::view(cx);
+                    // **The three numbers a compressor is read by**, above
+                    // everything and never hidden (`SPK-19`).
+                    readout::view(cx);
 
-                // The figure. It is what the plugin *is* (`ui.md`).
-                figure_row(cx);
+                    // The figure. It is what the plugin *is* (`ui.md`).
+                    figure_row(cx);
 
-                // **No tabs.** They hid seventeen of the thirty-five controls
-                // behind a click, and the question a multiband compressor is
-                // used to answer — which band is doing what — cannot be asked
-                // of half a panel (`SPK-19`). Everything is on screen.
-                shape_row(cx);
-                Element::new(cx).class("rule");
-                advanced::view(cx);
+                    // **No tabs.** They hid seventeen of the thirty-five
+                    // controls behind a click, and the question a multiband
+                    // compressor is used to answer — which band is doing what —
+                    // cannot be asked of half a panel (`SPK-19`).
+                    shape_row(cx);
+                    Element::new(cx).class("rule");
+                    advanced::view(cx);
+                })
+                .width(Stretch(1.0))
+                .height(Stretch(1.0))
+                .row_between(Pixels(theme::SPACE_3));
+
+                // **Outside everything else**, because "is this louder or
+                // better" is a question asked while looking at any of it
+                // (`ui.md`).
+                meters::view(cx);
             })
             .width(Stretch(1.0))
             .height(Stretch(1.0))
-            .row_between(Pixels(theme::SPACE_3));
+            .col_between(Pixels(theme::SPACE_3))
+            .child_space(Pixels(theme::SPACE_3));
 
-            // **Outside everything else**, because "is this louder or better"
-            // is a question asked while looking at any of it (`ui.md`).
-            meters::view(cx);
+            // **Flush to the bottom edge, and the full width of the window.**
+            // A strip that stopped at the meters would read as one more panel
+            // rather than as the window's floor (`nxe_ui::status`).
+            nxe_ui::status::bar(cx, "five-band dynamics + sparkle");
         })
         // **`.root` is what paints the window.** Without it the background is
         // whatever the host's window is — black — and every `.panel`, which
         // sits at `BACKGROUND`, reads as a lighter box on it. The theme's
         // "two levels, not three" only works when the window is one of them
         // (measured off a screenshot: panels 0x0A, window 0x00).
+        //
+        // **No child space here**: the padding belongs to the row above the
+        // status bar, so the strip can reach the edges.
         .class("root")
         .width(Stretch(1.0))
         .height(Stretch(1.0))
-        .col_between(Pixels(theme::SPACE_3))
-        .child_space(Pixels(theme::SPACE_3));
+        .child_space(Pixels(0.0));
     })
 }
 
 /// The figure and the window that reads one band of it, side by side.
 ///
-/// **The one inverted panel in this window** (`.agents/rules/ui.md`). It is
-/// what the plugin *is*, and the accent ground is what a glance lands on — with
-/// the wordmark's rule now a hairline, this is also the only place the
-/// plugin's colour appears before anything is touched (`UI-19`).
-///
-/// **The labels inside it say `.ink-muted` for themselves.** The generated
-/// stylesheet is flat and cannot say "labels inside this panel", so forgetting
-/// leaves near white on the accent (`crates/nxe-ui/README.md`).
+/// **On the black ground, and it has to be.** It was the window's inverted
+/// panel for one build: the band regions read, and **the transfer curve beside
+/// them went completely black** — its ground comes from `.panel` in the
+/// stylesheet, which cannot see a nested palette, while its traces came from
+/// the palette and inverted to black with it. A figure is drawn by hand *and*
+/// styled by CSS, and only one of those halves follows the surface. The
+/// accent's resting place is the status bar instead (`nxe_ui::status`).
 fn figure_row(cx: &mut Context) {
-    nxe_ui::surface::inverted(cx, |cx| {
-        HStack::new(cx, |cx| {
-            field::view(cx);
-            curve::view(cx);
-        })
-        // **Not `.class("row")`.** That centres its children vertically, and
-        // `child-top: 1s` / `child-bottom: 1s` are two more stretches for the
-        // height to be divided among (`.agents/rules/vizia.md`). Both children
-        // here are given an explicit height and want the whole of it.
-        .height(Pixels(field::HEIGHT))
-        .width(Stretch(1.0))
-        .col_between(Pixels(theme::SPACE_3));
+    HStack::new(cx, |cx| {
+        field::view(cx);
+        curve::view(cx);
     })
-    .height(Pixels(FIGURE_HEIGHT))
-    .width(Stretch(1.0));
+    // **Not `.class("row")`.** That centres its children vertically, and
+    // `child-top: 1s` / `child-bottom: 1s` are two more stretches for the
+    // height to be divided among (`.agents/rules/vizia.md`). Both children here
+    // are given an explicit height and want the whole of it.
+    .height(Pixels(field::HEIGHT))
+    .width(Stretch(1.0))
+    .col_between(Pixels(theme::SPACE_3));
 }
-
-/// The inverted panel's height: the figure, plus the panel's own padding.
-const FIGURE_HEIGHT: f32 = field::HEIGHT + theme::SPACE_4 * 2.0;
 
 fn header(cx: &mut Context) {
     // The product's name — the vendor is its own mark to the left — with what

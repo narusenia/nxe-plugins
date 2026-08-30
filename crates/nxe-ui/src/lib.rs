@@ -24,6 +24,7 @@ pub mod meter;
 pub mod polar;
 pub mod readout;
 pub mod segmented;
+pub mod status;
 pub mod surface;
 pub mod taps;
 pub mod theme;

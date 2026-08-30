@@ -178,7 +178,6 @@ pub fn view(cx: &mut Context) {
             Ui::params.map(|params| NAMES[shown(params, None)].to_string()),
         )
         .class("subtle")
-        .class("ink-muted")
         .width(Stretch(1.0))
         .height(Pixels(LABEL))
         .child_left(Stretch(1.0))

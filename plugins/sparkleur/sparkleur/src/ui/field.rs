@@ -215,7 +215,6 @@ pub fn view(cx: &mut Context) {
             for (index, (hz, text)) in MARKS.iter().enumerate() {
                 let label = Label::new(cx, *text)
                     .class("subtle")
-                    .class("ink-muted")
                     .position_type(PositionType::SelfDirected);
 
                 // **The last one is hung off the right edge**, not placed at

@@ -690,6 +690,22 @@ fn grid(cx: &mut Context) {
     });
 }
 
+/// The strip along the bottom of a window.
+///
+/// **In a panel here rather than at the foot of the gallery**, because the
+/// gallery scrolls and a window does not — pinning it to the bottom of a
+/// scrolling page would say something about it that is not true.
+fn status(cx: &mut Context) {
+    panel(cx, "STATUS BAR", |cx| {
+        Label::new(
+            cx,
+            "hover a control anywhere and this says what it is; the window's one inverted surface",
+        )
+        .class("subtle");
+        nxe_ui::status::bar(cx, "tokens and widgets");
+    });
+}
+
 /// The vendor's mark at the sizes it might be used at.
 ///
 /// **A logotype has no descenders to give it air**, so it goes loud a size
@@ -745,6 +761,7 @@ fn colours(cx: &mut Context) {
 
     palettes(cx);
     logotype(cx);
+    status(cx);
     inverted(cx);
 }
 
