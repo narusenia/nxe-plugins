@@ -7,7 +7,7 @@
 //! what a window's top looks like is one edit.
 //!
 //! ```text
-//! Sparkleur  [SOFT|HARD]                  five-band dynamics + sparkle
+//! Sparkleur  [SOFT|HARD]      five-band dynamics + sparkle   ⬔
 //! ─────────────────────────────────────────────────
 //! ```
 //!
@@ -22,10 +22,9 @@
 //! that is exactly why it does not belong here: by the time the window is open,
 //! the list has already been read.
 //!
-//! **The vendor is not here either.** It sat to the wordmark's left for one
-//! build and read as a second wordmark — two marks in the corner a window is
-//! read from, competing. As a mark it wants to be found rather than announced,
-//! so it goes somewhere quiet ([`crate::logo`]).
+//! **The vendor closes the band rather than opening it** ([`crate::logo`]). It
+//! sat to the wordmark's left for one build and read as a second wordmark —
+//! two marks competing in the corner a window is read from.
 //!
 //! **The right of the band says what the window is for.** The line about
 //! whatever the pointer is on lives at the bottom instead
@@ -33,8 +32,16 @@
 //! black ground it was hard to read.
 
 use crate::font;
+use crate::logo;
 use crate::theme;
 use vizia::prelude::*;
+
+/// How tall the vendor's mark is drawn.
+///
+/// **10 was mush.** The `E` is three bars with two gaps, and at that height the
+/// gaps closed — the mark stopped being letters and became a smear. It needs
+/// about 13 before the bars separate.
+pub const VENDOR_HEIGHT: f32 = 13.0;
 
 /// How tall [`header`] is. Part of a window's height, so it is arithmetic
 /// rather than something to measure on screen (`theme::LINE_TITLE`).
@@ -81,6 +88,16 @@ pub fn header(
                 .height(Pixels(theme::LINE_EYEBROW))
                 .top(Stretch(1.0))
                 .bottom(Pixels(theme::SPACE_1));
+
+            // **The vendor, at the far end of the band.** It was beside the
+            // wordmark first and read as a second one — two marks competing in
+            // the corner a window is read from. Here it closes the line instead
+            // of opening it.
+            logo::Mark::new(cx)
+                .width(Pixels(logo::width_at(VENDOR_HEIGHT)))
+                .height(Pixels(VENDOR_HEIGHT))
+                .top(Stretch(1.0))
+                .bottom(Stretch(1.0));
         })
         .height(Pixels(theme::LINE_TITLE))
         .width(Stretch(1.0))

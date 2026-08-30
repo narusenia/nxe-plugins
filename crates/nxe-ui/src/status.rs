@@ -31,7 +31,7 @@ pub const HEIGHT: f32 = theme::LINE_LABEL + theme::SPACE_1 * 2.0;
 /// characters at most — right-aligned in a box that wide, a short one drifted
 /// away from the name it belongs to and the row read as five labels and five
 /// unrelated figures (`SPK-23`, seen in a host).
-const VALUE_WIDTH: f32 = 34.0;
+const VALUE_WIDTH: f32 = 40.0;
 
 /// How wide a gauge in the strip is.
 const GAUGE_WIDTH: f32 = 64.0;
@@ -48,38 +48,42 @@ pub fn figure(
     unit: &'static str,
 ) {
     HStack::new(cx, move |cx| {
-        Label::new(cx, name)
-            .class("label")
-            .class("ink-muted")
-            .height(Pixels(theme::LINE_LABEL));
-        font::value(cx, value.clone())
-            .class("ink")
-            .width(Pixels(VALUE_WIDTH))
-            .height(Pixels(theme::LINE_LABEL))
-            .text_align(TextAlign::Right);
-        Label::new(cx, unit)
-            .class("label")
-            .class("ink-muted")
-            .height(Pixels(theme::LINE_LABEL));
+        // **Centred inside their own boxes, not just against each other.** The
+        // three boxes are the same height, so centring them in the row changes
+        // nothing — what rides high is the text inside the smaller size
+        // (`SPK-23`, seen in a host, twice).
+        centred(Label::new(cx, name).class("label").class("ink-muted"));
+        centred(
+            font::value(cx, value.clone())
+                .class("ink")
+                // **At the label's size, not the value class's.** A strip is
+                // one line of text; `font::value` comes set at the smaller size
+                // a readout uses, and beside a 12 px name the figure read as a
+                // footnote to it (`SPK-23`, seen in a host).
+                .font_size(theme::FONT_LABEL)
+                .width(Pixels(VALUE_WIDTH))
+                .text_align(TextAlign::Right),
+        );
+        centred(Label::new(cx, unit).class("label").class("ink-muted"));
     })
     .height(Pixels(theme::LINE_LABEL))
     .width(Auto)
-    .col_between(Pixels(theme::SPACE_1))
-    // **The two sizes have to sit on one line.** The name is set at the label
-    // size and the figure at the value size; left to themselves they hang from
-    // the top of the row and the smaller one rides high.
-    .child_top(Stretch(1.0))
-    .child_bottom(Stretch(1.0));
+    .col_between(Pixels(theme::SPACE_1));
+}
+
+/// One line of text, sitting in the middle of the strip's height.
+fn centred<V: View>(label: Handle<'_, V>) {
+    label
+        .height(Pixels(theme::LINE_LABEL))
+        .child_top(Stretch(1.0))
+        .child_bottom(Stretch(1.0));
 }
 
 /// A gauge in the strip: a name and a bar, for something asked
 /// "is it doing anything right now".
 pub fn gauge(cx: &mut Context, name: &'static str, level: impl Res<f32> + Clone + 'static) {
     HStack::new(cx, move |cx| {
-        Label::new(cx, name)
-            .class("label")
-            .class("ink-muted")
-            .height(Pixels(theme::LINE_LABEL));
+        centred(Label::new(cx, name).class("label").class("ink-muted"));
         Meter::horizontal(cx, level.clone(), 0.0, Vec::new())
             .width(Pixels(GAUGE_WIDTH))
             .height(Pixels(theme::RULE_GAUGE));

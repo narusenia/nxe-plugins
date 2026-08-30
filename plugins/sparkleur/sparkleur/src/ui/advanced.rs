@@ -87,20 +87,7 @@ pub fn view(cx: &mut Context) {
     HStack::new(cx, |cx| {
         table(cx);
 
-        // **The vendor's mark, in the quietest corner of the window.** It was
-        // beside the wordmark and read as a second one — two marks competing in
-        // the corner a window is read from. A mark wants to be found rather
-        // than announced, and the space this row leaves between the table and
-        // the side column is the only part of the window with nothing in it.
-        VStack::new(cx, |cx| {
-            nxe_ui::logo::Mark::new(cx)
-                .width(Pixels(nxe_ui::logo::width_at(MARK_HEIGHT)))
-                .height(Pixels(MARK_HEIGHT))
-                .left(Stretch(1.0))
-                .top(Stretch(1.0));
-        })
-        .width(Stretch(1.0))
-        .height(Stretch(1.0));
+        Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
 
         side(cx);
     })
@@ -108,13 +95,6 @@ pub fn view(cx: &mut Context) {
     .height(Auto)
     .col_between(Pixels(theme::SPACE_3));
 }
-
-/// How tall the vendor's mark is drawn.
-///
-/// **10 was mush.** The `E` is three bars with two gaps, and at that height the
-/// gaps closed — the mark stopped being letters and became a smear. It needs
-/// about 13 before the bars separate.
-const MARK_HEIGHT: f32 = 13.0;
 
 /// `UP` / `DOWN` / `GAIN` / `SOLO`, one row per band.
 fn table(cx: &mut Context) {
