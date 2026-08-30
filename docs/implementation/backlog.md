@@ -481,7 +481,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | — | **上流に投げる。** いちばん効くのは `setMouseCoalescingEnabled` の 1 つ（baseview を使う全プラグインに効いているはず） | ⬜ |
 | — | **femtovg の隣接 draw call マージ。** 部分再描画で 219 → 68 になったので、優先度は下がった。やるなら測り直してから | ⬜ |
 | UI-15 | **アクセントを本ごとに渡す**（`theme::install(cx, palette)`。明度・彩度を揃えた 5 色） | ✅ `48c8f57` |
-| UI-16 | **Inter への差し替え**（Light / Regular / Bold。数字は Geist Mono 継続） | ✅ |
+| UI-16 | **Inter への差し替え**（Light / Regular / Bold。数字は Geist Mono 継続） | ✅ `fe72bd8` |
 | UI-17 | **ピクトグラム 10〜16 個**（femtovg のパス。常に語と併記） | ⬜ |
 | UI-18 | **反転面**（地がアクセント・描画が `BACKGROUND`。1 窓に 1 枚） | ⬜ |
 | UI-19 | **ヘッダの拡張**（`MODE` の枠 + ホバー中のコントロールの 1 行説明） | ⬜ |
