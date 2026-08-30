@@ -22,7 +22,7 @@ use vizia::prelude::*;
 
 /// How tall the strip is. Part of a window's height, so it is arithmetic
 /// rather than something to measure on screen.
-pub const HEIGHT: f32 = theme::LINE_LABEL + theme::SPACE_2 * 2.0;
+pub const HEIGHT: f32 = theme::LINE_LABEL + theme::SPACE_1 * 2.0;
 
 /// The box a figure in the strip gets. Fixed for the reason every readout's is:
 /// a number that changes width moves everything laid out after it.
@@ -78,8 +78,7 @@ pub fn gauge(cx: &mut Context, name: &'static str, level: impl Res<f32> + Clone 
     .width(Auto)
     .col_between(Pixels(theme::SPACE_1))
     .child_top(Stretch(1.0))
-    .child_bottom(Stretch(1.0))
-    .col_between(Pixels(theme::SPACE_4));
+    .child_bottom(Stretch(1.0));
 }
 
 /// The strip.
@@ -108,6 +107,10 @@ pub fn bar(cx: &mut Context, figures: impl Fn(&mut Context) + 'static) {
     .class("inverted")
     .height(Pixels(HEIGHT))
     .width(Stretch(1.0))
+    // **Without this the cells run together**: `IN -59.1 dBOUT -60.0 dB`. Every
+    // cell is `Auto` wide and sits flush against the next one, so the space
+    // between them is the row's to give (`SPK-23`, seen in a host).
+    .col_between(Pixels(theme::SPACE_5))
     .child_left(Pixels(theme::SPACE_3))
     .child_right(Pixels(theme::SPACE_3))
     .child_top(Stretch(1.0))
