@@ -422,8 +422,6 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | SPK-20 | **天井の所在を測る**（Sparkleur）。GR 到達量・生成成分・guard の介入量。**Hard の前提** | `../../plugins/sparkleur/docs/implementation/sparkleur-plan.md` |
 | VEL-18 | **天井の所在を測る**（Velour）。`AIR_INPUT_CEILING` が第一容疑。**Hard の前提** | `../../plugins/velour/docs/implementation/velour-plan.md` |
 | VDP-15 | **Parallax への改名**。商標と既存プラグインの衝突を確認してから確定する | `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md` |
-| UI-15 | **アクセントを本ごとに渡す**。重さの本体は色の選定ではなく、自前描画から色を辿る道 | `nxe-ui-plan.md` |
-| UI-16 | **Inter への差し替え**。`assets/inter/` の OFL と `LICENSING.md` の追記が義務 | `nxe-ui-plan.md` |
 | — | **`VDP-14` の効き幅を実機で聴き直す**（**耳が要る**）。08-28 に一度聴いているが、それは直す前の版。`mise run install vocal-depth` | `vocal-depth-plan.md` |
 | PAR-13 | **既定値と耳**（旧 `VDP-13`。**耳が要る**）。**聴き直しのあと** | `vocal-depth-plan.md` |
 | — | **Advanced の偏差**（Parallax、`REQ-VDP-009`）。**前に `dsp.md`** | `vocal-depth-plan.md` |
@@ -482,8 +480,8 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | UI-14 | **UI を開くと DAW が重くなる問題。** 体感の原因は `baseview` が**ホストのプロセス全体**でマウス合成を切っていたこと（1 行、誰も戻していなかった）。あわせて窓が開いている間の描画コストも 7 つ直した | ✅ 実機で症状消失、gallery で **22.6 → 約 9 %** `#2`（[調査](../investigations/ui-frame-cost.md)） |
 | — | **上流に投げる。** いちばん効くのは `setMouseCoalescingEnabled` の 1 つ（baseview を使う全プラグインに効いているはず） | ⬜ |
 | — | **femtovg の隣接 draw call マージ。** 部分再描画で 219 → 68 になったので、優先度は下がった。やるなら測り直してから | ⬜ |
-| UI-15 | **アクセントを本ごとに渡す**（`theme::install(cx, palette)`。明度・彩度を揃えた 5 色） | ⬜ |
-| UI-16 | **Inter への差し替え**（Light / Regular / Bold。数字は Geist Mono 継続） | ⬜ |
+| UI-15 | **アクセントを本ごとに渡す**（`theme::install(cx, palette)`。明度・彩度を揃えた 5 色） | ✅ `48c8f57` |
+| UI-16 | **Inter への差し替え**（Light / Regular / Bold。数字は Geist Mono 継続） | ✅ |
 | UI-17 | **ピクトグラム 10〜16 個**（femtovg のパス。常に語と併記） | ⬜ |
 | UI-18 | **反転面**（地がアクセント・描画が `BACKGROUND`。1 窓に 1 枚） | ⬜ |
 | UI-19 | **ヘッダの拡張**（`MODE` の枠 + ホバー中のコントロールの 1 行説明） | ⬜ |

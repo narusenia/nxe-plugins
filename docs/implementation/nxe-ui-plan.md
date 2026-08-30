@@ -410,25 +410,35 @@ Hz も dB も知らず、正規化した x と 0..=1 の高さだけを受け取
   借用が衝突する。** モディファイア鎖の中で `cx` を再度借りることになるので、
   値は**手前で束ねてから**渡す
 
-### UI-16 — Inter への差し替え
+### UI-16 — Inter への差し替え ✅
 
 語の面を Geist から Inter（SIL OFL 1.1）に替える。**Light / Regular / Bold の
 3 面**、数字は **Geist Mono のまま**。
 
-- **完了条件**: 既存の font テストが Inter の 3 ウェイトすべてを family `Inter`
-  として解決することを固定する。gallery に 3 面が並ぶ。`assets/geist/` から
-  Sans と Bold が消え、Mono だけ残る
+- **完了条件**:
+  - [x] font のテストが Inter の 3 ウェイトすべてを family `Inter` として
+        解決することを固定した。**ファイルの `name` 表を読む形に書き直した**
+  - [x] gallery の TEXT パネルに 3 面が並ぶ
+  - [x] `assets/geist/` から Sans と Bold が消え、Mono だけ残った
 - **依存**: なし
-- **決めたこと**: **数字は mono を続ける。** Inter の tabular figures は
-  `tnum` の OpenType feature で、この vizia リビジョンに触る道が無い。桁で幅が
-  動くと読み値の右隣が動く（`SPK-19` で 1 度払っている）
-- **決めたこと**: **Light を足すので「太字はワードマークだけ」の規則を書き直す。**
-  `font.rs` の見出しコメントと `.agents/rules/ui.md` の型の節が対象
-- **見込んでいる罠**: **Geist Bold と同じ family 名の罠。** Inter Light が
-  family `Inter Light` として登録されると `font_weight` から辿れず、無言で
-  Regular が出る。font テストで名前表を読んで固定する
-- **義務**: `assets/inter/` に OFL を置き、`LICENSING.md` に追記する。フェイスは
-  バイナリに焼き込まれるので、ライセンス文はリリース物と一緒に動く必要がある
+- **決めたこと**: **数字は mono を続ける。** Inter は tabular figures を持って
+  いるが `tnum` は OpenType feature で、この vizia に feature を立てる道が無い
+- **決めたこと**: **Light の置き場は `font::display`。** 大きい文字専用で、
+  ラベルの大きさには使わない — 小さい Light は静かではなく細いだけで、暗い地の
+  上では上品になる前に脆くなる。**ワードマークは Bold のまま**にした（17 px の
+  Light は実機で見るまで判断できない。判断は `UI-19` のヘッダの作り直しで）
+- **見つけたこと**: **予想した罠は本当にあり、そして踏まずに済んだ。**
+  `Inter-Light.ttf` は `name` ID 1 が `Inter Light`、ID 16 だけが `Inter`。
+  **`fontdb` は ID 16 を優先して ID 1 に落ちる**ので family `Inter` の
+  weight 300 に入り、modifier で届く。逆だったら `font_weight(Light)` が
+  黙って Regular を描いていた
+- **見つけたこと**: **既存の font テストは何も守っていなかった。** 「名前は
+  ファイルの `name` ID 1 が言っているもの」とコメントに書いてあるのに、中身は
+  `assert_eq!(SANS, "Geist")` — **定数どうしを比べていただけ**で、フォルダに
+  どんなフォントが入っていても通る。`name` と `OS/2` を読む形に書き直した
+- **払った代償**: **アセットが 255 KB → 1.24 MB になった。** Inter の static は
+  1 面 412 KB（Geist の 3 倍）で、覚えのある字だけに絞れば減るが、生成手順が
+  1 本増える。**要るまで絞らない**
 
 ### UI-17 — ピクトグラム
 

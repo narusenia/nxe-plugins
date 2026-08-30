@@ -1547,19 +1547,20 @@ fn spacing(cx: &mut Context) {
 
 fn text(cx: &mut Context) {
     panel(cx, "TEXT", |cx| {
-        // Both, side by side: the wordmark is the one place the bold face is
-        // used, so the panel has to show what it looks like against the plain
-        // one it is an exception to.
+        // All three weights together: the two that carry meaning are exceptions
+        // to the plain one, so the panel has to show what they look like beside
+        // it rather than on their own.
+        font::display(cx, "DISPLAY — large text, light").class("title");
         font::title(cx, "TITLE — the wordmark, 17, bold");
         Label::new(cx, "TITLE — the same class, regular").class("title");
         Label::new(cx, "LABEL — names a thing, 12, muted").class("label");
-        Label::new(cx, "Value — says what it is, 10, Geist Sans").class("value");
+        Label::new(cx, "Value — says what it is, 10, Inter").class("value");
         Label::new(cx, "Subtle — gridlines, units, disabled rows").class("subtle");
         Element::new(cx).class("divider");
         font::value(cx, "-12.0 ct    22.0 ms    L70    0.0 dB");
         Label::new(
             cx,
-            "figures are Geist Mono: a digit changing does not shift the rest",
+            "figures stay in Geist Mono: a digit changing does not shift the rest",
         )
         .class("subtle");
 

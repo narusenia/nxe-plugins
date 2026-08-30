@@ -221,17 +221,23 @@ Panel / Section / Row / Label / Divider をウィジェットにしていない�
 
 ## フォント
 
-[Geist](https://vercel.com/font)（SIL OFL 1.1）を埋め込んでいる。Sans の
-Regular と Bold、Mono の Regular。この設計は階層を**サイズと色**で作り、
-**太字はワードマーク 1 箇所だけの例外**。
+語は [Inter](https://rsms.me/inter/)、数値は
+[Geist Mono](https://vercel.com/font)（どちらも SIL OFL 1.1）。Inter は
+Light / Regular / Bold の 3 面。この設計は階層を**サイズと色**で作り、
+**ウェイトが意味を持つのは 2 箇所だけ**。
 
-- 既定は Geist Sans。`theme::install` が `set_default_font` で入れるので、
-  普通の `Label` はそのまま Geist になる
-- **数値は Geist Mono。** `font::value(cx, text)` を使う
+- 既定は Inter Regular。`theme::install` が `set_default_font` で入れるので、
+  普通の `Label` はそのまま Inter になる
+- **数値は Geist Mono。** `font::value(cx, text)` を使う。Inter の tabular
+  figures（`tnum`）は OpenType feature で、**この vizia には feature を
+  立てる道が無い**
 - **プラグイン名は `font::title(cx, "NXE …")`。** ここだけ Bold。
-  17 px の 1 ウェイトだとただのラベルに見えたので足した。**他のものに使わない** —
-  2 つ目が要るなら「サイズと色で作る」という原則が間違っていたということなので、
-  そのときは原則ごと書き換える
+  17 px の 1 ウェイトだとただのラベルに見えたので足した
+- **大きい文字は `font::display(cx, …)`。** ここだけ Light。**ラベルの大きさに
+  使わない** — 小さい Light は静かではなく細いだけで、暗い地の上では上品に
+  なる前に脆くなる
+- **3 つ目のウェイトの用途を作らない。** 要るなら「サイズと色で作る」という
+  原則が間違っていたということなので、そのときは原則ごと書き換える
 
 ```rust
 font::value(cx, lens.map(|v| format!("{v:.1}")));

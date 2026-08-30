@@ -85,9 +85,17 @@ highlight the matching row elsewhere (`PolarField`).
 
 **The default font is set through `set_default_font`, not CSS.** Same reason as
 the icon family — a stylesheet's `font-family` does not select an embedded face.
-`theme::install` registers Geist and makes it the default, so a plain `Label`
+`theme::install` registers Inter and makes it the default, so a plain `Label`
 needs nothing. A different family for one label needs the modifier;
 `font::value` is that for figures.
+
+**A weight is reached through the modifier too, and which face it lands on
+depends on the `name` table.** `fontdb` files a face under its *typographic*
+family (name ID 16) when it has one and under ID 1 otherwise — Inter Light says
+`Inter Light` in ID 1 and `Inter` only in ID 16. Had the preference gone the
+other way, `font_weight(Light)` would have rendered Regular without a word, so
+`font::tests` reads the name tables out of the files rather than trusting the
+constants.
 
 **A container's `on_press` needs its content marked `pointer-events: none`.**
 Vizia emits a press only when the entity hovered on mouse-up is the one hovered
