@@ -73,13 +73,17 @@ vizia = { git = "https://github.com/robbert-vdh/vizia.git", tag = "patched-2024-
     "x11",
 ] }
 
-# **The vizia both of the above resolve to is ours** (`nxe-2026-08-27`, which is
-# `patched-2024-05-06` plus two commits). `[patch]` rewrites the source for the
-# whole graph, so `nih_plug_vizia`'s vizia and ours stay the same crate — which
-# is the constraint the note above is about.
+# **The vizia both of the above resolve to is ours** (`nxe-2026-08-30`, which is
+# `patched-2024-05-06` plus three commits), **and so is baseview**
+# (`nxe-2026-08-30`, `RustAudio/baseview` plus one). `[patch]` rewrites the
+# source for the whole graph, so `nih_plug_vizia`'s vizia and ours stay the same
+# crate — which is the constraint the note above is about.
 #
-# Two fixes, both measured on `mise run gallery` (an idle window, no host, no
-# audio): **27.7 % of a core down to 0.9 %**.
+# Everything here was found by measuring `mise run gallery` and reading the
+# result with `sample`; the numbers and the reasoning are in
+# `docs/investigations/ui-frame-cost.md`.
+#
+# **vizia, from the idle window (27.7 % of a core down to 0.9 %):**
 #
 # 1. **`vizia_baseview` redrew every frame whether or not anything changed.**
 #    `Application::on_frame_update` computes `should_redraw` and `on_frame`
@@ -90,9 +94,27 @@ vizia = { git = "https://github.com/robbert-vdh/vizia.git", tag = "patched-2024-
 #    frame**, uncached, over a database holding every system font. A quarter of
 #    the drawing time.
 #
-# Both are worth sending upstream; neither has been yet.
+# **vizia, from the moving window (`NXE_GALLERY_HZ=30`, 23.2 % down to 16.2 %):**
+#
+# 3. **Every view filled a background, stroked a border and stroked an outline
+#    whether or not any of them could be seen**, and built the box path to do
+#    it with. Most of a tree is containers with none of the three, and femtovg
+#    gives every fill and stroke its own draw call — which on Apple Silicon is
+#    an OpenGL-over-Metal pipeline build each time.
+#
+# **baseview, from the same window (16.2 % down to about 9 %):**
+#
+# 4. **The macOS frame timer ran at 66.7 Hz** (`CFRunLoopTimer` at 0.015 s),
+#    faster than any common display and faster than a meter needs to be read —
+#    on the host's run loop. It is 30 Hz now, which also caps the redraw rate
+#    whatever asks for one.
+#
+# All four are worth sending upstream; none has been yet.
+[patch."https://github.com/RustAudio/baseview.git"]
+baseview = { git = "https://github.com/narusenia/baseview.git", tag = "nxe-2026-08-30" }
+
 [patch."https://github.com/robbert-vdh/vizia.git"]
-vizia = { git = "https://github.com/narusenia/vizia.git", tag = "nxe-2026-08-27" }
+vizia = { git = "https://github.com/narusenia/vizia.git", tag = "nxe-2026-08-30" }
 
 [profile.release]
 lto = "thin"
