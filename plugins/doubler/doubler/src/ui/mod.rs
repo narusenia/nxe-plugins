@@ -21,6 +21,7 @@ use nih_plug::prelude::Editor;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
 use nxe_ui::heartbeat::Lifeline;
+use nxe_ui::hint::Describe;
 use nxe_ui::pictogram;
 use nxe_ui::segmented::SegmentedControl;
 use nxe_ui::{font, theme};
@@ -45,13 +46,16 @@ const HEIGHT: u32 = (theme::SPACE_3 * 2.0
     + theme::SPACE_3
     + theme::SEGMENT
     + theme::SPACE_3
-    + nxe_ui::readout::HEIGHT
-    + theme::SPACE_3
-    + FIELD_HEIGHT
+    + FIGURE_HEIGHT
     + theme::SPACE_3
     + theme::SEGMENT
     + theme::SPACE_3
-    + TAB_HEIGHT) as u32;
+    + TAB_HEIGHT
+    + nxe_ui::status::HEIGHT) as u32;
+
+/// The figure's row, including the inverted surface's own padding
+/// (`nxe_ui::surface`).
+const FIGURE_HEIGHT: f32 = FIELD_HEIGHT + theme::SPACE_4 * 2.0;
 
 /// How tall the swapped region is. Fixed, so switching tabs does not move
 /// anything above it.
@@ -266,30 +270,44 @@ pub fn create(
         .build(cx);
 
         VStack::new(cx, |cx| {
-            header(cx);
-
-            // **What is happening right now**, above everything and never
-            // hidden by a tab (`SPK-19`).
-            readout::view(cx);
-
-            // The figure stays put. It is what the plugin *is* — hiding it
-            // behind a tab would leave the window with nothing to look at.
-            field_row(cx);
-            tab_strip(cx);
-
-            // Both tabs are built and one is hidden. Rebuilding on every switch
-            // would drop the widgets' own state — a drag in progress, a hover —
-            // for nothing.
             VStack::new(cx, |cx| {
-                main_tab(cx);
-                detail::view(cx);
+                header(cx);
+
+                // The figure stays put. It is what the plugin *is* — hiding it
+                // behind a tab would leave the window with nothing to look at.
+                field_row(cx);
+                tab_strip(cx);
+
+                // Both tabs are built and one is hidden. Rebuilding on every
+                // switch would drop the widgets' own state — a drag in
+                // progress, a hover — for nothing.
+                VStack::new(cx, |cx| {
+                    main_tab(cx);
+                    detail::view(cx);
+                })
+                .height(Pixels(TAB_HEIGHT))
+                .width(Stretch(1.0));
             })
-            .height(Pixels(TAB_HEIGHT))
-            .width(Stretch(1.0));
+            .width(Stretch(1.0))
+            .height(Stretch(1.0))
+            .child_space(Pixels(theme::SPACE_3))
+            .row_between(Pixels(theme::SPACE_3));
+
+            // **Flush to the bottom edge, and the full width of the window**
+            // (`nxe_ui::status`). What was a strip of figures under the header
+            // is the window's floor now: it was a lot of window for three short
+            // numbers, and it pushed the figure down past it (`SPK-23`).
+            readout::status(cx);
         })
+        // **No child space, and no row between.** The padding belongs to the
+        // column above the strip so the strip can reach the edges; `.root` sets
+        // `row-between: SPACE_4`, and those 16 px would come out of that column
+        // (`SPK-23`).
         .class("root")
-        .child_space(Pixels(theme::SPACE_3))
-        .row_between(Pixels(theme::SPACE_3));
+        .width(Stretch(1.0))
+        .height(Stretch(1.0))
+        .child_space(Pixels(0.0))
+        .row_between(Pixels(0.0));
     })
 }
 
@@ -313,19 +331,14 @@ fn header(cx: &mut Context) {
     // change what every other control means, so they stay at the top.
     HStack::new(cx, |cx| {
         nxe_plug_ui::segmented(cx, Ui::params, |params| &params.voices, &["2", "4", "8"])
-            .tooltip(|cx| theme::hint(cx, "How many voices run"));
+            .describe("How many voices run");
         nxe_plug_ui::segmented(
             cx,
             Ui::params,
             |params| &params.source,
             &["Mono Sum", "True Stereo"],
         )
-        .tooltip(|cx| {
-            theme::hint(
-                cx,
-                "Mono Sum: every voice doubles L+R. True Stereo: each doubles one side",
-            )
-        });
+        .describe("Mono Sum: every voice doubles L+R. True Stereo: each doubles one side");
 
         Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
     })
@@ -338,7 +351,14 @@ fn header(cx: &mut Context) {
 /// it. `Mix` and `Output` belong next to what they act on, not under a tab.
 fn field_row(cx: &mut Context) {
     HStack::new(cx, |cx| {
-        field::view(cx);
+        // **The figure is the window's one inverted surface** (`UI-18`). The
+        // two knobs beside it are not part of it and stay on the window's own
+        // ground.
+        nxe_ui::surface::inverted(cx, |cx| {
+            field::view(cx);
+        })
+        .width(Stretch(1.0))
+        .height(Pixels(FIGURE_HEIGHT));
 
         // `MIX` has a knob as well as the figure's ▲ for the same reason the
         // shape layer has both a figure and a table — one is for reading, the
@@ -354,7 +374,7 @@ fn field_row(cx: &mut Context) {
         .child_top(Stretch(1.0))
         .child_bottom(Stretch(1.0));
     })
-    .height(Pixels(FIELD_HEIGHT))
+    .height(Pixels(FIGURE_HEIGHT))
     .width(Stretch(1.0))
     .col_between(Pixels(theme::SPACE_3));
 }
@@ -380,7 +400,7 @@ fn mirror_switch(
             .class("segment")
             .checked(on)
             .on_press(move |cx| cx.emit(UiEvent::ToggleMirror(axis)))
-            .tooltip(move |cx| theme::hint(cx, hint));
+            .describe(hint);
     })
     .class("segmented");
 }
@@ -479,9 +499,9 @@ pub(crate) fn macro_knob<P, F>(
     F: Fn(&Arc<DoublerParams>) -> &P + Copy + 'static,
 {
     VStack::new(cx, |cx| {
-        // The tooltip goes on the knob rather than the whole block, so it does
+        // The description goes on the knob rather than the whole block, so it does
         // not follow the pointer around the label and the number.
-        nxe_plug_ui::knob(cx, Ui::params, to_param, size).tooltip(move |cx| theme::hint(cx, hint));
+        nxe_plug_ui::knob(cx, Ui::params, to_param, size).describe(hint);
         Label::new(cx, label).class("label");
         font::value(
             cx,

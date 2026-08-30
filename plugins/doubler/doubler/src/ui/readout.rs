@@ -68,11 +68,16 @@ pub(crate) fn poll(analysis: &Analysis, figures: &mut [String]) {
     figures[CORRELATION] = correlation(analysis.correlation.read()[0]);
 }
 
-pub fn view(cx: &mut Context) {
-    nxe_ui::readout::strip(cx, |cx| {
-        nxe_ui::readout::cell(cx, "IN", Ui::readouts.index(IN), "dB");
-        nxe_ui::readout::cell(cx, "OUT", Ui::readouts.index(OUT), "dB");
-        nxe_ui::readout::cell(cx, "CORRELATION", Ui::readouts.index(CORRELATION), "");
+/// The strip at the foot of the window: the hover's one-line description on
+/// the left, these on the right (`nxe_ui::status`).
+///
+/// **`CORRELATION` is `CORR` here.** Every character is width the sentence
+/// beside it does not get (`SPK-23`).
+pub fn status(cx: &mut Context) {
+    nxe_ui::status::bar(cx, |cx| {
+        nxe_ui::status::figure(cx, "IN", Ui::readouts.index(IN), "dB");
+        nxe_ui::status::figure(cx, "OUT", Ui::readouts.index(OUT), "dB");
+        nxe_ui::status::figure(cx, "CORR", Ui::readouts.index(CORRELATION), "");
     });
 }
 

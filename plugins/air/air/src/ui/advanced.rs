@@ -9,14 +9,29 @@
 
 use super::{OUTPUT_KNOB, Ui, knob_block, knob_block_height};
 use nih_plug_vizia::vizia::prelude::*;
+use nxe_ui::hint::Describe;
+use nxe_ui::pictogram;
 use nxe_ui::theme;
 
 /// A row is one line: the control's name beside its bar.
 const ROW_HEIGHT: f32 = theme::LINE_LABEL;
 const BAR_HEIGHT: f32 = 10.0;
-const NAME_WIDTH: f32 = 56.0;
-const BAR_WIDTH: f32 = 84.0;
+/// **Both grew in `AIR-14`.** The name column holds a mark now (`UI-17`), and
+/// the bars took the rest: the two columns and the side left **252 px** of
+/// nothing between them, the widest void of the five windows. A wider bar is a
+/// finer one, and it is what is dragged.
+const NAME_WIDTH: f32 = 76.0;
+const BAR_WIDTH: f32 = 140.0;
 const COLUMN_WIDTH: f32 = NAME_WIDTH + theme::SPACE_2 + BAR_WIDTH;
+
+/// How wide a detector's live reading is, and the column that holds one.
+///
+/// **The three gauges were on the strip under the header** and moved here in
+/// `AIR-14`: a reading of what `ENV` is doing belongs beside the `ENV`
+/// deviation it explains, and seven cells plus a sentence do not fit on the
+/// status bar (`ui/readout.rs`).
+const GAUGE_WIDTH: f32 = 56.0;
+const FOLLOW_COLUMN_WIDTH: f32 = COLUMN_WIDTH + theme::SPACE_2 + GAUGE_WIDTH;
 
 /// The right-hand column, which is a knob and a two-way choice rather than
 /// bars. **It is the taller of the two**, so it decides the panel's height.
@@ -66,18 +81,18 @@ pub fn view(cx: &mut Context) {
 /// put the output knob underneath the meters. Every name here says what it is
 /// on its own, so the column that holds them does not need one.
 fn settings_column(cx: &mut Context) {
-    column(cx, |cx| {
-        row(cx, "DRIVE", |cx| {
+    column(cx, COLUMN_WIDTH, |cx| {
+        row(cx, pictogram::DRIVE, "DRIVE", None, |cx| {
             bar(cx, "How hard the curve is driven", false, |params| {
                 &params.drive
             })
         });
-        row(cx, "BIAS", |cx| {
+        row(cx, pictogram::TRIM, "BIAS", None, |cx| {
             bar(cx, "How far off centre the curve sits", false, |params| {
                 &params.bias
             })
         });
-        row(cx, "GUARD", |cx| {
+        row(cx, pictogram::DE_HARSH, "GUARD", None, |cx| {
             bar(cx, "Down to nothing, up to stricter", true, |params| {
                 &params.guard
             })
@@ -88,19 +103,22 @@ fn settings_column(cx: &mut Context) {
 /// Each detector's depth **as a deviation from `FOLLOW`**. Zero is "as the
 /// macro says", which is how two controls avoid writing one value
 /// (`REQ-AIR-010`).
+/// **All three carry the same mark.** They are one operation on three
+/// detectors, and the marks name kinds rather than parameters
+/// (`nxe_ui::pictogram`). Each row's gauge is that detector's live reading.
 fn follow_column(cx: &mut Context) {
-    column(cx, |cx| {
-        row(cx, "ENV", |cx| {
+    column(cx, FOLLOW_COLUMN_WIDTH, |cx| {
+        row(cx, pictogram::FOLLOW, "ENV", Some(0), |cx| {
             bar(cx, "Answer to how loud the input is", true, |params| {
                 &params.follow_envelope
             })
         });
-        row(cx, "BRT", |cx| {
+        row(cx, pictogram::FOLLOW, "BRT", Some(1), |cx| {
             bar(cx, "Answer to how bright the input is", true, |params| {
                 &params.follow_brightness
             })
         });
-        row(cx, "TRN", |cx| {
+        row(cx, pictogram::FOLLOW, "TRN", Some(2), |cx| {
             bar(cx, "Answer to attacks only", true, |params| {
                 &params.follow_transient
             })
@@ -116,14 +134,10 @@ fn follow_column(cx: &mut Context) {
 fn side(cx: &mut Context) {
     HStack::new(cx, |cx| {
         VStack::new(cx, |cx| {
-            Label::new(cx, "OVERSAMPLE")
-                .class("eyebrow")
-                .height(Pixels(theme::LINE_EYEBROW));
+            pictogram::heading(cx, pictogram::OVERSAMPLE, "OVERSAMPLE");
             HStack::new(cx, |cx| {
                 nxe_plug_ui::segmented(cx, Ui::params, |params| &params.oversample, &["2x", "4x"])
-                    .tooltip(|cx| {
-                        theme::hint(cx, "2x is a saving, not an equal: 14 dB more folding")
-                    });
+                    .describe("2x is a saving, not an equal: 14 dB more folding");
             })
             .class("segmented")
             .width(Auto)
@@ -150,9 +164,9 @@ fn side(cx: &mut Context) {
     .col_between(Pixels(theme::SPACE_4));
 }
 
-fn column(cx: &mut Context, content: impl Fn(&mut Context)) {
+fn column(cx: &mut Context, width: f32, content: impl Fn(&mut Context)) {
     VStack::new(cx, |cx| content(cx))
-        .width(Pixels(COLUMN_WIDTH))
+        .width(Pixels(width))
         .height(Auto)
         .row_between(Pixels(theme::SPACE_2));
 }
@@ -163,12 +177,15 @@ fn column(cx: &mut Context, content: impl Fn(&mut Context)) {
 /// with no size of its own collapses to a hairline inside an `Auto` row — it
 /// still draws and still binds, and it cannot be hit. Velour's whole Advanced
 /// table shipped that way (`.agents/rules/vizia.md`).
-fn row(cx: &mut Context, name: &'static str, build: impl Fn(&mut Context) + 'static) {
+fn row(
+    cx: &mut Context,
+    glyph: pictogram::Glyph,
+    name: &'static str,
+    gauge: Option<usize>,
+    build: impl Fn(&mut Context) + 'static,
+) {
     HStack::new(cx, move |cx| {
-        Label::new(cx, name)
-            .class("label")
-            .width(Pixels(NAME_WIDTH))
-            .height(Pixels(theme::LINE_LABEL));
+        pictogram::label(cx, glyph, name).width(Pixels(NAME_WIDTH));
         // Wrapped so the column is a fixed width whatever the bar decides to
         // be, and so the bar sits on the line's centre rather than its top.
         HStack::new(cx, move |cx| build(cx))
@@ -176,6 +193,19 @@ fn row(cx: &mut Context, name: &'static str, build: impl Fn(&mut Context) + 'sta
             .height(Pixels(theme::LINE_LABEL))
             .child_top(Stretch(1.0))
             .child_bottom(Stretch(1.0));
+
+        // The detector's own reading, beside the deviation it explains.
+        if let Some(index) = gauge {
+            HStack::new(cx, move |cx| {
+                nxe_ui::meter::Meter::horizontal(cx, Ui::gauges.index(index), 0.0, Vec::new())
+                    .width(Pixels(GAUGE_WIDTH))
+                    .height(Pixels(theme::RULE_GAUGE));
+            })
+            .width(Pixels(GAUGE_WIDTH))
+            .height(Pixels(theme::LINE_LABEL))
+            .child_top(Stretch(1.0))
+            .child_bottom(Stretch(1.0));
+        }
     })
     // **Not `.class("row")`**: both children have a height of their own, and
     // the class's two stretches would divide what is left over between them
@@ -192,7 +222,7 @@ where
     F: Fn(&std::sync::Arc<crate::params::AirParams>) -> &P + Copy + 'static,
 {
     nxe_plug_ui::bar(cx, Ui::params, to_param, bipolar)
-        .tooltip(move |cx| theme::hint(cx, hint))
+        .describe(hint)
         .width(Stretch(1.0))
         .height(Pixels(BAR_HEIGHT));
 }
@@ -216,10 +246,9 @@ mod tests {
     /// (`.agents/rules/ui.md`).
     #[test]
     fn the_panel_fits_the_window() {
-        const COLUMNS: f32 = 2.0;
         // Two bar columns, the spacer, and the side: three gaps between four
         // children.
-        let fixed = COLUMN_WIDTH * COLUMNS + SIDE_WIDTH + theme::SPACE_4 * 3.0;
+        let fixed = COLUMN_WIDTH + FOLLOW_COLUMN_WIDTH + SIDE_WIDTH + theme::SPACE_4 * 3.0;
         assert!(
             fixed <= AVAILABLE,
             "the advanced panel is {fixed} wide in a {AVAILABLE} space"

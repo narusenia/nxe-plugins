@@ -419,9 +419,6 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| AIR-14 | **窓の追随**（Air）。`SPK-23` + `VEL-20` の型に合わせる。`MODE` は置かない | `../../plugins/air/docs/implementation/air-plan.md` |
-| DBL-17 | **窓の追随**（Doubler）。**タブは残す**、`MODE` は置かない | `../../plugins/doubler/docs/implementation/doubler-plan.md` |
-| DIO-16 | **窓の追随**（Diorama）。**見た目の実機確認を含む** | `../../plugins/diorama/docs/implementation/diorama-plan.md` |
 | — | **`DIO-14` の効き幅を実機で聴き直す**（**耳が要る**）。08-28 に一度聴いているが、それは直す前の版。`mise run install diorama` | `diorama-plan.md` |
 | DIO-13 | **既定値と耳**（**耳が要る**）。**聴き直しのあと** | `diorama-plan.md` |
 | — | **Advanced の偏差**（Diorama、`REQ-DIO-009`）。**前に `dsp.md`** | `diorama-plan.md` |
@@ -508,7 +505,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | DBL-12 | CPU 予算の確認（criterion） | ✅ 69.4 µs / 予算 533 µs |
 | DBL-16 | 通っている音の表示（`REQ-DBL-015`） | ✅ |
 | DBL-13 | 既定値の詰めと実機確認 | 🟡 |
-| DBL-17 | 窓の追随（`SPK-23` の型に合わせる。**タブは残す**、`MODE` は置かない） | ⬜ |
+| DBL-17 | **窓の追随** — タブは残した。反転面は図だけ。Detail の表に記号 4 つ | ✅ |
 
 ### Velour — `../../plugins/velour/docs/implementation/velour-plan.md`
 
@@ -602,7 +599,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | AIR-11 | 解析の配線 | ✅ `AIR-10` に含めた |
 | AIR-12 | CPU 予算 | ✅ **エンジン 47.2 µs / 予算 533** |
 | AIR-13 | 既定値と耳 | ✅ 7 本確定、`defaults.rs` が測って固定 |
-| AIR-14 | 窓の追随（`SPK-23` の型に合わせる。`MODE` は置かない） | ⬜ |
+| AIR-14 | **窓の追随** — 検波器の 3 ゲージを Advanced の各行へ。252 px の空白を潰した | ✅ |
 
 ### Diorama — `../../plugins/diorama/docs/implementation/diorama-plan.md`
 
@@ -636,7 +633,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | DIO-13 | 既定値と耳 | 🟡 **耳が要る** |
 | DIO-14 | **距離の効き幅の作り直し**（実機で「遠い近いに聞こえない」と出た）。直接音の広帯域レベルを足し、反射と `DAMPING` の範囲を広げた | ✅ 比 +25.6 → +2.3 dB |
 | DIO-15 | **Diorama への改名**（ディレクトリ・crate・文書・単位の接頭辞・`CLAP_ID`・`VST3_CLASS_ID`）。`Parallax` は衝突で落とした | ✅ |
-| DIO-16 | 窓の追随（`SPK-23` の型に合わせる。**見た目の実機確認を含む**） | ⬜ |
+| DIO-16 | **窓の追随** — 読み値 7 つを 5（帯）と 2（規則の下）に割った | ✅ ❓ **実機の見た目のみ未了** |
 | — | **Advanced の偏差**（`REQ-DIO-009`）。パラメータ 7 個とエンジンの変更。**前に `dsp.md` が各偏差の数を書く** | ⬜ |
 
 **`dsp.md` は書けた**（2026-08-28、

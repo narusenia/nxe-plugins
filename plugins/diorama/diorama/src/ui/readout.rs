@@ -110,15 +110,31 @@ pub(crate) fn poll(analysis: &Analysis, figures: &mut [String]) {
     figures[HF] = corner(analysis.damping.read()[0]);
 }
 
-pub fn view(cx: &mut Context) {
-    nxe_ui::readout::strip(cx, |cx| {
-        nxe_ui::readout::cell(cx, "IN", Ui::readouts.index(IN), "dB");
-        nxe_ui::readout::cell(cx, "OUT", Ui::readouts.index(OUT), "dB");
-        nxe_ui::readout::cell(cx, "DIRECT", Ui::readouts.index(DIRECT), "dB");
-        nxe_ui::readout::cell(cx, "ROOM", Ui::readouts.index(ROOM), "dB");
-        nxe_ui::readout::cell(cx, "CLARITY", Ui::readouts.index(CLARITY), "dB");
-        nxe_ui::readout::cell(cx, "CORR", Ui::readouts.index(CORR), "");
-        nxe_ui::readout::cell(cx, "HF", Ui::readouts.index(HF), "Hz");
+/// The two readings that are not about distance, for the row beside `OUTPUT`.
+///
+/// **They did not fit on the status bar.** Seven cells and a sentence do not
+/// share one line — Sparkleur's five come to about 527 px of an 880 px window,
+/// and `nxe_ui::status::MAX_HINT` was chosen against what is left. So the strip
+/// keeps the distance story (`IN` / `OUT` / `DIR` / `ROOM` / `CLR`) and these
+/// two — *did it break mono*, *where is the damping* — sit together in the row
+/// that used to hold one knob and nothing else (`DIO-16`).
+pub fn checks(cx: &mut Context) {
+    nxe_ui::readout::cell(cx, "CORR", Ui::readouts.index(CORR), "");
+    nxe_ui::readout::cell(cx, "HF", Ui::readouts.index(HF), "Hz");
+}
+
+/// The strip at the foot of the window: the hover's one-line description on
+/// the left, these on the right (`nxe_ui::status`).
+///
+/// **The names are short on purpose.** Every character here is width the
+/// sentence beside them does not get.
+pub fn status(cx: &mut Context) {
+    nxe_ui::status::bar(cx, |cx| {
+        nxe_ui::status::figure(cx, "IN", Ui::readouts.index(IN), "dB");
+        nxe_ui::status::figure(cx, "OUT", Ui::readouts.index(OUT), "dB");
+        nxe_ui::status::figure(cx, "DIR", Ui::readouts.index(DIRECT), "dB");
+        nxe_ui::status::figure(cx, "ROOM", Ui::readouts.index(ROOM), "dB");
+        nxe_ui::status::figure(cx, "CLR", Ui::readouts.index(CLARITY), "dB");
     });
 }
 
