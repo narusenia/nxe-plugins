@@ -419,7 +419,8 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| VEL-18 | **天井の所在を測る**（Velour）。`AIR_INPUT_CEILING` が第一容疑。**Hard の前提** | `../../plugins/velour/docs/implementation/velour-plan.md` |
+| VEL-19 | **MODE（Soft / Hard）**（Velour）。`VEL-18` が済んだので着手できる。動かすのは**層に占める生成成分の割合** | `../../plugins/velour/docs/implementation/velour-plan.md` |
+| UI-17 | **ピクトグラム 10〜16 個**。`SPK-23` が窓の型を決めたので着手できる | `nxe-ui-plan.md` |
 | VDP-15 | **Parallax への改名**。商標と既存プラグインの衝突を確認してから確定する | `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md` |
 | — | **`VDP-14` の効き幅を実機で聴き直す**（**耳が要る**）。08-28 に一度聴いているが、それは直す前の版。`mise run install vocal-depth` | `vocal-depth-plan.md` |
 | PAR-13 | **既定値と耳**（旧 `VDP-13`。**耳が要る**）。**聴き直しのあと** | `vocal-depth-plan.md` |
@@ -534,8 +535,8 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | VEL-14 | UI Advanced タブ | ✅ |
 | VEL-16 | CPU 予算の確認（criterion） | ✅ 128 µs / 予算 533 µs |
 | VEL-17 | 既定値の詰めと実機確認（**耳が要る**） | ✅ |
-| VEL-18 | **天井の所在を測る**（`AIR_INPUT_CEILING` が第一容疑。Hard の前提） | 🟡 |
-| VEL-19 | **MODE（Soft / Hard）**。既定 Soft、Soft は v0.1.4 とビット一致 | ⬜ |
+| VEL-18 | **天井の所在を測った** — 天井は**層の中身**（8 割強が帯域コピー）。`AIR_INPUT_CEILING` は無実 | ✅ |
+| VEL-19 | **MODE（Soft / Hard）**。動かすのは**層に占める生成成分の割合**。既定 Soft、Soft は v0.1.4 とビット一致 | 🟡 |
 | VEL-20 | 窓の追随（`SPK-23` の型に合わせる） | ⬜ |
 
 ### Sparkleur — `../../plugins/sparkleur/docs/implementation/sparkleur-plan.md`
