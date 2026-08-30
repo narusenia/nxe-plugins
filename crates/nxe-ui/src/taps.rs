@@ -138,29 +138,32 @@ impl View for TapField {
         // the same colour whatever else is on screen (`theme::accent_paint`).
         let paint = theme::accent_paint(bounds.x, bottom, bounds.x, bounds.y);
 
+        // **Every stem in one path, filled once.** They all take the same
+        // paint, and femtovg gives every `fill_path` its own draw call whatever
+        // is in it (`docs/investigations/ui-frame-cost.md`).
+        let mut stems = vg::Path::new();
         for tap in &self.taps {
             if !tap.level.is_finite() || tap.level < FAINTEST {
                 continue;
             }
             let x = bounds.x + tap.position.clamp(0.0, 1.0) * bounds.w;
             let height = tap.level.clamp(0.0, 1.0) * bounds.h;
-            let mut stem = vg::Path::new();
-            stem.rect(
+            stems.rect(
                 x - STEM * scale * 0.5,
                 bottom - height,
                 STEM * scale,
                 height,
             );
-            canvas.fill_path(&stem, &paint);
         }
 
-        // The direct sound, last so it is never hidden by an early reflection,
-        // and hung off the left edge rather than centred on it.
+        // The direct sound is in the same path. It was drawn last so an early
+        // reflection could not hide it; with one fill there is nothing to hide
+        // it behind, and it is wider than a reflection's stem anyway.
         if self.direct.is_finite() && self.direct >= FAINTEST {
             let height = self.direct.clamp(0.0, 1.0) * bounds.h;
-            let mut stem = vg::Path::new();
-            stem.rect(bounds.x, bottom - height, DIRECT_STEM * scale, height);
-            canvas.fill_path(&stem, &paint);
+            stems.rect(bounds.x, bottom - height, DIRECT_STEM * scale, height);
         }
+
+        canvas.fill_path(&stems, &paint);
     }
 }
