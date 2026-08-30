@@ -55,49 +55,68 @@ MAIN 3970 samples, idle 3837 (97%), busy 133 (3%)
 | **ホストの窓の中の `NSOpenGLView` が窓の合成経路を壊す** | `IOSurface` + 通常の `CALayer` に作り替え、**OpenGL のビューをホストの階層から完全に排除** | **症状は残った** |
 | 合成側（WindowServer）が詰まっている | 上の測定 | **正常時と同一** |
 | マルチディスプレイ／リフレッシュレート混在（120 Hz + 144 Hz） | ディスプレイを 1 台にして再現 | **変わらない** |
+| ホストの窓に何かを提示すること | `NXE_BASEVIEW_NO_PRESENT`（レイヤーを窓に足さない） | **遅くなる。提示は無関係** |
 
-**5 回外している。** 次は測ってから動くこと。
+**6 回外している。** 次は測ってから動くこと。
 
-## 4. 仕掛けてあるもの — `NXE_BASEVIEW_NO_PRESENT`
+### 手がかり
+
+**遅くならないプラグイン（`gliff`）は Metal で描いていて、OpenGL を一切
+リンクしていない**（`otool -L` で確認）。私たちは OpenGL。状況証拠としては
+噛み合うが、証明ではない — それを決めるのが `NXE_BASEVIEW_NO_GL`。
+
+## 4. 仕掛けてあるスイッチ 2 つ
+
+どちらも同じバンドルに入っている。環境変数で挙動が変わるだけ。
+
+### `NXE_BASEVIEW_NO_PRESENT` — **試した。遅くなった**
 
 次の切り分けのためのスイッチが `narusenia/baseview` `nxe-2026-08-31` に入って
 いる。**設定すると、レイヤーをホストの窓に足さない** — GL コンテキストは作られ、
 サーフェスも確保され、毎フレーム描画とコピーも走るが、**画面には何も出ない**。
 
-読み方:
+**結果（2026-08-31）: これでも遅くなった。** つまり**画面に出すことは無関係**。
+残るのは「OpenGL をホストのプロセスで初期化すること」か「ビューをホストの窓に
+足すこと」の 2 つ。
 
-- **これでも遅くなる** → 画面に出すことは無関係。**ホストのプロセスで OpenGL を
-  初期化すること自体**（CGL コンテキスト、ドライバのロード、
-  `AppleMetalOpenGLRenderer` の起動）が疑わしい。次はコンテキストを一切作らない
-  ビルドへ
-- **遅くならない** → 原因は「ホストの窓に何かを提示すること」。レイヤーの属性
-  （`contentsScale`、更新頻度、`CAMetalLayer` との同居）を疑う番
+### `NXE_BASEVIEW_NO_GL` — **未実施。次はこれ**
+
+窓は今までどおり作ってホストに attach するが、**OpenGL コンテキストを一切
+要求せず、何も描かない**（vizia を通さない空のハンドラになる）。
+
+- **これでも遅くなる** → 原因は**ビューをホストの窓に足すこと**。OpenGL は
+  無関係で、Metal に移っても直らない。**この場合は打つ手がかなり限られる**
+- **遅くならない** → 原因は **OpenGL の初期化**。`gliff`（遅くならない）が
+  Metal で描いていて OpenGL を一切リンクしていない事実とも噛み合う。
+  **直し方は Metal 経路を作ること**で、それは toolkit の選択とは無関係
+  （`nih_plug_iced` も OpenGL/glow なので iced に移っても直らない）
 
 **環境変数を DAW に渡す方法**（Finder から起動したアプリは shell の環境を
 継がない）:
 
 ```bash
 # Studio One を落としてから
-launchctl setenv NXE_BASEVIEW_NO_PRESENT 1
-# → Studio One を起動してテスト
+launchctl setenv NXE_BASEVIEW_NO_GL 1
+# → Studio One を起動 → Velour の UI を開く → 閉じる → 遅くなるか
 
 # 戻す
-launchctl unsetenv NXE_BASEVIEW_NO_PRESENT
+launchctl unsetenv NXE_BASEVIEW_NO_GL
 ```
+
+`NXE_BASEVIEW_NO_PRESENT` も同じ使い方（そちらは実施済み・遅くなった）。
 
 あるいはターミナルから直接起動する:
 
 ```bash
-NXE_BASEVIEW_NO_PRESENT=1 "/Applications/Studio Pro 8.app/Contents/MacOS/Studio Pro"
+NXE_BASEVIEW_NO_GL=1 "/Applications/Studio Pro 8.app/Contents/MacOS/Studio Pro"
 ```
 
-窓は真っ黒（何も出ない）のが正常な動作。**見るのは「DAW が遅くなるか」だけ。**
+どちらのスイッチでも**窓は真っ黒（何も出ない）のが正常**。
+**見るのは「DAW が遅くなるか」だけ。**
 
 ## 5. その次に測るもの
 
-1. **コンテキストを一切作らないビルド。** `vizia_baseview` が GL 前提なので、
-   `create_vizia_editor` を使わず、**空の `NSView` を返すだけの `Editor` 実装**を
-   Velour に一時的に差すのが早い。これで遅くなるなら、GUI とは無関係
+1. **`NXE_BASEVIEW_NO_GL`**（上の 4 節）。**仕込み済み。これが次の一手**
 2. **他の OpenGL プラグインで再現するか。** `~/Library/Audio/Plug-Ins/VST3/` の
    `gliff` / `scintillate` が baseview か nih-plug 系なら、同じことが起きるはず。
    起きるなら**私たちのコードの問題ではない**
