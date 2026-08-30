@@ -462,7 +462,7 @@ mod tests {
     #[test]
     fn every_parameter_has_a_control() {
         const PARAMS: &str = include_str!("../params.rs");
-        const COUNT: usize = 34;
+        const COUNT: usize = 35;
         const SOURCES: [&str; 4] = [
             include_str!("mod.rs"),
             include_str!("advanced.rs"),

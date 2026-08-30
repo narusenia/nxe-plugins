@@ -118,6 +118,15 @@ pub struct SparkleurParams {
     #[id = "lift"]
     pub lift: FloatParam,
 
+    /// How hard a transient is hit (`REQ-SPK-020`).
+    ///
+    /// **Zero by default.** It is measurable now — the attack stands further
+    /// above the body — but whether it is *wanted* is still an ear's call, and
+    /// a plugin that arrives already hitting has made that call for everyone
+    /// (`SPK-22`).
+    #[id = "punch"]
+    pub punch: FloatParam,
+
     /// Deviations from what `CHARACTER` chose for the two protections
     /// (`REQ-SPK-008`).
     #[id = "deharsh"]
@@ -232,6 +241,7 @@ impl Default for SparkleurParams {
             // Closed. The floor is the thing that stops silence coming up, and
             // opening it is a deliberate move toward OTT (`REQ-SPK-003`).
             lift: percentage("Lift", 0.0),
+            punch: percentage("Punch", 0.0),
 
             de_harsh: bipolar("De-Harsh"),
             sub_protect: bipolar("Sub Protect"),
@@ -331,6 +341,7 @@ impl SparkleurParams {
             speed: self.speed.smoothed.next_step(samples),
             snap: self.snap.smoothed.next_step(samples),
             lift: self.lift.smoothed.next_step(samples),
+            punch: self.punch.smoothed.next_step(samples),
             de_harsh: self.de_harsh.smoothed.next_step(samples),
             sub_protect: self.sub_protect.smoothed.next_step(samples),
             // **Order matters**: these arrays are filled by position, and
@@ -382,6 +393,7 @@ impl SparkleurParams {
             speed: self.speed.value(),
             snap: self.snap.value(),
             lift: self.lift.value(),
+            punch: self.punch.value(),
             de_harsh: self.de_harsh.value(),
             sub_protect: self.sub_protect.value(),
             up: [
@@ -457,10 +469,10 @@ mod tests {
     /// **Thirty-three** (`ui.md`). If this moves, the count in the interface
     /// specification moves with it.
     #[test]
-    fn there_are_thirty_four_parameters() {
+    fn there_are_thirty_five_parameters() {
         let params = SparkleurParams::default();
         let count = params.param_map().len();
-        assert_eq!(count, 34, "the parameter count moved");
+        assert_eq!(count, 35, "the parameter count moved");
     }
 
     /// Every control that defers to `CHARACTER` rests at zero, and the weights

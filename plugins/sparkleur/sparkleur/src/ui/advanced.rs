@@ -247,6 +247,9 @@ fn side(cx: &mut Context) {
             labelled_bar(cx, "LIFT", "Opens the floor under the upward half", |cx| {
                 nxe_plug_ui::bar(cx, Ui::params, |p| &p.lift, false)
             });
+            labelled_bar(cx, "PUNCH", "How hard a transient is hit", |cx| {
+                nxe_plug_ui::bar(cx, Ui::params, |p| &p.punch, false)
+            });
 
             HStack::new(cx, |cx| {
                 Label::new(cx, "OVERSAMPLE")

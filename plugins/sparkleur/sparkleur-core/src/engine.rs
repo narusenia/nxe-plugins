@@ -54,6 +54,11 @@ pub struct Shape {
     pub snap: f32,
     /// How far the upward floor is opened, `0..=1`.
     pub lift: f32,
+    /// How hard a transient is hit, `0..=1` (`REQ-SPK-020`).
+    ///
+    /// **It rides on `SPARK`**, like the protections do, so `SPARK` = 0 stays
+    /// amplitude-flat (`REQ-SPK-009`).
+    pub punch: f32,
     /// Bipolar deviations from what `CHARACTER` chose. Both ride on `SPARK`:
     /// the protection arrives with the brightness rather than being found in a
     /// panel afterwards (`REQ-SPK-008`).
@@ -79,6 +84,7 @@ impl Default for Shape {
             speed: 0.0,
             snap: 0.5,
             lift: 0.0,
+            punch: 0.0,
             de_harsh: 0.0,
             sub_protect: 0.0,
             up: [1.0; BAND_COUNT],
@@ -127,6 +133,13 @@ pub struct Engine {
     /// What was actually applied to each band, in dB — the picture's subject
     /// (`REQ-SPK-018`).
     gains_db: [f32; BAND_COUNT],
+    punch: f32,
+    /// A slow copy of the transient reading, per channel. **What `PUNCH` hits
+    /// is the difference between the two** — see the comment in [`process`].
+    ///
+    /// [`process`]: Self::process
+    punch_track: [f32; 2],
+    punch_coefficient: f32,
 }
 
 impl Engine {
@@ -144,6 +157,9 @@ impl Engine {
             de_harsh_amount: 0.0,
             solo: [false; BAND_COUNT],
             gains_db: [0.0; BAND_COUNT],
+            punch: 0.0,
+            punch_track: [0.0; 2],
+            punch_coefficient: 1.0 - (-1.0 / (PUNCH_TRACK_SECONDS * sample_rate)).exp(),
         };
         engine.set_shape(&Shape::default());
         engine
@@ -170,6 +186,7 @@ impl Engine {
         self.weights = weights_of(shape, &character);
         self.curve = character.curve;
         self.floor_db = floor_of(shape.lift);
+        self.punch = finite(shape.punch).clamp(0.0, 1.0);
         self.de_harsh_amount = protect::amount_of(character.de_harsh, shape.de_harsh);
         self.solo = shape.solo;
 
@@ -266,6 +283,39 @@ impl Engine {
         wet.0 += self.sparkle[0].process(bands[0][AIR_BAND], air);
         wet.1 += self.sparkle[1].process(bands[1][AIR_BAND], air);
 
+        // **`PUNCH` reuses the gate that is already open** (`REQ-SPK-020`).
+        // `Sparkle`'s fast-over-slow ratio is a transient detector that has
+        // been running since `SPK-6`; the only new thing here is what it is
+        // pointed at. A second detector would be a second opinion about the
+        // same material, and the two would disagree at the edges.
+        //
+        // **Read before the hold.** The gate the layer rides on stays open
+        // through the body of a note so that two consonants read as one; a hit
+        // that lasted that long would raise the sustain with the attack and
+        // take the crest factor *down*, which is what the first version
+        // measured.
+        //
+        // **After the layer, on the sum.** A transient is broadband, so hitting
+        // one band would tilt it rather than sharpen it.
+        if self.punch > 0.0 {
+            let spark = finite(levels.spark).clamp(0.0, 1.0);
+            let mut hit = |channel: usize| {
+                let now = self.sparkle[channel].transient();
+                let track = &mut self.punch_track[channel];
+                *track += (now - *track) * self.punch_coefficient;
+                // **The rise, not the reading.** A fast-over-slow ratio stays up
+                // for as long as the slow follower is catching up, which is most
+                // of a note — driving `PUNCH` from it directly made the attack
+                // 1.2 dB louder and the whole thing 3.1 dB louder, which is a
+                // gain wearing a transient's name (`SPK-22`). Subtracting a slow
+                // copy of the same reading leaves the edge and nothing else.
+                let rise = (now - *track).max(0.0);
+                linear(PUNCH_MAX_DB * self.punch * rise * spark)
+            };
+            wet.0 *= hit(0);
+            wet.1 *= hit(1);
+        }
+
         // **`MIX` = 0 is the input, exactly** (`REQ-SPK-001`): `dry + 0·x` is
         // `dry` for any finite `x`, and the dry path branched before the split
         // so there is nothing else in the way.
@@ -360,6 +410,20 @@ pub fn transfer_db(shape: &Shape, levels: &Levels, band: usize, input_db: f32) -
             floor_of(shape.lift),
         )
 }
+
+/// How long the slow copy of the transient reading takes to catch up.
+///
+/// **This is what makes `PUNCH` a transient and not a gain.** Shorter and the
+/// edge is gone before it is heard; longer and the boost lasts into the body of
+/// the note (`SPK-22`).
+const PUNCH_TRACK_SECONDS: f32 = 0.060;
+
+/// The most `PUNCH` may add on a transient, in dB.
+///
+/// **Placed by measuring the crest factor**, not by taste (`SPK-22`): it is the
+/// point where the peak-to-RMS distance stops growing usefully and the layer
+/// starts sounding pumped rather than hit.
+pub const PUNCH_MAX_DB: f32 = 6.0;
 
 /// `LIFT` as the floor it opens to, in dB.
 fn floor_of(lift: f32) -> f32 {
