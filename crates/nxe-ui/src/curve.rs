@@ -281,7 +281,7 @@ impl View for CurveView {
             path.close();
             canvas.fill_path(
                 &path,
-                &vg::Paint::color(theme::FOREGROUND.at(ANALYSIS_ALPHA).vg()),
+                &vg::Paint::color(palette.ink.at(ANALYSIS_ALPHA).vg()),
             );
         }
 
@@ -291,7 +291,7 @@ impl View for CurveView {
             grid.move_to(gx, bounds.y);
             grid.line_to(gx, bounds.y + bounds.h);
         }
-        let mut paint = vg::Paint::color(theme::ELEVATED.vg());
+        let mut paint = vg::Paint::color(palette.track.vg());
         paint.set_line_width(line);
         canvas.stroke_path(&grid, &paint);
 
@@ -314,7 +314,7 @@ impl View for CurveView {
             resting.move_to(bounds.x, centre_y);
             resting.line_to(bounds.x + bounds.w, centre_y);
         }
-        let mut paint = vg::Paint::color(theme::BORDER.vg());
+        let mut paint = vg::Paint::color(palette.line.vg());
         paint.set_line_width(line);
         canvas.stroke_path(&resting, &paint);
 
@@ -351,11 +351,11 @@ impl View for CurveView {
             // rather than merging with it wherever the two cross.
             let mut back = vg::Path::new();
             back.circle(px, py, radius);
-            canvas.fill_path(&back, &vg::Paint::color(theme::BACKGROUND.vg()));
+            canvas.fill_path(&back, &vg::Paint::color(palette.ground.vg()));
 
             let mut ring = vg::Path::new();
             ring.circle(px, py, radius);
-            let mut paint = vg::Paint::color(theme::FOREGROUND.vg());
+            let mut paint = vg::Paint::color(palette.ink.vg());
             paint.set_line_width(line);
             canvas.stroke_path(&ring, &paint);
         }

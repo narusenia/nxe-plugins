@@ -57,6 +57,7 @@ use nxe_ui::knob::Knob;
 use nxe_ui::meter::Meter;
 use nxe_ui::polar::{FieldGesture, FieldPoint, PolarField, PolarFieldModifiers};
 use nxe_ui::segmented::SegmentedControl;
+use nxe_ui::surface;
 use nxe_ui::{font, icon, theme};
 use std::time::Duration;
 use vizia::prelude::*;
@@ -700,6 +701,39 @@ fn colours(cx: &mut Context) {
     });
 
     palettes(cx);
+    inverted(cx);
+}
+
+/// The one panel in a window whose ground is the accent.
+///
+/// **Both grounds, one above the other**, because the question is never how the
+/// inverted panel looks on its own — it is whether the two read as one window.
+fn inverted(cx: &mut Context) {
+    panel(cx, "INVERTED SURFACE", |cx| {
+        Label::new(
+            cx,
+            "the figure the window exists to show goes here; rows of controls stay on black",
+        )
+        .class("subtle");
+
+        surface::inverted(cx, |cx| {
+            Label::new(cx, "FIELD").class("eyebrow").class("ink-muted");
+            HStack::new(cx, |cx| {
+                Knob::new(cx, 0.62, |_, _| {}).size(Pixels(56.0));
+                VStack::new(cx, |cx| {
+                    Bar::new(cx, 0.62, |_, _| {});
+                    Bar::bipolar(cx, 0.30, |_, _| {});
+                    Meter::horizontal(cx, 0.55, 0.72, vec![0.25, 0.5, 0.75]);
+                })
+                .height(Auto)
+                .row_between(Pixels(theme::SPACE_2));
+            })
+            .class("row")
+            .height(Auto);
+            Label::new(cx, "a word on the accent needs .ink").class("ink");
+        })
+        .height(Auto);
+    });
 }
 
 /// The five accent ramps, and the same drawn widget under each of them.

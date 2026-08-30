@@ -454,7 +454,7 @@ impl View for PolarField {
             wedge.close();
             canvas.fill_path(
                 &wedge,
-                &vg::Paint::color(theme::FOREGROUND.at(share * ANALYSIS_ALPHA).vg()),
+                &vg::Paint::color(palette.ink.at(share * ANALYSIS_ALPHA).vg()),
             );
         }
 
@@ -470,7 +470,7 @@ impl View for PolarField {
         );
         frame.move_to(geometry.origin_x - geometry.radius, geometry.origin_y);
         frame.line_to(geometry.origin_x + geometry.radius, geometry.origin_y);
-        let mut paint = vg::Paint::color(theme::BORDER.vg());
+        let mut paint = vg::Paint::color(palette.line.vg());
         paint.set_line_width(line);
         canvas.stroke_path(&frame, &paint);
 
@@ -484,7 +484,7 @@ impl View for PolarField {
             std::f32::consts::TAU,
             vg::Solidity::Hole,
         );
-        let mut paint = vg::Paint::color(theme::ELEVATED.vg());
+        let mut paint = vg::Paint::color(palette.track.vg());
         paint.set_line_width(line);
         canvas.stroke_path(&mid, &paint);
 
@@ -500,7 +500,7 @@ impl View for PolarField {
                     links.line_to(px, py);
                 }
             }
-            let mut paint = vg::Paint::color(theme::ELEVATED.vg());
+            let mut paint = vg::Paint::color(palette.track.vg());
             paint.set_line_width(line);
             canvas.stroke_path(&links, &paint);
         }
@@ -535,7 +535,7 @@ impl View for PolarField {
             let colour = if point.enabled {
                 palette.deep.mix(palette.bright, point.tint)
             } else {
-                theme::SUBTLE
+                palette.subtle
             };
             let mut path = vg::Path::new();
             path.circle(x, y, dot);

@@ -122,7 +122,7 @@ impl View for Bar {
 
         let mut track = vg::Path::new();
         track.rounded_rect(bounds.x, bounds.y, bounds.w, bounds.h, radius);
-        canvas.fill_path(&track, &vg::Paint::color(theme::ELEVATED.vg()));
+        canvas.fill_path(&track, &vg::Paint::color(palette.track.vg()));
 
         let (start, end) = Self::span(self.value, self.centred);
         let inner_width = (bounds.w - inset * 2.0).max(0.0);
@@ -165,7 +165,7 @@ impl View for Bar {
                 scale.max(1.0),
                 bounds.h,
             );
-            canvas.fill_path(&mark, &vg::Paint::color(theme::BACKGROUND.vg()));
+            canvas.fill_path(&mark, &vg::Paint::color(palette.ground.vg()));
         }
     }
 }

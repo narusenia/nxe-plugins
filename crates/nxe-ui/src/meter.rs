@@ -127,7 +127,7 @@ impl View for Meter {
 
         let mut track = vg::Path::new();
         track.rect(bounds.x, bounds.y, bounds.w, bounds.h);
-        canvas.fill_path(&track, &vg::Paint::color(theme::ELEVATED.vg()));
+        canvas.fill_path(&track, &vg::Paint::color(palette.track.vg()));
 
         let (x, y, w, h) = Self::fill(bounds, self.level, self.vertical);
         if w > 0.0 && h > 0.0 {
@@ -156,7 +156,7 @@ impl View for Meter {
                 ticks.rect(mx - line * 0.5, bounds.y, line, bounds.h);
             }
         }
-        canvas.fill_path(&ticks, &vg::Paint::color(theme::BACKGROUND.vg()));
+        canvas.fill_path(&ticks, &vg::Paint::color(palette.ground.vg()));
 
         // **The marker turns white at the top rather than red.** This design has
         // one hue and it belongs to what the plugin is set to (`README.md`), so
@@ -164,7 +164,7 @@ impl View for Meter {
         // accent, which is the message.
         if self.hold > 0.0 {
             let colour = if self.hold >= 1.0 {
-                theme::FOREGROUND
+                palette.ink
             } else {
                 palette.bright
             };

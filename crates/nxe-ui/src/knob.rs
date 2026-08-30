@@ -102,7 +102,7 @@ impl View for Knob {
 
         let mut track = vg::Path::new();
         track.arc(centre_x, centre_y, radius, start, end, vg::Solidity::Hole);
-        let mut paint = vg::Paint::color(theme::ELEVATED.vg());
+        let mut paint = vg::Paint::color(palette.track.vg());
         paint.set_line_width(width);
         paint.set_line_cap(vg::LineCap::Butt);
         canvas.stroke_path(&track, &paint);
@@ -131,7 +131,7 @@ impl View for Knob {
                 centre_y + sin * (inner + END_LENGTH * scale),
             );
         }
-        let mut paint = vg::Paint::color(theme::BORDER.vg());
+        let mut paint = vg::Paint::color(palette.line.vg());
         paint.set_line_width(scale.max(1.0));
         paint.set_line_cap(vg::LineCap::Butt);
         canvas.stroke_path(&ends, &paint);

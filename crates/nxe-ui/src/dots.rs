@@ -163,7 +163,7 @@ impl View for DotField {
         frame.rect(bounds.x, bounds.y, bounds.w, bounds.h);
         canvas.stroke_path(
             &frame,
-            &vg::Paint::color(theme::BORDER.vg()).with_line_width(line),
+            &vg::Paint::color(palette.line.vg()).with_line_width(line),
         );
 
         // What came in. **Neutral and quiet**: it is the ground the layer is
@@ -181,7 +181,7 @@ impl View for DotField {
             }
             canvas.stroke_path(
                 &path,
-                &vg::Paint::color(theme::SUBTLE.vg()).with_line_width(line),
+                &vg::Paint::color(palette.subtle.vg()).with_line_width(line),
             );
         }
 

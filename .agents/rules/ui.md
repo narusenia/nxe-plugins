@@ -60,6 +60,21 @@ Every rule here was paid for. Where one has a scar, the scar is named.
   `theme::palette(cx)` walks up to the nearest `Palette` model. There are no
   `ACCENT*` constants to reach for — that is deliberate, because a constant is
   how five windows would quietly become one colour again.
+- **A window has at most one inverted panel** (`nxe_ui::surface::inverted`),
+  and the figure the window exists to show is what goes on it. Rows of controls
+  and tables of figures stay on the black ground — a coloured field under a
+  column of numbers costs legibility and buys nothing. **A second inverted panel
+  means the window has two subjects**, which is a layout problem, not a colour
+  one.
+- **Inversion is a palette, not a second concept.** The surface builds
+  `Palette::inverted` as a nested model and everything under it comes out right
+  without knowing the surface exists. On that ground the accent has nowhere to
+  go — the ground *is* the accent — so a mark is near-black and a fill runs from
+  black into the surface, which keeps "paler means further" true.
+- **A word on the accent ground says so itself** (`.ink` / `.ink-muted`). The
+  generated stylesheet is flat and cannot say "labels inside this panel", so
+  forgetting the class leaves near white on the accent. **Put few enough words
+  there that a miss is obvious.**
 - **A gradient means a quantity.** Use `palette.paint` where the fill
   measures something: how far a bar got, how loud a meter is, how far a knob
   turned. Pass **the whole track**, not the filled part, so two controls at

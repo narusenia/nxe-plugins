@@ -490,7 +490,7 @@ impl View for BandField {
             path.close();
             canvas.fill_path(
                 &path,
-                &vg::Paint::color(theme::FOREGROUND.at(ANALYSIS_ALPHA).vg()),
+                &vg::Paint::color(palette.ink.at(ANALYSIS_ALPHA).vg()),
             );
         }
 
@@ -515,7 +515,7 @@ impl View for BandField {
             // Soloing dims by hue as well as by alpha: a band that is off is
             // not a quieter version of the same thing.
             let tint = if soloing && !band.soloed {
-                theme::SUBTLE
+                palette.subtle
             } else {
                 palette.deep.mix(palette.bright, band.tint.clamp(0.0, 1.0))
             };
@@ -546,7 +546,7 @@ impl View for BandField {
             let mut path = vg::Path::new();
             path.move_to(plot.x, y);
             path.line_to(plot.x + plot.w, y);
-            let mut paint = vg::Paint::color(theme::SUBTLE.vg());
+            let mut paint = vg::Paint::color(palette.subtle.vg());
             paint.set_line_width(line);
             canvas.stroke_path(&path, &paint);
         }
@@ -557,7 +557,7 @@ impl View for BandField {
             grid.move_to(gx, plot.y);
             grid.line_to(gx, plot.y + plot.h);
         }
-        let mut paint = vg::Paint::color(theme::ELEVATED.vg());
+        let mut paint = vg::Paint::color(palette.track.vg());
         paint.set_line_width(line);
         canvas.stroke_path(&grid, &paint);
 
@@ -600,8 +600,8 @@ impl View for BandField {
         strip.rect(rail.x, rail.y, rail.w, rail.h);
         let colour = match (self.focus.is_some(), dragging_rail) {
             // Inert when there is nothing to write: it should not look grabbable.
-            (false, _) => theme::BACKGROUND,
-            (true, false) => theme::ELEVATED,
+            (false, _) => palette.ground,
+            (true, false) => palette.track,
             (true, true) => palette.dim,
         };
         canvas.fill_path(&strip, &vg::Paint::color(colour.vg()));
@@ -615,7 +615,7 @@ impl View for BandField {
                 let gx = plot.x + x.clamp(0.0, 1.0) * plot.w;
                 ticks.rect(gx - line * 0.5, rail.y, line, rail.h);
             }
-            canvas.fill_path(&ticks, &vg::Paint::color(theme::BACKGROUND.vg()));
+            canvas.fill_path(&ticks, &vg::Paint::color(palette.ground.vg()));
         }
     }
 }

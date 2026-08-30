@@ -143,6 +143,23 @@ pub struct Palette {
     /// **The far stop of every accent gradient.** What changes along a filled
     /// bar is lightness, not colour.
     pub wash: Token,
+
+    // The surface roles. Identical in all five palettes — and **not** identical
+    // on an inverted surface, which is the whole reason they live here rather
+    // than staying constants a widget could reach for directly
+    // ([`Palette::inverted`]).
+    /// What the surface under this widget is painted.
+    pub ground: Token,
+    /// The unfilled part of a control, and anything there for a moment.
+    pub track: Token,
+    /// Hairlines, grids, axis marks — the structural device of this design.
+    pub line: Token,
+    /// Text, and a mark that is text-like.
+    pub ink: Token,
+    /// Text that names something rather than saying it.
+    pub muted: Token,
+    /// Gridlines, units, inert rows.
+    pub subtle: Token,
 }
 
 impl Palette {
@@ -153,6 +170,47 @@ impl Palette {
             deep,
             dim: Token::rgba(accent.red, accent.green, accent.blue, 0.18),
             wash,
+            ground: BACKGROUND,
+            track: ELEVATED,
+            line: BORDER,
+            ink: FOREGROUND,
+            muted: MUTED,
+            subtle: SUBTLE,
+        }
+    }
+
+    /// The same palette for the one panel in a window whose ground **is** the
+    /// accent (`.agents/rules/ui.md`).
+    ///
+    /// **Inversion is a palette, not a second concept.** A widget already asks
+    /// the tree what colours are in force; the inverted surface builds this as
+    /// a nested model and everything under it comes out right without knowing
+    /// the surface exists.
+    ///
+    /// The hue roles collapse to ink, because **on a coloured ground the accent
+    /// has nowhere to go** — the ground is already the accent. What is left to
+    /// say with is darkness, so a mark is near-black and the ramp runs from
+    /// black to the ground itself. That keeps "paler means further" true: the
+    /// far end of a fill fades into the surface.
+    ///
+    /// **One way.** Inverting an inverted palette does not give the first one
+    /// back, and a window that wanted that has two subjects rather than one.
+    pub fn inverted(self) -> Self {
+        let ink = BACKGROUND;
+        Self {
+            accent: ink,
+            bright: ink,
+            // Groups are still told apart along a ramp; here it runs in alpha
+            // rather than in lightness.
+            deep: ink.at(0.55),
+            dim: ink.at(0.18),
+            wash: self.accent,
+            ground: self.accent,
+            track: ink.at(0.15),
+            line: ink.at(0.35),
+            ink,
+            muted: ink.at(0.72),
+            subtle: ink.at(0.5),
         }
     }
 
@@ -377,6 +435,10 @@ pub fn stylesheet(palette: Palette) -> String {
     let accent_dim = palette.dim.css();
     let accent_fill = gradient("right", palette.accent, palette.wash);
     let accent_fill_up = gradient("top", palette.accent, palette.wash);
+    let inverted = palette.inverted();
+    let ink = inverted.ink.css();
+    let ink_muted = inverted.muted.css();
+    let inverted_ground = inverted.ground.css();
 
     format!(
         "
@@ -401,6 +463,27 @@ label {{
     border-radius: {RADIUS_CARD}px;
     child-space: {SPACE_4}px;
     row-between: {SPACE_3}px;
+}}
+
+/* The one panel whose ground is the accent (`nxe_ui::surface`). No border: a
+   coloured field is already separated from the window, and a hairline on it
+   reads as a second idea. */
+.inverted {{
+    background-color: {inverted_ground};
+    child-space: {SPACE_4}px;
+    row-between: {SPACE_3}px;
+}}
+
+/* Text on that ground. **The stylesheet has no way to say: labels inside
+   .inverted** — the generated CSS is flat, and this revision's descendant
+   matching is not something the design leans on. So a label there says so
+   itself, and forgetting it leaves near white on the accent. */
+.ink {{
+    color: {ink};
+}}
+
+.ink-muted {{
+    color: {ink_muted};
 }}
 
 .section {{
@@ -809,6 +892,83 @@ mod tests {
         }
     }
 
+    /// A colour composited over what is behind it, then WCAG relative
+    /// luminance. The inverted roles carry alpha, so the ground is part of the
+    /// answer.
+    ///
+    /// **The blend happens before the gamma, not after.** femtovg composites
+    /// encoded pixels, so black at 72 % over a light ground is far darker than
+    /// mixing the two luminances would suggest — 5.6:1 rather than 2.8:1. Doing
+    /// it the other way round failed this test on a surface that is perfectly
+    /// readable.
+    fn contrast(over: Token, ground: Token) -> f32 {
+        fn channel(value: f32) -> f32 {
+            let c = value / 255.0;
+            if c <= 0.03928 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            }
+        }
+        let luminance = |token: Token| {
+            let blend = |top: u8, bottom: u8| {
+                channel(f32::from(top) * token.alpha + f32::from(bottom) * (1.0 - token.alpha))
+            };
+            0.2126 * blend(token.red, ground.red)
+                + 0.7152 * blend(token.green, ground.green)
+                + 0.0722 * blend(token.blue, ground.blue)
+        };
+        let (over, ground) = (luminance(over), luminance(ground.at(1.0)));
+        let (light, dark) = if over > ground {
+            (over, ground)
+        } else {
+            (ground, over)
+        };
+        (light + 0.05) / (dark + 0.05)
+    }
+
+    /// **Text has to survive the surface it is on** — including the one whose
+    /// ground is the accent, where the neutrals are gone and what is left is
+    /// black at three opacities.
+    ///
+    /// `ink` clears AAA (7:1) and `muted` clears AA (4.5:1) on all five
+    /// palettes, inverted or not. **`subtle` is deliberately below the 3:1
+    /// line for text**: it is gridlines, units and inert rows — structure
+    /// rather than something to read — and it measures 3.0 inverted against
+    /// 4.2 on black. If it ever has to say something, it is the wrong role.
+    #[test]
+    fn text_survives_both_grounds() {
+        for (name, palette) in Palette::ALL {
+            for (surface, palette) in [("plain", palette), ("inverted", palette.inverted())] {
+                for (role, colour, least) in [
+                    ("ink", palette.ink, 7.0),
+                    ("muted", palette.muted, 4.5),
+                    ("subtle", palette.subtle, 2.9),
+                ] {
+                    let ratio = contrast(colour, palette.ground);
+                    assert!(
+                        ratio >= least,
+                        "{name} {surface}: {role} is {ratio:.1}:1 against its ground, under {least}"
+                    );
+                }
+            }
+        }
+    }
+
+    /// And the inverted surface has to actually be the accent, not a second
+    /// dark panel — the whole point is that a glance lands on it.
+    #[test]
+    fn the_inverted_surface_is_the_accent() {
+        for (name, palette) in Palette::ALL {
+            let inverted = palette.inverted();
+            assert_eq!(inverted.ground, palette.accent, "{name} did not invert");
+            assert!(
+                contrast(inverted.ground, palette.ground) >= 3.0,
+                "{name}'s inverted panel does not stand out from the window"
+            );
+        }
+    }
+
     /// The surfaces and the text have to be neutral: the accent is the only
     /// hue the design allows, and a grey with a cast stops reading as a
     /// background.
@@ -868,6 +1028,9 @@ mod tests {
             ".segment",
             ".track",
             ".accent",
+            ".inverted",
+            ".ink",
+            ".ink-muted",
             ".decoration",
             ".hoverable",
         ] {

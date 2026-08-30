@@ -122,7 +122,7 @@ impl View for TapField {
         frame.rect(bounds.x, bounds.y, bounds.w, bounds.h);
         canvas.stroke_path(
             &frame,
-            &vg::Paint::color(theme::BORDER.vg()).with_line_width(line),
+            &vg::Paint::color(palette.line.vg()).with_line_width(line),
         );
 
         // The floor the stems stand on, which is what makes the picture read as
@@ -132,7 +132,7 @@ impl View for TapField {
         floor.line_to(bounds.x + bounds.w, bottom - line);
         canvas.stroke_path(
             &floor,
-            &vg::Paint::color(theme::BORDER.vg()).with_line_width(line),
+            &vg::Paint::color(palette.line.vg()).with_line_width(line),
         );
 
         // **The ramp spans the whole plot**, so two stems of the same height are
