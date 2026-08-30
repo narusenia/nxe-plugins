@@ -189,9 +189,14 @@ impl Palette {
     ///
     /// The hue roles collapse to ink, because **on a coloured ground the accent
     /// has nowhere to go** — the ground is already the accent. What is left to
-    /// say with is darkness, so a mark is near-black and the ramp runs from
-    /// black to the ground itself. That keeps "paler means further" true: the
-    /// far end of a fill fades into the surface.
+    /// say with is darkness, so a mark is near-black and the ramp runs in alpha
+    /// rather than in lightness.
+    ///
+    /// **The far end of a fill is not the ground.** It was, on the first
+    /// attempt — "paler means further" taken literally, the fill fading into
+    /// the surface. On screen the right half of every bar and meter simply
+    /// vanished, and a bar you cannot see the end of is not measuring anything.
+    /// The pale end stops at 45 % instead: still paler, still there.
     ///
     /// **One way.** Inverting an inverted palette does not give the first one
     /// back, and a window that wanted that has two subjects rather than one.
@@ -204,9 +209,9 @@ impl Palette {
             // rather than in lightness.
             deep: ink.at(0.55),
             dim: ink.at(0.18),
-            wash: self.accent,
+            wash: ink.at(0.45),
             ground: self.accent,
-            track: ink.at(0.15),
+            track: ink.at(0.22),
             line: ink.at(0.35),
             ink,
             muted: ink.at(0.72),
@@ -474,18 +479,6 @@ label {{
     row-between: {SPACE_3}px;
 }}
 
-/* Text on that ground. **The stylesheet has no way to say: labels inside
-   .inverted** — the generated CSS is flat, and this revision's descendant
-   matching is not something the design leans on. So a label there says so
-   itself, and forgetting it leaves near white on the accent. */
-.ink {{
-    color: {ink};
-}}
-
-.ink-muted {{
-    color: {ink_muted};
-}}
-
 .section {{
     layout-type: column;
     row-between: {SPACE_2}px;
@@ -728,6 +721,20 @@ tooltip.vis {{
     background-color: {accent_dim};
     border-color: {accent};
 }}
+/* Text on the inverted ground (`nxe_ui::surface`). **Last in the file on
+   purpose.** The stylesheet has no way to say: labels inside .inverted — the
+   generated CSS is flat — so a label there says so itself, and these are
+   single-class selectors like `.eyebrow` and `.label`. Ties go to whichever
+   came last, so these have to. Put them earlier and `.eyebrow` wins, which is
+   how the first version painted a grey eyebrow onto the accent. */
+.ink {{
+    color: {ink};
+}}
+
+.ink-muted {{
+    color: {ink_muted};
+}}
+
 "
     )
 }

@@ -721,11 +721,21 @@ fn inverted(cx: &mut Context) {
             HStack::new(cx, |cx| {
                 Knob::new(cx, 0.62, |_, _| {}).size(Pixels(56.0));
                 VStack::new(cx, |cx| {
-                    Bar::new(cx, 0.62, |_, _| {});
-                    Bar::bipolar(cx, 0.30, |_, _| {});
-                    Meter::horizontal(cx, 0.55, 0.72, vec![0.25, 0.5, 0.75]);
+                    // Sized like the BARS panel below. A bar with no height is
+                    // a hairline, which is how the first version of this panel
+                    // looked like the palette was broken when it was not.
+                    Bar::new(cx, 0.62, |_, _| {})
+                        .height(Pixels(10.0))
+                        .width(Stretch(1.0));
+                    Bar::bipolar(cx, 0.30, |_, _| {})
+                        .height(Pixels(10.0))
+                        .width(Stretch(1.0));
+                    Meter::horizontal(cx, 0.55, 0.72, vec![0.25, 0.5, 0.75])
+                        .height(Pixels(10.0))
+                        .width(Stretch(1.0));
                 })
                 .height(Auto)
+                .width(Stretch(1.0))
                 .row_between(Pixels(theme::SPACE_2));
             })
             .class("row")
@@ -749,25 +759,34 @@ fn palettes(cx: &mut Context) {
             for (name, palette) in theme::Palette::ALL {
                 VStack::new(cx, move |cx| {
                     palette.build(cx);
+                    // Four stops, no labels on them: five ramps side by side do
+                    // not have room for twenty words, and the point of the row
+                    // is the comparison rather than the names.
                     HStack::new(cx, move |cx| {
-                        swatch(cx, "wash", palette.wash);
-                        swatch(cx, "bright", palette.bright);
-                        swatch(cx, "accent", palette.accent);
-                        swatch(cx, "deep", palette.deep);
+                        for stop in [palette.wash, palette.bright, palette.accent, palette.deep] {
+                            Element::new(cx)
+                                .width(Stretch(1.0))
+                                .height(Pixels(36.0))
+                                .background_color(stop.vizia());
+                        }
                     })
-                    .class("row")
-                    .height(Auto);
-                    Bar::new(cx, 0.62, |_, _| {});
+                    .height(Auto)
+                    .width(Stretch(1.0));
+                    // Drawn, not a swatch: this is the path a plugin uses, and
+                    // it is the half that would break silently.
+                    Bar::new(cx, 0.62, |_, _| {})
+                        .height(Pixels(10.0))
+                        .width(Stretch(1.0));
                     Label::new(cx, name).class("label");
                 })
-                .width(Auto)
+                .width(Stretch(1.0))
                 .height(Auto)
                 .row_between(Pixels(theme::SPACE_2));
             }
         })
         .class("row")
         .height(Auto)
-        .col_between(Pixels(theme::SPACE_5));
+        .col_between(Pixels(theme::SPACE_3));
     });
 }
 
