@@ -23,8 +23,16 @@ use sparkleur_core::crossover::BAND_COUNT;
 
 /// The name column and the width one bar gets. Fixed rather than stretched, so
 /// the five rows and the header line up.
+///
+/// **The bars were 76 wide when the window was 720.** At 880 the table and the
+/// side column left 216 px of nothing between them, pooled on one side and
+/// reading as an unfinished row rather than as space (`SPK-23`, seen in a
+/// host). The slack went to the bars: they are what is dragged, and a wider one
+/// is a finer one. **Not to a second readout** — the strip at the top of the
+/// window already carries the figures, and the per-band gain is already under
+/// each band's name.
 const NAME_WIDTH: f32 = 48.0;
-const BAR_WIDTH: f32 = 76.0;
+const BAR_WIDTH: f32 = 112.0;
 const SOLO_WIDTH: f32 = 40.0;
 
 /// **A bar has no default height** — an unset one is `Stretch(1.0)`, and a
@@ -45,6 +53,14 @@ const SIDE_BAR_WIDTH: f32 = 80.0;
 const SIDE_WIDTH: f32 = 224.0;
 
 const NAMES: [&str; BAND_COUNT] = ["SUB", "BODY", "MID", "PRES", "AIR"];
+
+/// What the table and the side column together are allowed to be, so that
+/// widening a bar cannot quietly push the side column off the window.
+///
+/// The window, less the root's padding, the meter strip and the gap beside it.
+#[cfg(test)]
+const AVAILABLE: f32 =
+    super::WIDTH as f32 - theme::SPACE_3 * 2.0 - super::meters::WIDTH - theme::SPACE_3;
 
 /// A row is as tall as its tallest cell: the band's name over the gain it is
 /// running at, which is two lines.
@@ -299,6 +315,21 @@ fn labelled_bar(
 
 #[cfg(test)]
 mod tests {
+    use super::{AVAILABLE, BAR_WIDTH, NAME_WIDTH, SIDE_WIDTH, SOLO_WIDTH, theme};
+
+    /// **A layout that overflows still lays out** (`.agents/rules/ui.md`), so
+    /// nothing fails when a column is pushed off the window — it is simply not
+    /// there. This is the assertion that notices.
+    #[test]
+    fn the_row_fits_the_window() {
+        let table = NAME_WIDTH + BAR_WIDTH * 3.0 + SOLO_WIDTH + theme::SPACE_2 * 4.0;
+        let fixed = table + SIDE_WIDTH + theme::SPACE_3;
+        assert!(
+            fixed <= AVAILABLE,
+            "the advanced row is {fixed} wide in a {AVAILABLE} space"
+        );
+    }
+
     use super::*;
 
     /// **Every parameter has somewhere to be touched.** Seven on MAIN and the

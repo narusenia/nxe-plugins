@@ -39,9 +39,7 @@ const WIDTH: u32 = theme::WINDOW_WIDTH;
 const HEIGHT: u32 = (theme::SPACE_3 * 2.0
     + nxe_ui::header::HEIGHT
     + theme::SPACE_3
-    + nxe_ui::readout::HEIGHT
-    + theme::SPACE_3
-    + field::HEIGHT
+    + FIGURE_HEIGHT
     + theme::SPACE_3
     + knob_block_height(SHAPE_KNOB)
     + theme::SPACE_3
@@ -220,10 +218,6 @@ pub fn create(
                 VStack::new(cx, |cx| {
                     header(cx);
 
-                    // **The three numbers a compressor is read by**, above
-                    // everything and never hidden (`SPK-19`).
-                    readout::view(cx);
-
                     // The figure. It is what the plugin *is* (`ui.md`).
                     figure_row(cx);
 
@@ -252,7 +246,7 @@ pub fn create(
             // **Flush to the bottom edge, and the full width of the window.**
             // A strip that stopped at the meters would read as one more panel
             // rather than as the window's floor (`nxe_ui::status`).
-            nxe_ui::status::bar(cx, "five-band dynamics + sparkle");
+            readout::status(cx);
         })
         // **`.root` is what paints the window.** Without it the background is
         // whatever the host's window is — black — and every `.panel`, which
@@ -271,26 +265,36 @@ pub fn create(
 
 /// The figure and the window that reads one band of it, side by side.
 ///
-/// **On the black ground, and it has to be.** It was the window's inverted
-/// panel for one build: the band regions read, and **the transfer curve beside
-/// them went completely black** — its ground comes from `.panel` in the
-/// stylesheet, which cannot see a nested palette, while its traces came from
-/// the palette and inverted to black with it. A figure is drawn by hand *and*
-/// styled by CSS, and only one of those halves follows the surface. The
-/// accent's resting place is the status bar instead (`nxe_ui::status`).
+/// **On the accent ground — the window's exception** (`.agents/rules/ui.md`).
+/// It is what the plugin *is*, and a glance should land on it.
+///
+/// **The transfer curve beside it had to stop being a `.panel` first.** For one
+/// build it was one, and it went *completely black*: its traces followed the
+/// nested palette and inverted, while its ground came from the stylesheet,
+/// which cannot see one. Anything that carries its own ground onto this surface
+/// has to read the palette for it (`curve::view`).
+///
+/// **The labels inside say `.ink-muted` for themselves**, for the same reason.
 fn figure_row(cx: &mut Context) {
-    HStack::new(cx, |cx| {
-        field::view(cx);
-        curve::view(cx);
+    nxe_ui::surface::inverted(cx, |cx| {
+        HStack::new(cx, |cx| {
+            field::view(cx);
+            curve::view(cx);
+        })
+        // **Not `.class("row")`.** That centres its children vertically, and
+        // `child-top: 1s` / `child-bottom: 1s` are two more stretches for the
+        // height to be divided among (`.agents/rules/vizia.md`). Both children
+        // here are given an explicit height and want the whole of it.
+        .height(Pixels(field::HEIGHT))
+        .width(Stretch(1.0))
+        .col_between(Pixels(theme::SPACE_3));
     })
-    // **Not `.class("row")`.** That centres its children vertically, and
-    // `child-top: 1s` / `child-bottom: 1s` are two more stretches for the
-    // height to be divided among (`.agents/rules/vizia.md`). Both children here
-    // are given an explicit height and want the whole of it.
-    .height(Pixels(field::HEIGHT))
-    .width(Stretch(1.0))
-    .col_between(Pixels(theme::SPACE_3));
+    .height(Pixels(FIGURE_HEIGHT))
+    .width(Stretch(1.0));
 }
+
+/// The inverted panel's height: the figure, plus the panel's own padding.
+const FIGURE_HEIGHT: f32 = field::HEIGHT + theme::SPACE_4 * 2.0;
 
 fn header(cx: &mut Context) {
     // The product's name — the vendor is its own mark to the left — with what

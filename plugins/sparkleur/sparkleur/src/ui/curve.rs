@@ -147,6 +147,12 @@ pub(crate) fn poll(params: &SparkleurParams, analysis: &Analysis, point: &mut Op
 }
 
 pub fn view(cx: &mut Context) {
+    // **The frame is painted from the palette, not from `.panel`.** This panel
+    // sits on the window's inverted surface, and **a stylesheet cannot see a
+    // nested palette**: styled by CSS the ground stayed black while the traces
+    // inverted to black with the surface, and the curve disappeared entirely
+    // (`SPK-23`, seen in a host). Read here, at build time, inside the surface.
+    let palette = theme::palette(cx);
     VStack::new(cx, |cx| {
         CurveView::new(
             cx,
@@ -178,6 +184,7 @@ pub fn view(cx: &mut Context) {
             Ui::params.map(|params| NAMES[shown(params, None)].to_string()),
         )
         .class("subtle")
+        .class("ink-muted")
         .width(Stretch(1.0))
         .height(Pixels(LABEL))
         .child_left(Stretch(1.0))
@@ -192,7 +199,11 @@ pub fn view(cx: &mut Context) {
     // and those are two more stretches for the height to be divided among
     // (`.agents/rules/vizia.md`). The panel came out 58 px tall with a 140 px
     // plot hanging out of the bottom of it.
-    .class("panel")
+    .background_color(palette.ground.vizia())
+    .border_width(Pixels(theme::RULE))
+    .border_color(palette.line.vizia())
+    .child_space(Pixels(theme::SPACE_4))
+    .row_between(Pixels(theme::SPACE_3))
     .width(Pixels(WIDTH))
     .height(Pixels(super::field::HEIGHT));
 }

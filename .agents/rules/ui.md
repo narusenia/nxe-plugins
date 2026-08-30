@@ -63,15 +63,19 @@ Every rule here was paid for. Where one has a scar, the scar is named.
   `theme::palette(cx)` walks up to the nearest `Palette` model. There are no
   `ACCENT*` constants to reach for — that is deliberate, because a constant is
   how five windows would quietly become one colour again.
-- **A window has exactly one inverted surface, and it is the status bar**
-  (`nxe_ui::status`). The strip along the bottom carries the line about whatever
-  the pointer is on, and it is the only place the plugin's colour appears before
-  anything is touched.
-- **Do not invert a figure.** It was tried, on Sparkleur, and the transfer curve
-  beside the band field went *completely black*: a figure is drawn by hand **and
-  styled by CSS**, its traces followed the nested palette and its ground came
-  from `.panel`, which cannot see one. **Only surfaces that are a ground and a
-  word can be inverted safely** — a strip has no halves to disagree.
+- **Two inverted surfaces, and no more.** The status bar along the bottom
+  (`nxe_ui::status`), which carries the line about whatever the pointer is on;
+  and **the window's figure**, which is what a glance should land on.
+- **The status bar is empty at rest.** What the window is for is already on the
+  header's right, and a strip that is always talking stops being read.
+- **Anything with its own ground on an inverted surface must read the palette
+  for it.** A stylesheet cannot see a nested palette. Sparkleur's transfer curve
+  was a `.panel` on the inverted figure and went *completely black* — its traces
+  followed the palette and inverted, its ground came from the CSS and did not.
+  **A figure is drawn by hand and styled by CSS, and only one half follows the
+  surface**; whatever carries a ground has to be given one
+  (`background-color` from `theme::palette(cx).ground`, read at build time
+  inside the surface).
 - **Inversion is a palette, not a second concept.** The surface builds
   `Palette::inverted` as a nested model and everything under it comes out right
   without knowing the surface exists. On that ground the accent has nowhere to

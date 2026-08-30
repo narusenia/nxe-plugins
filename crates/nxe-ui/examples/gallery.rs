@@ -702,7 +702,11 @@ fn status(cx: &mut Context) {
             "hover a control anywhere and this says what it is; the window's one inverted surface",
         )
         .class("subtle");
-        nxe_ui::status::bar(cx, "tokens and widgets");
+        nxe_ui::status::bar(cx, |cx| {
+            nxe_ui::status::figure(cx, "IN", Demo::readouts.index(0), "dB");
+            nxe_ui::status::figure(cx, "OUT", Demo::readouts.index(1), "dB");
+            nxe_ui::status::gauge(cx, "GATE", Demo::gauge);
+        });
     });
 }
 

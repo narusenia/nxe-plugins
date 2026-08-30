@@ -399,6 +399,9 @@ const _: () = assert!(LINE_TITLE > FONT_TITLE, "the wordmark will clip");
 /// redesign (`UI-19`).
 pub const RULE: f32 = 1.0;
 
+/// How thick a gauge in the status strip is — a bar on one line of text.
+pub const RULE_GAUGE: f32 = 6.0;
+
 /// How tall one segment of a segmented control is. In the stylesheet below and
 /// here, because a window that holds one has to add it up.
 pub const SEGMENT: f32 = 18.0;
