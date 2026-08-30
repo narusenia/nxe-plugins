@@ -419,7 +419,6 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| SPK-20 | **天井の所在を測る**（Sparkleur）。GR 到達量・生成成分・guard の介入量。**Hard の前提** | `../../plugins/sparkleur/docs/implementation/sparkleur-plan.md` |
 | VEL-18 | **天井の所在を測る**（Velour）。`AIR_INPUT_CEILING` が第一容疑。**Hard の前提** | `../../plugins/velour/docs/implementation/velour-plan.md` |
 | VDP-15 | **Parallax への改名**。商標と既存プラグインの衝突を確認してから確定する | `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md` |
 | — | **`VDP-14` の効き幅を実機で聴き直す**（**耳が要る**）。08-28 に一度聴いているが、それは直す前の版。`mise run install vocal-depth` | `vocal-depth-plan.md` |
@@ -569,8 +568,8 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | SPK-17 | CPU 予算 | ✅ **129 µs / 予算 533** |
 | SPK-18 | 既定値と耳 | ✅ 測定分は全部。**主観サインオフのみ未了**（リリースの阻害要因ではない） |
 | SPK-19 | **1 画面と、既にある数字を出す** — スイス様式への作り直し。3 つ全部に及んだ | ✅ |
-| SPK-20 | **天井の所在を測る**（GR 到達量・生成成分・guard の介入量。Hard の前提） | 🟡 |
-| SPK-21 | **MODE（Soft / Hard）**。既定 Soft、Soft は v0.1.4 とビット一致 | ⬜ |
+| SPK-20 | **天井の所在を測る** → **天井は上下コンプのしきい値**。guard / `LIFT` / ゲートは無実 | ✅ |
+| SPK-21 | **MODE（Soft / Hard）**。既定 Soft、Soft は v0.1.4 とビット一致。**動かすのはしきい値**（`SPK-20`） | 🟡 |
 | SPK-22 | **PUNCH**（`REQ-SPK-020` を v2 から回収。受入は crest factor） | ⬜ |
 | SPK-23 | **窓の作り直し**（**5 本の型をここで決める**） | ⬜ |
 
