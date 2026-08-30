@@ -65,6 +65,10 @@ pub struct Shape {
     pub gain_db: [f32; BAND_COUNT],
     pub solo: [bool; BAND_COUNT],
     pub factor: Factor,
+    /// How far the macros reach (`REQ-SPK-022`). **Not part of `CHARACTER`** —
+    /// the axis says what kind of thing happens, this says at what level it
+    /// starts happening.
+    pub mode: dynamics::Mode,
 }
 
 impl Default for Shape {
@@ -82,6 +86,7 @@ impl Default for Shape {
             gain_db: [0.0; BAND_COUNT],
             solo: [false; BAND_COUNT],
             factor: Factor::default(),
+            mode: dynamics::Mode::default(),
         }
     }
 }
@@ -149,7 +154,8 @@ impl Engine {
     ///
     /// [`process`]: Self::process
     pub fn set_shape(&mut self, shape: &Shape) {
-        let character = character::at(shape.character);
+        let mut character = character::at(shape.character);
+        character.curve = character.curve.in_mode(shape.mode);
 
         for crossover in &mut self.crossover {
             crossover.set_focus(shape.focus);
@@ -341,7 +347,8 @@ fn weights_of(shape: &Shape, character: &Character) -> [Weights; BAND_COUNT] {
 /// instead, by sinking the region it holds back (`SPK-13`).
 pub fn transfer_db(shape: &Shape, levels: &Levels, band: usize, input_db: f32) -> f32 {
     let band = band.min(BAND_COUNT - 1);
-    let character = character::at(shape.character);
+    let mut character = character::at(shape.character);
+    character.curve = character.curve.in_mode(shape.mode);
     let weights = weights_of(shape, &character);
 
     input_db

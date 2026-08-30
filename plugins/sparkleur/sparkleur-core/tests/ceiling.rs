@@ -14,6 +14,7 @@
 
 use nxe_audio::harmonics::{at_dbfs, pink, rms};
 use sparkleur_core::crossover::{BAND_COUNT, EDGES};
+use sparkleur_core::dynamics;
 use sparkleur_core::engine::{Engine, Levels, Shape};
 
 const RATE: f32 = 48_000.0;
@@ -115,6 +116,13 @@ fn flat_out(character: f32) -> Shape {
     }
 }
 
+fn flat_out_in(character: f32, mode: dynamics::Mode) -> Shape {
+    Shape {
+        mode,
+        ..flat_out(character)
+    }
+}
+
 fn all_in() -> Levels {
     Levels {
         spark: 1.0,
@@ -142,6 +150,43 @@ fn where_the_ceiling_is() {
     }
 }
 
+/// **What the detector actually reads**, which is where a threshold has to be
+/// placed. The thresholds are numbers on this scale, not on the input's: a
+/// signal at −18 dBFS split five ways puts every band a long way below it.
+#[test]
+fn where_the_bands_sit() {
+    println!("\n   input     SUB    BODY     MID    PRES     AIR");
+    for dbfs in [-30.0, -24.0, -18.0, -12.0, -6.0] {
+        let length = (RATE * SECONDS) as usize;
+        let dry = at_dbfs(pink(1.0, length), dbfs);
+        let mut engine = Engine::new(RATE);
+        engine.set_shape(&flat_out(0.5));
+        let levels = all_in();
+
+        let mut sums = [0.0f64; BAND_COUNT];
+        let settled = length - length / 10;
+        for (index, sample) in dry.iter().enumerate() {
+            engine.process((*sample, *sample), &levels);
+            if index > length / 10 {
+                for (sum, level) in sums.iter_mut().zip(engine.levels_db()) {
+                    *sum += f64::from(level);
+                }
+            }
+        }
+        print!("  {dbfs:6.1}");
+        for sum in sums {
+            print!(" {:7.2}", sum / settled as f64);
+        }
+        println!();
+    }
+    println!(
+        "  thresholds: down {:.1}, up {:.1}, floor {:.1}",
+        dynamics::DOWN_THRESHOLD_DB,
+        dynamics::UP_THRESHOLD_DB,
+        dynamics::FLOOR_DB
+    );
+}
+
 /// **Where the dynamics engage at all.** The thresholds are fixed points on the
 /// detector's scale, so how hard the plugin works is a question about the
 /// material's level as much as about the settings.
@@ -166,6 +211,40 @@ fn across_the_input_level() {
             reach.down_db, reach.up_db, reach.opening, reach.level_db, reach.top_db
         );
     }
+}
+
+/// **What `MODE` bought.** The same sweep as `across_the_input_level`, in both
+/// modes — the pair is the acceptance condition for `SPK-21`.
+#[test]
+fn what_hard_reaches() {
+    println!("\n   input      soft down/up/level        hard down/up/level");
+    for dbfs in [-30.0, -24.0, -18.0, -12.0, -6.0] {
+        let soft = run_at(&flat_out_in(0.5, dynamics::Mode::Soft), &all_in(), dbfs);
+        let hard = run_at(&flat_out_in(0.5, dynamics::Mode::Hard), &all_in(), dbfs);
+        println!(
+            "  {dbfs:6.1}   {:6.2} {:6.2} {:6.2}      {:6.2} {:6.2} {:6.2}",
+            soft.down_db, soft.up_db, soft.level_db, hard.down_db, hard.up_db, hard.level_db
+        );
+    }
+
+    // **The acceptance condition for `SPK-21`.** At the level the plugin is
+    // used at, `Hard` has to reach materially further than `Soft` on both
+    // sides, and it has to do it without turning into a loudness change — a
+    // plugin that mostly makes things quieter reads as worse, not as more.
+    let soft = run_at(&flat_out_in(0.5, dynamics::Mode::Soft), &all_in(), -18.0);
+    let hard = run_at(&flat_out_in(0.5, dynamics::Mode::Hard), &all_in(), -18.0);
+    let reach = |r: &Reach| r.up_db - r.down_db;
+    assert!(
+        reach(&hard) - reach(&soft) > 5.0,
+        "Hard reaches {:.2} dB against Soft's {:.2}",
+        reach(&hard),
+        reach(&soft)
+    );
+    assert!(
+        hard.level_db.abs() < 1.0,
+        "Hard moved the output by {:.2} dB",
+        hard.level_db
+    );
 }
 
 /// **The diagnostic.** If turning the protections down makes the effect

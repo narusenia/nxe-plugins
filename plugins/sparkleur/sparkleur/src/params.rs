@@ -19,6 +19,7 @@
 use nih_plug::prelude::*;
 use nxe_audio::oversample::Factor;
 use sparkleur_core::character;
+use sparkleur_core::dynamics::Mode;
 use sparkleur_core::engine::{Levels, Shape};
 
 /// How hard the Sparkle bus runs internally.
@@ -33,6 +34,36 @@ pub enum FactorParam {
     #[id = "4x"]
     #[name = "4x"]
     Four,
+}
+
+/// How far the macros are allowed to reach (`REQ-SPK-022`).
+///
+/// A separate type from `sparkleur_core::dynamics::Mode` for the same reason
+/// [`FactorParam`] is: deriving nih-plug's `Enum` on the shared type would make
+/// the core depend on nih-plug.
+///
+/// **The variants carry `#[id]`, and that is what makes this safe to extend.**
+/// nih-plug writes an enum with ids into saved state as its id string rather
+/// than as a number, so a third step can be added later without moving what an
+/// existing session means.
+#[derive(Enum, Debug, PartialEq, Eq, Clone, Copy, Default)]
+pub enum ModeParam {
+    #[id = "soft"]
+    #[name = "Soft"]
+    #[default]
+    Soft,
+    #[id = "hard"]
+    #[name = "Hard"]
+    Hard,
+}
+
+impl From<ModeParam> for Mode {
+    fn from(value: ModeParam) -> Self {
+        match value {
+            ModeParam::Soft => Mode::Soft,
+            ModeParam::Hard => Mode::Hard,
+        }
+    }
 }
 
 impl From<FactorParam> for Factor {
@@ -93,6 +124,14 @@ pub struct SparkleurParams {
     pub de_harsh: FloatParam,
     #[id = "subprot"]
     pub sub_protect: FloatParam,
+
+    /// How far the macros reach (`REQ-SPK-022`).
+    ///
+    /// **The default is `Soft`, and it has to be.** A session saved before this
+    /// parameter existed has no value for it, so it loads with the default —
+    /// anything but `Soft` changes the sound of work that is already finished.
+    #[id = "mode"]
+    pub mode: EnumParam<ModeParam>,
 
     #[id = "os"]
     pub oversample: EnumParam<FactorParam>,
@@ -196,6 +235,8 @@ impl Default for SparkleurParams {
 
             de_harsh: bipolar("De-Harsh"),
             sub_protect: bipolar("Sub Protect"),
+
+            mode: EnumParam::new("Mode", ModeParam::Soft),
 
             // 4x by default: 2x is a cost saving, not an equal — it leaves
             // aliasing about 14 dB higher (`nxe_audio::oversample`).
@@ -323,6 +364,7 @@ impl SparkleurParams {
                 self.solo_air.value(),
             ],
             factor: self.oversample.value().into(),
+            mode: self.mode.value().into(),
         }
     }
 
@@ -371,6 +413,7 @@ impl SparkleurParams {
                 self.solo_air.value(),
             ],
             factor: self.oversample.value().into(),
+            mode: self.mode.value().into(),
         }
     }
 
@@ -414,10 +457,10 @@ mod tests {
     /// **Thirty-three** (`ui.md`). If this moves, the count in the interface
     /// specification moves with it.
     #[test]
-    fn there_are_thirty_three_parameters() {
+    fn there_are_thirty_four_parameters() {
         let params = SparkleurParams::default();
         let count = params.param_map().len();
-        assert_eq!(count, 33, "the parameter count moved");
+        assert_eq!(count, 34, "the parameter count moved");
     }
 
     /// Every control that defers to `CHARACTER` rests at zero, and the weights

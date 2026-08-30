@@ -21,6 +21,7 @@ use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
 use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
 use nxe_ui::curve::Curve;
 use nxe_ui::heartbeat::Lifeline;
+use nxe_ui::hint::Describe;
 use nxe_ui::{font, theme};
 use sparkleur_core::crossover::BAND_COUNT;
 use std::sync::Arc;
@@ -269,14 +270,21 @@ fn figure_row(cx: &mut Context) {
 }
 
 fn header(cx: &mut Context) {
-    // The shipped name, in full — `NAME` in `lib.rs`, the bundle, and the
-    // host's plugin list all say the same thing — with the one line that says
-    // what the window is for, and the rule under both (`nxe_ui::header`).
+    // The product's name — the vendor is its own mark to the left — with what
+    // the window is for on the right, and the rule under both
+    // (`nxe_ui::header`).
     //
     // **No wrapping row.** `.class("row")` centres its children vertically, and
     // the header wants the whole of the height it asks for
     // (`.agents/rules/vizia.md`).
-    nxe_ui::header::header(cx, "Sparkleur", "five-band dynamics + sparkle", |_| {});
+    //
+    // **`MODE` is in the band rather than in a panel** because it changes what
+    // every other control does. A switch that re-scales the whole window and
+    // sits in a row of ordinary controls gets missed (`.agents/rules/ui.md`).
+    nxe_ui::header::header(cx, "Sparkleur", "five-band dynamics + sparkle", |cx| {
+        nxe_plug_ui::segmented(cx, Ui::params, |params| &params.mode, &["Soft", "Hard"])
+            .describe("how far every macro reaches — Hard works where a vocal sits");
+    });
 }
 
 /// The seven controls that shape the sound, on one line.
@@ -454,7 +462,7 @@ mod tests {
     #[test]
     fn every_parameter_has_a_control() {
         const PARAMS: &str = include_str!("../params.rs");
-        const COUNT: usize = 33;
+        const COUNT: usize = 34;
         const SOURCES: [&str; 4] = [
             include_str!("mod.rs"),
             include_str!("advanced.rs"),

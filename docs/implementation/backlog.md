@@ -569,8 +569,8 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | SPK-18 | 既定値と耳 | ✅ 測定分は全部。**主観サインオフのみ未了**（リリースの阻害要因ではない） |
 | SPK-19 | **1 画面と、既にある数字を出す** — スイス様式への作り直し。3 つ全部に及んだ | ✅ |
 | SPK-20 | **天井の所在を測る** → **天井は上下コンプのしきい値**。guard / `LIFT` / ゲートは無実 | ✅ `3716b18` |
-| SPK-21 | **MODE（Soft / Hard）**。既定 Soft、Soft は v0.1.4 とビット一致。**動かすのはしきい値**（`SPK-20`） | 🟡 |
-| SPK-22 | **PUNCH**（`REQ-SPK-020` を v2 から回収。受入は crest factor） | ⬜ |
+| SPK-21 | **MODE（Soft / Hard）** — しきい値を −18/−36 → −24/−18 に。到達 0.7 → 6.9 dB、出力は +0.36 dB | ✅ |
+| SPK-22 | **PUNCH**（`REQ-SPK-020` を v2 から回収。受入は crest factor） | 🟡 |
 | SPK-23 | **窓の作り直し**（**5 本の型をここで決める**） | ⬜ |
 
 ### Air — `../../plugins/air/docs/implementation/air-plan.md`
