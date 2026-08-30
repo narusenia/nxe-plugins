@@ -13,6 +13,7 @@
 | **新しいプラグインを足す手順** | [specifications/architecture.md](specifications/architecture.md) の「新しいプラグインを足す」 |
 | **今どの実装単位があって、どれが着手できるか** | [implementation/backlog.md](implementation/backlog.md) |
 | **引き継ぎ（今どこで、次に何を知るべきか）** | [HANDOVER.md](HANDOVER.md) |
+| **UI を開くと DAW が重くなる問題**（原因 2 つ、対策、外した仮説、測り方） | [investigations/ui-frame-cost.md](investigations/ui-frame-cost.md) |
 | **共通 UI コンポーネントの計画** | [implementation/nxe-ui-plan.md](implementation/nxe-ui-plan.md) |
 | **共通の解析（レベル・ステレオ像・スペクトラム）の計画** | [implementation/nxe-dsp-plan.md](implementation/nxe-dsp-plan.md) |
 | **ワークスペース骨格と CI の計画** | [implementation/infra-plan.md](implementation/infra-plan.md) |
@@ -34,7 +35,8 @@
 ついていくべき文書は、そのプラグインの下に置く。**
 
 - ここ（`docs/`）に置くもの — クレート構成、依存の規則、ビルドと配布、
-  複数プラグインをまたぐ実装の順序
+  複数プラグインをまたぐ実装の順序、複数プラグインに共通の調査
+  （`investigations/`）
 - プラグインの下に置くもの — そのプラグインの要件・DSP 仕様・UI 仕様・実装計画
 
 例外は `implementation/backlog.md` と `roadmap.md`。プラグイン固有の実装単位も
