@@ -34,7 +34,7 @@ use std::time::Duration;
 /// the text lines do too — so adding a row to the table moves the window
 /// instead of running off the bottom of it. It ran off the bottom three times
 /// in one afternoon before this (`SPK-19`).
-const WIDTH: u32 = 720;
+const WIDTH: u32 = theme::WINDOW_WIDTH;
 const HEIGHT: u32 = (theme::SPACE_3 * 2.0
     + nxe_ui::header::HEIGHT
     + theme::SPACE_3

@@ -38,7 +38,7 @@ use std::time::Duration;
 /// the question "how wide, and how far apart" needs at once; Sparkleur's
 /// thirty-three and Velour's twenty-two are asked band by band and cannot be
 /// asked of half a panel. The number is not what decides it.
-const WIDTH: u32 = 720;
+const WIDTH: u32 = theme::WINDOW_WIDTH;
 const HEIGHT: u32 = (theme::SPACE_3 * 2.0
     + nxe_ui::header::HEIGHT
     + theme::SPACE_3

@@ -28,7 +28,7 @@ mod readout;
 /// the column below has a known height — `nxe_ui::theme::LINE_*` exists so that
 /// the text lines do too — so adding a row moves the window instead of running
 /// off the bottom of it (`.agents/rules/ui.md`).
-pub(crate) const WIDTH: u32 = 720;
+pub(crate) const WIDTH: u32 = theme::WINDOW_WIDTH;
 const HEIGHT: u32 = (theme::SPACE_3 * 2.0
     + nxe_ui::header::HEIGHT
     + theme::SPACE_3

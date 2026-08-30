@@ -32,7 +32,7 @@ mod readout;
 /// the column below has a known height — `nxe_ui::theme::LINE_*` exists so that
 /// the text lines do too — so adding a row moves the window instead of running
 /// off the bottom of it (`.agents/rules/ui.md`).
-pub(crate) const WIDTH: u32 = 720;
+pub(crate) const WIDTH: u32 = theme::WINDOW_WIDTH;
 const HEIGHT: u32 = (theme::SPACE_3 * 2.0
     + nxe_ui::header::HEIGHT
     + theme::SPACE_3
@@ -338,7 +338,9 @@ mod tests {
     /// (`.agents/rules/ui.md`).
     #[test]
     fn the_window_is_the_size_of_its_parts() {
-        assert_eq!(super::WIDTH, 720);
+        // **Against the shared constant, not against a number.** Writing the
+        // number here is how one window quietly stops matching the other four.
+        assert_eq!(super::WIDTH, nxe_ui::theme::WINDOW_WIDTH);
         // Nothing to compare the height against but its own arithmetic — what
         // this pins is that it *is* arithmetic, so a part changing size moves
         // the window instead of running off it.

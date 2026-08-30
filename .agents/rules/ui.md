@@ -23,9 +23,12 @@ Every rule here was paid for. Where one has a scar, the scar is named.
   caller does not have, and a window sized around one runs off the bottom the
   next time a row is added. It ran off five times in one afternoon before this
   rule (`SPK-19`).
-- **The three plugins share one width.** Opened side by side they are one
-  product; different widths make them look like three. Heights differ, because
-  the amount inside them differs.
+- **The five plugins share one width, and it is one constant**
+  (`theme::WINDOW_WIDTH`). Opened side by side they are one product; different
+  widths make them look like five. **Five copies of the same number are
+  identical by accident**, which is how they drift — the same reason the header
+  is one function. Heights differ, because the amount inside them differs, and
+  each is the sum of its own parts.
 - **Never ask the host to resize the editor.** A disclosure that resized the
   window wedged Ableton (`DBL-*`). A control that has to become reachable does
   so inside a fixed window.

@@ -296,6 +296,23 @@ pub const RADIUS_CARD: f32 = 0.0;
 const _: () = assert!(RADIUS_CONTROL <= 2.0, "controls are getting round");
 const _: () = assert!(RADIUS_CARD <= 2.0, "surfaces are getting round");
 
+/// **The one width every plugin window is.**
+///
+/// Opened side by side the plugins are one product; different widths make them
+/// look like several (`.agents/rules/ui.md`). It lives here because five copies
+/// of the same number are identical by accident rather than on purpose — the
+/// same reason the header is one function.
+///
+/// **It was 720**, set when there were three windows and no coloured surface in
+/// any of them. The inverted panel wants room beside it, and a row of marks
+/// with words under them wants more than a row of knobs did (`UI-20`).
+///
+/// Heights are not here: they differ because the amount inside each window
+/// differs, and each is the sum of its own parts.
+pub const WINDOW_WIDTH: u32 = 880;
+
+const _: () = assert!(WINDOW_WIDTH.is_multiple_of(4), "the window is off the grid");
+
 /// The spacing scale. Five steps on a four-pixel grid; nothing between them.
 pub const SPACE_1: f32 = 4.0;
 pub const SPACE_2: f32 = 8.0;
