@@ -20,7 +20,6 @@ use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
 use nxe_ui::band::{Band, BandField, BandFieldModifiers, BandGesture};
 use nxe_ui::theme;
 use sparkleur_core::crossover::{BAND_COUNT, edges_for};
-use std::sync::Arc;
 
 /// The axis the caller owns, because the widget cannot label its own gridlines
 /// (`.agents/rules/vizia.md`).
@@ -74,7 +73,7 @@ fn as_share(decibels: f32) -> f32 {
 /// only map one field (`.agents/rules/vizia.md`) — so this map reads the handoff
 /// directly. Any change to the model re-evaluates it, and the heartbeat is a
 /// change to the model thirty times a second.
-fn bands_of(params: &SparkleurParams, host_rate: f32, analysis: &Analysis) -> Vec<Band> {
+pub(crate) fn bands_of(params: &SparkleurParams, host_rate: f32, analysis: &Analysis) -> Vec<Band> {
     let gains = analysis.gains.read();
     let edges = edges_for(params.focus.value(), host_rate);
     let levels = [
@@ -122,7 +121,7 @@ fn bands_of(params: &SparkleurParams, host_rate: f32, analysis: &Analysis) -> Ve
         .collect()
 }
 
-pub fn view(cx: &mut Context, host_rate: f32, analysis: Arc<Analysis>) {
+pub fn view(cx: &mut Context) {
     let trims: Vec<ParamWidgetBase> = vec![
         ParamWidgetBase::new(cx, Ui::params, |params| &params.gain_sub),
         ParamWidgetBase::new(cx, Ui::params, |params| &params.gain_body),
@@ -135,7 +134,7 @@ pub fn view(cx: &mut Context, host_rate: f32, analysis: Arc<Analysis>) {
     VStack::new(cx, |cx| {
         BandField::new(
             cx,
-            Ui::params.map(move |params| bands_of(params, host_rate, &analysis)),
+            Ui::bands,
             // What came in. **One curve, not Velour's two** — there is no
             // separable added layer here, and the gains are what says what the
             // plugin did (`REQ-SPK-018`).
@@ -143,6 +142,15 @@ pub fn view(cx: &mut Context, host_rate: f32, analysis: Arc<Analysis>) {
             Ui::wet,
             MARKS.iter().map(|(hz, _)| axis_x(*hz)).collect(),
             move |cx, gesture| {
+                // **Rebuild the regions now, not on the next heartbeat.**
+                // `Ui::bands` is written by the heartbeat, which is right for
+                // what the audio thread publishes and wrong for a drag: the
+                // fader would move under the pointer and the region behind it
+                // would follow up to an interval later. The write below has
+                // already happened by the time this is dispatched, so the
+                // refresh sees the new value.
+                cx.emit(UiEvent::Poll);
+
                 let index = match gesture {
                     BandGesture::Begin(index)
                     | BandGesture::End(index)

@@ -12,11 +12,21 @@
 //! and the far end of that is a pair that cancels when summed to mono. The
 //! Voice Field says the image is wide; it cannot say whether the width
 //! survives.
+//!
+//! **The figures are copied into the model, not read inside a lens** — see
+//! `nxe_ui::readout` for why that is not the cheap way round it looks.
 
 use super::{METER_FLOOR_DB, Ui};
+
+/// Where each figure sits in `Ui::readouts`. **The order is the strip's.**
+const IN: usize = 0;
+const OUT: usize = 1;
+const CORRELATION: usize = 2;
+
+/// How many figures the strip prints.
+pub(crate) const FIGURES: usize = 3;
 use crate::analysis::Analysis;
 use nih_plug_vizia::vizia::prelude::*;
-use std::sync::Arc;
 
 /// Below this the number is not a level, it is a floor.
 const SILENT_DB: f32 = METER_FLOOR_DB;
@@ -49,40 +59,20 @@ fn correlation(value: f32) -> String {
     format!("{:+.2}", value.clamp(-1.0, 1.0))
 }
 
-pub fn view(cx: &mut Context, analysis: Arc<Analysis>) {
-    nxe_ui::readout::strip(cx, move |cx| {
-        // Read inside the lens rather than copied into the model: the handoff's
-        // identity never changes, and the heartbeat is a change to the model
-        // thirty times a second.
-        let input = analysis.clone();
-        nxe_ui::readout::cell(
-            cx,
-            "IN",
-            Ui::params.map(move |_| {
-                let frame = input.peaks.read();
-                level(frame[0].max(frame[1]))
-            }),
-            "dB",
-        );
+/// Re-reads the handoff and rewrites the strip's figures. Called on the
+/// heartbeat, which is the only thing that should move them.
+pub(crate) fn poll(analysis: &Analysis, figures: &mut [String]) {
+    let peaks = analysis.peaks.read();
+    figures[IN] = level(peaks[0].max(peaks[1]));
+    figures[OUT] = level(peaks[2].max(peaks[3]));
+    figures[CORRELATION] = correlation(analysis.correlation.read()[0]);
+}
 
-        let output = analysis.clone();
-        nxe_ui::readout::cell(
-            cx,
-            "OUT",
-            Ui::params.map(move |_| {
-                let frame = output.peaks.read();
-                level(frame[2].max(frame[3]))
-            }),
-            "dB",
-        );
-
-        let width = analysis.clone();
-        nxe_ui::readout::cell(
-            cx,
-            "CORRELATION",
-            Ui::params.map(move |_| correlation(width.correlation.read()[0])),
-            "",
-        );
+pub fn view(cx: &mut Context) {
+    nxe_ui::readout::strip(cx, |cx| {
+        nxe_ui::readout::cell(cx, "IN", Ui::readouts.index(IN), "dB");
+        nxe_ui::readout::cell(cx, "OUT", Ui::readouts.index(OUT), "dB");
+        nxe_ui::readout::cell(cx, "CORRELATION", Ui::readouts.index(CORRELATION), "");
     });
 }
 

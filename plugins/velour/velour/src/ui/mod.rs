@@ -79,6 +79,16 @@ pub(crate) struct Ui {
     /// Peak and held peak per meter, normalized onto the meter's own scale.
     peaks: Vec<f32>,
     holds: Vec<f32>,
+    /// The three regions, and the readout strip's printed figures.
+    ///
+    /// **Both copied here rather than read inside a lens.** A lens that reads
+    /// the handoff is re-evaluated once per *frame*, so the window redrew at the
+    /// frame rate whenever the guards moved — see `nxe_ui::readout`.
+    bands: Vec<nxe_ui::band::Band>,
+    readouts: Vec<String>,
+    /// What `bands` needs besides the parameters, kept because the heartbeat
+    /// rebuilds them and the rate is read once when the window opens.
+    host_rate: f32,
 }
 
 /// How often the display re-reads the analysis. 30 Hz is as fast as a meter
@@ -140,12 +150,8 @@ impl Model for Ui {
                 let holds = self.analysis.holds.read();
                 self.peaks = peaks.iter().copied().map(meter_position).collect();
                 self.holds = holds.iter().copied().map(meter_position).collect();
-                // The guards are **not** copied here. The figure reads them
-                // inside its own lens, because a region carries its reduction
-                // in the same value as its level and a lens can only map one
-                // field (`.agents/rules/vizia.md`). Any change to this model —
-                // this heartbeat included — re-evaluates that lens, which is
-                // what makes the regions sink in time.
+                self.bands = field::bands_of(&self.params, self.host_rate, &self.analysis);
+                readout::poll(&self.analysis, &mut self.readouts);
             }
         });
     }
@@ -182,6 +188,9 @@ pub fn create(
             wet: Curve::new(),
             peaks: vec![0.0; METERS],
             holds: vec![0.0; METERS],
+            bands: field::bands_of(&params, host_rate, &analysis),
+            readouts: vec![String::new(); readout::FIGURES],
+            host_rate,
             params: params.clone(),
             heartbeat,
         }
@@ -193,10 +202,10 @@ pub fn create(
 
                 // **What is happening right now**, above everything and never
                 // hidden (`SPK-19`).
-                readout::view(cx, analysis.clone());
+                readout::view(cx);
 
                 // The figure. It is what the plugin *is* (`ui.md`).
-                figure_row(cx, host_rate, analysis.clone());
+                figure_row(cx);
 
                 // **No tabs.** They hid the per-band layer behind a click, and
                 // "which band is that harshness in" cannot be asked of half a
@@ -222,9 +231,9 @@ pub fn create(
 /// The figure, with the transfer curve beside it. The curve is a fixed column:
 /// two stretching children would split the row in half and leave the figure
 /// drawn across half the width it is meant to span.
-fn figure_row(cx: &mut Context, host_rate: f32, analysis: Arc<Analysis>) {
+fn figure_row(cx: &mut Context) {
     HStack::new(cx, |cx| {
-        field::view(cx, host_rate, analysis);
+        field::view(cx);
         curve::view(cx);
     })
     // **Not `.class("row")`.** That centres its children vertically, and

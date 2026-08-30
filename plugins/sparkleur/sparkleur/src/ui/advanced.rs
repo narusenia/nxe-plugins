@@ -19,7 +19,6 @@ use crate::analysis::Analysis;
 use nih_plug_vizia::vizia::prelude::*;
 use nxe_ui::{font, theme};
 use sparkleur_core::crossover::BAND_COUNT;
-use std::sync::Arc;
 
 /// The name column and the width one bar gets. Fixed rather than stretched, so
 /// the five rows and the header line up.
@@ -58,9 +57,18 @@ pub const HEIGHT: f32 = theme::LINE_EYEBROW
     + ROW_HEIGHT * BAND_COUNT as f32
     + theme::SPACE_2 * (BAND_COUNT - 1) as f32;
 
-pub fn view(cx: &mut Context, analysis: Arc<Analysis>) {
+/// Rewrites what each band is running at. Called on the heartbeat — **not read
+/// inside a lens**, which is re-evaluated once per frame (`nxe_ui::readout`).
+pub(crate) fn poll(analysis: &Analysis, applied_gains: &mut [String]) {
+    let gains = analysis.gains.read();
+    for (text, gain) in applied_gains.iter_mut().zip(gains.iter()) {
+        *text = applied(*gain);
+    }
+}
+
+pub fn view(cx: &mut Context) {
     HStack::new(cx, |cx| {
-        table(cx, analysis);
+        table(cx);
         Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
         side(cx);
     })
@@ -70,7 +78,7 @@ pub fn view(cx: &mut Context, analysis: Arc<Analysis>) {
 }
 
 /// `UP` / `DOWN` / `GAIN` / `SOLO`, one row per band.
-fn table(cx: &mut Context, analysis: Arc<Analysis>) {
+fn table(cx: &mut Context) {
     VStack::new(cx, |cx| {
         HStack::new(cx, |cx| {
             heading(cx, "", NAME_WIDTH);
@@ -84,7 +92,7 @@ fn table(cx: &mut Context, analysis: Arc<Analysis>) {
         .col_between(Pixels(theme::SPACE_2));
 
         for index in 0..BAND_COUNT {
-            row(cx, index, analysis.clone());
+            row(cx, index);
         }
     })
     .height(Auto)
@@ -114,7 +122,7 @@ fn heading(cx: &mut Context, text: &'static str, width: f32) {
         .height(Pixels(theme::LINE_EYEBROW));
 }
 
-fn row(cx: &mut Context, index: usize, analysis: Arc<Analysis>) {
+fn row(cx: &mut Context, index: usize) {
     HStack::new(cx, |cx| {
         // **The name and what the band is doing, together** (`SPK-19`). The
         // figure moves the region by this number already; a table of five rows
@@ -124,13 +132,10 @@ fn row(cx: &mut Context, index: usize, analysis: Arc<Analysis>) {
                 .class("label")
                 .class("decoration")
                 .height(Pixels(theme::LINE_LABEL));
-            font::value(
-                cx,
-                Ui::params.map(move |_| applied(analysis.gains.read()[index])),
-            )
-            .class("subtle")
-            .class("decoration")
-            .height(Pixels(theme::LINE_VALUE));
+            font::value(cx, Ui::applied_gains.index(index))
+                .class("subtle")
+                .class("decoration")
+                .height(Pixels(theme::LINE_VALUE));
         })
         // The row marks the region while the pointer is on it, so the name
         // must not eat the hover: only the row is hoverable.

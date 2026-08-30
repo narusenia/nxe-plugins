@@ -17,6 +17,25 @@
 //!
 //! Sparkleur's reduction readout twitched on both counts before this existed
 //! (`plugins/sparkleur/docs/implementation/sparkleur-plan.md`, `SPK-19`).
+//!
+//! ## Give it a value from the model, never a lens that reads the audio thread
+//!
+//! Every plugin built its cells from a lens that read the handoff directly —
+//! `Ui::params.map(|_| level(peaks.read()[0]))` — on the reasoning that the
+//! heartbeat re-evaluates it thirty times a second. **That reasoning was
+//! wrong.** `binding_system` re-evaluates every store **once per frame**,
+//! whatever the heartbeat does, so such a lens formats a fresh `String` 66.7
+//! times a second and redraws the window every time the number moves.
+//!
+//! Measured in Studio One with audio running, one open window took **62 % of
+//! the host's UI thread**, against 1 % for the same window in silence
+//! (`docs/investigations/ui-frame-cost.md`). The window is drawn on the host's
+//! run loop, so that is the host's own interface stalling.
+//!
+//! With the figure copied into the model on the heartbeat, `BasicStore`
+//! compares the `String` against the last one and the window redraws when the
+//! **printed** figure changes — half as often, and not at all while a reading
+//! is steady.
 
 use crate::font;
 use crate::meter::Meter;
@@ -69,7 +88,11 @@ pub fn cell(
             font::value(cx, value.clone())
                 .class("readout")
                 .width(Pixels(VALUE_WIDTH))
-                .height(Auto)
+                // **Fixed, not `Auto`.** A view whose size comes from its
+                // contents makes every changed string a relayout of the whole
+                // window, and this string changes with the audio
+                // (`theme::LINE_READOUT`).
+                .height(Pixels(theme::LINE_READOUT))
                 .text_align(TextAlign::Right);
             Label::new(cx, unit).class("subtle").top(Stretch(1.0));
         })
