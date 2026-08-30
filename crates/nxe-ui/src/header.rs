@@ -93,11 +93,16 @@ pub fn header(
             // wordmark first and read as a second one — two marks competing in
             // the corner a window is read from. Here it closes the line instead
             // of opening it.
+            // **On the role's line, not centred in the band.** Centred, it
+            // sits at the middle of a row whose other occupant is 20 px of text
+            // that does not fill its own box — so it read as slightly off
+            // against everything around it. Sharing the role's baseline offset
+            // makes it part of a line rather than a thing floating beside one.
             logo::Mark::new(cx)
                 .width(Pixels(logo::width_at(VENDOR_HEIGHT)))
                 .height(Pixels(VENDOR_HEIGHT))
                 .top(Stretch(1.0))
-                .bottom(Stretch(1.0));
+                .bottom(Pixels(theme::SPACE_1));
         })
         .height(Pixels(theme::LINE_TITLE))
         .width(Stretch(1.0))

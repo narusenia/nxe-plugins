@@ -310,7 +310,7 @@ fn header(cx: &mut Context) {
     // sits in a row of ordinary controls gets missed (`.agents/rules/ui.md`).
     nxe_ui::header::header(cx, "Sparkleur", "five-band dynamics + sparkle", |cx| {
         nxe_plug_ui::segmented(cx, Ui::params, |params| &params.mode, &["Soft", "Hard"])
-            .describe("how far every macro reaches — Hard works where a vocal sits");
+            .describe("How far every macro reaches");
     });
 }
 
@@ -486,6 +486,48 @@ mod tests {
     /// host's generic view, and **nothing else would notice** — it compiles, it
     /// saves, it automates, and the window simply never mentions it. Thirty-three
     /// is enough of them for one to go missing quietly.
+    /// **The status bar cannot clip.** A sentence longer than the space the
+    /// figures leave is drawn straight over them (`SPK-23`, seen in a host),
+    /// and neither the text handling nor the `clip-path` binding in this vizia
+    /// revision offers a way to cut it. So the limit is enforced here, on the
+    /// source that writes the sentences.
+    #[test]
+    fn no_hint_is_longer_than_the_strip() {
+        const SOURCES: [&str; 4] = [
+            include_str!("mod.rs"),
+            include_str!("advanced.rs"),
+            include_str!("field.rs"),
+            include_str!("curve.rs"),
+        ];
+
+        let mut checked = 0;
+        for source in SOURCES {
+            for rest in source.split(".describe(\"").skip(1) {
+                let hint = rest.split('"').next().unwrap_or_default();
+                checked += 1;
+                assert!(
+                    hint.chars().count() <= nxe_ui::status::MAX_HINT,
+                    "{hint:?} is {} characters",
+                    hint.chars().count()
+                );
+            }
+            // The knob and bar helpers take theirs as an argument, so they are
+            // written at the call site rather than beside `.describe`.
+            for rest in source.split("\", \"").skip(1) {
+                let hint = rest.split('"').next().unwrap_or_default();
+                if hint.starts_with(char::is_uppercase) && hint.contains(' ') {
+                    checked += 1;
+                    assert!(
+                        hint.chars().count() <= nxe_ui::status::MAX_HINT,
+                        "{hint:?} is {} characters",
+                        hint.chars().count()
+                    );
+                }
+            }
+        }
+        assert!(checked > 10, "the scan found almost nothing: {checked}");
+    }
+
     #[test]
     fn every_parameter_has_a_control() {
         const PARAMS: &str = include_str!("../params.rs");

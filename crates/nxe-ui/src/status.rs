@@ -36,6 +36,19 @@ const VALUE_WIDTH: f32 = 40.0;
 /// How wide a gauge in the strip is.
 const GAUGE_WIDTH: f32 = 64.0;
 
+/// The longest a hint may be, in characters.
+///
+/// **The strip cannot clip.** A sentence wider than the space the figures leave
+/// is drawn straight over them, and neither this vizia revision's text handling
+/// nor its `clip-path` binding offers a way to cut it. So the limit lives where
+/// the sentences are written: each plugin's UI has a test that walks its own
+/// source for `.describe("…")` and fails on anything longer.
+///
+/// Five figures leave roughly 360 px on an 880 px window, and a 12 px Inter
+/// character averages a little under 7 — so the number is a rounded-down
+/// version of that, with room for a wider-than-average sentence.
+pub const MAX_HINT: usize = 46;
+
 /// A figure in the strip: its name, the number, and the unit.
 ///
 /// **Set at the label and value sizes, not the readout's.** A strip is one line
@@ -106,11 +119,19 @@ pub fn bar(cx: &mut Context, figures: impl Fn(&mut Context) + 'static) {
     let flipped = theme::palette(cx).inverted();
     HStack::new(cx, move |cx| {
         flipped.build(cx);
+        // **Nothing clips this.** There is no text overflow in this vizia
+        // revision and `clip-path` cannot be bound from the modifier, so a
+        // sentence longer than the space left over is simply *drawn* past the
+        // end of its box — over the figures (`SPK-23`, seen in a host). What
+        // keeps it inside is [`MAX_HINT`], enforced where the sentences are
+        // written.
         Label::new(cx, Hint::text)
             .class("label")
             .class("ink")
             .width(Stretch(1.0))
-            .height(Pixels(theme::LINE_LABEL));
+            .height(Pixels(theme::LINE_LABEL))
+            .child_top(Stretch(1.0))
+            .child_bottom(Stretch(1.0));
 
         // **What the plugin is doing, on the right of the same line.** It was a
         // strip of its own under the header, at the headline size — which was a
