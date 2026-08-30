@@ -466,7 +466,8 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | UI-13 | `BandField`（領域知識を持たない帯域パネル） | ✅ |
 | UI-8 | `Meter` — **Velour の IN / OUT が使う** | ✅ |
 | UI-9 | `ToggleSwitch` — **3 個目でも要らなかったので落とした**（`SPK-19`） | ❌ |
-| UI-14 | **窓 1 枚がホストの UI スレッドの 62 % を食う問題**。読み値を毎フレームのレンズからハートビート経由に、vizia は見えない背景・枠・アウトラインを描かない、baseview のフレーム タイマーを 60 Hz に、入力で即描画、帯域バンクを `is_open()` で止める | ✅ gallery で 22.6 → 14.3 % `#1`。**実機の再計測待ち**（[調査](../investigations/ui-frame-cost.md)） |
+| UI-14 | **窓 1 枚がホストの UI スレッドの 62 % を食う問題**。読み値を毎フレームのレンズからハートビート経由に、vizia は見えない背景・枠・アウトラインを描かない、baseview のフレーム タイマーを 60 Hz に、入力で即描画、`IOSurface` で描く、帯域バンクを `is_open()` で止める | ✅ gallery で **22.6 → 6.0 %** `#1`。絵は実機で確認済み。**報告された症状は別問題で未解決**（[調査](../investigations/ui-frame-cost.md)） |
+| — | **未解決: UI を一度開くとホストが「スーッと」遅れる**（消しても再起動まで残る、他社 VST では起きない）。窓のコスト対策 8 個・仮説 7 つを外して原因未特定 | ❓ [引き継ぎ](../investigations/host-lag.md) |
 | — | **femtovg の隣接 draw call マージ**。219 コマンド / フレームのうち 26 % が直前とマージ可能。crates.io 版なのでフォークが要る | ⬜ 調査済み（[調査](../investigations/ui-frame-cost.md)） |
 
 ### Doubler — `../../plugins/doubler/docs/implementation/doubler-plan.md`

@@ -161,7 +161,7 @@ vizia = { git = "https://github.com/robbert-vdh/vizia.git", tag = "patched-2024-
 #
 # All nine are worth sending upstream; none has been yet.
 [patch."https://github.com/RustAudio/baseview.git"]
-baseview = { git = "https://github.com/narusenia/baseview.git", tag = "nxe-2026-08-30j" }
+baseview = { git = "https://github.com/narusenia/baseview.git", tag = "nxe-2026-08-31" }
 
 [patch."https://github.com/robbert-vdh/vizia.git"]
 vizia = { git = "https://github.com/narusenia/vizia.git", tag = "nxe-2026-08-30g" }

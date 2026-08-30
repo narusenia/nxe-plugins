@@ -13,7 +13,8 @@
 | **新しいプラグインを足す手順** | [specifications/architecture.md](specifications/architecture.md) の「新しいプラグインを足す」 |
 | **今どの実装単位があって、どれが着手できるか** | [implementation/backlog.md](implementation/backlog.md) |
 | **引き継ぎ（今どこで、次に何を知るべきか）** | [HANDOVER.md](HANDOVER.md) |
-| **窓を開くと DAW がもたつく問題**（原因 4 つと対策、測り方） | [investigations/ui-frame-cost.md](investigations/ui-frame-cost.md) |
+| **窓を開くと DAW がもたつく問題**（原因 8 つと対策、測り方） | [investigations/ui-frame-cost.md](investigations/ui-frame-cost.md) |
+| **未解決: UI を一度開くとホストが「スーッと」遅れる** | [investigations/host-lag.md](investigations/host-lag.md) |
 | **共通 UI コンポーネントの計画** | [implementation/nxe-ui-plan.md](implementation/nxe-ui-plan.md) |
 | **共通の解析（レベル・ステレオ像・スペクトラム）の計画** | [implementation/nxe-dsp-plan.md](implementation/nxe-dsp-plan.md) |
 | **ワークスペース骨格と CI の計画** | [implementation/infra-plan.md](implementation/infra-plan.md) |

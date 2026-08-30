@@ -14,8 +14,11 @@
    **だが報告された症状——「UI を一度開くと、消してもホストを再起動するまで
    操作がスーッと遅れる」——は直っていない。** 原因未特定。仮説を 4 回外して
    いるので、次は測ってから動くこと。
-   [`investigations/ui-frame-cost.md`](investigations/ui-frame-cost.md) の
-   「8. まだ解けていないもの」に、外れた仮説と次に測るべきものがある
+   **専用の引き継ぎが
+   [`investigations/host-lag.md`](investigations/host-lag.md)** にある — 症状、
+   測って分かっていること、**外した仮説 7 つ**、次に測るもの、そのために
+   仕掛けてある `NXE_BASEVIEW_NO_PRESENT` の使い方まで。いつでもそこから再開
+   できる
 
 **5 本目 Vocal Depth は `VDP-14` まで完了。** DSP・ラッパ・**窓**・CPU まで
 全部入っていて、**実機で一度聴いて効き幅を作り直した**。
