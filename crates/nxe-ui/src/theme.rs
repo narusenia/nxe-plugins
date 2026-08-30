@@ -342,10 +342,13 @@ pub const FONT_VALUE: f32 = 10.0;
 ///
 /// **It was 17, set bold.** At that size one weight of a grotesque reads as
 /// another label with the volume turned up, so the wordmark had to shout to be
-/// a wordmark. Set at 26 in the light face it does not have to: **size carries
-/// it, the way size carries everything else here** (`UI-19`). The vendor moved
-/// out of the wordmark in the same change, which is what made room for it.
-pub const FONT_TITLE: f32 = 26.0;
+/// a wordmark. Set in the light face it does not have to: **size carries it,
+/// the way size carries everything else here** (`UI-19`).
+///
+/// **26 was too much.** It read as a title page rather than as the name of the
+/// window you are already looking at — the wordmark does not need to make a
+/// case for itself. 20 is where it stops asserting and still is not a label.
+pub const FONT_TITLE: f32 = 20.0;
 
 /// The height a one-line label occupies at each size.
 ///
@@ -366,7 +369,7 @@ pub const LINE_VALUE: f32 = 14.0;
 /// with the audio (`docs/investigations/ui-frame-cost.md`).
 pub const LINE_READOUT: f32 = 16.0;
 pub const LINE_LABEL: f32 = 16.0;
-pub const LINE_TITLE: f32 = 32.0;
+pub const LINE_TITLE: f32 = 26.0;
 
 const _: () = assert!(LINE_EYEBROW > FONT_EYEBROW, "the eyebrow will clip");
 const _: () = assert!(LINE_VALUE > FONT_VALUE, "the value will clip");
@@ -374,10 +377,10 @@ const _: () = assert!(LINE_READOUT > FONT_READOUT, "the readout will clip");
 const _: () = assert!(LINE_LABEL > FONT_LABEL, "the label will clip");
 const _: () = assert!(LINE_TITLE > FONT_TITLE, "the wordmark will clip");
 
-/// The two rules, as heights. `.rule` is a hairline; `.rule-accent` is the one
-/// under a wordmark.
+/// The rule, as a height. **One kind, one pixel** — the 2 px accent bar under
+/// the wordmark was the only other one, and it went with the wordmark's
+/// redesign (`UI-19`).
 pub const RULE: f32 = 1.0;
-pub const RULE_ACCENT: f32 = 2.0;
 
 /// How tall one segment of a segmented control is. In the stylesheet below and
 /// here, because a window that holds one has to add it up.
@@ -510,17 +513,6 @@ label {{
     height: 1px;
     width: 1s;
     background-color: {border};
-}}
-
-/* A rule that marks the subject of a region.
-   **Flat, not faded.** It was a gradient that ran out along its length, which
-   put the design's one directional device on something with no direction —
-   the same rule that keeps a selected segment flat (`Palette::paint`). A line
-   that fades also reads as unfinished at the end it fades into. */
-.rule-accent {{
-    height: 2px;
-    width: 1s;
-    background-color: {accent};
 }}
 
 /* A region's name, over its rule. `.eyebrow` is the text, `.heading` is the

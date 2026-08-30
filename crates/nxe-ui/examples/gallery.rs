@@ -55,6 +55,7 @@ use nxe_ui::entry::ValueEntry;
 use nxe_ui::hint::Describe;
 use nxe_ui::input::Gesture;
 use nxe_ui::knob::Knob;
+use nxe_ui::logo;
 use nxe_ui::meter::Meter;
 use nxe_ui::polar::{FieldGesture, FieldPoint, PolarField, PolarFieldModifiers};
 use nxe_ui::segmented::SegmentedControl;
@@ -652,14 +653,11 @@ fn grid(cx: &mut Context) {
         .height(Auto)
         .col_between(Pixels(theme::SPACE_4));
 
-        Element::new(cx).class("rule-accent");
-
-        // The two rules, side by side, so the weight difference is visible.
+        // The rule. **One kind** — the 2 px accent bar under the wordmark was
+        // the only other one, and it went with the wordmark's redesign.
         VStack::new(cx, |cx| {
             Label::new(cx, "rule").class("subtle");
             Element::new(cx).class("rule");
-            Label::new(cx, "rule-accent").class("subtle");
-            Element::new(cx).class("rule-accent");
         })
         .height(Auto)
         .row_between(Pixels(theme::SPACE_2));
@@ -692,6 +690,38 @@ fn grid(cx: &mut Context) {
     });
 }
 
+/// The vendor's mark at the sizes it might be used at.
+///
+/// **A logotype has no descenders to give it air**, so it goes loud a size
+/// before a letterform would. The header uses the smallest of these; the row
+/// exists so that judgement can be made by looking rather than by arguing.
+fn logotype(cx: &mut Context) {
+    panel(cx, "LOGOTYPE", |cx| {
+        HStack::new(cx, |cx| {
+            for (label, height) in [("10", 10.0f32), ("14", 14.0), ("20", 20.0), ("32", 32.0)] {
+                VStack::new(cx, move |cx| {
+                    logo::Mark::new(cx)
+                        .width(Pixels(logo::width_at(height)))
+                        .height(Pixels(height));
+                    Label::new(cx, label).class("subtle");
+                })
+                .width(Auto)
+                .height(Auto)
+                .row_between(Pixels(theme::SPACE_2));
+            }
+        })
+        .class("row")
+        .height(Auto)
+        .col_between(Pixels(theme::SPACE_5));
+
+        Label::new(
+            cx,
+            "drawn from assets/nxe/logo.svg; painted with subtle, so it inverts with the surface",
+        )
+        .class("subtle");
+    });
+}
+
 fn colours(cx: &mut Context) {
     panel(cx, "SURFACES", |cx| {
         HStack::new(cx, |cx| {
@@ -714,6 +744,7 @@ fn colours(cx: &mut Context) {
     });
 
     palettes(cx);
+    logotype(cx);
     inverted(cx);
 }
 

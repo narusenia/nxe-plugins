@@ -7,18 +7,23 @@
 //! what a window's top looks like is one edit.
 //!
 //! ```text
-//! NXE  Sparkleur   [SOFT|HARD]        how much of the effect is applied
-//! ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━──────────────  ← fades out to the right
+//! ⬔  Sparkleur   [SOFT|HARD]          how much of the effect is applied
+//! ─────────────────────────────────────────────────
 //! ```
 //!
 //! The rule is the design's structural device (`crates/nxe-ui/README.md`), and
-//! this is the one it starts from.
+//! this is the one it starts from. **A hairline, like every other rule.** It
+//! was a 2 px accent bar, which announced the window before the window had said
+//! anything; the accent now shows up where the window is actually doing
+//! something instead.
 //!
 //! **The wordmark is the product's name without the vendor on it.** It used to
 //! read `NXE SPARKLEUR`, which is the string a host's plugin list shows — and
 //! that is exactly why it does not belong here: by the time the window is open,
-//! the list has already been read. `NXE` stays as a small mark to its left,
-//! where a vendor belongs.
+//! the list has already been read. The vendor stays as a small drawn mark to
+//! its left ([`crate::logo`]), where a vendor belongs — and being a shape
+//! rather than three letters of the UI face, it reads as a mark instead of as
+//! one more short label.
 //!
 //! **The right of the band is one line about whatever the pointer is on**
 //! ([`crate::hint`]), falling back to what the window is for when the pointer
@@ -27,15 +32,21 @@
 
 use crate::font;
 use crate::hint::Hint;
+use crate::logo;
 use crate::theme;
 use vizia::prelude::*;
 
-/// The vendor. Small, quiet, and to the left of every wordmark in the line.
-pub const VENDOR: &str = "NXE";
+/// How tall the vendor's mark is drawn.
+///
+/// **10 was mush.** The `E` is three bars with two gaps, and at that height the
+/// gaps closed — the mark stopped being letters and became a smear. It needs
+/// about 13 before the bars separate, which is still well under the wordmark
+/// beside it.
+pub const VENDOR_HEIGHT: f32 = 13.0;
 
 /// How tall [`header`] is. Part of a window's height, so it is arithmetic
 /// rather than something to measure on screen (`theme::LINE_TITLE`).
-pub const HEIGHT: f32 = theme::LINE_TITLE + theme::SPACE_2 + theme::RULE_ACCENT;
+pub const HEIGHT: f32 = theme::LINE_TITLE + theme::SPACE_2 + theme::RULE;
 
 /// The vendor mark, the wordmark, the mode slot, the hint, and the rule under
 /// all of it.
@@ -57,17 +68,23 @@ pub fn header(
 ) {
     VStack::new(cx, move |cx| {
         HStack::new(cx, move |cx| {
-            // The vendor, small and quiet, sitting on the wordmark's baseline.
-            Label::new(cx, VENDOR)
-                .class("eyebrow")
-                .width(Auto)
-                .height(Pixels(theme::LINE_EYEBROW))
+            // The vendor, small and quiet, centred on the wordmark.
+            logo::Mark::new(cx)
+                .width(Pixels(logo::width_at(VENDOR_HEIGHT)))
+                .height(Pixels(VENDOR_HEIGHT))
                 .top(Stretch(1.0))
-                .bottom(Pixels(theme::SPACE_1));
+                .bottom(Stretch(1.0));
 
             font::title(cx, name).height(Pixels(theme::LINE_TITLE));
 
-            mode(cx);
+            // **Centred, not top-aligned.** A control in this band is not text
+            // on the wordmark's baseline; sitting it at the top of the row put
+            // it visibly above the middle of everything beside it.
+            HStack::new(cx, move |cx| mode(cx))
+                .width(Auto)
+                .height(Stretch(1.0))
+                .child_top(Stretch(1.0))
+                .child_bottom(Stretch(1.0));
 
             Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
 
@@ -94,7 +111,7 @@ pub fn header(
         .width(Stretch(1.0))
         .col_between(Pixels(theme::SPACE_2));
 
-        Element::new(cx).class("rule-accent");
+        Element::new(cx).class("rule");
     })
     .height(Auto)
     .row_between(Pixels(theme::SPACE_2));

@@ -197,7 +197,6 @@ Knob::new(cx, lens, gesture).describe("how hard the curve is driven");
 | `.heading` | `.eyebrow` を載せる器。下に 1 px の罫線が付く |
 | `.readout` | その区画が見せるための 1 個の数字。**1 区画に 1 つまで** |
 | `.rule` | 1 px の罫線。列の幅いっぱい |
-| `.rule-accent` | 2 px のアクセント |
 
 **角丸は 0 のまま。** グリッドは直線で描く。
 `letter-spacing` と `line-height` はこの vizia に無いので、階層は

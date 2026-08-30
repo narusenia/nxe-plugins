@@ -19,6 +19,7 @@ pub mod hint;
 pub mod icon;
 pub mod input;
 pub mod knob;
+pub mod logo;
 pub mod meter;
 pub mod polar;
 pub mod readout;
