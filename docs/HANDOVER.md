@@ -1,28 +1,71 @@
 # 引き継ぎ
 
 **2026-08-31 時点。出荷済み 4 本は公開済み（`v0.1.4` / Air は `v0.1.3`）。
-テスト 558 本、`mise run check` は通っている。**
+テスト 592、`mise run check` は通っている。**
 
-**次は `v0.2.0` — 5 本を作り直して同時に出す**（2026-08-31 に計画）。
+## いま作っているのは `v0.2.0` — 5 本を作り直して同時に出す
 
-- **5 本の窓を作り直す。** 参照は [fors](https://fors.fm)。本ごとのアクセント、
-  1 窓に 1 枚の反転面、専用ピクトグラム 10〜16 個（**常に語と併記**）、
-  書体は Inter（数字は Geist Mono のまま）。単位は `UI-15`〜`UI-20`
-- **Hard モード**（`MODE: Soft / Hard`）を **Sparkleur と Velour だけ**に置く。
-  **既定は Soft** — 既存セッションには `MODE` が保存されておらず、読み込み時に
-  既定が適用されるので、Hard 既定は出荷済みプロジェクトの音を変える
-- **`PUNCH`** を v2 から回収する（Sparkleur、受入は crest factor）
-- **Parallax（旧 Vocal Depth）はこの版で初出荷。** 旧 UI で 1 本だけ出さない
-  ため。**製品名は `NXE Parallax` / `com.nxe.parallax` に決めた**（`VDP-15`）
+中身は **5 本の窓の作り直し**（fors 方向）、**Hard モード**（Sparkleur と
+Velour だけ）、**`PUNCH`** の v2 からの回収、**Parallax（旧 Vocal Depth）の
+初出荷**。順序の根拠は
+[`implementation/roadmap.md`](implementation/roadmap.md) の「v0.2.0」、
+状態は [`implementation/backlog.md`](implementation/backlog.md)。
 
-**最初にやるのは「測る」2 単位**（`SPK-20` / `VEL-18`）。「かかりが弱い」は耳の
-不満で、そこから実装に届く道は測定しかない。Hard は写像を持ち上げるものなので、
-止めているのが写像でなければ効かない。順序の根拠は
-[`implementation/roadmap.md`](implementation/roadmap.md) の「v0.2.0」。
+**済んだもの**: 共通 UI が `UI-15`（本ごとのアクセント）/ `UI-16`（Inter）/
+`UI-18`（反転面）/ `UI-19`（ヘッダ）/ `UI-20`（幅 880）/ `UI-21`（勾配を外した）。
+Sparkleur が `SPK-20`（測る）/ `SPK-21`（MODE）/ `SPK-22`（PUNCH）/
+`SPK-23`（窓、**型が確定した**）。
 
-**止まっているのは 1 点だけ: `VDP-14` の効き幅を実機で聴き直すこと。**
-2026-08-28 に一度聴いて「遠い近いに聞こえない」と出たので作り直してあり、
-**その聴き直しがまだ**。`mise run install vocal-depth` で入る。
+**次に着手できるもの**:
+
+1. **`UI-17` — 記号 10〜16 個。** `SPK-23` が型を決めたので着手できる。
+   題材は「領域と操作の種類」で、候補は UP / DOWN / GAIN / SOLO / FOCUS /
+   SNAP / LIFT / PUNCH / DE-HARSH / SUB PROT / OVERSAMPLE
+2. **`VEL-18` → `VEL-19` → `VEL-20`**（Velour の測定 → MODE → 窓）。
+   測定は `sparkleur-core/tests/ceiling.rs` と同じ道具立てで書ける
+3. **`AIR-14` / `DBL-17` / `PAR-16`** — 残り 3 本の窓を `SPK-23` の型に合わせる
+4. **`VDP-15` — Parallax への改名。** 出荷前に必須（`CLAP_ID` は出荷後に
+   変えられない）。商標と既存プラグインの衝突確認から
+
+**人が要るもの**（どれもリリースの前提）:
+
+- **Hard と PUNCH を実機で聴く。** 測定は通っているが耳はまだ
+- **`VDP-14` の効き幅を聴き直す**（08-28 に一度聴いた版は直す前のもの）
+- **`PAR-13` の既定値**、**5 本の窓の実機確認**、Sparkleur の既定値の
+  主観サインオフ（`SPK-18`）
+
+## UI を直すときのやり方（`SPK-23` で固まった）
+
+**窓は実機でしか見られない。** プラグインの窓は gallery では開けない
+（`nih_plug_vizia` の editor はホストの `GuiContext` を要る）。
+
+```bash
+mise run install sparkleur   # ~/Library/Audio/Plug-Ins に入る
+mise run gallery             # 共通ウィジェットはこちらで見る
+```
+
+**gallery はスクリーンショットを撮れる。** `screencapture` は通り、窓の位置は
+`osascript -e 'tell application "System Events" to tell process "gallery" to
+get {position, size} of window 1'` で取れる（**プロセス名は厳密一致で** —
+部分一致はターミナルの窓に当たる）。窓はリサイズできないので、下のほうを見るには
+`NXE_GALLERY_SCROLL=1` を付けて時間差で撮る。
+
+**`SPK-23` は実機で 5 往復した。落ちたテストは 1 本も無い。** UI の欠陥は
+テストに映らないという `ui.md` の一行が、そのまま 5 回起きた。
+
+## この版で確定した見た目の型（`.agents/rules/ui.md` が正）
+
+- **アクセントは本ごとに 1 色**、OKLCH の明度と彩度を揃えた家族
+  （Doubler jade / Air sky / Velour violet / Parallax rose / Sparkleur coral）
+- **塗りは全部フラット。** 勾配は外した（`UI-21`）
+- **反転面は 2 つまで**: 下端のステータスバーと、窓の主図。**地を持つものが
+  反転面に乗るなら自分でパレットを読む**（CSS は入れ子のパレットを見ない）
+- **書体は Inter Regular と Geist Mono の各 1 面。** ウェイトの例外は無い
+- **ワードマークは製品名だけ、18 px。** ベンダーは帯の反対の端に印として
+- **窓幅は 880 の 1 定数**（`theme::WINDOW_WIDTH`）、高さは部品の合計
+- **ステータスバーは既定で空**、説明は 46 文字まで（切り詰める手段が無い）
+
+## v0.2.0 より前の経緯
 
 **2026-08-31: 「UI を開くと DAW が重くなる」は解決した。** 原因は 2 つで、
 体感していた方——「一度開くと消してもホストを再起動するまで操作が遅れる」——は
@@ -42,16 +85,10 @@ CPU は **20.9 µs / 予算 533** で**ラインで一番安い**。
 一切触っていなかった（全域で 0.6 dB）。直接/反射比を **+30 → +17 dB** から
 **+25.6 → +2.3 dB** にした。**次は聴き直し。**
 
-**残っているのは 4 つで、どれも人が要る:**
-
-1. **`VDP-14` を聴き直す。** `mise run install vocal-depth` からやり直す
-   （バンドルは新しい）。**08-28 に一度聴いていて、その版は直す前のもの**
-2. **見た目の確認。** 音の感想は出たが、**見た目の感想はまだ 1 つも出ていない**。
-   寸法は実機でしか settle せず、**UI の欠陥はテストが 1 本も落ちない**
-3. **`VDP-13` 既定値。** 測れるものを `defaults.rs` で固定してから耳。
-   **`VDP-14` で効き幅が変わったので、順番は聴き直しのあと**
-4. **製品名の確定。** `CLAP_ID` は出荷後に変えられない（`REQ-VDP-014`）。
-   今は `NXE Vocal Depth` / `com.nxe.vocaldepth` で**暫定**
+**製品名は決まった**: `NXE Parallax` / `com.nxe.parallax`（`VDP-15`)。
+改名は出荷より前に済ませる — `CLAP_ID` は出荷後に変えられない。
+残りの `VDP-14` の聴き直し・`PAR-13` の既定値・見た目の確認は、上の
+「人が要るもの」に集約した。
 
 **ゲートは通した。ただし許容を ±0.5 → ±1.0 dB に改訂したうえで** —
 `REQ-VDP-008` の ±0.5 dB は**素材を跨いでは達成できない**と測定で分かったため
@@ -557,7 +594,7 @@ Vocal Glue の `Ambience Glue` / Impact の `SIZE`）。`vocal-depth-core` に�
 | `plugins/air/air` | NXE Air。CLAP + VST3。パラメータ 15 個、**全部にコントロールがある**。UI は読み値の帯 + 点のスペクトラム + 7 ノブ + Advanced + メーター |
 | `plugins/air/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`AIR-1`〜`AIR-13`）。`air-v0.1.2` **公開済み** |
 | `plugins/vocal-depth/vocal-depth-core` | **DSP は全部。** 初期反射（タップ 10 本 × 2 + 拡散 3 段 + 200 Hz HP。**Vocal Depth を知らない**）、直接音（広帯域レベル + Presence のピーキング + Transient）、`DAMPING`（1 次 2 段 × 2 系統）、`WIDTH`、`CLARITY`、`DEPTH` とラウドネス正規化、エンジン |
-| `plugins/vocal-depth/vocal-depth` | NXE Vocal Depth。CLAP + VST3。**パラメータ 8 個、全部にコントロールがある**。UI は読み値 7 セル + 到着の図 + 7 ノブ + `OUTPUT` + メーター。**実機で見ていない**。**製品名は暫定** |
+| `plugins/vocal-depth/vocal-depth` | NXE Vocal Depth。CLAP + VST3。**パラメータ 8 個、全部にコントロールがある**。UI は読み値 7 セル + 到着の図 + 7 ノブ + `OUTPUT` + メーター。**実機で見ていない**。**製品名は `NXE Parallax` に決定、改名は `VDP-15` で** |
 | `plugins/vocal-depth/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`VDP-1`〜`VDP-14`。残るのは `VDP-13` = 耳）。初期反射を作る本で、Glue と Impact に貸す |
 | `plugins/vocal-glue/docs` | **要件のみ。** 新規 DSP がほぼ無い（`guard` の N 帯域化だけ） |
 | `concepts/` | まだ要件を書いていない構想 3 本（Bass Density / Impact / Growl） |
