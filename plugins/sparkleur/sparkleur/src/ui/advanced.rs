@@ -32,8 +32,12 @@ use sparkleur_core::crossover::BAND_COUNT;
 /// is a finer one. **Not to a second readout** — the strip at the top of the
 /// window already carries the figures, and the per-band gain is already under
 /// each band's name.
+///
+/// **130 since `FOCUS` moved out of this panel.** Its knob was 44 px of the
+/// side column's width; that width came back here rather than reopening the
+/// gap this unit had just closed.
 const NAME_WIDTH: f32 = 48.0;
-const BAR_WIDTH: f32 = 112.0;
+const BAR_WIDTH: f32 = 130.0;
 const SOLO_WIDTH: f32 = 40.0;
 
 /// **A bar has no default height** — an unset one is `Stretch(1.0)`, and a
@@ -51,14 +55,35 @@ const BAR_HEIGHT: f32 = 10.0;
 /// **Both grew for the marks and then for the gap** (`UI-17`, `SPK-23`). The
 /// space between the table and this column was 96 px of nothing — the widest
 /// void in the window, and the one that made it read as unfinished in a host.
-/// 20 went to the names to hold a mark, 36 to the bars; what is left is 40,
-/// which is a column gap rather than a hole. **The bars now match the table's**
-/// (116 against 112), so the two halves read as one grid instead of two.
+/// 20 went to the names to hold a mark, 36 to the bars.
 const SIDE_NAME_WIDTH: f32 = 100.0;
 const SIDE_BAR_WIDTH: f32 = 116.0;
 
 /// The right column, which holds what is global rather than per band.
-const SIDE_WIDTH: f32 = 280.0;
+///
+/// **A column now, not a knob beside a list.** `FOCUS` moved to the row of
+/// knobs, which is where its neighbours are (`ui.md`).
+const SIDE_WIDTH: f32 = SIDE_NAME_WIDTH + theme::SPACE_2 + SIDE_BAR_WIDTH;
+
+/// One row of the side column, and the gap that puts its last row level with
+/// the table's.
+///
+/// **Arithmetic, because the alignment is the point.** The two columns are one
+/// block or they are two things that happen to be next to each other, and with
+/// six rows against five the only way they end together is to say so. The row
+/// has to clear a `SegmentedControl` as well as a bar, which is what decides
+/// the height.
+const SIDE_ROWS: usize = 6;
+const SIDE_ROW_HEIGHT: f32 = theme::LINE_LABEL + theme::SPACE_2;
+const SIDE_ROW_GAP: f32 = (HEIGHT - SIDE_ROW_HEIGHT * SIDE_ROWS as f32) / (SIDE_ROWS - 1) as f32;
+const _: () = assert!(
+    SIDE_ROW_HEIGHT >= theme::SEGMENT,
+    "the oversample row will clip"
+);
+const _: () = assert!(
+    SIDE_ROW_GAP > 0.0,
+    "the side column is taller than the table"
+);
 
 const NAMES: [&str; BAND_COUNT] = ["SUB", "BODY", "MID", "PRES", "AIR"];
 
@@ -256,73 +281,67 @@ fn cell(cx: &mut Context, width: f32, content: impl Fn(&mut Context)) {
         .child_bottom(Stretch(1.0));
 }
 
-/// What is global: `FOCUS`, the two protections, `SNAP`, `LIFT`, and the
+/// What is global: the two protections, `SNAP`, `LIFT`, `PUNCH` and the
 /// oversampling.
+///
+/// **`FOCUS` is not here any more.** It sat as a knob beside this list, which
+/// left the list short of the table beside it and the knob orphaned from the
+/// row of knobs it belongs to (`SPK-23`, looked at in a host).
 fn side(cx: &mut Context) {
-    HStack::new(cx, |cx| {
-        // `FOCUS` has a knob as well as the figure's rail, for the same reason
-        // `MIX` has one: the figure is for reading, a knob is for setting a
-        // number (`ui.md`).
-        super::knob_block(cx, "FOCUS", "Slides every band edge", 38.0, |params| {
-            &params.focus
-        });
+    VStack::new(cx, |cx| {
+        labelled_bar(
+            cx,
+            pictogram::DE_HARSH,
+            "DE-HARSH",
+            "Harder or softer than CHARACTER chose",
+            |cx| nxe_plug_ui::bar(cx, Ui::params, |p| &p.de_harsh, true),
+        );
+        labelled_bar(
+            cx,
+            pictogram::SUB_PROTECT,
+            "SUB PROT",
+            "How far the bottom band's lift is closed",
+            |cx| nxe_plug_ui::bar(cx, Ui::params, |p| &p.sub_protect, true),
+        );
+        labelled_bar(
+            cx,
+            pictogram::SNAP,
+            "SNAP",
+            "How much of AIR waits for a transient",
+            |cx| nxe_plug_ui::bar(cx, Ui::params, |p| &p.snap, false),
+        );
+        labelled_bar(
+            cx,
+            pictogram::LIFT,
+            "LIFT",
+            "Opens the floor under the upward half",
+            |cx| nxe_plug_ui::bar(cx, Ui::params, |p| &p.lift, false),
+        );
+        labelled_bar(
+            cx,
+            pictogram::PUNCH,
+            "PUNCH",
+            "How hard a transient is hit",
+            |cx| nxe_plug_ui::bar(cx, Ui::params, |p| &p.punch, false),
+        );
 
-        VStack::new(cx, |cx| {
-            labelled_bar(
-                cx,
-                pictogram::DE_HARSH,
-                "DE-HARSH",
-                "Harder or softer than CHARACTER chose",
-                |cx| nxe_plug_ui::bar(cx, Ui::params, |p| &p.de_harsh, true),
-            );
-            labelled_bar(
-                cx,
-                pictogram::SUB_PROTECT,
-                "SUB PROT",
-                "How far the bottom band's lift is closed",
-                |cx| nxe_plug_ui::bar(cx, Ui::params, |p| &p.sub_protect, true),
-            );
-            labelled_bar(
-                cx,
-                pictogram::SNAP,
-                "SNAP",
-                "How much of AIR waits for a transient",
-                |cx| nxe_plug_ui::bar(cx, Ui::params, |p| &p.snap, false),
-            );
-            labelled_bar(
-                cx,
-                pictogram::LIFT,
-                "LIFT",
-                "Opens the floor under the upward half",
-                |cx| nxe_plug_ui::bar(cx, Ui::params, |p| &p.lift, false),
-            );
-            labelled_bar(
-                cx,
-                pictogram::PUNCH,
-                "PUNCH",
-                "How hard a transient is hit",
-                |cx| nxe_plug_ui::bar(cx, Ui::params, |p| &p.punch, false),
-            );
-
-            HStack::new(cx, |cx| {
-                pictogram::label(cx, pictogram::OVERSAMPLE, "OVERSAMPLE")
-                    .width(Pixels(SIDE_NAME_WIDTH));
-                nxe_plug_ui::segmented(cx, Ui::params, |params| &params.oversample, &["2x", "4x"])
-                    .describe("2x costs about 11 us and aliases 14 dB higher");
-            })
-            .class("row")
-            .height(Auto)
-            .width(Auto)
-            .col_between(Pixels(theme::SPACE_2));
+        HStack::new(cx, |cx| {
+            pictogram::label(cx, pictogram::OVERSAMPLE, "OVERSAMPLE")
+                .width(Pixels(SIDE_NAME_WIDTH));
+            nxe_plug_ui::segmented(cx, Ui::params, |params| &params.oversample, &["2x", "4x"])
+                .describe("2x costs about 11 us and aliases 14 dB higher");
         })
-        .height(Auto)
+        .class("row")
+        .height(Pixels(SIDE_ROW_HEIGHT))
         .width(Auto)
-        .row_between(Pixels(theme::SPACE_2));
+        .col_between(Pixels(theme::SPACE_2))
+        .child_top(Stretch(1.0))
+        .child_bottom(Stretch(1.0));
     })
     .class("hint-left")
     .width(Pixels(SIDE_WIDTH))
-    .height(Auto)
-    .col_between(Pixels(theme::SPACE_3));
+    .height(Pixels(HEIGHT))
+    .row_between(Pixels(SIDE_ROW_GAP));
 }
 
 fn labelled_bar(
@@ -340,9 +359,11 @@ fn labelled_bar(
             .height(Pixels(BAR_HEIGHT));
     })
     .class("row")
-    .height(Auto)
+    .height(Pixels(SIDE_ROW_HEIGHT))
     .width(Auto)
-    .col_between(Pixels(theme::SPACE_2));
+    .col_between(Pixels(theme::SPACE_2))
+    .child_top(Stretch(1.0))
+    .child_bottom(Stretch(1.0));
 }
 
 #[cfg(test)]

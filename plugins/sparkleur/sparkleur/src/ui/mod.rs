@@ -48,9 +48,10 @@ const HEIGHT: u32 = (theme::SPACE_3 * 2.0
     + advanced::HEIGHT
     + nxe_ui::status::HEIGHT) as u32;
 
-/// The knob sizes. The five that shape the sound are the large ones; the two
-/// that decide how much of it arrives are smaller and sit apart, because they
-/// are a different question (`ui.md`).
+/// The knob sizes. **The five that shape the sound are the large ones**; the
+/// three beyond the break are smaller, because none of them is the shape —
+/// `FOCUS` is set on the figure's rail and this is its number, `MIX` and
+/// `OUTPUT` are how much arrives (`ui.md`).
 const SHAPE_KNOB: f32 = 52.0;
 const OUTPUT_KNOB: f32 = 38.0;
 
@@ -364,6 +365,18 @@ fn shape_row(cx: &mut Context) {
             .width(Pixels(theme::SPACE_5))
             .height(Pixels(0.0));
 
+        // **`FOCUS` is here rather than in Advanced.** It has a knob as well as
+        // the figure's rail for the same reason `MIX` does — the figure is for
+        // reading, a knob is for setting a number — and beside the list of bars
+        // it was a knob on its own, leaving that column short of the table next
+        // to it (`SPK-23`, looked at in a host).
+        knob_block(
+            cx,
+            "FOCUS",
+            "Slides every band edge",
+            OUTPUT_KNOB,
+            |params| &params.focus,
+        );
         knob_block(
             cx,
             "MIX",

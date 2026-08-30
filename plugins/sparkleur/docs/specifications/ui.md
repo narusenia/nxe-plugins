@@ -138,12 +138,15 @@ IN / OUT × L / R、ピークホールド付き）。
 ### MAIN
 
 ```text
-  SPARK   CHARACTER   BODY   AIR   SPEED
-    ◯        ◯        ◯     ◯     ◯
-
-                 MIX    OUTPUT
-                  ◯       ◯
+  SPARK  CHARACTER  BODY   AIR   SPEED  │  FOCUS   MIX   OUTPUT
+    ◯        ◯       ◯      ◯      ◯    │    ◯      ◯       ◯
 ```
+
+**1 行、区切りは 24 px の間。** 左の 5 つが音の形で、大きい。右の 3 つは小さく、
+どれも形ではない——`FOCUS` は図のレールで決めるもので**ここはその数字**、
+`MIX` と `OUTPUT` は届く量。**`FOCUS` は Advanced から出した**（`SPK-23`、
+実機で見て）: あそこではバーの一覧の横に置かれた孤立したノブで、右列を
+表より短くしていた。
 
 `CHARACTER` の読み値は**軸を 3 等分した区画の名前 + パーセント**
 （`POLISH 27 %`）。Velour で 3 つの名前を並べて失敗した（`.accent` が塗りだった /
@@ -172,14 +175,12 @@ GLOSS が 0.5、CRUSH が 1.0 で、**名前の並びどおりには離れてい
 ### ADVANCED
 
 ```text
-        ▲ UP    ▼ DOWN  ⊣ GAIN  ▮ SOLO         FOCUS      ◯
-  SUB   ──●──   ──●──   ──●──    [ ]
-  BODY  ──●──   ──●──   ──●──    [ ]      ⌂ DE-HARSH   ──●──
-  MID   ──●──   ──●──   ──●──    [ ]      ⊓ SUB PROT   ──●──
-  PRES  ──●──   ──●──   ──●──    [ ]      ↑ SNAP       ──●──
-  AIR   ──●──   ──●──   ──●──    [ ]      ⌐ LIFT       ──●──
-                                          ✳ PUNCH      ──●──
-                                          ⋮ OVERSAMPLE [2x][4x]
+        ▲ UP    ▼ DOWN  ⊣ GAIN  ▮ SOLO      ⌂ DE-HARSH   ──●──
+  SUB   ──●──   ──●──   ──●──    [ ]      ⊓ SUB PROT   ──●──
+  BODY  ──●──   ──●──   ──●──    [ ]      ↑ SNAP       ──●──
+  MID   ──●──   ──●──   ──●──    [ ]      ⌐ LIFT       ──●──
+  PRES  ──●──   ──●──   ──●──    [ ]      ✳ PUNCH      ──●──
+  AIR   ──●──   ──●──   ──●──    [ ]      ⋮ OVERSAMPLE [2x][4x]
 ```
 
 - `UP` / `DOWN` / `GAIN` は `Bar`。`UP` / `DOWN` は**重み**（0 から右へ）、
@@ -188,7 +189,8 @@ GLOSS が 0.5、CRUSH が 1.0 で、**名前の並びどおりには離れてい
   （新しいウィジェットは要らない）
 - `DE-HARSH` / `SUB PROT` は**双極の偏差**（0 = `CHARACTER` に従う）
 - `LIFT` = 上げコンプの床（`REQ-SPK-003`）。**右に振ると OTT らしい呼吸が出る**
-- `FOCUS` は小さい `Knob`（双極）
+- **右列の 6 行は、最後の行が表の最終行と揃うように間隔を計算する。**
+  6 行と 5 行なので、揃うと言わない限り揃わない（`SIDE_ROW_GAP`）
 - **バーには必ず高さを指定する**（`height: 10px`）。Velour で指定を忘れて
   Advanced の表が「動かないコントロール」になった（`.agents/rules/vizia.md`）
 - **名前の左に記号を置く**（`nxe_ui::pictogram`、`UI-17`）。列見出しの 4 つは
@@ -210,7 +212,7 @@ GLOSS が 0.5、CRUSH が 1.0 で、**名前の並びどおりには離れてい
 | `theme` / `font` / `icon` | 全体。`font::title` でワードマーク |
 | `pictogram` | 列見出し 4 + Advanced の一覧 6（`UI-17`） |
 | `input::Gesture` | 全体 |
-| `Knob` | メイン 7 個、`FOCUS` |
+| `Knob` | メイン 8 個（`FOCUS` を含む） |
 | `Bar` | Advanced の 15 + 4 個 |
 | `SegmentedControl` | タブ、オーバーサンプル |
 | `CurveView` | ダイナミクスの伝達曲線（曲線だけ） |
