@@ -97,7 +97,7 @@ dependencies = [
 
 [[package]]
 name = "air"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "air-core",
  "nih_plug",
@@ -1046,7 +1046,7 @@ dependencies = [
 
 [[package]]
 name = "doubler"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "doubler-core",
  "nih_plug",
@@ -3030,7 +3030,7 @@ dependencies = [
 
 [[package]]
 name = "sparkleur"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "nih_plug",
  "nih_plug_vizia",
@@ -3423,7 +3423,7 @@ dependencies = [
 
 [[package]]
 name = "velour"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "nih_plug",
  "nih_plug_vizia",
