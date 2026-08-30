@@ -17,6 +17,7 @@
 use super::{Ui, UiEvent};
 use crate::analysis::Analysis;
 use nih_plug_vizia::vizia::prelude::*;
+use nxe_ui::hint::Describe;
 use nxe_ui::{font, theme};
 use sparkleur_core::crossover::BAND_COUNT;
 
@@ -153,7 +154,7 @@ fn row(cx: &mut Context, index: usize) {
                 3 => nxe_plug_ui::bar(cx, Ui::params, |p| &p.up_pres, false),
                 _ => nxe_plug_ui::bar(cx, Ui::params, |p| &p.up_air, false),
             }
-            .tooltip(|cx| theme::hint(cx, "This band's share of the upward half"))
+            .describe("This band's share of the upward half")
             .width(Stretch(1.0))
             .height(Pixels(BAR_HEIGHT));
         });
@@ -166,7 +167,7 @@ fn row(cx: &mut Context, index: usize) {
                 3 => nxe_plug_ui::bar(cx, Ui::params, |p| &p.down_pres, false),
                 _ => nxe_plug_ui::bar(cx, Ui::params, |p| &p.down_air, false),
             }
-            .tooltip(|cx| theme::hint(cx, "This band's share of the downward half"))
+            .describe("This band's share of the downward half")
             .width(Stretch(1.0))
             .height(Pixels(BAR_HEIGHT));
         });
@@ -179,7 +180,7 @@ fn row(cx: &mut Context, index: usize) {
                 3 => nxe_plug_ui::bar(cx, Ui::params, |p| &p.gain_pres, true),
                 _ => nxe_plug_ui::bar(cx, Ui::params, |p| &p.gain_air, true),
             }
-            .tooltip(|cx| theme::hint(cx, "A static trim. The figure's region height"))
+            .describe("A static trim. The figure's region height")
             .width(Stretch(1.0))
             .height(Pixels(BAR_HEIGHT));
         });
@@ -193,7 +194,7 @@ fn row(cx: &mut Context, index: usize) {
                     3 => nxe_plug_ui::toggle(cx, Ui::params, |p| &p.solo_pres, "ON"),
                     _ => nxe_plug_ui::toggle(cx, Ui::params, |p| &p.solo_air, "ON"),
                 }
-                .tooltip(|cx| theme::hint(cx, "Hear this band alone"));
+                .describe("Hear this band alone");
             })
             .class("segmented")
             .width(Auto)
@@ -257,7 +258,7 @@ fn side(cx: &mut Context) {
                     .width(Pixels(SIDE_NAME_WIDTH))
                     .height(Auto);
                 nxe_plug_ui::segmented(cx, Ui::params, |params| &params.oversample, &["2x", "4x"])
-                    .tooltip(|cx| theme::hint(cx, "2x costs about 11 us and aliases 14 dB higher"));
+                    .describe("2x costs about 11 us and aliases 14 dB higher");
             })
             .class("row")
             .height(Auto)
@@ -286,7 +287,7 @@ fn labelled_bar(
             .width(Pixels(SIDE_NAME_WIDTH))
             .height(Auto);
         content(cx)
-            .tooltip(move |cx| theme::hint(cx, hint))
+            .describe(hint)
             .width(Pixels(SIDE_BAR_WIDTH))
             .height(Pixels(BAR_HEIGHT));
     })

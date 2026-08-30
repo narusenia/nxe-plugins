@@ -41,7 +41,7 @@ const HEIGHT: u32 = (theme::SPACE_3 * 2.0
     + theme::SPACE_3
     + nxe_ui::readout::HEIGHT
     + theme::SPACE_3
-    + field::HEIGHT
+    + FIGURE_HEIGHT
     + theme::SPACE_3
     + knob_block_height(SHAPE_KNOB)
     + theme::SPACE_3
@@ -255,19 +255,35 @@ pub fn create(
 }
 
 /// The figure and the window that reads one band of it, side by side.
+///
+/// **The one inverted panel in this window** (`.agents/rules/ui.md`). It is
+/// what the plugin *is*, and the accent ground is what a glance lands on — with
+/// the wordmark's rule now a hairline, this is also the only place the
+/// plugin's colour appears before anything is touched (`UI-19`).
+///
+/// **The labels inside it say `.ink-muted` for themselves.** The generated
+/// stylesheet is flat and cannot say "labels inside this panel", so forgetting
+/// leaves near white on the accent (`crates/nxe-ui/README.md`).
 fn figure_row(cx: &mut Context) {
-    HStack::new(cx, |cx| {
-        field::view(cx);
-        curve::view(cx);
+    nxe_ui::surface::inverted(cx, |cx| {
+        HStack::new(cx, |cx| {
+            field::view(cx);
+            curve::view(cx);
+        })
+        // **Not `.class("row")`.** That centres its children vertically, and
+        // `child-top: 1s` / `child-bottom: 1s` are two more stretches for the
+        // height to be divided among (`.agents/rules/vizia.md`). Both children
+        // here are given an explicit height and want the whole of it.
+        .height(Pixels(field::HEIGHT))
+        .width(Stretch(1.0))
+        .col_between(Pixels(theme::SPACE_3));
     })
-    // **Not `.class("row")`.** That centres its children vertically, and
-    // `child-top: 1s` / `child-bottom: 1s` are two more stretches for the
-    // height to be divided among (`.agents/rules/vizia.md`). Both children here
-    // are given an explicit height and want the whole of it.
-    .height(Pixels(field::HEIGHT))
-    .width(Stretch(1.0))
-    .col_between(Pixels(theme::SPACE_3));
+    .height(Pixels(FIGURE_HEIGHT))
+    .width(Stretch(1.0));
 }
+
+/// The inverted panel's height: the figure, plus the panel's own padding.
+const FIGURE_HEIGHT: f32 = field::HEIGHT + theme::SPACE_4 * 2.0;
 
 fn header(cx: &mut Context) {
     // The product's name — the vendor is its own mark to the left — with what
@@ -350,7 +366,7 @@ pub(crate) fn knob_block<P, F>(
     VStack::new(cx, |cx| {
         // The tooltip goes on the knob rather than the whole block, so it does
         // not follow the pointer around the label and the number.
-        nxe_plug_ui::knob(cx, Ui::params, to_param, size).tooltip(move |cx| theme::hint(cx, hint));
+        nxe_plug_ui::knob(cx, Ui::params, to_param, size).describe(hint);
         Label::new(cx, label)
             .class("label")
             .height(Pixels(theme::LINE_LABEL));
@@ -384,7 +400,7 @@ where
 fn character_knob(cx: &mut Context) {
     VStack::new(cx, |cx| {
         nxe_plug_ui::knob(cx, Ui::params, |params| &params.character, SHAPE_KNOB)
-            .tooltip(|cx| theme::hint(cx, "POLISH through GLOSS to CRUSH"));
+            .describe("POLISH through GLOSS to CRUSH");
         Label::new(cx, "CHARACTER").class("label");
         font::value(
             cx,
