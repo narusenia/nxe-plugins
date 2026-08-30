@@ -10,7 +10,7 @@
 - **順序の判断は [`roadmap.md`](roadmap.md)**。この表は「何があるか」、
   ロードマップは「どの順でやるか、なぜその順か」
 
-最終更新: 2026-08-28
+最終更新: 2026-08-30
 
 ## 凡例
 
@@ -414,6 +414,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | — | **製品名の確定**（`REQ-VDP-014`）。`CLAP_ID` は出荷後に変えられない | `REQ-VDP.md` の概要 |
 | — | **Advanced の偏差**（Vocal Depth、`REQ-VDP-009`）。**前に `dsp.md`** | `vocal-depth-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
+| — | **`UI-14` の実機確認**（gallery を目で見る、`mise run install velour` して再生しながら `sample`）。**62 % がどこまで下がったか**が答え | [`../investigations/ui-frame-cost.md`](../investigations/ui-frame-cost.md) |
 
 Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`）は完了。
 **gallery で見る**（`mise run gallery`）。
@@ -426,6 +427,7 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 |---|---|
 | 値の直接入力を戻す | `UI-3`。`ValueEntry` は `nxe-ui` にあり gallery では動く。プラグインに載せると editor の表示が更新されなくなる（原因未特定） |
 | 見た目の最終調整（フォントサイズ、寸法、余白） | ユーザーの指示で最後にまとめる |
+| Doubler の Detail 表が毎フレーム `String` を 32 個組む | `detail.rs`。値が動くのは操作時だけなので再描画は誘発しないが、形は読み値と同じ（[調査](../investigations/ui-frame-cost.md)） |
 | パワーフォロワの共通化 | **3 個目が来た**（`nxe_audio::guard::Follower` / `sparkleur_core::Detector` / `sparkleur_core::Sparkle`）。ただし形が 3 つとも違う（帯域通過込み / 配列 / 単体）ので、上げるなら何を共通にするかを決めてから |
 
 ## 全単位
@@ -464,6 +466,8 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | UI-13 | `BandField`（領域知識を持たない帯域パネル） | ✅ |
 | UI-8 | `Meter` — **Velour の IN / OUT が使う** | ✅ |
 | UI-9 | `ToggleSwitch` — **3 個目でも要らなかったので落とした**（`SPK-19`） | ❌ |
+| UI-14 | **窓 1 枚がホストの UI スレッドの 62 % を食う問題**。読み値を毎フレームのレンズからハートビート経由に、vizia は見えない背景・枠・アウトラインを描かない、baseview のフレーム タイマーを 30 Hz に、帯域バンクを `is_open()` で止める | ✅ gallery で 22.6 → 10.2 %。**実機の再計測待ち**（[調査](../investigations/ui-frame-cost.md)） |
+| — | **femtovg の隣接 draw call マージ**。219 コマンド / フレームのうち 26 % が直前とマージ可能。crates.io 版なのでフォークが要る | ⬜ 調査済み（[調査](../investigations/ui-frame-cost.md)） |
 
 ### Doubler — `../../plugins/doubler/docs/implementation/doubler-plan.md`
 

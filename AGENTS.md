@@ -55,7 +55,8 @@ with the code, and fix the document in the same change.
   `process` are in (`AIR-4`), the Follow Engine, the protection and the whole
   interface are not
 - `docs/`: monorepo-wide documents (architecture, cross-plugin backlog and
-  roadmap). Indexed by `docs/README.md`
+  roadmap, and the investigations under `docs/investigations/`). Indexed by
+  `docs/README.md`
 - `plugins/<name>/docs/`: that plugin's own requirements, specifications, and
   implementation plans. A plugin is self-contained, so it can be split into its
   own repository without breaking its documents
@@ -110,6 +111,11 @@ authors' choice, and only dropping the dependency changes anything.
 `mise run check` is the canonical entry point (fmt, clippy, tests). The
 lefthook pre-commit hook runs the same tasks; install it once with
 `mise run hooks:install`.
+
+**A window's cost is not covered by any of that.** `mise run gallery` is idle
+and should stay near zero; `NXE_GALLERY_HZ=30 mise run gallery` is the state a
+plugin is in while audio runs, and it is the one that mattered
+(`docs/investigations/ui-frame-cost.md`).
 
 Local bundling and installation:
 

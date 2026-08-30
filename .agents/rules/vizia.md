@@ -97,14 +97,34 @@ the other — which reads as "the button needs several clicks", not as a layout
 problem. Put `.class("decoration")` on anything inside something pressable.
 
 **The baseview backend redrew every frame, and text cost a font-database
-query per view per frame.** Both are fixed in the fork the workspace patches to
-(`nxe-2026-08-27`), and both were **invisible until an idle window was measured
-with `sample`**: `mise run gallery` sat at **27.7 % of a core doing nothing**,
-of which a quarter was `fontdb::Database::query`. It is 0.9 % now.
+query per view per frame.** Both are fixed in the fork the workspace patches to,
+and both were **invisible until an idle window was measured with `sample`**:
+`mise run gallery` sat at **27.7 % of a core doing nothing**, of which a quarter
+was `fontdb::Database::query`. It is 0.9 % now.
 
-The lesson is the measurement, not the patch: **an idle window should cost
-nothing, so if it costs something, that is the bug.** `ps -o %cpu` on
-`mise run gallery` is the whole test.
+**An idle window is only half the test, and the half that was already passing.**
+A plugin's window is not idle — its analysis moves while audio runs, and that is
+the state a host pays for. Measured in Studio One, one open window took **62 %
+of the host's UI thread** with audio playing and **1 %** in silence, long after
+the idle window was down to 0.9 %. Three more causes were under that, and they
+are written up with the numbers in
+[`docs/investigations/ui-frame-cost.md`](../../docs/investigations/ui-frame-cost.md).
+
+So the test is both:
+
+```bash
+cargo run --release -p nxe-ui --example gallery                   # idle: ~0.5 %
+NXE_GALLERY_HZ=30 cargo run --release -p nxe-ui --example gallery # moving: ~10 %
+```
+
+**`binding_system` re-evaluates every store once per frame, not once per
+heartbeat.** This is the trap that cost the most: a lens written as
+`Ui::params.map(|_| level(handoff.read()[0]))` looks like it is driven by the
+model, and is in fact driven by the frame timer — it formats a `String` 30 times
+a second more than anyone asked for and redraws the whole window each time the
+number moves. **Read the audio thread on the heartbeat and put the result in the
+model**; the lens then looks at a plain field and the store's own comparison
+decides whether anything is redrawn (`nxe_ui::readout`).
 
 **Vizia's default text colour is black.** A `Label` with no colour disappears on
 a dark surface. The stylesheet has a base `label` element rule for exactly this;
