@@ -8,6 +8,21 @@
 //! runs on the same backend the plugin does.
 //!
 //! Run it with `mise run gallery`.
+//!
+//! ## Measuring
+//!
+//! **An idle window should cost nothing**, and `ps -o %cpu` on this is the
+//! whole test (`.agents/rules/vizia.md`). But idle is not the state a plugin is
+//! in: a plugin's heartbeat rewrites the model while audio runs, and *that* is
+//! what a host pays for — the idle case was fixed once and the moving one was
+//! never measured. `NXE_GALLERY_HZ` rewrites the model at a given rate so the
+//! moving window can be measured the same way:
+//!
+//! ```text
+//! NXE_GALLERY_HZ=30 cargo run --release -p nxe-ui --example gallery
+//! ```
+//!
+//! Unset or `0` leaves the window idle, which stays the default.
 
 use nxe_ui::band::{Band, BandField, BandFieldModifiers, BandGesture};
 use nxe_ui::bar::Bar;
@@ -20,6 +35,7 @@ use nxe_ui::meter::Meter;
 use nxe_ui::polar::{FieldGesture, FieldPoint, PolarField, PolarFieldModifiers};
 use nxe_ui::segmented::SegmentedControl;
 use nxe_ui::{font, icon, theme};
+use std::time::Duration;
 use vizia::prelude::*;
 
 /// Somewhere for the demo controls to keep their values. A plugin has its
@@ -92,7 +108,19 @@ struct Demo {
     direct: f32,
     distance: f32,
     alignment: f32,
+    /// Keeps `NXE_GALLERY_HZ`'s heartbeat running; dropped with the window
+    /// (`nxe_ui::heartbeat`). **Never read on purpose.**
+    #[allow(dead_code)]
+    motion: Option<nxe_ui::heartbeat::Lifeline>,
+    /// Counts the motion steps, so the shapes above have a phase.
+    step: u32,
 }
+
+/// One step of `NXE_GALLERY_HZ`'s motion. Its own type rather than a
+/// `DemoEvent` variant, because the heartbeat needs `Clone` and `DemoEvent`
+/// carries the typed string.
+#[derive(Clone)]
+struct Advance;
 
 enum DemoEvent {
     Set(usize, f32),
@@ -164,6 +192,26 @@ impl Demo {
 
 impl Model for Demo {
     fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
+        // **What a plugin's heartbeat does**: rewrite the reactive copies from
+        // something that moves. The shapes are arbitrary; what matters is that
+        // the numbers a window draws keep changing, because that is the state
+        // the CPU cost lives in.
+        event.map(|_: &Advance, _| {
+            self.step = self.step.wrapping_add(1);
+            let phase = self.step as f32 / 64.0;
+            self.meter = 0.5 + 0.45 * (phase * std::f32::consts::TAU).sin();
+            self.detune = 0.5 + 0.4 * (phase * std::f32::consts::TAU * 0.37).sin();
+            self.direct = 0.5 + 0.4 * (phase * std::f32::consts::TAU * 0.61).sin();
+            for (index, tap) in self.taps.iter_mut().enumerate() {
+                tap.level =
+                    0.5 + 0.4 * ((phase + index as f32 * 0.1) * std::f32::consts::TAU).sin();
+            }
+            for (index, band) in self.bands.iter_mut().enumerate() {
+                band.level =
+                    0.5 + 0.4 * ((phase + index as f32 * 0.2) * std::f32::consts::TAU).cos();
+            }
+        });
+
         event.map(|demo_event: &DemoEvent, _| match demo_event {
             DemoEvent::Set(0, value) => self.detune = *value,
             DemoEvent::Set(1, value) => self.delay = *value,
@@ -283,11 +331,33 @@ fn name_of(gesture: Gesture) -> &'static str {
     }
 }
 
+/// How fast to rewrite the model, from `NXE_GALLERY_HZ`. Zero — the default —
+/// leaves the window idle.
+fn motion_hz() -> u32 {
+    std::env::var("NXE_GALLERY_HZ")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(0)
+}
+
 fn main() {
     Application::new(|cx| {
         theme::install(cx);
 
+        // **Started before the model, because the model holds what stops it**
+        // (`nxe_ui::heartbeat`).
+        let motion = match motion_hz() {
+            0 => None,
+            hz => Some(nxe_ui::heartbeat::start(
+                cx,
+                Duration::from_nanos(1_000_000_000 / u64::from(hz)),
+                Advance,
+            )),
+        };
+
         let mut demo = Demo {
+            motion,
+            step: 0,
             detune: 0.24,
             delay: 0.62,
             mix: 0.4,
