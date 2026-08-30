@@ -1,7 +1,11 @@
 # 引き継ぎ
 
-**2026-08-28 時点。出荷済み 4 本は公開済み（`v0.1.3` / Air は `v0.1.2`）。
+**2026-08-30 時点。出荷済み 4 本は公開済み（`v0.1.3` / Air は `v0.1.2`）。
 テスト 558 本、`mise run check` は通っている。**
+
+**止まっているのは 1 点だけ: `VDP-14` の効き幅を実機で聴き直すこと。**
+2026-08-28 に一度聴いて「遠い近いに聞こえない」と出たので作り直してあり、
+**その聴き直しがまだ**。`mise run install vocal-depth` で入る。
 
 **5 本目 Vocal Depth は `VDP-14` まで完了。** DSP・ラッパ・**窓**・CPU まで
 全部入っていて、**実機で一度聴いて効き幅を作り直した**。
@@ -13,21 +17,24 @@ CPU は **20.9 µs / 予算 533** で**ラインで一番安い**。
 一切触っていなかった（全域で 0.6 dB）。直接/反射比を **+30 → +17 dB** から
 **+25.6 → +2.3 dB** にした。**次は聴き直し。**
 
-**残っているのは 3 つで、どれも人が要る:**
+**残っているのは 4 つで、どれも人が要る:**
 
-1. **実機で見る・聴く。** `mise run install vocal-depth`（**未実行** —
-   プラグインフォルダに触るので）。**窓は一度も画面に出していない** —
+1. **`VDP-14` を聴き直す。** `mise run install vocal-depth` からやり直す
+   （バンドルは新しい）。**08-28 に一度聴いていて、その版は直す前のもの**
+2. **見た目の確認。** 音の感想は出たが、**見た目の感想はまだ 1 つも出ていない**。
    寸法は実機でしか settle せず、**UI の欠陥はテストが 1 本も落ちない**
-2. **`VDP-13` 既定値。** 測れるものを `defaults.rs` で固定してから耳
-3. **製品名の確定。** `CLAP_ID` は出荷後に変えられない（`REQ-VDP-014`）。
+3. **`VDP-13` 既定値。** 測れるものを `defaults.rs` で固定してから耳。
+   **`VDP-14` で効き幅が変わったので、順番は聴き直しのあと**
+4. **製品名の確定。** `CLAP_ID` は出荷後に変えられない（`REQ-VDP-014`）。
    今は `NXE Vocal Depth` / `com.nxe.vocaldepth` で**暫定**
 
 **ゲートは通した。ただし許容を ±0.5 → ±1.0 dB に改訂したうえで** —
 `REQ-VDP-008` の ±0.5 dB は**素材を跨いでは達成できない**と測定で分かったため
 （下の「ゲートの許容を改訂した」）。**`±` と peak-to-peak を混同していたので
 数字の読み方も直した**: このリポジトリが記録している数は全部 peak-to-peak で、
-`±1.0 dB` は 2.0 dB の幅。**実測の最悪は ±0.50 dB** で、元の `±0.5` にも
-（ホワイトノイズを除けば）収まっている。
+`±1.0 dB` は 2.0 dB の幅。**`VDP-14` のあとの実測の最悪は ±0.83 dB**（ピンクと
+声）で、**予算の余裕は 0.17 dB しかない** — もっと効き幅が欲しいなら
+**許容をもう一段動かすか、Presence の可動域を縮めるかの判断**が要る。
 
 出荷済み 4 本に手を入れる用事は無い。残っているのは Sparkleur の既定値の
 **主観サインオフだけ**（下のチェックリスト。**リリースの阻害要因ではない** —
@@ -163,7 +170,7 @@ push して**無条件に `Ok(())` を返す**。ユニット構造体で窓へ�
 「コンパイルも通り、エラーも出さず、何もしない」の一覧に、
 **「エラーも出さず、止まらない」**が 1 つ増えた形。
 
-## ゲートが通らない — `REQ-VDP-008` は素材を跨いでは満たせない（`VDP-3 の実測`）
+## ゲートの許容を ±1.0 dB に改訂した — ±0.5 dB は素材を跨いでは満たせない（`VDP-3 の実測`）
 
 **帯域 EQ が信号の総パワーをどれだけ動かすかは、その信号が帯域にどれだけ
 入っているかで決まる。** それは素材の性質で、パラメータからは分からない。
@@ -202,7 +209,7 @@ push して**無条件に `Ok(())` を返す**。ユニット構造体で窓へ�
 **反射側は素材によらず正確に補正できている**（広帯域なので）。**壊れているのは
 帯域 EQ の項だけ。**
 
-## Vocal Depth で分かったこと（`VDP-1`〜`VDP-12`）
+## Vocal Depth で分かったこと（`VDP-1`〜`VDP-14`）
 
 ### `VDP-5`〜`VDP-12` の実測
 
@@ -491,7 +498,9 @@ Vocal Glue の `Ambience Glue` / Impact の `SIZE`）。`vocal-depth-core` に�
 ## 5 分で状況を掴む順番
 
 1. [`../AGENTS.md`](../AGENTS.md) — リポジトリの地図と規約
-2. [`implementation/backlog.md`](implementation/backlog.md) の「現在地」 — 今どこか
+2. [`implementation/backlog.md`](implementation/backlog.md) の「現在地」 — 今どこか。
+   **あの節は 330 行の追記ログで、中身はこのファイルと重複している** — 先頭の
+   状態の表だけ読めばよい
 3. 触るプラグインの `plugins/<name>/docs/implementation/<name>-plan.md` の
    **該当単位の「決めたこと」と「踏んだ罠」** — ここに時間を溶かした記録がある。
    Vocal Depth なら
@@ -506,40 +515,44 @@ Vocal Glue の `Ambience Glue` / Impact の `SIZE`）。`vocal-depth-core` に�
 |---|---|
 | `plugins/doubler` | NXE Doubler。CLAP + VST3。`doubler-v0.1.3` **公開済み** |
 | `plugins/velour` | NXE Velour。CLAP + VST3。パラメータ 22 個。UI・解析・既定値まで完了。`velour-v0.1.3` **公開済み** |
-| `crates/nxe-audio` | 共通の**処理**（`shaper` / `oversample` / `biquad` / `envelope` / `guard` / `harmonics`）。`SPK-1` で `velour-core` から抜いた |
-| `crates/nxe-ui` | 共通ウィジェット・テーマ・アイコン。`mise run gallery` |
+| `crates/nxe-audio` | 共通の**処理**（`shaper` / `oversample` / `biquad` / `envelope` / `guard` / `harmonics` / `delay`）。`SPK-1` で `velour-core` から抜き、`delay` は `VDP-1` で `doubler-core` から上げた |
+| `crates/nxe-ui` | 共通ウィジェット・テーマ・アイコン（`taps` は `VDP-10` で増えた）。`mise run gallery` |
 | `crates/nxe-plug-ui` | nih-plug のパラメータと `nxe-ui` の結線。**両方を知る唯一のクレート**（`SPK-11`） |
-| `crates/nxe-dsp` | 共通の解析（`Handoff` / `PanScope` / `Spectrum` / `Level`） |
+| `crates/nxe-dsp` | 共通の解析（`Handoff` / `PanScope` / `Spectrum` / `Level` / `Correlation`） |
 | `plugins/sparkleur/sparkleur-core` | **DSP は全部。** 5 帯域クロスオーバー、検波、上下コンプ、Sparkle、`CHARACTER`、De-Harsh / Sub Protect、エンジン |
 | `plugins/sparkleur/sparkleur` | NXE Sparkleur。CLAP + VST3。パラメータ 33 個、**全部にコントロールがある**。UI は MAIN の 7 ノブ + Band Field + 伝達曲線の小窓 + メーター + Advanced の表 |
 | `plugins/sparkleur/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`SPK-1`〜`SPK-19`）。`sparkleur-v0.1.3` **公開済み** |
 | `plugins/air/air-core` | **DSP は全部。** ノイズ層（生成・傾き・粒・`WIDTH`）、倍音層、2 系統のまとめ、Follow 3 本、保護 |
 | `plugins/air/air` | NXE Air。CLAP + VST3。パラメータ 15 個、**全部にコントロールがある**。UI は読み値の帯 + 点のスペクトラム + 7 ノブ + Advanced + メーター |
 | `plugins/air/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`AIR-1`〜`AIR-13`）。`air-v0.1.2` **公開済み** |
-| `plugins/vocal-depth/vocal-depth-core` | **DSP は `VDP-3` まで。** 初期反射（タップ 10 本 × 2 + 拡散 3 段 + 200 Hz HP。**Vocal Depth を知らない**）、直接音（Presence のピーキング + Transient）、`DEPTH` とラウドネス正規化、エンジン |
-| `plugins/vocal-depth/vocal-depth` | NXE Vocal Depth。CLAP + VST3。**パラメータ 5 個**（`DAMPING` / `WIDTH` / `CLARITY` は `VDP-5`〜`VDP-7`）。**UI はまだ無い**。**製品名は暫定** |
-| `plugins/vocal-depth/docs` | **要件・DSP 仕様・実装計画**（`VDP-1` ✅、次は `VDP-2`）。初期反射を作る本で、Glue と Impact に貸す。`ui.md` は `VDP-9` の前 |
+| `plugins/vocal-depth/vocal-depth-core` | **DSP は全部。** 初期反射（タップ 10 本 × 2 + 拡散 3 段 + 200 Hz HP。**Vocal Depth を知らない**）、直接音（広帯域レベル + Presence のピーキング + Transient）、`DAMPING`（1 次 2 段 × 2 系統）、`WIDTH`、`CLARITY`、`DEPTH` とラウドネス正規化、エンジン |
+| `plugins/vocal-depth/vocal-depth` | NXE Vocal Depth。CLAP + VST3。**パラメータ 8 個、全部にコントロールがある**。UI は読み値 7 セル + 到着の図 + 7 ノブ + `OUTPUT` + メーター。**実機で見ていない**。**製品名は暫定** |
+| `plugins/vocal-depth/docs` | 要件・DSP 仕様・UI 仕様・実装計画（`VDP-1`〜`VDP-14`。残るのは `VDP-13` = 耳）。初期反射を作る本で、Glue と Impact に貸す |
 | `plugins/vocal-glue/docs` | **要件のみ。** 新規 DSP がほぼ無い（`guard` の N 帯域化だけ） |
 | `concepts/` | まだ要件を書いていない構想 3 本（Bass Density / Impact / Growl） |
 | CI | `check`（PR と main への push）、`release`（`<plugin>-v<version>` タグ） |
 
-テスト 474 本。CPU は予算 533 µs に対し
-**Doubler 85 µs / Velour 128 µs / Sparkleur 129 µs / Air 47 µs**（Air はエンジンのみ）。
+テスト **558 本**。CPU は予算 533 µs に対し
+**Doubler 85 µs / Velour 128 µs / Sparkleur 129 µs / Air 47 µs /
+Vocal Depth 20.9 µs**（Air と Vocal Depth はエンジンのみ）。
 Sparkleur の内訳（`SPK-17`）はエンジン 4x が **110**、`Spectrum` 32 バンドが
 **15.2**、`Level` × 4 が **3.9**。**2x にしても 11 µs しか減らない**ので 4x が
 既定のまま。
 
 ## 次にやること
 
-### 1. 実機で見る・聴く（**ここから先は人しかできない**）
+### 1. `VDP-14` の効き幅を聴き直す（**ここで止まっている**）
 
 ```bash
 mise run install vocal-depth   # ~/Library/Audio/Plug-Ins にコピーする
 ```
 
-**まだ実行していない** — プラグインフォルダに触るため。
+**一度実機に入れて `DEPTH` を回してある**（2026-08-28）。そのときの感想が
+「多少の差すぎる」「`ROOM` がある程度あると音に変化はあるが、遠い近いという
+変化には思えない」で、**そこから `VDP-14` が生えた**。`VDP-14` を入れた版は
+**まだ聴かれていない** — バンドルは新しいので `install` からやり直す。
 
-**窓は一度も画面に出していない。** 寸法は実機でしか settle しないし
+**見た目の感想はまだ 1 つも出ていない。** 寸法は実機でしか settle しないし
 （Velour 580 → 528、Sparkleur の図 236 → 176 → 200）、**UI の欠陥はテストが
 1 本も落ちない**（`SPK-15` / `SPK-19` で見つかった全部がテスト全通だった）。
 
