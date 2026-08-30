@@ -17,7 +17,6 @@ use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
 use nxe_ui::band::{Band, BandField, BandFieldModifiers, BandGesture};
 use nxe_ui::theme;
-use std::sync::Arc;
 use velour_core::BAND_COUNT;
 use velour_core::bands::{BANDS, Generator};
 use velour_core::guard::MAX_REDUCTION_DB;
@@ -77,7 +76,7 @@ fn reduction_of(index: usize, guards: &[f32; 2]) -> f32 {
 /// one field (`.agents/rules/vizia.md`) — so this map reads the handoff
 /// directly. Any change to the model re-evaluates it, and the heartbeat is a
 /// change to the model thirty times a second.
-fn bands_of(params: &VelourParams, host_rate: f32, analysis: &Analysis) -> Vec<Band> {
+pub(crate) fn bands_of(params: &VelourParams, host_rate: f32, analysis: &Analysis) -> Vec<Band> {
     let guards = analysis.guards.read();
     let focus = params.focus.value();
     let levels = [
@@ -113,7 +112,7 @@ fn bands_of(params: &VelourParams, host_rate: f32, analysis: &Analysis) -> Vec<B
         .collect()
 }
 
-pub fn view(cx: &mut Context, host_rate: f32, analysis: Arc<Analysis>) {
+pub fn view(cx: &mut Context) {
     let faders: Vec<ParamWidgetBase> = vec![
         ParamWidgetBase::new(cx, Ui::params, |params| &params.body),
         ParamWidgetBase::new(cx, Ui::params, |params| &params.presence),
@@ -124,7 +123,7 @@ pub fn view(cx: &mut Context, host_rate: f32, analysis: Arc<Analysis>) {
     VStack::new(cx, |cx| {
         BandField::new(
             cx,
-            Ui::params.map(move |params| bands_of(params, host_rate, &analysis)),
+            Ui::bands,
             // What came in, and the harmonics being added to it. **Both at
             // once**, which is what the parallel topology bought (`ui.md`).
             Ui::dry,

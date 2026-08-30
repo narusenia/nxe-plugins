@@ -8,11 +8,25 @@
 //! **`DIRECT` and `ROOM` are two cells, not a ratio.** The ratio *is* the
 //! distance (`REQ-VDP-018`), and two numbers say which of them moved where one
 //! cannot.
+//!
+//! **The figures are copied into the model, not read inside a lens** — see
+//! `nxe_ui::readout` for why that is not the cheap way round it looks.
 
 use super::{METER_FLOOR_DB, Ui};
+
+/// Where each figure sits in `Ui::readouts`. **The order is the strip's.**
+const IN: usize = 0;
+const OUT: usize = 1;
+const DIRECT: usize = 2;
+const ROOM: usize = 3;
+const CLARITY: usize = 4;
+const CORR: usize = 5;
+const HF: usize = 6;
+
+/// How many figures the strip prints.
+pub(crate) const FIGURES: usize = 7;
 use crate::analysis::Analysis;
 use nih_plug_vizia::vizia::prelude::*;
-use std::sync::Arc;
 
 /// Below this the number is not a level, it is a floor. `-142.0 dB` is six
 /// characters of noise where a glance expects a level.
@@ -81,73 +95,30 @@ fn corner(hz: f32) -> String {
     }
 }
 
-pub fn view(cx: &mut Context, analysis: Arc<Analysis>) {
-    nxe_ui::readout::strip(cx, move |cx| {
-        // **Read inside the lens, not copied into the model.** The handoff's
-        // identity never changes, so mapping the `Arc` would tell the binding
-        // system nothing; any change to the model re-evaluates this, and the
-        // heartbeat is a change to the model thirty times a second.
-        let input = analysis.clone();
-        nxe_ui::readout::cell(
-            cx,
-            "IN",
-            Ui::params.map(move |_| {
-                let frame = input.peaks.read();
-                level(frame[0].max(frame[1]))
-            }),
-            "dB",
-        );
+/// Re-reads the handoff and rewrites the strip's figures. Called on the
+/// heartbeat, which is the only thing that should move them.
+pub(crate) fn poll(analysis: &Analysis, figures: &mut [String]) {
+    let peaks = analysis.peaks.read();
+    figures[IN] = level(peaks[0].max(peaks[1]));
+    figures[OUT] = level(peaks[2].max(peaks[3]));
 
-        let output = analysis.clone();
-        nxe_ui::readout::cell(
-            cx,
-            "OUT",
-            Ui::params.map(move |_| {
-                let frame = output.peaks.read();
-                level(frame[2].max(frame[3]))
-            }),
-            "dB",
-        );
+    let buses = analysis.buses.read();
+    figures[DIRECT] = decibels(buses[0]);
+    figures[ROOM] = decibels(buses[1]);
+    figures[CLARITY] = lift(analysis.clarity.read()[0]);
+    figures[CORR] = correlation(analysis.correlation.read()[0]);
+    figures[HF] = corner(analysis.damping.read()[0]);
+}
 
-        let direct = analysis.clone();
-        nxe_ui::readout::cell(
-            cx,
-            "DIRECT",
-            Ui::params.map(move |_| decibels(direct.buses.read()[0])),
-            "dB",
-        );
-
-        let room = analysis.clone();
-        nxe_ui::readout::cell(
-            cx,
-            "ROOM",
-            Ui::params.map(move |_| decibels(room.buses.read()[1])),
-            "dB",
-        );
-
-        let clarity = analysis.clone();
-        nxe_ui::readout::cell(
-            cx,
-            "CLARITY",
-            Ui::params.map(move |_| lift(clarity.clarity.read()[0])),
-            "dB",
-        );
-
-        let width = analysis.clone();
-        nxe_ui::readout::cell(
-            cx,
-            "CORR",
-            Ui::params.map(move |_| correlation(width.correlation.read()[0])),
-            "",
-        );
-
-        let damping = analysis.clone();
-        nxe_ui::readout::cell(
-            cx,
-            "HF",
-            Ui::params.map(move |_| corner(damping.damping.read()[0])),
-            "Hz",
-        );
+pub fn view(cx: &mut Context) {
+    nxe_ui::readout::strip(cx, |cx| {
+        nxe_ui::readout::cell(cx, "IN", Ui::readouts.index(IN), "dB");
+        nxe_ui::readout::cell(cx, "OUT", Ui::readouts.index(OUT), "dB");
+        nxe_ui::readout::cell(cx, "DIRECT", Ui::readouts.index(DIRECT), "dB");
+        nxe_ui::readout::cell(cx, "ROOM", Ui::readouts.index(ROOM), "dB");
+        nxe_ui::readout::cell(cx, "CLARITY", Ui::readouts.index(CLARITY), "dB");
+        nxe_ui::readout::cell(cx, "CORR", Ui::readouts.index(CORR), "");
+        nxe_ui::readout::cell(cx, "HF", Ui::readouts.index(HF), "Hz");
     });
 }
 

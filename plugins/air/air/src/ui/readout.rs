@@ -9,12 +9,30 @@
 //! shut is the whole layer gone; a combined figure cannot say whether a dark
 //! pad closed `BRIGHTNESS`, the amount is simply low, or the protection is
 //! pulling (`REQ-AIR-018`).
+//!
+//! **The figures are copied into the model, not read inside a lens** — see
+//! `nxe_ui::readout` for why that is not the cheap way round it looks.
 
 use super::{METER_FLOOR_DB, Ui};
 use crate::analysis::Analysis;
 use air_core::follow::{BRIGHTNESS, ENVELOPE, TRANSIENT};
 use nih_plug_vizia::vizia::prelude::*;
-use std::sync::Arc;
+
+/// Where each figure sits in `Ui::readouts`. **The order is the strip's**, so
+/// the constants and the cells below cannot drift apart without the window
+/// showing it.
+const IN: usize = 0;
+const OUT: usize = 1;
+const GUARD: usize = 2;
+const WIDTH: usize = 3;
+
+/// How many figures the strip prints, and how many bars it draws.
+pub(crate) const FIGURES: usize = 4;
+pub(crate) const GAUGES: usize = 3;
+
+/// The three detectors, in the order they are drawn.
+const DETECTORS: [(&str, usize); GAUGES] =
+    [("ENV", ENVELOPE), ("BRT", BRIGHTNESS), ("TRN", TRANSIENT)];
 
 /// Below this the number is not a level, it is a floor. `-142.0 dB` is six
 /// characters of noise where a glance expects a level.
@@ -60,57 +78,30 @@ fn correlation(value: f32) -> String {
     format!("{value:+.2}")
 }
 
-pub fn view(cx: &mut Context, analysis: Arc<Analysis>) {
-    nxe_ui::readout::strip(cx, move |cx| {
-        // **Read inside the lens, not copied into the model.** The handoff's
-        // identity never changes, so mapping the `Arc` would tell the binding
-        // system nothing; any change to the model re-evaluates this, and the
-        // heartbeat is a change to the model thirty times a second.
-        let input = analysis.clone();
-        nxe_ui::readout::cell(
-            cx,
-            "IN",
-            Ui::params.map(move |_| {
-                let frame = input.peaks.read();
-                level(frame[0].max(frame[1]))
-            }),
-            "dB",
-        );
+/// Re-reads the handoff and rewrites the strip's figures. Called on the
+/// heartbeat, which is the only thing that should move them.
+pub(crate) fn poll(analysis: &Analysis, figures: &mut [String], gauges: &mut [f32]) {
+    let peaks = analysis.peaks.read();
+    figures[IN] = level(peaks[0].max(peaks[1]));
+    figures[OUT] = level(peaks[2].max(peaks[3]));
+    figures[GUARD] = pull(analysis.guard.read()[0]);
+    figures[WIDTH] = correlation(analysis.correlation.read()[0]);
 
-        let output = analysis.clone();
-        nxe_ui::readout::cell(
-            cx,
-            "OUT",
-            Ui::params.map(move |_| {
-                let frame = output.peaks.read();
-                level(frame[2].max(frame[3]))
-            }),
-            "dB",
-        );
+    let follow = analysis.follow.read();
+    for (gauge, (_, index)) in gauges.iter_mut().zip(DETECTORS) {
+        *gauge = follow[index].clamp(0.0, 1.0);
+    }
+}
 
-        let guard = analysis.clone();
-        nxe_ui::readout::cell(
-            cx,
-            "GUARD",
-            Ui::params.map(move |_| pull(guard.guard.read()[0])),
-            "dB",
-        );
+pub fn view(cx: &mut Context) {
+    nxe_ui::readout::strip(cx, |cx| {
+        nxe_ui::readout::cell(cx, "IN", Ui::readouts.index(IN), "dB");
+        nxe_ui::readout::cell(cx, "OUT", Ui::readouts.index(OUT), "dB");
+        nxe_ui::readout::cell(cx, "GUARD", Ui::readouts.index(GUARD), "dB");
+        nxe_ui::readout::cell(cx, "WIDTH", Ui::readouts.index(WIDTH), "");
 
-        let width = analysis.clone();
-        nxe_ui::readout::cell(
-            cx,
-            "WIDTH",
-            Ui::params.map(move |_| correlation(width.correlation.read()[0])),
-            "",
-        );
-
-        for (name, index) in [("ENV", ENVELOPE), ("BRT", BRIGHTNESS), ("TRN", TRANSIENT)] {
-            let follow = analysis.clone();
-            nxe_ui::readout::meter_cell(
-                cx,
-                name,
-                Ui::params.map(move |_| follow.follow.read()[index].clamp(0.0, 1.0)),
-            );
+        for (position, (name, _)) in DETECTORS.iter().enumerate() {
+            nxe_ui::readout::meter_cell(cx, name, Ui::gauges.index(position));
         }
     });
 }

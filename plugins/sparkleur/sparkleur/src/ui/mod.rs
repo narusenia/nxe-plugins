@@ -22,6 +22,7 @@ use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
 use nxe_ui::curve::Curve;
 use nxe_ui::heartbeat::Lifeline;
 use nxe_ui::{font, theme};
+use sparkleur_core::crossover::BAND_COUNT;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
@@ -86,6 +87,21 @@ pub(crate) struct Ui {
     /// a split topology has no separable added layer, and the per-band gains
     /// are what say what happened (`REQ-SPK-018`).
     wet: Curve,
+    /// The five regions, and the readout strip's printed figures and bar.
+    ///
+    /// **All copied here rather than read inside a lens.** A lens that reads the
+    /// handoff is re-evaluated once per *frame*, so the window redrew at the
+    /// frame rate whenever a band gain moved — see `nxe_ui::readout`.
+    bands: Vec<nxe_ui::band::Band>,
+    readouts: Vec<String>,
+    gauges: Vec<f32>,
+    /// What each band is running at, for the Advanced table.
+    applied_gains: Vec<String>,
+    /// Where the shown band is sitting on its own transfer curve.
+    curve_point: Option<(f32, f32)>,
+    /// What `bands` needs besides the parameters, kept because the heartbeat
+    /// rebuilds them and the rate is read once when the window opens.
+    host_rate: f32,
 }
 
 #[derive(Clone)]
@@ -106,12 +122,10 @@ impl Model for Ui {
                 let holds = self.analysis.holds.read();
                 self.peaks = peaks.iter().copied().map(meter_position).collect();
                 self.holds = holds.iter().copied().map(meter_position).collect();
-                // The gains are **not** copied here. The figure reads them
-                // inside its own lens, because a region carries what it is set
-                // to and what it is doing in one value and a lens can only map
-                // one field (`.agents/rules/vizia.md`). Any change to this
-                // model — this heartbeat included — re-evaluates that lens,
-                // which is what makes the regions move in time.
+                self.bands = field::bands_of(&self.params, self.host_rate, &self.analysis);
+                readout::poll(&self.analysis, &mut self.readouts, &mut self.gauges);
+                advanced::poll(&self.analysis, &mut self.applied_gains);
+                curve::poll(&self.params, &self.analysis, &mut self.curve_point);
             }
         });
     }
@@ -189,6 +203,12 @@ pub fn create(
             wet: Curve::new(),
             peaks: vec![0.0; METERS],
             holds: vec![0.0; METERS],
+            bands: field::bands_of(&params, host_rate, &analysis),
+            readouts: vec![String::new(); readout::FIGURES],
+            gauges: vec![0.0; readout::GAUGES],
+            applied_gains: vec![String::new(); BAND_COUNT],
+            curve_point: None,
+            host_rate,
             heartbeat,
         }
         .build(cx);
@@ -199,10 +219,10 @@ pub fn create(
 
                 // **The three numbers a compressor is read by**, above
                 // everything and never hidden (`SPK-19`).
-                readout::view(cx, analysis.clone());
+                readout::view(cx);
 
                 // The figure. It is what the plugin *is* (`ui.md`).
-                figure_row(cx, host_rate, analysis.clone());
+                figure_row(cx);
 
                 // **No tabs.** They hid seventeen of the thirty-five controls
                 // behind a click, and the question a multiband compressor is
@@ -210,7 +230,7 @@ pub fn create(
                 // of half a panel (`SPK-19`). Everything is on screen.
                 shape_row(cx);
                 Element::new(cx).class("rule");
-                advanced::view(cx, analysis.clone());
+                advanced::view(cx);
             })
             .width(Stretch(1.0))
             .height(Stretch(1.0))
@@ -234,10 +254,10 @@ pub fn create(
 }
 
 /// The figure and the window that reads one band of it, side by side.
-fn figure_row(cx: &mut Context, host_rate: f32, analysis: Arc<Analysis>) {
+fn figure_row(cx: &mut Context) {
     HStack::new(cx, |cx| {
-        field::view(cx, host_rate, analysis.clone());
-        curve::view(cx, analysis);
+        field::view(cx);
+        curve::view(cx);
     })
     // **Not `.class("row")`.** That centres its children vertically, and
     // `child-top: 1s` / `child-bottom: 1s` are two more stretches for the

@@ -76,6 +76,9 @@ pub(crate) struct Ui {
     direct: f32,
     peaks: Vec<f32>,
     holds: Vec<f32>,
+    /// The readout strip's printed figures. **Copied here rather than read
+    /// inside a lens** — see `nxe_ui::readout`.
+    readouts: Vec<String>,
 }
 
 #[derive(Clone)]
@@ -102,9 +105,7 @@ impl Model for Ui {
                 let holds = self.analysis.holds.read();
                 self.peaks = peaks.iter().copied().map(meter_position).collect();
                 self.holds = holds.iter().copied().map(meter_position).collect();
-                // The readout strip is **not** copied here. It reads inside its
-                // own lenses, and any change to this model — this heartbeat
-                // included — re-evaluates them.
+                readout::poll(&self.analysis, &mut self.readouts);
             }
         });
     }
@@ -157,6 +158,7 @@ pub fn create(
             direct: 0.0,
             peaks: vec![0.0; METERS],
             holds: vec![0.0; METERS],
+            readouts: vec![String::new(); readout::FIGURES],
             heartbeat,
         }
         .build(cx);
@@ -164,7 +166,7 @@ pub fn create(
         HStack::new(cx, |cx| {
             VStack::new(cx, |cx| {
                 nxe_ui::header::header(cx, "NXE VOCAL DEPTH", "forward and back");
-                readout::view(cx, analysis.clone());
+                readout::view(cx);
                 // The figure. It is what the plugin *is* (`ui.md`).
                 field::view(cx);
                 main_row(cx);
