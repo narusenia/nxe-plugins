@@ -116,12 +116,28 @@ vizia = { git = "https://github.com/robbert-vdh/vizia.git", tag = "patched-2024-
 #    lets the timer be slow without the controls going with it, and it costs
 #    nothing when nothing is being touched (the idle window is still 0.9 %).
 #
-# All five are worth sending upstream; none has been yet.
+# **vizia and baseview together, the structural one (15.3 % down to 11.0 %):**
+#
+# 6. **Every frame drew the whole window.** `draw_system` cleared it and walked
+#    every view, so a meter moving one pixel re-shaped and re-sent every label
+#    on screen — and **63 % of a window's draw calls are text**, nearly all of
+#    it labels that never change. It now draws only the box that asked for it
+#    and skips any subtree the box does not touch. macOS needs
+#    `NSOpenGLPFABackingStore` for that to be sound, or a swap can hand back a
+#    buffer holding some earlier frame.
+# 7. **A changed string relayouted the tree.** `.text()` always asked for a
+#    relayout, so a readout ticking along with the audio re-ran morphorm over
+#    every view and cosmic-text over every string, thirty times a second, to
+#    put four digits where they were already going to be. It asks only when the
+#    view is sized by its contents — which is why `nxe_ui::readout::cell` fixes
+#    both of its dimensions.
+#
+# All seven are worth sending upstream; none has been yet.
 [patch."https://github.com/RustAudio/baseview.git"]
-baseview = { git = "https://github.com/narusenia/baseview.git", tag = "nxe-2026-08-30" }
+baseview = { git = "https://github.com/narusenia/baseview.git", tag = "nxe-2026-08-30b" }
 
 [patch."https://github.com/robbert-vdh/vizia.git"]
-vizia = { git = "https://github.com/narusenia/vizia.git", tag = "nxe-2026-08-30" }
+vizia = { git = "https://github.com/narusenia/vizia.git", tag = "nxe-2026-08-30b" }
 
 [profile.release]
 lto = "thin"

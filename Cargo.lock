@@ -446,7 +446,7 @@ dependencies = [
 [[package]]
 name = "baseview"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/baseview.git?tag=nxe-2026-08-30#1e52a83adc6d986f5e49978c31be3bbc196ff128"
+source = "git+https://github.com/narusenia/baseview.git?tag=nxe-2026-08-30b#10710cf4f2a1b84d0e668b081a41da6da9c6d2fc"
 dependencies = [
  "cocoa",
  "core-foundation",
@@ -2847,7 +2847,7 @@ dependencies = [
 [[package]]
 name = "selectors"
 version = "0.23.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30#40e05a664db695d212fb43ce4ecfb61f99aacff2"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30b#d8c5be3efdf706a288dcfebc8e53f57b4127a658"
 dependencies = [
  "bitflags 1.3.2",
  "cssparser",
@@ -3451,7 +3451,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "vizia"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30#40e05a664db695d212fb43ce4ecfb61f99aacff2"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30b#d8c5be3efdf706a288dcfebc8e53f57b4127a658"
 dependencies = [
  "vizia_baseview",
  "vizia_core",
@@ -3461,7 +3461,7 @@ dependencies = [
 [[package]]
 name = "vizia_baseview"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30#40e05a664db695d212fb43ce4ecfb61f99aacff2"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30b#d8c5be3efdf706a288dcfebc8e53f57b4127a658"
 dependencies = [
  "baseview",
  "femtovg",
@@ -3475,7 +3475,7 @@ dependencies = [
 [[package]]
 name = "vizia_core"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30#40e05a664db695d212fb43ce4ecfb61f99aacff2"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30b#d8c5be3efdf706a288dcfebc8e53f57b4127a658"
 dependencies = [
  "accesskit",
  "bitflags 2.13.1",
@@ -3506,7 +3506,7 @@ dependencies = [
 [[package]]
 name = "vizia_derive"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30#40e05a664db695d212fb43ce4ecfb61f99aacff2"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30b#d8c5be3efdf706a288dcfebc8e53f57b4127a658"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3516,12 +3516,12 @@ dependencies = [
 [[package]]
 name = "vizia_id"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30#40e05a664db695d212fb43ce4ecfb61f99aacff2"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30b#d8c5be3efdf706a288dcfebc8e53f57b4127a658"
 
 [[package]]
 name = "vizia_input"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30#40e05a664db695d212fb43ce4ecfb61f99aacff2"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30b#d8c5be3efdf706a288dcfebc8e53f57b4127a658"
 dependencies = [
  "bitflags 1.3.2",
  "keyboard-types",
@@ -3531,7 +3531,7 @@ dependencies = [
 [[package]]
 name = "vizia_storage"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30#40e05a664db695d212fb43ce4ecfb61f99aacff2"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30b#d8c5be3efdf706a288dcfebc8e53f57b4127a658"
 dependencies = [
  "morphorm",
  "vizia_id",
@@ -3540,7 +3540,7 @@ dependencies = [
 [[package]]
 name = "vizia_style"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30#40e05a664db695d212fb43ce4ecfb61f99aacff2"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30b#d8c5be3efdf706a288dcfebc8e53f57b4127a658"
 dependencies = [
  "bitflags 2.13.1",
  "cssparser",
@@ -3553,7 +3553,7 @@ dependencies = [
 [[package]]
 name = "vizia_window"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30#40e05a664db695d212fb43ce4ecfb61f99aacff2"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30b#d8c5be3efdf706a288dcfebc8e53f57b4127a658"
 dependencies = [
  "accesskit",
  "morphorm",
@@ -3564,7 +3564,7 @@ dependencies = [
 [[package]]
 name = "vizia_winit"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30#40e05a664db695d212fb43ce4ecfb61f99aacff2"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-30b#d8c5be3efdf706a288dcfebc8e53f57b4127a658"
 dependencies = [
  "accesskit",
  "accesskit_winit",

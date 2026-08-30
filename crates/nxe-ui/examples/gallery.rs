@@ -114,6 +114,11 @@ struct Demo {
     motion: Option<nxe_ui::heartbeat::Lifeline>,
     /// Counts the motion steps, so the shapes above have a phase.
     step: u32,
+    /// What `nxe_ui::readout` prints and how far its bar is along. **Built on
+    /// the motion step, not inside the lens** — which is the whole point of the
+    /// widget's own note.
+    readouts: Vec<String>,
+    gauge: f32,
 }
 
 /// One step of `NXE_GALLERY_HZ`'s motion. Its own type rather than a
@@ -210,6 +215,11 @@ impl Model for Demo {
                 band.level =
                     0.5 + 0.4 * ((phase + index as f32 * 0.2) * std::f32::consts::TAU).cos();
             }
+            for (index, text) in self.readouts.iter_mut().enumerate() {
+                let db = -60.0 * (0.5 + 0.5 * ((phase + index as f32 * 0.3) * 6.0).sin());
+                *text = format!("{db:+.1}");
+            }
+            self.gauge = 0.5 + 0.5 * (phase * 4.0).sin();
         });
 
         event.map(|demo_event: &DemoEvent, _| match demo_event {
@@ -358,6 +368,8 @@ fn main() {
         let mut demo = Demo {
             motion,
             step: 0,
+            readouts: vec![String::new(); 3],
+            gauge: 0.0,
             detune: 0.24,
             delay: 0.62,
             mix: 0.4,
@@ -416,6 +428,7 @@ fn main() {
                 nxe_ui::header::header(cx, "nxe-ui", "tokens and widgets");
 
                 grid(cx);
+                readouts(cx);
                 colours(cx);
                 knobs(cx);
                 bars(cx);
@@ -471,6 +484,29 @@ fn swatch(cx: &mut Context, name: &str, token: theme::Token) {
     .width(Auto)
     .height(Auto)
     .row_between(Pixels(theme::SPACE_1));
+}
+
+/// The readout strip as a widget, with figures that move.
+///
+/// **`grid` below is the design; this is the thing plugins actually build.**
+/// It is here because it is the widget that changes most often on screen — a
+/// window's readouts tick along with the audio — and because it is the one
+/// whose cost was missed for that reason
+/// (`docs/investigations/ui-frame-cost.md`).
+fn readouts(cx: &mut Context) {
+    panel(cx, "READOUT", |cx| {
+        nxe_ui::readout::strip(cx, |cx| {
+            nxe_ui::readout::cell(cx, "IN", Demo::readouts.index(0), "dB");
+            nxe_ui::readout::cell(cx, "OUT", Demo::readouts.index(1), "dB");
+            nxe_ui::readout::cell(cx, "REDUCTION", Demo::readouts.index(2), "dB");
+            nxe_ui::readout::meter_cell(cx, "GATE", Demo::gauge);
+        });
+        Label::new(
+            cx,
+            "NXE_GALLERY_HZ moves these; the box is fixed so they cannot",
+        )
+        .class("subtle");
+    });
 }
 
 /// The Swiss layer: eyebrows over rules, one readout per region, and the accent

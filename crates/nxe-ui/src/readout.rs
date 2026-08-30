@@ -88,7 +88,11 @@ pub fn cell(
             font::value(cx, value.clone())
                 .class("readout")
                 .width(Pixels(VALUE_WIDTH))
-                .height(Auto)
+                // **Fixed, not `Auto`.** A view whose size comes from its
+                // contents makes every changed string a relayout of the whole
+                // window, and this string changes with the audio
+                // (`theme::LINE_READOUT`).
+                .height(Pixels(theme::LINE_READOUT))
                 .text_align(TextAlign::Right);
             Label::new(cx, unit).class("subtle").top(Stretch(1.0));
         })
