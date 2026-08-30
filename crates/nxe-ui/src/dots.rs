@@ -195,6 +195,12 @@ impl View for DotField {
         let paint = theme::accent_paint(bounds.x, bottom, bounds.x, bounds.y);
         let wander = 1.0 - self.alignment;
 
+        // **Every grain in one path, filled once.** They all take the same
+        // paint — the ramp is a gradient over the whole plot, not a colour per
+        // grain — and femtovg gives every `fill_path` its own draw call
+        // whatever is in it. A grain each was up to `columns * ROWS` draw
+        // calls for one picture (`docs/investigations/ui-frame-cost.md`).
+        let mut grains = vg::Path::new();
         for column in 0..columns {
             let level = level_at(&self.layer, column);
             let centre_x = bounds.x + (column as f32 + 0.5) * cell_w;
@@ -207,14 +213,13 @@ impl View for DotField {
                 let x = centre_x + dx * cell_w * SCATTER * wander;
                 let y = bottom - (row as f32 + 0.5) * cell_h + dy * cell_h * SCATTER * wander;
 
-                let mut dot = vg::Path::new();
                 // The partial top row is drawn smaller rather than dimmer: a
                 // dimmer grain reads as a quieter band, and the ramp already
                 // means height.
-                dot.circle(x, y, DOT * scale * fill.max(0.35));
-                canvas.fill_path(&dot, &paint);
+                grains.circle(x, y, DOT * scale * fill.max(0.35));
             }
         }
+        canvas.fill_path(&grains, &paint);
     }
 }
 

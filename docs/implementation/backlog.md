@@ -10,7 +10,7 @@
 - **順序の判断は [`roadmap.md`](roadmap.md)**。この表は「何があるか」、
   ロードマップは「どの順でやるか、なぜその順か」
 
-最終更新: 2026-08-26
+最終更新: 2026-08-31
 
 ## 凡例
 
@@ -23,6 +23,57 @@
 | ❌ | 判断の結果やらないことにした（根拠は計画書に記録） |
 
 ## 現在地
+
+**4 本とも実装完了・公開済み**（2026-08-28）。`doubler-v0.1.3` /
+`velour-v0.1.3` / `sparkleur-v0.1.3` / `air-v0.1.2`。**テスト 558 本、
+`mise run check` は通っている。**
+
+**5 本目 Vocal Depth が `VDP-14` まで来た**（2026-08-28）。DSP・ラッパ・窓・
+CPU まで全部入っていて、**実機で一度聴いて効き幅を作り直した**。
+**残っているのは人が要る 3 つだけ** — `VDP-13`（既定値、耳）、**実機での
+見た目の確認**、**製品名の確定**。
+
+**`VDP-14` は実機の耳から生えた。** 「`DEPTH` が多少の差すぎる」「遠い近いという
+変化には思えない」に対して測ったら、**`REQ-VDP-002` の「直接音の比 FAR ↓」が
+実装されていなかった** — Presence 帯を傾けるだけで広帯域のレベルを触っていな
+かった。直接/反射比が **+30 → +17 dB** しか動いていなかったのを
+**+25.6 → +2.3 dB** にした。**`VDP-5` がゲートのために狭めた `DEPTH` →
+`DAMPING` の幅も戻した**（それは判断のときに却下された手だった）。
+
+- `vocal-depth-core`: `reflections` / `direct` / `damping` / `width` /
+  `clarity` / `depth` / `engine`。テスト 55 本 + 詰めの 2 バイナリ
+- `vocal-depth`: CLAP + VST3、パラメータ 8 個、**窓あり**（到着の図 +
+  読み値 7 セル + メーター 4 本）
+- `nxe-audio` が増えた: `delay`（`doubler-core` から。**2 個目の客が要求した**）、
+  `biquad` の `response` / `magnitude` / `peaking` / `one_pole_lowpass`
+- `nxe-ui` が増えた: `taps::TapField`（到着の図。gallery にも入れた）
+- CPU は **20.9 µs / 予算 533** で**ラインで一番安い**
+
+**`VDP-3` のゲートは通った** — ただし**許容を ±0.5 → ±1.0 dB に改訂**した
+うえで（ユーザー判断）。`REQ-VDP-008` の ±0.5 dB は素材を跨いでは達成できないと
+実測で分かったため（Presence 帯の割合が素材で 10 倍違う）。理由と代案は
+`REQ-VDP.md` の `REQ-VDP-008`。
+
+| | 状態 |
+|---|---|
+| Doubler / Velour / Sparkleur / Air | **全単位 ✅**。残るのは `DBL-13`（既定値、耳）と Sparkleur の既定値の主観サインオフだけ。**どちらもリリースの阻害要因ではない** |
+| Vocal Depth | **`VDP-12` まで完了**（DSP・窓・CPU。パラメータ 8 個）。残るのは `VDP-13`（耳）・実機確認・製品名 |
+| Vocal Glue | 要件のみ。実装単位はまだ無い |
+| CPU（予算 533 µs） | Doubler 85 / Velour 128 / Sparkleur 129 / **Air 47**（エンジンのみ） |
+| 共通クレート | `nxe-audio`（処理。`delay` が `VDP-1` で増えた）/ `nxe-dsp`（解析）/ `nxe-ui`（ウィジェット）/ `nxe-plug-ui`（結線） |
+
+**この節から下は追記ログで、同じ内容が
+[`../HANDOVER.md`](../HANDOVER.md) にもある。** 状態の正は上の表と
+下の全単位表で、**罠と授業料の正は `HANDOVER.md`**。
+
+**Air と、4 本まとめての重さ修正が入った**（2026-08-27）。`AIR-1`〜`AIR-13` が
+全部 ✅（下の表）。そのあとホストの UI が重くなる不具合を直して 0.1.3 世代を
+公開した — **本命は vizia のバグ 2 つ**（baseview が `should_redraw` を読まず
+毎フレーム全画面を再描画、`fontdb::Database::query` が無キャッシュ）で、
+`narusenia/vizia` の `nxe-2026-08-27` を `[patch]` で当てて**アイドル
+27.7 % → 0.9 %**。別件で表示のハートビートがスレッドを漏らしていたのも直した
+（`nxe_ui::heartbeat::start` が `Lifeline` を返す形）。**詳細と測定値は
+`HANDOVER.md`。**
 
 **Doubler は一通り動いていて、見た目も含めて実機で確認済み**（2026-08-26）。
 残りは下の「今すぐ着手できるもの」と「積み残し」だけ。
@@ -358,8 +409,10 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| VDP-1 | **初期反射**（Vocal Depth。`vocal-depth-core` もここで作る）。着手前に `dsp.md` を書く | `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md` |
-| SPK-18 | **既定値と耳** ✅ — 測れるものは全部固定。既定値は 1 つも動かす理由が出なかった | `sparkleur-plan.md` |
+| VDP-13 | **既定値と耳**（Vocal Depth。**耳が要る**）。測れるものは `defaults.rs` で固定してから。**`VDP-14` で効き幅が変わったので、まず聴き直しから** | `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md` |
+| — | **`NXE Vocal Depth` を実機で見る・聴く**（4 ホスト、窓の寸法、既定値）。`mise run install vocal-depth` | `vocal-depth-plan.md` |
+| — | **製品名の確定**（`REQ-VDP-014`）。`CLAP_ID` は出荷後に変えられない | `REQ-VDP.md` の概要 |
+| — | **Advanced の偏差**（Vocal Depth、`REQ-VDP-009`）。**前に `dsp.md`** | `vocal-depth-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
 
 Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`）は完了。
@@ -373,6 +426,7 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 |---|---|
 | 値の直接入力を戻す | `UI-3`。`ValueEntry` は `nxe-ui` にあり gallery では動く。プラグインに載せると editor の表示が更新されなくなる（原因未特定） |
 | 見た目の最終調整（フォントサイズ、寸法、余白） | ユーザーの指示で最後にまとめる |
+| Doubler の Detail 表が毎フレーム `String` を 32 個組む | `detail.rs`。値が動くのは操作時だけなので再描画は誘発しないが、形は読み値と同じ（[調査](../investigations/ui-frame-cost.md)） |
 | パワーフォロワの共通化 | **3 個目が来た**（`nxe_audio::guard::Follower` / `sparkleur_core::Detector` / `sparkleur_core::Sparkle`）。ただし形が 3 つとも違う（帯域通過込み / 配列 / 単体）ので、上げるなら何を共通にするかを決めてから |
 
 ## 全単位
@@ -411,6 +465,9 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | UI-13 | `BandField`（領域知識を持たない帯域パネル） | ✅ |
 | UI-8 | `Meter` — **Velour の IN / OUT が使う** | ✅ |
 | UI-9 | `ToggleSwitch` — **3 個目でも要らなかったので落とした**（`SPK-19`） | ❌ |
+| UI-14 | **UI を開くと DAW が重くなる問題。** 体感の原因は `baseview` が**ホストのプロセス全体**でマウス合成を切っていたこと（1 行、誰も戻していなかった）。あわせて窓が開いている間の描画コストも 7 つ直した | ✅ 実機で症状消失、gallery で **22.6 → 約 9 %** `#2`（[調査](../investigations/ui-frame-cost.md)） |
+| — | **上流に投げる。** いちばん効くのは `setMouseCoalescingEnabled` の 1 つ（baseview を使う全プラグインに効いているはず） | ⬜ |
+| — | **femtovg の隣接 draw call マージ。** 部分再描画で 219 → 68 になったので、優先度は下がった。やるなら測り直してから | ⬜ |
 
 ### Doubler — `../../plugins/doubler/docs/implementation/doubler-plan.md`
 
@@ -512,8 +569,8 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | AIR-5 | Follow Engine（`ENVELOPE` / `BRIGHTNESS` / `TRANSIENT`）。`nxe_audio::envelope::Power` を上げた | ✅ `0f998f5` |
 | AIR-6 | 保護（Excess Guard） | ✅ ピンクと倍音列で 0.00 dB `6f28afd` |
 | AIR-7 | 詰め（レート・ブロック・極端値・確保・継ぎ目） | ✅ 継ぎ目は原音の −46 dB `80a3613` |
-| AIR-8 | UI マクロ層（メイン 7 本） | ⬜ |
-| AIR-9 | UI スペクトルの重ね描き（**画面の主役**） | ⬜ |
+| AIR-8 | UI マクロ層（メイン 7 本）。**Advanced もここで入れた** | ✅ `e73f56e` |
+| AIR-9 | UI スペクトルの重ね描き（**画面の主役**）。`nxe_ui::dots::DotField` と gallery | ✅ ウィジェットまで `dc39cbe`。窓への配線は `AIR-10` |
 | AIR-10 | UI 読み値・メーター・図と解析の配線（`AIR-11` を含む） | ✅ `a30d3cc` |
 | AIR-11 | 解析の配線 | ✅ `AIR-10` に含めた |
 | AIR-12 | CPU 予算 | ✅ **エンジン 47.2 µs / 予算 533** |
@@ -528,28 +585,38 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 **`VDP-4`（ラッパ）が `VDP-5`〜`VDP-7` より前**なのは `VEL-5` / `AIR-4` と
 同じ判断 — `DAMPING` と `CLARITY` は効いたかの判断が耳寄り。
 
-**共有クレートの新規単位が無い。** 唯一の新規は初期反射で、
+**共有クレートに上げるものが 2 つある**（`dsp.md` で出た）。どちらも数十行なので
+単位は起こさず、`VDP-1` と `VDP-3` の中で片付ける — `doubler-core` の
+`DelayLine`（**2 個目の客が要求した**）と `biquad::Coefficients::magnitude`
+（信号を見ない正規化が振幅特性を要求する）。**唯一の新規 DSP は初期反射**で、
 `vocal-depth-core` に置く（`nxe-audio` に上げるのは Vocal Glue が要求したとき）。
 
 | ID | 単位 | 状態 |
 |---|---|---|
-| VDP-1 | 初期反射。`vocal-depth-core` もここで作る | ⬜ |
-| VDP-2 | 直接音（Presence のシェルフ + Transient） | ⬜ |
-| VDP-3 | `DEPTH` とラウドネス正規化（**ゲート**） | ⬜ |
-| VDP-4 | ラッパとパラメータ（**ここで音が出る**） | ⬜ |
-| VDP-5 | `DAMPING`（直接音と反射で違う量） | ⬜ |
-| VDP-6 | 距離依存のステレオ幅 | ⬜ |
-| VDP-7 | `CLARITY`（明瞭度の保持と公開） | ⬜ |
-| VDP-8 | 詰め（レート・ブロック・極端値・確保・継ぎ目） | ⬜ |
-| VDP-9 | UI マクロ層と Advanced（前に `ui.md`） | ⬜ |
-| VDP-10 | UI の図（**何を描くかが未定**） | ⬜ |
-| VDP-11 | 読み値・メーター・解析の配線 | ⬜ |
-| VDP-12 | CPU 予算 | ⬜ |
-| VDP-13 | 既定値と耳 | ⬜ |
+| VDP-1 | 初期反射。`vocal-depth-core` もここで作った。`DelayLine` を `doubler-core` から `nxe-audio` に上げた | ✅ 120 ms 以降 −25.5 dB、段 0.36 対 88 `e60ffa4` |
+| VDP-2 | 直接音（Presence の並列帯 + Transient） | ✅ 帯域差 14.79 dB、定常への寄与 0.045 dB `84419ac` |
+| VDP-3 | `DEPTH` とラウドネス正規化（**ゲート**）。`Coefficients::response` / `magnitude` / `peaking` を足した | ✅ **許容を ±1.0 dB に改訂して通過** — ピンク 0.48 / ホワイト 0.80 / フレーズ 0.77 dB `0402d71` |
+| VDP-4 | ラッパとパラメータ（**ここで音が出る**）。パラメータは 5 個（`DAMPING` / `WIDTH` / `CLARITY` は `VDP-5`〜`VDP-7`） | ✅ **実機確認だけ残り** `5c29f43` |
+| VDP-5 | `DAMPING`（直接音と反射で違う量） | ✅ コーナー 1.9 oct 差 `d9e5e8d` |
+| VDP-6 | 距離依存のステレオ幅 | ✅ モノ和の櫛形 0.0 dB `ed752da` |
+| VDP-7 | `CLARITY`（明瞭度の保持と公開） | ✅ 普通の素材で厳密に 0 `3081667` |
+| VDP-8 | 詰め（レート・ブロック・極端値・確保・継ぎ目） | ✅ 段が背景の 1.0 倍（対照 90）`34100c4` |
+| VDP-9 | UI マクロ層（メイン 7 本 + `OUTPUT`）。**Advanced の偏差は別単位に切った** | ✅ `f67708c` |
+| VDP-10 | UI の図。**到着の図**（`nxe_ui::taps::TapField`） | ✅ `f67708c` |
+| VDP-11 | 読み値・メーター・解析の配線 | ✅ 7 セル + メーター 4 本 `f67708c` |
+| VDP-12 | CPU 予算 | ✅ **20.9 µs / 予算 533** `3c91c95` |
+| VDP-13 | 既定値と耳 | 🟡 **耳が要る** |
+| VDP-14 | **距離の効き幅の作り直し**（実機で「遠い近いに聞こえない」と出た）。直接音の広帯域レベルを足し、反射と `DAMPING` の範囲を広げた | ✅ 比 +25.6 → +2.3 dB |
+| — | **Advanced の偏差**（`REQ-VDP-009`）。パラメータ 7 個とエンジンの変更。**前に `dsp.md` が各偏差の数を書く** | ⬜ |
 
-**着手前に `dsp.md` を書く。** 一番難しいのは `VDP-3` の正規化 —
-連動する各項が総エネルギーに与える寄与を打ち消す係数を、**信号に依存せず**
-パラメータから計算する（`nxe_audio::shaper` の `g` と同じ考え方）。
+**`dsp.md` は書けた**（2026-08-28、
+[`specifications/dsp.md`](../../plugins/vocal-depth/docs/specifications/dsp.md)）。
+計画書が投げていた 5 つの問いに答えが入っている — **タップ時刻は動かさず
+`DEPTH` は重み包絡を動かす**、13 本 × 2 チャネルの素数 ms、オールパス 3 段、
+`DAMPING` の比 1.2 : 3.0 oct、そして `VDP-3` の正規化は**固定した 32 点の
+ピンク重み格子の上で振幅特性の 2 乗和を解析的に足して割る**形。
+**数字は 1 つも測っていない** — どれが測定でどれが耳かは `dsp.md` の
+「耳で詰める定数」が正。**`ui.md` は未作成**（`VDP-9` の前に書く）。
 
 ### Vocal Glue
 

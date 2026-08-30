@@ -17,12 +17,27 @@
 //! doc says a protection that works invisibly leaves a user with an `AIR` knob
 //! that does nothing and no way to find out why (`REQ-SPK-008`) — the figure
 //! sinks the region it holds back, but never said how far.
+//!
+//! **The figures are copied into the model, not read inside a lens** — see
+//! `nxe_ui::readout` for why that is not the cheap way round it looks.
 
 use super::{METER_FLOOR_DB, Ui};
+
+/// Where each figure sits in `Ui::readouts`. **The order is the strip's.**
+const IN: usize = 0;
+const OUT: usize = 1;
+const REDUCTION: usize = 2;
+const DE_HARSH: usize = 3;
+
+/// How many figures the strip prints, and how many bars it draws.
+pub(crate) const FIGURES: usize = 4;
+pub(crate) const GAUGES: usize = 1;
+
+/// The gate's bar, the one cell that is not a figure.
+const SPARKLE: usize = 0;
 use crate::analysis::Analysis;
 use nih_plug_vizia::vizia::prelude::*;
 use sparkleur_core::crossover::BAND_COUNT;
-use std::sync::Arc;
 
 /// Below this the number is not a level, it is a floor. Saying `-142.0 dB` for
 /// silence is worse than saying nothing: it is six characters of noise where a
@@ -60,64 +75,33 @@ fn reduction(gains: &[f32; BAND_COUNT]) -> String {
     format!("-{:.1}", deepest.abs())
 }
 
-pub fn view(cx: &mut Context, analysis: Arc<Analysis>) {
-    nxe_ui::readout::strip(cx, move |cx| {
-        // **Read inside the lens, not copied into the model.** The handoff's
-        // identity never changes, so mapping the `Arc` would tell the binding
-        // system nothing; any change to the model re-evaluates this, and the
-        // heartbeat is a change to the model thirty times a second
-        // (`ui/field.rs` does the same).
-        let input = analysis.clone();
-        nxe_ui::readout::cell(
-            cx,
-            "IN",
-            Ui::params.map(move |_| {
-                let frame = input.peaks.read();
-                level(frame[0].max(frame[1]))
-            }),
-            "dB",
-        );
+/// Re-reads the handoff and rewrites the strip's figures. Called on the
+/// heartbeat, which is the only thing that should move them.
+pub(crate) fn poll(analysis: &Analysis, figures: &mut [String], gauges: &mut [f32]) {
+    let peaks = analysis.peaks.read();
+    figures[IN] = level(peaks[0].max(peaks[1]));
+    figures[OUT] = level(peaks[2].max(peaks[3]));
+    figures[REDUCTION] = reduction(&analysis.gains.read());
+    // Always signed, for the same reason `reduction` is — and more so: this one
+    // sits at zero on ordinary material by design (`SPK-18`), so the sign would
+    // otherwise appear only on the rare occasion it has something to say.
+    figures[DE_HARSH] = format!("-{:.1}", analysis.de_harsh.read()[0].abs());
 
-        let output = analysis.clone();
-        nxe_ui::readout::cell(
-            cx,
-            "OUT",
-            Ui::params.map(move |_| {
-                let frame = output.peaks.read();
-                level(frame[2].max(frame[3]))
-            }),
-            "dB",
-        );
+    gauges[SPARKLE] = analysis.sparkle.read()[0];
+}
 
-        let deepest = analysis.clone();
-        nxe_ui::readout::cell(
-            cx,
-            "REDUCTION",
-            Ui::params.map(move |_| reduction(&deepest.gains.read())),
-            "dB",
-        );
+pub fn view(cx: &mut Context) {
+    nxe_ui::readout::strip(cx, |cx| {
+        nxe_ui::readout::cell(cx, "IN", Ui::readouts.index(IN), "dB");
+        nxe_ui::readout::cell(cx, "OUT", Ui::readouts.index(OUT), "dB");
+        nxe_ui::readout::cell(cx, "REDUCTION", Ui::readouts.index(REDUCTION), "dB");
 
         // **The gate, as a bar rather than a number.** What is asked of it is
         // "is it lighting up on this material", which a moving bar answers at a
         // glance and a figure flickering between 0 and 100 does not.
-        let gate = analysis.clone();
-        nxe_ui::readout::meter_cell(
-            cx,
-            "SPARKLE",
-            Ui::params.map(move |_| gate.sparkle.read()[0]),
-        );
+        nxe_ui::readout::meter_cell(cx, "SPARKLE", Ui::gauges.index(SPARKLE));
 
-        let guard = analysis.clone();
-        nxe_ui::readout::cell(
-            cx,
-            "DE-HARSH",
-            // Always signed, for the same reason `reduction` is — and more so:
-            // this one sits at zero on ordinary material by design (`SPK-18`),
-            // so the sign would otherwise appear only on the rare occasion it
-            // has something to say.
-            Ui::params.map(move |_| format!("-{:.1}", guard.de_harsh.read()[0].abs())),
-            "dB",
-        );
+        nxe_ui::readout::cell(cx, "DE-HARSH", Ui::readouts.index(DE_HARSH), "dB");
     });
 }
 

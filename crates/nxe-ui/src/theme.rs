@@ -237,11 +237,17 @@ pub const FONT_TITLE: f32 = 17.0;
 /// descenders.
 pub const LINE_EYEBROW: f32 = 12.0;
 pub const LINE_VALUE: f32 = 14.0;
+/// The readout's line box. **Fixed for the same reason its width is**
+/// (`nxe_ui::readout`): a box that measures its own contents makes every
+/// change to the figure a relayout of the whole window, and this figure changes
+/// with the audio (`docs/investigations/ui-frame-cost.md`).
+pub const LINE_READOUT: f32 = 16.0;
 pub const LINE_LABEL: f32 = 16.0;
 pub const LINE_TITLE: f32 = 24.0;
 
 const _: () = assert!(LINE_EYEBROW > FONT_EYEBROW, "the eyebrow will clip");
 const _: () = assert!(LINE_VALUE > FONT_VALUE, "the value will clip");
+const _: () = assert!(LINE_READOUT > FONT_READOUT, "the readout will clip");
 const _: () = assert!(LINE_LABEL > FONT_LABEL, "the label will clip");
 const _: () = assert!(LINE_TITLE > FONT_TITLE, "the wordmark will clip");
 

@@ -210,6 +210,13 @@ Regular と Bold、Mono の Regular。この設計は階層を**サイズと色*
 font::value(cx, lens.map(|v| format!("{v:.1}")));
 ```
 
+**その `lens` はモデルのフィールドであること。** オーディオスレッドの
+`Handoff` をレンズの中で読んではいけない — `binding_system` はハートビートと
+無関係に**毎フレーム全ストアを評価する**ので、そういうレンズはフレームレート
+で `String` を作り直し、値が動くたびに窓全体を描き直す。ハートビートで
+モデルに書き、レンズはそれを見る（`nxe_ui::readout` の「Give it a value from
+the model」、[調査](../../docs/investigations/ui-frame-cost.md)）。
+
 小数桁を固定しても、プロポーショナルな字形では `1` と `8` で幅が違うので、
 ノブをドラッグしている間に数字が横に揺れる。等幅にすればそれが根本的に消える。
 

@@ -71,6 +71,13 @@ pub(crate) struct Ui {
     layer: Curve,
     peaks: Vec<f32>,
     holds: Vec<f32>,
+    /// The readout strip's printed figures and its bars.
+    ///
+    /// **Copied here rather than read inside a lens.** A lens that reads the
+    /// handoff is re-evaluated once per *frame*, not once per heartbeat — see
+    /// the note in `ui/readout.rs`.
+    readouts: Vec<String>,
+    gauges: Vec<f32>,
 }
 
 #[derive(Clone)]
@@ -90,9 +97,7 @@ impl Model for Ui {
                 let holds = self.analysis.holds.read();
                 self.peaks = peaks.iter().copied().map(meter_position).collect();
                 self.holds = holds.iter().copied().map(meter_position).collect();
-                // The readout strip is **not** copied here. It reads inside its
-                // own lenses, and any change to this model — this heartbeat
-                // included — re-evaluates them.
+                readout::poll(&self.analysis, &mut self.readouts, &mut self.gauges);
             }
         });
     }
@@ -158,6 +163,8 @@ pub fn create(
             layer: Curve::new(),
             peaks: vec![0.0; METERS],
             holds: vec![0.0; METERS],
+            readouts: vec![String::new(); readout::FIGURES],
+            gauges: vec![0.0; readout::GAUGES],
             heartbeat,
         }
         .build(cx);
@@ -165,7 +172,7 @@ pub fn create(
         HStack::new(cx, |cx| {
             VStack::new(cx, |cx| {
                 nxe_ui::header::header(cx, "NXE AIR", "signal-driven texture");
-                readout::view(cx, analysis.clone());
+                readout::view(cx);
                 // The figure. It is what the plugin *is* (`ui.md`).
                 field::view(cx);
                 main_row(cx);

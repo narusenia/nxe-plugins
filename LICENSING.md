@@ -39,7 +39,7 @@ cdylib から `nih_export_clap!` と `nih_export_vst3!` を両方呼んでいて
 nxe-audio    依存ゼロ
 nxe-dsp      criterion（dev）のみ
 nxe-ui       vizia のみ
-*-core       nxe-audio と criterion のみ
+*-core       nxe-audio と、dev の criterion / nxe-dsp のみ
 ```
 
 これは**設計の帰結**で、偶然ではない。`docs/specifications/architecture.md` が

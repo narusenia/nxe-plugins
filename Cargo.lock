@@ -446,7 +446,7 @@ dependencies = [
 [[package]]
 name = "baseview"
 version = "0.1.0"
-source = "git+https://github.com/RustAudio/baseview.git?rev=2c1b1a7b0fef1a29a5150a6a8f6fef6a0cbab8c4#2c1b1a7b0fef1a29a5150a6a8f6fef6a0cbab8c4"
+source = "git+https://github.com/narusenia/baseview.git?tag=nxe-2026-08-31c#0ffff247e008679e3e3e30a04107e14c37dba62b"
 dependencies = [
  "cocoa",
  "core-foundation",
@@ -1061,6 +1061,7 @@ name = "doubler-core"
 version = "0.1.3"
 dependencies = [
  "criterion",
+ "nxe-audio",
 ]
 
 [[package]]
@@ -2846,7 +2847,7 @@ dependencies = [
 [[package]]
 name = "selectors"
 version = "0.23.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-31c#1e9a2216284576df6361adff1e95b30c1f61d7b0"
 dependencies = [
  "bitflags 1.3.2",
  "cssparser",
@@ -3450,7 +3451,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "vizia"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-31c#1e9a2216284576df6361adff1e95b30c1f61d7b0"
 dependencies = [
  "vizia_baseview",
  "vizia_core",
@@ -3460,7 +3461,7 @@ dependencies = [
 [[package]]
 name = "vizia_baseview"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-31c#1e9a2216284576df6361adff1e95b30c1f61d7b0"
 dependencies = [
  "baseview",
  "femtovg",
@@ -3474,7 +3475,7 @@ dependencies = [
 [[package]]
 name = "vizia_core"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-31c#1e9a2216284576df6361adff1e95b30c1f61d7b0"
 dependencies = [
  "accesskit",
  "bitflags 2.13.1",
@@ -3505,7 +3506,7 @@ dependencies = [
 [[package]]
 name = "vizia_derive"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-31c#1e9a2216284576df6361adff1e95b30c1f61d7b0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3515,12 +3516,12 @@ dependencies = [
 [[package]]
 name = "vizia_id"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-31c#1e9a2216284576df6361adff1e95b30c1f61d7b0"
 
 [[package]]
 name = "vizia_input"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-31c#1e9a2216284576df6361adff1e95b30c1f61d7b0"
 dependencies = [
  "bitflags 1.3.2",
  "keyboard-types",
@@ -3530,7 +3531,7 @@ dependencies = [
 [[package]]
 name = "vizia_storage"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-31c#1e9a2216284576df6361adff1e95b30c1f61d7b0"
 dependencies = [
  "morphorm",
  "vizia_id",
@@ -3539,7 +3540,7 @@ dependencies = [
 [[package]]
 name = "vizia_style"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-31c#1e9a2216284576df6361adff1e95b30c1f61d7b0"
 dependencies = [
  "bitflags 2.13.1",
  "cssparser",
@@ -3552,7 +3553,7 @@ dependencies = [
 [[package]]
 name = "vizia_window"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-31c#1e9a2216284576df6361adff1e95b30c1f61d7b0"
 dependencies = [
  "accesskit",
  "morphorm",
@@ -3563,7 +3564,7 @@ dependencies = [
 [[package]]
 name = "vizia_winit"
 version = "0.1.0"
-source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-27#f94034e683714a66f2f32d11bb9d636dcd4aa916"
+source = "git+https://github.com/narusenia/vizia.git?tag=nxe-2026-08-31c#1e9a2216284576df6361adff1e95b30c1f61d7b0"
 dependencies = [
  "accesskit",
  "accesskit_winit",
@@ -3581,6 +3582,27 @@ dependencies = [
  "web-sys",
  "winapi",
  "winit",
+]
+
+[[package]]
+name = "vocal-depth"
+version = "0.1.0"
+dependencies = [
+ "nih_plug",
+ "nih_plug_vizia",
+ "nxe-dsp",
+ "nxe-plug-ui",
+ "nxe-ui",
+ "vocal-depth-core",
+]
+
+[[package]]
+name = "vocal-depth-core"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "nxe-audio",
+ "nxe-dsp",
 ]
 
 [[package]]

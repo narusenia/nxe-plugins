@@ -3,9 +3,10 @@
 //!
 //! See `plugins/doubler/docs/specifications/dsp.md`.
 
+use crate::PitchShifter;
 use crate::filter::{Biquad, OnePole, Shelf};
 use crate::wobble::Wobble;
-use crate::{DelayLine, PitchShifter};
+use nxe_audio::DelayLine;
 
 /// Parameters exist for this many voices at all times; `Voices` decides how
 /// many of them are live. nih-plug declares parameters once at startup and

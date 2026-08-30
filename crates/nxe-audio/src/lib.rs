@@ -22,12 +22,14 @@
 //! not stale: they are the reason the code has the shape it has.
 
 pub mod biquad;
+pub mod delay;
 pub mod envelope;
 pub mod guard;
 pub mod harmonics;
 pub mod oversample;
 pub mod shaper;
 
+pub use delay::DelayLine;
 pub use envelope::Envelope;
 pub use guard::RelativeGuard;
 pub use oversample::{Factor, Oversampler};

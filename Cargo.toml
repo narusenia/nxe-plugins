@@ -13,6 +13,8 @@ members = [
     "plugins/sparkleur/sparkleur-core",
     "plugins/velour/velour-core",
     "plugins/velour/velour",
+    "plugins/vocal-depth/vocal-depth-core",
+    "plugins/vocal-depth/vocal-depth",
     "xtask",
 ]
 
@@ -32,6 +34,7 @@ air-core = { path = "plugins/air/air-core" }
 doubler-core = { path = "plugins/doubler/doubler-core" }
 sparkleur-core = { path = "plugins/sparkleur/sparkleur-core" }
 velour-core = { path = "plugins/velour/velour-core" }
+vocal-depth-core = { path = "plugins/vocal-depth/vocal-depth-core" }
 
 # nih-plug is not on crates.io. All three crates come from one repository, so
 # they must stay on the same revision — `nih_plug_vizia` and `nih_plug_xtask`
@@ -70,26 +73,64 @@ vizia = { git = "https://github.com/robbert-vdh/vizia.git", tag = "patched-2024-
     "x11",
 ] }
 
-# **The vizia both of the above resolve to is ours** (`nxe-2026-08-27`, which is
-# `patched-2024-05-06` plus two commits). `[patch]` rewrites the source for the
-# whole graph, so `nih_plug_vizia`'s vizia and ours stay the same crate — which
-# is the constraint the note above is about.
+# **The vizia both of the above resolve to is ours** (`nxe-2026-08-31c`, which
+# is `patched-2024-05-06` plus seven commits), **and so is baseview**
+# (`nxe-2026-08-31c`, `RustAudio/baseview` plus three). `[patch]` rewrites the
+# source for the whole graph, so `nih_plug_vizia`'s vizia and ours stay the same
+# crate — which is the constraint the note above is about.
 #
-# Two fixes, both measured on `mise run gallery` (an idle window, no host, no
-# audio): **27.7 % of a core down to 0.9 %**.
+# Everything here was found by measuring and reading the result with `sample`;
+# the numbers, the reasoning, and the five hypotheses that turned out to be
+# wrong are in `docs/investigations/ui-frame-cost.md`.
 #
-# 1. **`vizia_baseview` redrew every frame whether or not anything changed.**
+# **The one that was actually felt, and it is not a performance fix at all:**
+#
+# 1. **baseview turned off mouse coalescing for the whole host process.**
+#    `updateTrackingAreas` called `[NSEvent setMouseCoalescingEnabled: NO]` —
+#    a **class** method, so it applies to the host, not to our view — and
+#    nothing ever turned it back on. From the first time a plugin editor was
+#    opened, the host received every single mouse-moved event instead of the
+#    coalesced ones, for the rest of its life: its interface stopped tracking
+#    the pointer and slid after it, removing the plugin did not help, and only
+#    relaunching the host did. **This is what "the DAW goes sluggish and stays
+#    sluggish" was**, and none of the frame-cost work below touched it.
+#
+# **What a window costs while it is open** (`NXE_GALLERY_HZ=30 mise run
+# gallery`, 22.6 % of a core down to about 10 %):
+#
+# 2. **`vizia_baseview` redrew every frame whether or not anything changed.**
 #    `Application::on_frame_update` computes `should_redraw` and `on_frame`
-#    never read it. `vizia_winit` does read it — the same flag, honoured. On
-#    macOS the frame timer runs on the **host's** run loop, so every redraw was
-#    stalling the DAW's own interface.
-# 2. **`TextContext::sync_styles` ran a `fontdb` query per text view per
-#    frame**, uncached, over a database holding every system font. A quarter of
-#    the drawing time.
+#    never read it. On macOS the frame timer runs on the **host's** run loop.
+# 3. **`TextContext::sync_styles` ran a `fontdb` query per text view per
+#    frame**, uncached, over a database holding every system font.
+# 4. **Every view filled a background, stroked a border and stroked an outline
+#    whether or not any of them could be seen**, and built the box path to do
+#    it with. Most of a tree is containers with none of the three, and femtovg
+#    gives every fill and stroke its own draw call. **456 draw calls a frame
+#    down to 219.**
+# 5. **Every frame drew the whole window.** A meter moving one pixel re-shaped
+#    and re-sent every label on screen, and **63 % of a window's draw calls are
+#    text**. It now draws only the box that asked for it. **219 down to 68.**
+# 6. **A changed string relayouted the tree**, so a readout ticking along with
+#    the audio re-ran morphorm over every view and cosmic-text over every
+#    string. It asks only when the view is sized by its contents — which is why
+#    `nxe_ui::readout::cell` fixes both of its dimensions.
+# 7. **The macOS frame timer ran at 66.7 Hz**, faster than any common display
+#    and faster than anything that feeds it, on the host's run loop. It is
+#    60 Hz. **Not 30**: 30 beats against the plugin's own 30 Hz heartbeat and
+#    the meters stutter.
+# 8. **Input waited for the frame timer**, so a drag was answered at the
+#    timer's rate rather than the pointer's. It is answered in `on_event` now,
+#    limited to one frame apart so a drag cannot outrun the frame rate.
 #
-# Both are worth sending upstream; neither has been yet.
+# All eight are worth sending upstream; none has been yet. **The first one is
+# a bug in baseview that affects every plugin built on it**, and is the one to
+# send first.
+[patch."https://github.com/RustAudio/baseview.git"]
+baseview = { git = "https://github.com/narusenia/baseview.git", tag = "nxe-2026-08-31c" }
+
 [patch."https://github.com/robbert-vdh/vizia.git"]
-vizia = { git = "https://github.com/narusenia/vizia.git", tag = "nxe-2026-08-27" }
+vizia = { git = "https://github.com/narusenia/vizia.git", tag = "nxe-2026-08-31c" }
 
 [profile.release]
 lto = "thin"

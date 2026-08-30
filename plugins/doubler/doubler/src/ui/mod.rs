@@ -103,6 +103,9 @@ pub(crate) struct Ui {
     /// The reactive copies. Updating these is what makes the display move.
     density: Vec<f32>,
     spectrum: Vec<(f32, f32)>,
+    /// The readout strip's printed figures. **Copied here rather than read
+    /// inside a lens** — see `nxe_ui::readout`.
+    readouts: Vec<String>,
 }
 
 /// How often the display re-reads the analysis. 30 Hz is as fast as a meter
@@ -154,6 +157,7 @@ impl Model for Ui {
             UiEvent::Poll => {
                 self.density = density_curve(&self.analysis.pan.read());
                 self.spectrum = spectrum_curve(&self.analysis.spectrum.read());
+                readout::poll(&self.analysis, &mut self.readouts);
             }
             UiEvent::ToggleMirror(axis) => match axis {
                 MirrorAxis::Pan => {
@@ -254,6 +258,7 @@ pub fn create(
             analysis: analysis.clone(),
             density: vec![0.0; PAN_BINS],
             spectrum: Vec::new(),
+            readouts: vec![String::new(); readout::FIGURES],
             params: params.clone(),
             heartbeat,
         }
@@ -264,7 +269,7 @@ pub fn create(
 
             // **What is happening right now**, above everything and never
             // hidden by a tab (`SPK-19`).
-            readout::view(cx, analysis.clone());
+            readout::view(cx);
 
             // The figure stays put. It is what the plugin *is* — hiding it
             // behind a tab would leave the window with nothing to look at.
