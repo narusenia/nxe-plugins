@@ -235,12 +235,19 @@ impl Palette {
         Token::rgb(0x6E, 0x51, 0x9C),
     );
 
-    /// Coral. Hue 50.
+    /// Coral. Hue 35.
+    ///
+    /// **It was 50, and 50 made mud.** At the `deep` stop's lightness every
+    /// warm hue lands in the brown band, and 50 landed square in it — the one
+    /// ramp of the five that read as dirt rather than as a colour. Lifting that
+    /// stop does not help (it goes from brown to tan); only the hue does.
+    /// 35 puts `deep` at brick red and leaves the accent a coral, still 50°
+    /// clear of Parallax's rose.
     pub const SPARKLEUR: Self = Self::ramp(
-        Token::rgb(0xFE, 0xEB, 0xE0),
-        Token::rgb(0xFC, 0xB3, 0x8B),
-        Token::rgb(0xF4, 0x93, 0x59),
-        Token::rgb(0x97, 0x4B, 0x17),
+        Token::rgb(0xFF, 0xEA, 0xE4),
+        Token::rgb(0xFF, 0xB0, 0x9C),
+        Token::rgb(0xFA, 0x8C, 0x71),
+        Token::rgb(0x9B, 0x46, 0x31),
     );
 
     /// Sky. Hue 232.7 — **the accent every plugin shipped with**, kept for the
