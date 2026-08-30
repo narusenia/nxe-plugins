@@ -8,6 +8,33 @@
 //! runs on the same backend the plugin does.
 //!
 //! Run it with `mise run gallery`.
+//!
+//! ## Measuring
+//!
+//! **An idle window should cost nothing**, and `ps -o %cpu` on this is the
+//! whole test (`.agents/rules/vizia.md`). But idle is not the state a plugin is
+//! in: a plugin's heartbeat rewrites the model while audio runs, and *that* is
+//! what a host pays for — the idle case was fixed once and the moving one was
+//! never measured. `NXE_GALLERY_HZ` rewrites the model at a given rate so the
+//! moving window can be measured the same way:
+//!
+//! ```text
+//! NXE_GALLERY_HZ=30 cargo run --release -p nxe-ui --example gallery
+//! ```
+//!
+//! `NXE_GALLERY_SCROLL` does the same for scrolling, which is the case a
+//! partial redraw cannot help with — the whole view moves, so the whole window
+//! is drawn:
+//!
+//! ```text
+//! NXE_GALLERY_SCROLL=60 cargo run --release -p nxe-ui --example gallery
+//! ```
+//!
+//! **No plugin window scrolls**, so this measures the gallery rather than the
+//! product. It is here because "scrolling feels heavy" is a thing that gets
+//! reported, and guessing at it is how this investigation went wrong twice.
+//!
+//! Unset or `0` leaves the window idle, which stays the default.
 
 use nxe_ui::band::{Band, BandField, BandFieldModifiers, BandGesture};
 use nxe_ui::bar::Bar;
@@ -20,6 +47,7 @@ use nxe_ui::meter::Meter;
 use nxe_ui::polar::{FieldGesture, FieldPoint, PolarField, PolarFieldModifiers};
 use nxe_ui::segmented::SegmentedControl;
 use nxe_ui::{font, icon, theme};
+use std::time::Duration;
 use vizia::prelude::*;
 
 /// Somewhere for the demo controls to keep their values. A plugin has its
@@ -92,7 +120,39 @@ struct Demo {
     direct: f32,
     distance: f32,
     alignment: f32,
+    /// Keeps `NXE_GALLERY_HZ`'s heartbeat running; dropped with the window
+    /// (`nxe_ui::heartbeat`). **Never read on purpose.**
+    #[allow(dead_code)]
+    motion: Option<nxe_ui::heartbeat::Lifeline>,
+    /// Counts the motion steps, so the shapes above have a phase.
+    step: u32,
+    /// Keeps `NXE_GALLERY_SCROLL`'s heartbeat running. **Never read on
+    /// purpose.**
+    #[allow(dead_code)]
+    scrolling: Option<nxe_ui::heartbeat::Lifeline>,
+    /// How far down the scroll is, and which way it is going.
+    scroll: f32,
+    scroll_down: bool,
+    /// What `nxe_ui::readout` prints and how far its bar is along. **Built on
+    /// the motion step, not inside the lens** — which is the whole point of the
+    /// widget's own note.
+    readouts: Vec<String>,
+    gauge: f32,
 }
+
+/// One step of `NXE_GALLERY_SCROLL`'s motion.
+///
+/// Scrolling is the case a partial redraw cannot help with — the whole view
+/// moves — so it is the one worth being able to measure without a hand on the
+/// trackpad.
+#[derive(Clone)]
+struct Scroll;
+
+/// One step of `NXE_GALLERY_HZ`'s motion. Its own type rather than a
+/// `DemoEvent` variant, because the heartbeat needs `Clone` and `DemoEvent`
+/// carries the typed string.
+#[derive(Clone)]
+struct Advance;
 
 enum DemoEvent {
     Set(usize, f32),
@@ -163,7 +223,57 @@ impl Demo {
 }
 
 impl Model for Demo {
-    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
+    fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
+        // **What a plugin's heartbeat does**: rewrite the reactive copies from
+        // something that moves. The shapes are arbitrary; what matters is that
+        // the numbers a window draws keep changing, because that is the state
+        // the CPU cost lives in.
+        event.map(|_: &Advance, _| {
+            self.step = self.step.wrapping_add(1);
+            let phase = self.step as f32 / 64.0;
+            self.meter = 0.5 + 0.45 * (phase * std::f32::consts::TAU).sin();
+            self.detune = 0.5 + 0.4 * (phase * std::f32::consts::TAU * 0.37).sin();
+            self.direct = 0.5 + 0.4 * (phase * std::f32::consts::TAU * 0.61).sin();
+            for (index, tap) in self.taps.iter_mut().enumerate() {
+                tap.level =
+                    0.5 + 0.4 * ((phase + index as f32 * 0.1) * std::f32::consts::TAU).sin();
+            }
+            for (index, band) in self.bands.iter_mut().enumerate() {
+                band.level =
+                    0.5 + 0.4 * ((phase + index as f32 * 0.2) * std::f32::consts::TAU).cos();
+            }
+            for (index, text) in self.readouts.iter_mut().enumerate() {
+                let db = -60.0 * (0.5 + 0.5 * ((phase + index as f32 * 0.3) * 6.0).sin());
+                *text = format!("{db:+.1}");
+            }
+            self.gauge = 0.5 + 0.5 * (phase * 4.0).sin();
+        });
+
+        event.map(|_: &Scroll, _| {
+            let step = 0.02;
+            if self.scroll_down {
+                self.scroll += step;
+                if self.scroll >= 1.0 {
+                    self.scroll = 1.0;
+                    self.scroll_down = false;
+                }
+            } else {
+                self.scroll -= step;
+                if self.scroll <= 0.0 {
+                    self.scroll = 0.0;
+                    self.scroll_down = true;
+                }
+            }
+            // **Down the tree, not up.** The model sits at the root and the
+            // scroll view is below it, so the default upward propagation would
+            // never reach it.
+            cx.emit_custom(
+                Event::new(ScrollEvent::SetY(self.scroll))
+                    .target(Entity::root())
+                    .propagate(Propagation::Subtree),
+            );
+        });
+
         event.map(|demo_event: &DemoEvent, _| match demo_event {
             DemoEvent::Set(0, value) => self.detune = *value,
             DemoEvent::Set(1, value) => self.delay = *value,
@@ -283,11 +393,52 @@ fn name_of(gesture: Gesture) -> &'static str {
     }
 }
 
+/// A rate in Hz from an environment variable. Zero — the default — means off.
+fn rate_from(name: &str) -> u32 {
+    std::env::var(name)
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(0)
+}
+
+/// How fast to rewrite the model, from `NXE_GALLERY_HZ`. Zero — the default —
+/// leaves the window idle.
+fn motion_hz() -> u32 {
+    rate_from("NXE_GALLERY_HZ")
+}
+
 fn main() {
     Application::new(|cx| {
         theme::install(cx);
 
+        // **Started before the model, because the model holds what stops it**
+        // (`nxe_ui::heartbeat`).
+        let scrolling = match rate_from("NXE_GALLERY_SCROLL") {
+            0 => None,
+            hz => Some(nxe_ui::heartbeat::start(
+                cx,
+                Duration::from_nanos(1_000_000_000 / u64::from(hz)),
+                Scroll,
+            )),
+        };
+
+        let motion = match motion_hz() {
+            0 => None,
+            hz => Some(nxe_ui::heartbeat::start(
+                cx,
+                Duration::from_nanos(1_000_000_000 / u64::from(hz)),
+                Advance,
+            )),
+        };
+
         let mut demo = Demo {
+            motion,
+            scrolling,
+            scroll: 0.0,
+            scroll_down: true,
+            step: 0,
+            readouts: vec![String::new(); 3],
+            gauge: 0.0,
             detune: 0.24,
             delay: 0.62,
             mix: 0.4,
@@ -346,6 +497,7 @@ fn main() {
                 nxe_ui::header::header(cx, "nxe-ui", "tokens and widgets");
 
                 grid(cx);
+                readouts(cx);
                 colours(cx);
                 knobs(cx);
                 bars(cx);
@@ -401,6 +553,29 @@ fn swatch(cx: &mut Context, name: &str, token: theme::Token) {
     .width(Auto)
     .height(Auto)
     .row_between(Pixels(theme::SPACE_1));
+}
+
+/// The readout strip as a widget, with figures that move.
+///
+/// **`grid` below is the design; this is the thing plugins actually build.**
+/// It is here because it is the widget that changes most often on screen — a
+/// window's readouts tick along with the audio — and because it is the one
+/// whose cost was missed for that reason
+/// (`docs/investigations/ui-frame-cost.md`).
+fn readouts(cx: &mut Context) {
+    panel(cx, "READOUT", |cx| {
+        nxe_ui::readout::strip(cx, |cx| {
+            nxe_ui::readout::cell(cx, "IN", Demo::readouts.index(0), "dB");
+            nxe_ui::readout::cell(cx, "OUT", Demo::readouts.index(1), "dB");
+            nxe_ui::readout::cell(cx, "REDUCTION", Demo::readouts.index(2), "dB");
+            nxe_ui::readout::meter_cell(cx, "GATE", Demo::gauge);
+        });
+        Label::new(
+            cx,
+            "NXE_GALLERY_HZ moves these; the box is fixed so they cannot",
+        )
+        .class("subtle");
+    });
 }
 
 /// The Swiss layer: eyebrows over rules, one readout per region, and the accent
