@@ -316,25 +316,6 @@ the model」、[調査](../../docs/investigations/ui-frame-cost.md)）。
 ライセンス文はフォントの隣（`assets/geist/`）。**バイナリに焼き込まれるので
 リリースのバンドルにも同梱が必要。**
 
-## アイコン
-
-Lucide の埋め込みフォント。2035 個すべてが定数になっている。
-
-```rust
-use nxe_ui::icon;
-
-icon::label(cx, icon::CHEVRON_DOWN).font_size(20.0);
-```
-
-- **`icon::label` で作る。CSS で `font-family` を書かない** — このリビジョンの
-  vizia ではスタイルシートの `font-family` が埋め込みフォントを選ばず、
-  私用領域のコードポイントが無関係な CJK グリフとして描かれる
-- 生のエスケープをビューに書かない。定数を使う
-- **線幅は変えられない**（ストロークをグリフ化したもの）。太さが要るアイコンは
-  `usvg` でパス化して `View::draw` で描く — 記録された例外であって既定ではない
-- Lucide の更新は `mise run icons:generate`。手順は
-  [`scripts/generate-icons.py`](../../scripts/generate-icons.py) の docstring
-
 ## ピクトグラム
 
 プラグイン自身の記号。**パスで描く**（フォントにしない）。
@@ -352,7 +333,7 @@ pictogram::label(cx, pictogram::SNAP, "SNAP");      // 操作の名前（16 px�
   （`theme::LINE_EYEBROW`）で、**3 グリッド単位より細い造形は通らない**
   （テストが落ちる）
 - 図形は `Stroke::Line` / `Fill` / `Frame` / `Solid` の 4 つだけ。曲線は無い
-- 色は `palette.muted` 固定（Lucide の `.icon` と同じ）。太さは
+- 色は `palette.muted` 固定。太さは
   `WEIGHT` / `WEIGHT_STRONG` の 2 段
 - **`ALL` に足すのと同じ変更で gallery に並ぶ。** gallery は `ALL` を読む
 

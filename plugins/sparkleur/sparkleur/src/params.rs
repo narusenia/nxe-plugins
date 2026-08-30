@@ -4,7 +4,7 @@
 //! nih-plug, so the translation lives here
 //! (`docs/specifications/architecture.md`).
 //!
-//! **Thirty-three parameters, seven of them everyday** (`ui.md`). Adding one
+//! **Thirty-five parameters, seven of them everyday** (`ui.md`). Adding one
 //! later is safe — nih-plug keys them by id, not by position — but **changing
 //! or removing an id is not**, so the ids below are as final as `CLAP_ID`.
 //!
@@ -21,6 +21,7 @@ use nxe_audio::oversample::Factor;
 use sparkleur_core::character;
 use sparkleur_core::dynamics::Mode;
 use sparkleur_core::engine::{Levels, Shape};
+use std::sync::Arc;
 
 /// How hard the Sparkle bus runs internally.
 ///
@@ -281,6 +282,13 @@ impl Default for SparkleurParams {
 
 /// A `-1..=1` control resting at zero. Five of these, so the shape lives in one
 /// place and a deviation from it would be visible.
+///
+/// **Read as a signed percentage.** It used to print `0.00`: a bare number with
+/// no unit, sitting in a row where everything else said `35 %`, `100 %`,
+/// `0.0 dB` or `0.00 oct`. Three of the seven macro knobs read that way and
+/// none of them said what the number was. And the sign is always printed, for
+/// the reason every other figure here prints it — a minus that appears the
+/// moment the knob crosses centre makes the row twitch (`.agents/rules/ui.md`).
 fn bipolar(name: &'static str) -> FloatParam {
     FloatParam::new(
         name,
@@ -291,7 +299,15 @@ fn bipolar(name: &'static str) -> FloatParam {
         },
     )
     .with_smoother(SmoothingStyle::Linear(30.0))
-    .with_value_to_string(formatters::v2s_f32_rounded(2))
+    .with_value_to_string(Arc::new(|value| format!("{:+.0} %", value * 100.0)))
+    .with_string_to_value(Arc::new(|text| {
+        text.trim()
+            .trim_end_matches('%')
+            .trim()
+            .parse::<f32>()
+            .ok()
+            .map(|value| value / 100.0)
+    }))
 }
 
 /// A `0..=100%` control.

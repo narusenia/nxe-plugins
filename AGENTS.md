@@ -25,8 +25,8 @@ with the code, and fix the document in the same change.
 - `crates/nxe-plug-ui`: the adapter between nih-plug's parameters and the
   `nxe-ui` widgets — **the only crate allowed to know both**. Separate from
   `nxe-ui` so that `examples/gallery` never links nih-plug
-- `crates/nxe-ui`: shared Vizia widgets, theme tokens, and the embedded Lucide
-  icon font. **Depends on Vizia only, never on nih-plug** — widgets take a
+- `crates/nxe-ui`: shared Vizia widgets, theme tokens, and the plugins' own
+  drawn symbols. **Depends on Vizia only, never on nih-plug** — widgets take a
   value plus a callback, and each plugin owns the thin adapter that binds them
   to its own parameters. `examples/gallery.rs` runs every widget as a plain
   desktop app, which is how UI work is iterated without launching a DAW.

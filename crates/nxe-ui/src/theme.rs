@@ -11,7 +11,6 @@
 //! steps, one accent, one-pixel borders, no shadows, depth from contrast.
 
 use crate::font;
-use crate::icon;
 use vizia::prelude::*;
 use vizia::vg;
 
@@ -502,12 +501,6 @@ label {{
     font-size: {FONT_LABEL};
 }}
 
-/* Colour only. The family is set by `icon::label`, because `font-family` in a
-   stylesheet does not select the embedded font on this vizia revision. */
-.icon {{
-    color: {muted};
-}}
-
 /* Disabled controls lose contrast rather than colour: the accent stays the
    only hue in the window. */
 .disabled {{
@@ -706,8 +699,6 @@ tooltip.vis {{
     )
 }
 
-/// Installs the typeface, the icon font and the stylesheet. Call once when the
-/// window is built.
 /// The content of a hover hint.
 ///
 /// **The label is `.decoration`.** vizia's tooltip is not hit-testable but its
@@ -718,8 +709,8 @@ pub fn hint(cx: &mut Context, text: &'static str) {
     Label::new(cx, text).class("decoration");
 }
 
-/// The fonts, the icons, the palette and the stylesheet. Call once, at the top
-/// of the window, before any view is built.
+/// The fonts, the palette and the stylesheet. Call once, at the top of the
+/// window, before any view is built.
 ///
 /// It also builds the [`hint`](crate::hint) model, for the same reason the
 /// palette is a model: `header` shows it and any control anywhere under the
@@ -734,7 +725,6 @@ pub fn hint(cx: &mut Context, text: &'static str) {
 /// only hold one.
 pub fn install(cx: &mut Context, palette: Palette) {
     font::install(cx);
-    icon::install(cx);
     palette.build(cx);
     crate::hint::Hint::default().build(cx);
     cx.add_stylesheet(CSS::String(stylesheet(palette)))
@@ -1001,7 +991,6 @@ mod tests {
             ".hint-left",
             ".subtle",
             ".disabled",
-            ".icon",
             ".segmented",
             ".segment",
             ".track",

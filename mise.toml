@@ -74,10 +74,6 @@ echo "installed into ~/Library/Audio/Plug-Ins (quit the host first next time)"
 description = "Re-derive Velour's halfband coefficients (stdlib Python only)"
 run = "python3 scripts/design-oversampler.py"
 
-[tasks."icons:generate"]
-description = "Regenerate the Lucide icon constants from the font's metadata"
-run = "python3 scripts/generate-icons.py"
-
 [tasks."logo:generate"]
 description = "Regenerate the NXE logotype path commands from its SVG"
 run = "python3 scripts/generate-logo.py"

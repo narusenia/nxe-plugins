@@ -21,8 +21,9 @@ use nih_plug::prelude::Editor;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
 use nxe_ui::heartbeat::Lifeline;
+use nxe_ui::pictogram;
 use nxe_ui::segmented::SegmentedControl;
-use nxe_ui::{font, icon, theme};
+use nxe_ui::{font, theme};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
@@ -400,8 +401,7 @@ fn mirror_switch(
 /// of empty space that was already sitting here.
 fn mirror_switches(cx: &mut Context) {
     HStack::new(cx, |cx| {
-        icon::label(cx, icon::FLIP_HORIZONTAL_2);
-        Label::new(cx, "MIRROR").class("label");
+        pictogram::label(cx, pictogram::MIRROR, "MIRROR");
         mirror_switch(
             cx,
             "PAN",

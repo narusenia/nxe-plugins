@@ -125,7 +125,12 @@ impl Model for Ui {
                 self.bands = field::bands_of(&self.params, self.host_rate, &self.analysis);
                 readout::poll(&self.analysis, &mut self.readouts, &mut self.gauges);
                 advanced::poll(&self.analysis, &mut self.applied_gains);
-                curve::poll(&self.params, &self.analysis, &mut self.curve_point);
+                curve::poll(
+                    &self.params,
+                    self.hovered,
+                    &self.analysis,
+                    &mut self.curve_point,
+                );
             }
         });
     }
@@ -256,10 +261,24 @@ pub fn create(
         //
         // **No child space here**: the padding belongs to the row above the
         // status bar, so the strip can reach the edges.
+        //
+        // **And no row between, which `.root` sets to `SPACE_4`.** That 16 px
+        // is invisible — it lands between the row and the status bar, where the
+        // window is black either way — but it comes out of the row, and the row
+        // is what the window's height was computed for. The column's parts have
+        // fixed heights so they drew at full size and overflowed; the meter
+        // strip is `Stretch(1.0)` so it simply came out **16 px short and
+        // stopped above the table beside it** (`SPK-23`, seen in a host and
+        // then measured off the screenshot: 590 px where 606 was available).
+        //
+        // **Every window that puts a status bar under a stretched row needs
+        // this line.** The four still to be rebuilt are `VEL-20`, `AIR-14`,
+        // `DBL-17` and `PAR-16`.
         .class("root")
         .width(Stretch(1.0))
         .height(Stretch(1.0))
-        .child_space(Pixels(0.0));
+        .child_space(Pixels(0.0))
+        .row_between(Pixels(0.0));
     })
 }
 
@@ -336,7 +355,14 @@ fn shape_row(cx: &mut Context) {
             |params| &params.speed,
         );
 
-        Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
+        // **A fixed gap, not a stretched one.** As `Stretch(1.0)` it was an
+        // eighth of the row — a whole knob's cell of nothing, and with the two
+        // neighbouring knobs centred in their own cells the visible hole came
+        // to about 170 px. The break between "what it does" and "how much
+        // arrives" is worth saying; it is not worth a knob (`ui.md`).
+        Element::new(cx)
+            .width(Pixels(theme::SPACE_5))
+            .height(Pixels(0.0));
 
         knob_block(
             cx,

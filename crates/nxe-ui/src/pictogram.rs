@@ -1,10 +1,10 @@
 //! The plugins' own symbols, drawn as paths (`UI-17`).
 //!
-//! **Not a font.** Lucide is a font and the trade it forced is written down in
-//! [`crate::icon`]: the strokes are baked into filled glyphs, so an icon cannot
-//! take a weight. These marks sit next to text at two different sizes and want
-//! two different weights, which a font cannot give them (`UI-2`). Making one
-//! would also add a generator to the build for eleven shapes that never change.
+//! **Not a font, and the font it replaced is gone.** Lucide baked its strokes
+//! into filled glyphs, so an icon could not take a weight (`UI-2`) — and these
+//! marks sit next to text at two sizes that want two. It also cost 859 KB in
+//! every bundle, all of it for **one** icon by the end (`MIRROR`), so once that
+//! one was drawn the font came out (`UI-17`).
 //!
 //! **A mark never replaces its word.** Every one of these is drawn beside the
 //! name it belongs to — [`heading`] and [`label`] are the two ways to do that,
@@ -23,8 +23,9 @@ use crate::theme;
 use vizia::prelude::*;
 use vizia::vg;
 
-/// The design grid. Lucide's, so the two sets sit at the same optical size when
-/// they are set at the same pixel size.
+/// The design grid. Lucide's 24, kept after the font went: it is the size these
+/// were drawn against, and it is what every other icon set on the internet uses
+/// if one is ever borrowed from again.
 pub const GRID: f32 = 24.0;
 
 /// The stroke width on the grid, before scaling. At a 12 px mark this is
@@ -158,6 +159,29 @@ pub const LIFT: Glyph = &[Stroke::Line(&[
     (21.0, 9.0),
 ])];
 
+/// A section that opens, and the same one open.
+///
+/// **The one generic mark in the set.** `UI-17` decided Lucide would stay for
+/// exactly this — a chevron is nobody's product vocabulary — and then the font
+/// turned out to cost 859 KB for two icons. Drawing the two is cheaper than
+/// keeping the font for them.
+pub const DISCLOSURE: Glyph = &[Stroke::Line(&[(5.0, 9.0), (12.0, 16.0), (19.0, 9.0)])];
+
+/// And open. **A disclosure that does not flip is a wrong affordance**, not a
+/// simpler one, so the pair exists rather than one glyph and a shrug.
+pub const DISCLOSURE_OPEN: Glyph = &[Stroke::Line(&[(5.0, 15.0), (12.0, 8.0), (19.0, 15.0)])];
+
+/// A shape and its reflection.
+///
+/// **The last Lucide glyph in the line was `flip-horizontal-2`**, beside the
+/// Doubler's `MIRROR` switches. Drawing it is what let the font go — 859 KB in
+/// every bundle for one icon (`UI-17`).
+pub const MIRROR: Glyph = &[
+    Stroke::Line(&[(12.0, 3.0), (12.0, 21.0)]),
+    Stroke::Solid(&[(9.0, 7.0), (9.0, 17.0), (3.0, 12.0)]),
+    Stroke::Solid(&[(15.0, 7.0), (15.0, 17.0), (21.0, 12.0)]),
+];
+
 /// Twice as many samples.
 pub const OVERSAMPLE: Glyph = &[
     Stroke::Line(&[(7.0, 4.0), (7.0, 10.0)]),
@@ -170,7 +194,7 @@ pub const OVERSAMPLE: Glyph = &[
 
 /// Every symbol and the word it is drawn for. **The gallery reads this**, so a
 /// mark that is added without a row here is a mark nobody can look at.
-pub const ALL: [(&str, Glyph); 11] = [
+pub const ALL: [(&str, Glyph); 14] = [
     ("UP", UP),
     ("DOWN", DOWN),
     ("GAIN", GAIN),
@@ -182,11 +206,14 @@ pub const ALL: [(&str, Glyph); 11] = [
     ("LIFT", LIFT),
     ("PUNCH", PUNCH),
     ("OVERSAMPLE", OVERSAMPLE),
+    ("MIRROR", MIRROR),
+    ("DISCLOSURE", DISCLOSURE),
+    ("DISCLOSURE_OPEN", DISCLOSURE_OPEN),
 ];
 
 /// A drawn mark, fitted to its bounds and painted with
-/// [`theme::Palette::muted`] — the colour `.icon` gives a Lucide glyph, so the
-/// two sets do not disagree where they sit in one row.
+/// [`theme::Palette::muted`] — the colour a label carries, so a mark and the
+/// word beside it are one thing rather than two.
 pub struct Pictogram {
     glyph: Glyph,
     weight: f32,

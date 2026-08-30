@@ -48,14 +48,17 @@ const BAR_HEIGHT: f32 = 10.0;
 /// [`NAME_WIDTH`], and the extra comes out of the bar rather than out of the
 /// window, so the column's total is unchanged.
 ///
-/// **Both grew by 20 for the marks** (`UI-17`), which came out of the gap
-/// between the table and this column rather than out of a bar — the gap was
-/// 96 px and reading as nothing (`the_row_fits_the_window` is what allows it).
+/// **Both grew for the marks and then for the gap** (`UI-17`, `SPK-23`). The
+/// space between the table and this column was 96 px of nothing — the widest
+/// void in the window, and the one that made it read as unfinished in a host.
+/// 20 went to the names to hold a mark, 36 to the bars; what is left is 40,
+/// which is a column gap rather than a hole. **The bars now match the table's**
+/// (116 against 112), so the two halves read as one grid instead of two.
 const SIDE_NAME_WIDTH: f32 = 100.0;
-const SIDE_BAR_WIDTH: f32 = 80.0;
+const SIDE_BAR_WIDTH: f32 = 116.0;
 
 /// The right column, which holds what is global rather than per band.
-const SIDE_WIDTH: f32 = 244.0;
+const SIDE_WIDTH: f32 = 280.0;
 
 const NAMES: [&str; BAND_COUNT] = ["SUB", "BODY", "MID", "PRES", "AIR"];
 

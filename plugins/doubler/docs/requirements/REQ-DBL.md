@@ -226,7 +226,7 @@ Logic Pro と GarageBand では読み込めない（`REQ-DBL-009`）。
   - [ ] Tone は曲線（Filter View）で見せ、`Tone Lo` / `Tone Hi` は曲線上の
         ハンドルで編集できる
   - [ ] ノブは縦ドラッグ・`Shift` で微調整・ダブルクリックで既定値に戻る
-  - [ ] アイコンは Lucide の埋め込みフォント経由で描かれる
+  - [ ] 記号は `nxe_ui::pictogram` のパスで描かれ、**語と併記される**
 - **依存**: REQ-DBL-007
 
 ## REQ-DBL-009: プラグインフォーマットと対応ホスト

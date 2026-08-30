@@ -61,7 +61,7 @@ use nxe_ui::pictogram;
 use nxe_ui::polar::{FieldGesture, FieldPoint, PolarField, PolarFieldModifiers};
 use nxe_ui::segmented::SegmentedControl;
 use nxe_ui::surface;
-use nxe_ui::{font, icon, theme};
+use nxe_ui::{font, theme};
 use std::time::Duration;
 use vizia::prelude::*;
 
@@ -548,7 +548,6 @@ fn main() {
                 tap_field(cx);
                 meters(cx);
                 detail(cx);
-                icons(cx);
                 pictograms(cx);
                 shapes(cx);
                 spacing(cx);
@@ -1514,17 +1513,21 @@ fn detail(cx: &mut Context) {
 
     panel(cx, "DETAIL (disclosure)", |cx| {
         HStack::new(cx, |cx| {
-            icon::label(
-                cx,
-                Demo::detail_open.map(|open| {
-                    if *open {
-                        icon::CHEVRON_UP
-                    } else {
-                        icon::CHEVRON_DOWN
-                    }
-                }),
-            )
-            .class("decoration");
+            // **A `Binding` rather than a lens on the glyph.** A `Pictogram`
+            // takes its drawing at build time, so the way it changes is the
+            // subtree being rebuilt — which for a control that flips on a
+            // click is once, not once a frame.
+            Binding::new(cx, Demo::detail_open, |cx, open| {
+                let glyph = if open.get(cx) {
+                    pictogram::DISCLOSURE_OPEN
+                } else {
+                    pictogram::DISCLOSURE
+                };
+                pictogram::Pictogram::weighted(cx, glyph, pictogram::WEIGHT_STRONG)
+                    .class("decoration")
+                    .width(Pixels(theme::LINE_LABEL))
+                    .height(Pixels(theme::LINE_LABEL));
+            });
             Label::new(cx, "DETAIL").class("label").class("decoration");
         })
         .class("hoverable")
@@ -1572,46 +1575,6 @@ fn detail(cx: &mut Context) {
         .height(Auto)
         .row_between(Pixels(theme::SPACE_2))
         .display(Demo::detail_open);
-    });
-}
-
-fn icons(cx: &mut Context) {
-    panel(cx, "ICONS", |cx| {
-        // The ones the Doubler UI actually uses. Anything added to a plugin
-        // gets a row here in the same change (`.agents/rules/vizia.md`).
-        HStack::new(cx, |cx| {
-            for (glyph, name) in [
-                (icon::CHEVRON_DOWN, "chevron-down"),
-                (icon::CHEVRON_UP, "chevron-up"),
-                (icon::SLIDERS_HORIZONTAL, "sliders-horizontal"),
-                (icon::ROTATE_CCW, "rotate-ccw"),
-            ] {
-                VStack::new(cx, |cx| {
-                    icon::label(cx, glyph).font_size(24.0);
-                    Label::new(cx, name).class("subtle");
-                })
-                .width(Auto)
-                .height(Auto)
-                .row_between(Pixels(theme::SPACE_1));
-            }
-        })
-        .class("row")
-        .height(Auto);
-
-        Element::new(cx).class("divider");
-
-        // Size and colour are `font-size` and `color`, like any other text.
-        HStack::new(cx, |cx| {
-            let accent = theme::palette(cx).accent.vizia();
-            for size in [12.0, 16.0, 20.0, 28.0] {
-                icon::label(cx, icon::WAVES).font_size(size);
-            }
-            icon::label(cx, icon::WAVES).font_size(28.0).color(accent);
-        })
-        .class("row")
-        .height(Auto);
-
-        Label::new(cx, "2035 icons; stroke width is fixed by the font").class("subtle");
     });
 }
 
@@ -1670,6 +1633,7 @@ fn pictograms(cx: &mut Context) {
                 ("DE-HARSH", pictogram::DE_HARSH),
                 ("SNAP", pictogram::SNAP),
                 ("PUNCH", pictogram::PUNCH),
+                ("MIRROR", pictogram::MIRROR),
             ] {
                 pictogram::label(cx, glyph, name).width(Auto);
             }

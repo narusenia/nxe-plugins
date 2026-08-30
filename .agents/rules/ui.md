@@ -29,6 +29,16 @@ Every rule here was paid for. Where one has a scar, the scar is named.
   identical by accident**, which is how they drift — the same reason the header
   is one function. Heights differ, because the amount inside them differs, and
   each is the sum of its own parts.
+- **A stretched row under a fixed one loses the class's `row-between` too.**
+  `.root` sets `row-between: SPACE_4`, and a window whose root holds the content
+  row plus a status bar gives that 16 px away without anything on screen
+  changing colour — the gap lands where the window is black either way. What it
+  does is take 16 px out of the row, and then the row's *fixed* children draw at
+  full size and overflow while anything `Stretch(1.0)` beside them comes out
+  short. Sparkleur's meter strip stopped 16 px above the table next to it and
+  read as a meter that did not reach the bottom. **Set `row_between(0)` on the
+  root explicitly**, next to the `child_space(0)` that is already there for the
+  same kind of reason.
 - **Never ask the host to resize the editor.** A disclosure that resized the
   window wedged Ableton (`DBL-*`). A control that has to become reachable does
   so inside a fixed window.
@@ -134,10 +144,11 @@ Every rule here was paid for. Where one has a scar, the scar is named.
   The symbol is what makes a column findable at a glance; the word is what
   makes it understandable the first time. A window of symbols alone buys the
   same unreadability the reference designs sell.
-- **They are drawn paths, not a font.** Lucide's strokes are baked into filled
-  glyphs, so an icon cannot take a weight (`UI-2`) — and these sit beside text
-  at two sizes that want two weights. Lucide stays for what is generic
-  (a chevron); `pictogram` is for what is this product's.
+- **They are drawn paths, and there is no icon font any more.** Lucide's
+  strokes were baked into filled glyphs, so an icon could not take a weight
+  (`UI-2`) — and these sit beside text at two sizes that want two. `UI-17`
+  first kept the font for what is generic; by then it was **859 KB in every
+  bundle for two icons**, so the two were drawn and the font came out.
 - **Drawn for 12 px, because the smallest place one lands is a column
   heading.** Three grid units is the finest feature that survives there, and a
   test says so. Three drawings were replaced for failing it: `UP` and `DOWN`
