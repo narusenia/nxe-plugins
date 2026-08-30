@@ -22,6 +22,18 @@
 //! NXE_GALLERY_HZ=30 cargo run --release -p nxe-ui --example gallery
 //! ```
 //!
+//! `NXE_GALLERY_SCROLL` does the same for scrolling, which is the case a
+//! partial redraw cannot help with — the whole view moves, so the whole window
+//! is drawn:
+//!
+//! ```text
+//! NXE_GALLERY_SCROLL=60 cargo run --release -p nxe-ui --example gallery
+//! ```
+//!
+//! **No plugin window scrolls**, so this measures the gallery rather than the
+//! product. It is here because "scrolling feels heavy" is a thing that gets
+//! reported, and guessing at it is how this investigation went wrong twice.
+//!
 //! Unset or `0` leaves the window idle, which stays the default.
 
 use nxe_ui::band::{Band, BandField, BandFieldModifiers, BandGesture};
@@ -114,12 +126,27 @@ struct Demo {
     motion: Option<nxe_ui::heartbeat::Lifeline>,
     /// Counts the motion steps, so the shapes above have a phase.
     step: u32,
+    /// Keeps `NXE_GALLERY_SCROLL`'s heartbeat running. **Never read on
+    /// purpose.**
+    #[allow(dead_code)]
+    scrolling: Option<nxe_ui::heartbeat::Lifeline>,
+    /// How far down the scroll is, and which way it is going.
+    scroll: f32,
+    scroll_down: bool,
     /// What `nxe_ui::readout` prints and how far its bar is along. **Built on
     /// the motion step, not inside the lens** — which is the whole point of the
     /// widget's own note.
     readouts: Vec<String>,
     gauge: f32,
 }
+
+/// One step of `NXE_GALLERY_SCROLL`'s motion.
+///
+/// Scrolling is the case a partial redraw cannot help with — the whole view
+/// moves — so it is the one worth being able to measure without a hand on the
+/// trackpad.
+#[derive(Clone)]
+struct Scroll;
 
 /// One step of `NXE_GALLERY_HZ`'s motion. Its own type rather than a
 /// `DemoEvent` variant, because the heartbeat needs `Clone` and `DemoEvent`
@@ -196,7 +223,7 @@ impl Demo {
 }
 
 impl Model for Demo {
-    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
+    fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
         // **What a plugin's heartbeat does**: rewrite the reactive copies from
         // something that moves. The shapes are arbitrary; what matters is that
         // the numbers a window draws keep changing, because that is the state
@@ -220,6 +247,31 @@ impl Model for Demo {
                 *text = format!("{db:+.1}");
             }
             self.gauge = 0.5 + 0.5 * (phase * 4.0).sin();
+        });
+
+        event.map(|_: &Scroll, _| {
+            let step = 0.02;
+            if self.scroll_down {
+                self.scroll += step;
+                if self.scroll >= 1.0 {
+                    self.scroll = 1.0;
+                    self.scroll_down = false;
+                }
+            } else {
+                self.scroll -= step;
+                if self.scroll <= 0.0 {
+                    self.scroll = 0.0;
+                    self.scroll_down = true;
+                }
+            }
+            // **Down the tree, not up.** The model sits at the root and the
+            // scroll view is below it, so the default upward propagation would
+            // never reach it.
+            cx.emit_custom(
+                Event::new(ScrollEvent::SetY(self.scroll))
+                    .target(Entity::root())
+                    .propagate(Propagation::Subtree),
+            );
         });
 
         event.map(|demo_event: &DemoEvent, _| match demo_event {
@@ -341,13 +393,18 @@ fn name_of(gesture: Gesture) -> &'static str {
     }
 }
 
-/// How fast to rewrite the model, from `NXE_GALLERY_HZ`. Zero — the default —
-/// leaves the window idle.
-fn motion_hz() -> u32 {
-    std::env::var("NXE_GALLERY_HZ")
+/// A rate in Hz from an environment variable. Zero — the default — means off.
+fn rate_from(name: &str) -> u32 {
+    std::env::var(name)
         .ok()
         .and_then(|value| value.parse().ok())
         .unwrap_or(0)
+}
+
+/// How fast to rewrite the model, from `NXE_GALLERY_HZ`. Zero — the default —
+/// leaves the window idle.
+fn motion_hz() -> u32 {
+    rate_from("NXE_GALLERY_HZ")
 }
 
 fn main() {
@@ -356,6 +413,15 @@ fn main() {
 
         // **Started before the model, because the model holds what stops it**
         // (`nxe_ui::heartbeat`).
+        let scrolling = match rate_from("NXE_GALLERY_SCROLL") {
+            0 => None,
+            hz => Some(nxe_ui::heartbeat::start(
+                cx,
+                Duration::from_nanos(1_000_000_000 / u64::from(hz)),
+                Scroll,
+            )),
+        };
+
         let motion = match motion_hz() {
             0 => None,
             hz => Some(nxe_ui::heartbeat::start(
@@ -367,6 +433,9 @@ fn main() {
 
         let mut demo = Demo {
             motion,
+            scrolling,
+            scroll: 0.0,
+            scroll_down: true,
             step: 0,
             readouts: vec![String::new(); 3],
             gauge: 0.0,
