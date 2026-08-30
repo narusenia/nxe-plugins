@@ -26,7 +26,12 @@ pub const HEIGHT: f32 = theme::LINE_LABEL + theme::SPACE_1 * 2.0;
 
 /// The box a figure in the strip gets. Fixed for the reason every readout's is:
 /// a number that changes width moves everything laid out after it.
-const VALUE_WIDTH: f32 = 44.0;
+///
+/// **Only as wide as the widest number.** It was 44, and the numbers are five
+/// characters at most — right-aligned in a box that wide, a short one drifted
+/// away from the name it belongs to and the row read as five labels and five
+/// unrelated figures (`SPK-23`, seen in a host).
+const VALUE_WIDTH: f32 = 34.0;
 
 /// How wide a gauge in the strip is.
 const GAUGE_WIDTH: f32 = 64.0;
@@ -59,7 +64,12 @@ pub fn figure(
     })
     .height(Pixels(theme::LINE_LABEL))
     .width(Auto)
-    .col_between(Pixels(theme::SPACE_1));
+    .col_between(Pixels(theme::SPACE_1))
+    // **The two sizes have to sit on one line.** The name is set at the label
+    // size and the figure at the value size; left to themselves they hang from
+    // the top of the row and the smaller one rides high.
+    .child_top(Stretch(1.0))
+    .child_bottom(Stretch(1.0));
 }
 
 /// A gauge in the strip: a name and a bar, for something asked
@@ -110,7 +120,7 @@ pub fn bar(cx: &mut Context, figures: impl Fn(&mut Context) + 'static) {
     // **Without this the cells run together**: `IN -59.1 dBOUT -60.0 dB`. Every
     // cell is `Auto` wide and sits flush against the next one, so the space
     // between them is the row's to give (`SPK-23`, seen in a host).
-    .col_between(Pixels(theme::SPACE_5))
+    .col_between(Pixels(theme::SPACE_4))
     .child_left(Pixels(theme::SPACE_3))
     .child_right(Pixels(theme::SPACE_3))
     .child_top(Stretch(1.0))

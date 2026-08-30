@@ -121,7 +121,10 @@ Every rule here was paid for. Where one has a scar, the scar is named.
   worked around.
 - **The wordmark is the product's name with no vendor on it.** `Sparkleur`, not
   `NXE Sparkleur` — the plugin list has already been read by the time the window
-  is open. `NXE` sits to its left as its own small mark.
+  is open.
+- **The vendor's mark goes in the window's quietest corner, not beside the
+  wordmark.** Next to it, it read as a second wordmark: two marks competing in
+  the corner a window is read from. A mark is found, not announced.
 - **Corners are square.** `RADIUS_CONTROL` and `RADIUS_CARD` are zero and a
   compile-time assertion keeps them near it. A grid is drawn with straight
   lines.
