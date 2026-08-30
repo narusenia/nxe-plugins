@@ -15,8 +15,7 @@ name = "NXE Velour"
 [sparkleur]
 name = "NXE Sparkleur"
 
-# **Provisional.** `REQ-VDP-014` wants the name settled before the first
-# release, because `CLAP_ID` cannot change once a host has stored it. Nothing
-# has shipped, so this is still free to move.
-[vocal-depth]
-name = "NXE Vocal Depth"
+# Settled in `DIO-15`, which is the last unit where it was free to move —
+# `CLAP_ID` cannot change once a host has stored it (`REQ-DIO-014`).
+[diorama]
+name = "NXE Diorama"

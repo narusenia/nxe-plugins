@@ -1028,6 +1028,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "diorama"
+version = "0.1.0"
+dependencies = [
+ "diorama-core",
+ "nih_plug",
+ "nih_plug_vizia",
+ "nxe-dsp",
+ "nxe-plug-ui",
+ "nxe-ui",
+]
+
+[[package]]
+name = "diorama-core"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "nxe-audio",
+ "nxe-dsp",
+]
+
+[[package]]
 name = "dispatch"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3582,27 +3603,6 @@ dependencies = [
  "web-sys",
  "winapi",
  "winit",
-]
-
-[[package]]
-name = "vocal-depth"
-version = "0.1.0"
-dependencies = [
- "nih_plug",
- "nih_plug_vizia",
- "nxe-dsp",
- "nxe-plug-ui",
- "nxe-ui",
- "vocal-depth-core",
-]
-
-[[package]]
-name = "vocal-depth-core"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "nxe-audio",
- "nxe-dsp",
 ]
 
 [[package]]

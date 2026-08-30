@@ -13,10 +13,12 @@
 | `plugins/doubler/doubler` | **GPL-3.0-only** | 出荷するプラグイン |
 | `plugins/velour/velour` | **GPL-3.0-only** | 出荷するプラグイン |
 | `plugins/sparkleur/sparkleur` | **GPL-3.0-only** | 出荷するプラグイン |
+| `plugins/air/air` | **GPL-3.0-only** | 出荷するプラグイン |
+| `plugins/diorama/diorama` | **GPL-3.0-only** | 出荷するプラグイン |
 
 境界は 1 つだけ。**`vst3-sys` をリンクするか、しないか。**
 
-## なぜ下の 4 つが GPL なのか
+## なぜ下の側が GPL なのか
 
 `nih_plug` は `vst3-sys` に無条件で依存していて、`vst3-sys` は GPLv3:
 
@@ -26,12 +28,12 @@
 
 **nih-plug 本体は ISC。** GPL はここからしか来ていない。
 
-**配布するバンドルは `.clap` も `.vst3` も GPLv3。** 3 つのプラグインは 1 つの
+**配布するバンドルは `.clap` も `.vst3` も GPLv3。** 5 つのプラグインは 1 つの
 cdylib から `nih_export_clap!` と `nih_export_vst3!` を両方呼んでいて、
 `cargo xtask bundle` はその**同じバイナリ**を両方のバンドルに入れる。だから
 「CLAP 版は VST3 を含まないので緩い」は**この構成では成り立たない**。
 
-## なぜ上の 6 つは緩くできるのか
+## なぜ上の側は緩くできるのか
 
 `vst3-sys` を一切引かないから。依存を数えて確かめてある:
 

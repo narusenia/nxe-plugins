@@ -4,7 +4,7 @@
 //! mapping from the macros into the internals; if what is holding the effect
 //! back is not the mapping, lifting it changes nothing. The complaint that
 //! started this — "it does not do enough" — is an ear's, and the only road from
-//! an ear to an implementation is a measurement (`VDP-14` is the same shape).
+//! an ear to an implementation is a measurement (`DIO-14` is the same shape).
 //!
 //! Run it and read the numbers:
 //!

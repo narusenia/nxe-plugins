@@ -11,7 +11,7 @@ description = "The Doubler DSP, independent of any plugin host"
 # (`.agents/rules/rust.md`). `nxe-audio` is held to the same rule, so depending
 # on it does not weaken this.
 #
-# `DelayLine` lived here until Vocal Depth asked for it (`VDP-1`) and it moved
+# `DelayLine` lived here until Diorama asked for it (`DIO-1`) and it moved
 # to `nxe-audio` — a shared module is created by the second caller, not in
 # anticipation of one (`docs/specifications/architecture.md`).
 [dependencies]

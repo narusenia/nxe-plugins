@@ -20,7 +20,7 @@
 | 5 | 使う人がまだ居ないもの | 空（`UI-9` は 3 個目でも要らず落とした） | 2026-08-26 |
 | 6 | Velour（2 個目のプラグイン） | 完了 | 2026-08-26 |
 | 7 | Sparkleur（3 個目のプラグイン） | 完了 | 2026-08-26 |
-| 8 | 構想 6 本 | Air ✅ / Parallax（旧 Vocal Depth）は v0.2.0 に合流 / Vocal Glue は要件まで | — |
+| 8 | 構想 6 本 | Air ✅ / Diorama（旧 Diorama）は v0.2.0 に合流 / Vocal Glue は要件まで | — |
 | 9 | v0.2.0 — 5 本を作り直す | 計画済み・未着手 | — |
 
 フェーズ内の全単位が完了条件を満たし、`mise run check` を通った時点で `完了`
@@ -235,7 +235,7 @@ Velour の `VEL-1` と同じ位置。
 `plugins/<name>/docs/` に移る）。
 
 ```text
-Air → Vocal Depth → Vocal Glue → Impact → Growl
+Air → Diorama → Vocal Glue → Impact → Growl
                  ↑
         Bass Density はどこにでも差し込める
 ```
@@ -252,26 +252,26 @@ Air → Vocal Depth → Vocal Glue → Impact → Growl
 |---|---|---|---|
 | Air | なし | 高 | ノイズ生成、M/S・脱相関、明るさ追従 |
 | Bass Density | なし | **最高** | N 帯域クロスオーバー、Transient Restore、出力クリッパ |
-| Vocal Depth | なし | 中 | **初期反射** |
+| Diorama | なし | 中 | **初期反射** |
 | Vocal Glue | サイドチェイン入力 | 中 | — |
 | Impact | ルックアヘッド + レイテンシ申告 | 中 | ルックアヘッド |
 | Growl | MIDI 入力、テンポ同期、ステップシーケンサ | 中 | フォルマントバンク |
 
-**Air と Vocal Depth が、残り全部の材料をほぼ作ってしまう。** 共有クレートの
+**Air と Diorama が、残り全部の材料をほぼ作ってしまう。** 共有クレートの
 規則（`architecture.md` の「2 個目が必要とするまで」、実務上は 3 個目）に
 そのまま乗る:
 
 - **ノイズ生成器** — Air / Growl の `TEETH` / Vocal Glue の `AIR Cohesion` の 3 つ
-- **M/S と脱相関** — Air / Vocal Depth / Vocal Glue / Impact の 4 つ
-- **初期反射** — Vocal Depth / Vocal Glue / Impact の 3 つ
+- **M/S と脱相関** — Air / Diorama / Vocal Glue / Impact の 4 つ
+- **初期反射** — Diorama / Vocal Glue / Impact の 3 つ
 
-Air で前の 2 つ、Vocal Depth で 3 つ目が出揃う。Velour が Sparkleur に
+Air で前の 2 つ、Diorama で 3 つ目が出揃う。Velour が Sparkleur に
 オーバーサンプラと倍音カーブと検出器を渡したのと同じ形。
 
 ### Vocal Glue を 3 番目に置く理由
 
 いきなり作ると**初期反射・サイドチェイン・スペクトル整合の 3 つが同時に新規**に
-なる。Vocal Depth を挟むと、初期反射を「声 1 本・サイドチェイン無し」という
+なる。Diorama を挟むと、初期反射を「声 1 本・サイドチェイン無し」という
 簡単な問題で先に片付けられて、Vocal Glue に残るのは `Spectral Cohesion` と
 `LEAD ANCHOR` だけになる。Sparkleur を Velour の後ろに置いたのと同じ判断。
 
@@ -308,7 +308,7 @@ Velour の `VEL-1`、Sparkleur の `SPK-2` と同じ「崩れたら方式ごと�
 | | ゲート | 耳が要るか |
 |---|---|---|
 | Air | `WIDTH` 全域でモノ和に櫛形が出ない（`REQ-AIR-008`） | 不要 |
-| Vocal Depth | `DEPTH` 全域でラウドネスが ±0.5 dB（`REQ-VDP-008`） | 不要 |
+| Diorama | `DEPTH` 全域でラウドネスが ±0.5 dB（`REQ-DIO-008`） | 不要 |
 | Vocal Glue | 和の傾きが目標へ単調に寄る（`REQ-GLU-003`） | 不要 |
 
 3 本とも**単体テストで通る**。Doubler の `DBL-2` のようにラッパを前倒しして
@@ -317,39 +317,39 @@ Velour の `VEL-1`、Sparkleur の `SPK-2` と同じ「崩れたら方式ごと�
 
 ## v0.2.0 — 5 本を作り直す
 
-出荷済み 4 本と、未出荷の Parallax（旧 Vocal Depth）を**まとめて `0.2.0` に
+出荷済み 4 本と、未出荷の Diorama（旧 Diorama）を**まとめて `0.2.0` に
 揃えて出す**。中身は 3 つ。
 
 - **窓を fors 方向に作り直す**（5 本、`nxe-ui-plan.md` の `UI-15`〜`UI-20`）
 - **Hard モード**（Sparkleur と Velour だけ、`SPK-21` / `VEL-19`）
 - **`PUNCH`** を v2 から回収する（Sparkleur、`SPK-22`）
 
-### Parallax を v0.2.0 に合流させた理由
+### Diorama を v0.2.0 に合流させた理由
 
-**旧 UI の Parallax を世に出さないため。** UI の作り直しは共有クレート
-`nxe-ui` を壊すので、先に Parallax を `0.1.0` で出すと「main に UI が入った
-瞬間に Parallax も新テーマを拾う」形になり、**旧 UI で出荷された 1 本が
+**旧 UI の Diorama を世に出さないため。** UI の作り直しは共有クレート
+`nxe-ui` を壊すので、先に Diorama を `0.1.0` で出すと「main に UI が入った
+瞬間に Diorama も新テーマを拾う」形になり、**旧 UI で出荷された 1 本が
 残る**。5 本を並べて 1 つの製品群に見せるのがこの版の狙いなので、それは
 自分で壊しに行くことになる。
 
-代償として、**`VDP-14` の聴き直し・`PAR-13` の既定値・実機での見た目**が
+代償として、**`DIO-14` の聴き直し・`DIO-13` の既定値・実機での見た目**が
 v0.2.0 のゲートに上がった。どれも人の耳と目が要る。
 
 ### 並べた順序
 
 ```text
 SPK-20 / VEL-18  天井の所在を測る     ← 基準 0（前提が崩れると後続が無駄）
-VDP-15           Parallax への改名
+DIO-15           Diorama への改名
 SPK-21 / VEL-19  MODE（Soft / Hard）  ┐
 SPK-22           PUNCH                ┘ ← 基準 1（パラメータ集合を先に固める）
 UI-15 〜 UI-20   共通 UI の作り直し
 SPK-23           Sparkleur の窓（型を決める）
-VEL-20 / AIR-14 / DBL-17 / PAR-16     残り 4 本の窓
+VEL-20 / AIR-14 / DBL-17 / DIO-16     残り 4 本の窓
 既定値・実機・タグ
 ```
 
 **測る単位が先頭。** 「かかりが弱い」は耳の不満で、そこから実装に届く道は
-測定しかない。`VDP-14` がまさにこの形だった — 「遠い近いに聞こえない」を測って
+測定しかない。`DIO-14` がまさにこの形だった — 「遠い近いに聞こえない」を測って
 みたら、要件に書いてある処理が**実装されていなかった**。Hard は写像を持ち上げる
 ものなので、止めているのが写像でなければ効かない。何が天井かを先に特定する。
 

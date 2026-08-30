@@ -226,7 +226,7 @@ impl Palette {
     /// ramp of the five that read as dirt rather than as a colour. Lifting that
     /// stop does not help (it goes from brown to tan); only the hue does.
     /// 35 puts `deep` at brick red and leaves the accent a coral, still 50°
-    /// clear of Parallax's rose.
+    /// clear of Diorama's rose.
     pub const SPARKLEUR: Self = Self::ramp(
         Token::rgb(0xFF, 0xB0, 0x9C),
         Token::rgb(0xFA, 0x8C, 0x71),
@@ -257,7 +257,7 @@ impl Palette {
         ("Velour", Self::VELOUR),
         ("Sparkleur", Self::SPARKLEUR),
         ("Air", Self::AIR),
-        ("Parallax", Self::PARALLAX),
+        ("Diorama", Self::PARALLAX),
     ];
 }
 

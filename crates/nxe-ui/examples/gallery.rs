@@ -39,7 +39,7 @@
 //! ## Palettes
 //!
 //! `NXE_GALLERY_PALETTE` picks which plugin's palette the **stylesheet** is
-//! built from (`doubler` / `velour` / `sparkleur` / `air` / `parallax`;
+//! built from (`doubler` / `velour` / `sparkleur` / `air` / `diorama`;
 //! `air` is the default). It has to be chosen at startup because vizia has no
 //! way to replace a stylesheet once it is added.
 //!
@@ -1335,7 +1335,7 @@ fn band_field(cx: &mut Context) {
 
 /// A stand-in for a generated layer: a broad rise with a couple of peaks in it,
 /// so the field has something with shape to draw.
-/// Ten arrivals with a window over them, the shape Vocal Depth's reflections
+/// Ten arrivals with a window over them, the shape Diorama's reflections
 /// have. `distance` slides the window, which is what its `DEPTH` does.
 fn sample_taps(distance: f32) -> Vec<nxe_ui::taps::Tap> {
     const MS: [f32; 10] = [11.0, 13.0, 17.0, 23.0, 31.0, 43.0, 53.0, 67.0, 79.0, 89.0];

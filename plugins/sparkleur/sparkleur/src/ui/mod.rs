@@ -274,7 +274,7 @@ pub fn create(
         //
         // **Every window that puts a status bar under a stretched row needs
         // this line.** The four still to be rebuilt are `VEL-20`, `AIR-14`,
-        // `DBL-17` and `PAR-16`.
+        // `DBL-17` and `DIO-16`.
         .class("root")
         .width(Stretch(1.0))
         .height(Stretch(1.0))

@@ -317,5 +317,5 @@ STACKを上げると、
 
 - **Vocal Saturator** — Body / Density / Presence / Texture
 - **Sparkluer** — Air / Shine / Multiband Dynamics
-- **Vocal Depth** — Close / Far / Room / Distance / Focus
+- **Diorama** — Close / Far / Room / Distance / Focus
 - **Vocal Glue** — Shared dynamics / Common tone / Stereo cohesion / Stack / Lead anchoring

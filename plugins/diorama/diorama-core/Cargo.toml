@@ -1,0 +1,29 @@
+[package]
+name = "diorama-core"
+# **The plugin owns its version, not the workspace** (`velour/Cargo.toml`).
+# `diorama-core` moves with it: they are one shipping unit. Nothing has
+# shipped yet, so it starts at the workspace version.
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The Diorama DSP, independent of any plugin host"
+
+# nih-plug, Vizia and any host API stay out: that is what keeps a future AU
+# wrapper possible and what lets the DSP be tested without a host
+# (`.agents/rules/rust.md`, `REQ-DIO-015`). `nxe-audio` is held to the same
+# rule, so depending on it does not weaken this.
+[dependencies]
+nxe-audio.workspace = true
+
+# `nxe-dsp` is analysis, and it is here **for the tests only**: the reflection
+# width is measured with `Correlation` rather than with a hand-rolled estimator
+# (`air-core/Cargo.toml` says why).
+[dev-dependencies]
+nxe-dsp.workspace = true
+# criterion is a dev dependency, so it never reaches a plugin binary.
+criterion = { version = "0.5", default-features = false }
+
+[[bench]]
+name = "engine"
+harness = false

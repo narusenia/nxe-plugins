@@ -4,7 +4,7 @@
 //! the left edge; every reflection stands where it arrives. Moving a voice away
 //! moves the weight of the picture to the right, which is the same gesture the
 //! ear makes sense of — so the figure is the mechanism rather than a
-//! visualisation of it (`plugins/vocal-depth/docs/specifications/ui.md`).
+//! visualisation of it (`plugins/diorama/docs/specifications/ui.md`).
 //!
 //! ## Why not a spectrum
 //!
@@ -16,7 +16,7 @@
 //!
 //! ## What it does not draw
 //!
-//! **No decay curve, no tail.** The plugin has neither (`REQ-VDP-020`), and a
+//! **No decay curve, no tail.** The plugin has neither (`REQ-DIO-020`), and a
 //! drawn envelope would promise one. **No frequency information**: the damping
 //! is a readout, not a shape here, because two quantities in one picture with no
 //! axis for the second is how a figure stops being readable.
