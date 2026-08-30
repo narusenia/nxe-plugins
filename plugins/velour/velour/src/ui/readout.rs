@@ -1,5 +1,10 @@
-//! The band of figures under the header: what is going in, what is coming out,
-//! and what the two guards are holding back.
+//! The figures on the window's status bar: what is going in, what is coming
+//! out, and what the two guards are holding back.
+//!
+//! **They were a strip of their own under the header** and moved to the foot of
+//! the window in `VEL-20`, for the reason Sparkleur's did (`SPK-23`): four
+//! short numbers at the headline size were a lot of window, and they pushed the
+//! figure the plugin exists to show down past them.
 //!
 //! **Nothing new is measured** (`SPK-19` did the same for Sparkleur). `IN` and
 //! `OUT` are the meter frames the strip beside the window already draws, and
@@ -70,12 +75,14 @@ pub(crate) fn poll(analysis: &Analysis, figures: &mut [String]) {
     figures[SIB] = pull(guards[1]);
 }
 
-pub fn view(cx: &mut Context) {
-    nxe_ui::readout::strip(cx, |cx| {
-        nxe_ui::readout::cell(cx, "IN", Ui::readouts.index(IN), "dB");
-        nxe_ui::readout::cell(cx, "OUT", Ui::readouts.index(OUT), "dB");
-        nxe_ui::readout::cell(cx, "HARSH", Ui::readouts.index(HARSH), "dB");
-        nxe_ui::readout::cell(cx, "SIB", Ui::readouts.index(SIB), "dB");
+/// The strip at the foot of the window: the hover's one-line description on
+/// the left, these on the right (`nxe_ui::status`).
+pub fn status(cx: &mut Context) {
+    nxe_ui::status::bar(cx, |cx| {
+        nxe_ui::status::figure(cx, "IN", Ui::readouts.index(IN), "dB");
+        nxe_ui::status::figure(cx, "OUT", Ui::readouts.index(OUT), "dB");
+        nxe_ui::status::figure(cx, "HARSH", Ui::readouts.index(HARSH), "dB");
+        nxe_ui::status::figure(cx, "SIB", Ui::readouts.index(SIB), "dB");
     });
 }
 

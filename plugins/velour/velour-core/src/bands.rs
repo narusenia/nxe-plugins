@@ -44,6 +44,65 @@ pub const FOCUS_OCTAVES: f32 = 1.0;
 /// well would make the switch audible.
 pub const AIR_INPUT_CEILING: f32 = 0.25;
 
+/// How far the macros are allowed to reach (`REQ-VEL-021`).
+///
+/// **What it changes is what the generator adds, not how hard it is driven.**
+/// `VEL-18` measured the added layer at the top of every control and found it
+/// **more than nine parts pass-through to one part harmonics** — the
+/// normalisation in [`nxe_audio::shaper`] holds the curve's output at its
+/// input's level, so most of what a band's fader adds is a band-limited copy of
+/// the input. Turning that up is a level change, and a level change is what the
+/// listener takes back out with `OUTPUT`.
+///
+/// So `Hard` adds [`Shaper::residual`] instead of [`Shaper::shape`]: the same
+/// curve with the pass-through taken out and the rest normalised back up. At
+/// the same fader position the harmonics arrive **9 dB louder** and the layer's
+/// level does not move.
+///
+/// **`Soft` is the arithmetic that shipped**, not an approximation of it — it
+/// calls the same `shape` on the same shaper.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum Mode {
+    #[default]
+    Soft,
+    Hard,
+}
+
+/// The top of `Hard`'s drive map.
+///
+/// **Six, and the reason is folding — the same reason it was six before**
+/// (`VEL-2`, `REQ-VEL-020`). `Hard` lifts everything the curve made by about
+/// 9 dB, and the folds are part of what it made. Measured through the real AIR
+/// generator at the hard knee, worst case an 11 kHz tone, against the input:
+///
+/// ```text
+/// drive   11 kHz fold   harmonics
+///   6.0      −65.6 dB    −13.1 dB
+///   7.0      −60.6 dB    −11.9 dB
+///   8.0      −52.9 dB    −11.2 dB
+/// ```
+///
+/// **Drive 8 breaks `REQ-VEL-005`'s −60 dB in `Hard`** and drive 7 sits on the
+/// line with no margin. Six clears it by 5.5 dB and costs **1.95 dB** of
+/// harmonics, because the residual is normalised — the drive changes which
+/// harmonics far more than how many (`nxe_audio::shaper`).
+///
+/// This is the order `REQ-VEL-020` sets out, at its middle step: the input is
+/// already tightened as far as it goes ([`AIR_INPUT_CEILING`] sits exactly on
+/// AIR's own upper edge, `VEL-18`), so the next lever is the drive. The factor
+/// is the last one and is not reached for here.
+pub const HARD_DRIVE_MAX: f32 = 6.0;
+
+impl Mode {
+    /// The top of the drive map for this mode.
+    pub const fn drive_max(self) -> f32 {
+        match self {
+            Mode::Soft => nxe_audio::shaper::DRIVE_MAX,
+            Mode::Hard => HARD_DRIVE_MAX,
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Band {
     Body,
@@ -212,9 +271,15 @@ impl Generator {
 
     /// One sample, at the oversampled rate. The level this band is added at is
     /// the caller's, because that is where it is smoothed.
-    pub fn process(&mut self, input: f32, shaper: &Shaper) -> f32 {
+    pub fn process(&mut self, input: f32, shaper: &Shaper, mode: Mode) -> f32 {
         let band = self.input.process(input);
-        self.output.process(shaper.shape(band))
+        let shaped = match mode {
+            // The same call that shipped, so `Soft` is bit-identical rather
+            // than nearly (`REQ-VEL-021`).
+            Mode::Soft => shaper.shape(band),
+            Mode::Hard => shaper.residual(band),
+        };
+        self.output.process(shaped)
     }
 
     pub fn band(&self) -> Band {
@@ -276,6 +341,10 @@ mod tests {
     /// Runs a tone through one generator inside a real oversampled bus, and
     /// returns the settled output at the host rate.
     fn run(band: Band, hz: usize, drive: f32, hardness: f32, bias: f32) -> Vec<f32> {
+        run_in(band, hz, drive, hardness, bias, Mode::Soft)
+    }
+
+    fn run_in(band: Band, hz: usize, drive: f32, hardness: f32, bias: f32, mode: Mode) -> Vec<f32> {
         let mut shaper = Shaper::new();
         shaper.set(drive, bias, hardness);
 
@@ -286,7 +355,9 @@ mod tests {
         let input = sine(PROBE_AMPLITUDE, hz / 5, LENGTH * 2);
         let output: Vec<f32> = input
             .iter()
-            .map(|sample| oversampler.process(*sample, |value| generator.process(value, &shaper)))
+            .map(|sample| {
+                oversampler.process(*sample, |value| generator.process(value, &shaper, mode))
+            })
             .collect();
 
         output[LENGTH..].to_vec()
@@ -360,7 +431,11 @@ mod tests {
         let input = sine(PROBE_AMPLITUDE, hz / 5, LENGTH * 2);
         let output: Vec<f32> = input
             .iter()
-            .map(|sample| oversampler.process(*sample, |value| generator.process(value, &shaper)))
+            .map(|sample| {
+                oversampler.process(*sample, |value| {
+                    generator.process(value, &shaper, Mode::Soft)
+                })
+            })
             .collect();
 
         db_ratio(amplitude(&output[LENGTH..], hz / 10), PROBE_AMPLITUDE)
@@ -435,6 +510,77 @@ mod tests {
         db_ratio(worst, reference)
     }
 
+    /// The same sweep, referenced to the tone that went **in**.
+    ///
+    /// `Hard` takes the fundamental out, so "in dB below the tone that came
+    /// out" divides by something that is no longer there. The input is what the
+    /// listener compares a fold to anyway: the layer is added to an untouched
+    /// dry path at unity (`REQ-VEL-001`).
+    /// **At the top of that mode's own map**, which is the loudest a user can
+    /// ask for. `Hard` cannot reach `DRIVE_MAX`; measuring it there would be
+    /// measuring a setting the plugin does not have.
+    fn alias_floor_against_input(band: Band, hz: usize, mode: Mode) -> f32 {
+        alias_floor_at(band, hz, mode, mode.drive_max())
+    }
+
+    fn alias_floor_at(band: Band, hz: usize, mode: Mode, drive: f32) -> f32 {
+        let output = run_in(band, hz, drive, 1.0, 0.0, mode);
+
+        let mut worst = 0.0f32;
+        for harmonic in 2..120usize {
+            let true_hz = harmonic * hz;
+            if true_hz < 24_000 {
+                continue;
+            }
+            let folded = fold(true_hz);
+            if folded == 0 || folded >= 20_000 || folded.is_multiple_of(hz) {
+                continue;
+            }
+            worst = worst.max(amplitude(&output, folded / 10));
+        }
+
+        db_ratio(worst, PROBE_AMPLITUDE)
+    }
+
+    /// **The aliasing figure in both modes** (`REQ-VEL-005`, `VEL-19`).
+    ///
+    /// `Hard` lifts everything the curve made by about 9 dB and the folds are
+    /// part of that, so the figure has to be re-measured rather than inherited.
+    /// It is measured against the tone that went **in**: `Hard` takes the
+    /// fundamental out, so "below the tone that came out" divides by something
+    /// that is no longer there, and the input is what a fold is heard against
+    /// anyway — the layer is added to an untouched dry path at unity.
+    ///
+    /// Read the numbers with:
+    ///
+    /// ```text
+    /// cargo test -p velour-core both_modes -- --nocapture
+    /// ```
+    #[test]
+    fn both_modes_stay_under_the_aliasing_target() {
+        println!("\n  band          hz    soft(in)   hard(in)");
+        for (band, hz) in [
+            (Band::Body, 500usize),
+            (Band::Presence, 5_000),
+            (Band::Air, 11_000),
+        ] {
+            let soft = alias_floor_against_input(band, hz, Mode::Soft);
+            let hard = alias_floor_against_input(band, hz, Mode::Hard);
+            println!("  {band:?}  {hz:8} {soft:9.2} {hard:10.2}");
+            assert!(soft < -60.0, "{band:?} at {hz} Hz: soft {soft:.1} dB");
+            assert!(hard < -60.0, "{band:?} at {hz} Hz: hard {hard:.1} dB");
+        }
+
+        // **The band the ceiling exists for, swept.** `Hard` at drive 8 read
+        // −52.9 dB here, which is what set `HARD_DRIVE_MAX`.
+        println!("\n  AIR across the tone, hard(in)");
+        for hz in [7_000usize, 9_000, 10_000, 11_000] {
+            let level = alias_floor_against_input(Band::Air, hz, Mode::Hard);
+            println!("  {hz:6} {level:9.2}");
+            assert!(level < -60.0, "AIR at {hz} Hz folded at {level:.1} dB");
+        }
+    }
+
     fn fold(hz: usize) -> usize {
         let wrapped = hz % 48_000;
         if wrapped > 24_000 {
@@ -477,7 +623,7 @@ mod tests {
                 generator.set_focus(focus);
                 for _ in 0..256 {
                     assert!(
-                        generator.process(0.5, &shaper).is_finite(),
+                        generator.process(0.5, &shaper, Mode::Soft).is_finite(),
                         "{band:?} broke on focus {focus}"
                     );
                 }
@@ -490,9 +636,9 @@ mod tests {
         let shaper = Shaper::new();
         let mut generator = Generator::new(Band::Presence, HOST_RATE, Factor::Four);
         for _ in 0..1024 {
-            generator.process(0.5, &shaper);
+            generator.process(0.5, &shaper, Mode::Soft);
         }
         generator.reset();
-        assert_eq!(generator.process(0.0, &shaper), 0.0);
+        assert_eq!(generator.process(0.0, &shaper, Mode::Soft), 0.0);
     }
 }

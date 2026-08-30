@@ -136,7 +136,7 @@ fn table(cx: &mut Context) {
             heading(cx, None, "", NAME_WIDTH);
             heading(cx, Some(pictogram::UP), "UP", BAR_WIDTH);
             heading(cx, Some(pictogram::DOWN), "DOWN", BAR_WIDTH);
-            heading(cx, Some(pictogram::GAIN), "GAIN", BAR_WIDTH);
+            heading(cx, Some(pictogram::TRIM), "GAIN", BAR_WIDTH);
             heading(cx, Some(pictogram::SOLO), "SOLO", SOLO_WIDTH);
         })
         .height(Auto)

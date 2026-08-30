@@ -1618,7 +1618,7 @@ fn pictograms(cx: &mut Context) {
             for (name, glyph) in [
                 ("UP", pictogram::UP),
                 ("DOWN", pictogram::DOWN),
-                ("GAIN", pictogram::GAIN),
+                ("GAIN", pictogram::TRIM),
                 ("SOLO", pictogram::SOLO),
             ] {
                 pictogram::heading(cx, glyph, name).width(Auto);

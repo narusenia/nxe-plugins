@@ -419,9 +419,11 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| VEL-19 | **MODE（Soft / Hard）**（Velour）。`VEL-18` が済んだので着手できる。動かすのは**層に占める生成成分の割合** | `../../plugins/velour/docs/implementation/velour-plan.md` |
+| AIR-14 | **窓の追随**（Air）。`SPK-23` + `VEL-20` の型に合わせる。`MODE` は置かない | `../../plugins/air/docs/implementation/air-plan.md` |
+| DBL-17 | **窓の追随**（Doubler）。**タブは残す**、`MODE` は置かない | `../../plugins/doubler/docs/implementation/doubler-plan.md` |
+| DIO-16 | **窓の追随**（Diorama）。**見た目の実機確認を含む** | `../../plugins/diorama/docs/implementation/diorama-plan.md` |
 | — | **`DIO-14` の効き幅を実機で聴き直す**（**耳が要る**）。08-28 に一度聴いているが、それは直す前の版。`mise run install diorama` | `diorama-plan.md` |
-| DIO-13 | **既定値と耳**（旧 `DIO-13`。**耳が要る**）。**聴き直しのあと** | `diorama-plan.md` |
+| DIO-13 | **既定値と耳**（**耳が要る**）。**聴き直しのあと** | `diorama-plan.md` |
 | — | **Advanced の偏差**（Diorama、`REQ-DIO-009`）。**前に `dsp.md`** | `diorama-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（**耳が要る**） | `doubler-plan.md` |
 
@@ -534,8 +536,8 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | VEL-16 | CPU 予算の確認（criterion） | ✅ 128 µs / 予算 533 µs |
 | VEL-17 | 既定値の詰めと実機確認（**耳が要る**） | ✅ |
 | VEL-18 | **天井の所在を測った** — 天井は**層の中身**（8 割強が帯域コピー）。`AIR_INPUT_CEILING` は無実 | ✅ |
-| VEL-19 | **MODE（Soft / Hard）**。動かすのは**層に占める生成成分の割合**。既定 Soft、Soft は v0.1.4 とビット一致 | 🟡 |
-| VEL-20 | 窓の追随（`SPK-23` の型に合わせる） | ⬜ |
+| VEL-19 | **MODE（Soft / Hard）** — 生成器が `shape` ではなく `residual` を足す。生成成分 **+8.2〜11.8 dB**、出力は上がらない。Hard は drive 上限 6 | ✅ |
+| VEL-20 | **窓の追随** — 反転面・ステータスバー・`MODE`・記号。表と右列の 204 px の空白を潰した | ✅ |
 
 ### Sparkleur — `../../plugins/sparkleur/docs/implementation/sparkleur-plan.md`
 

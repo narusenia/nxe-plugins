@@ -26,7 +26,7 @@ pub mod texture;
 /// modules they were written for (`SPK-1`).
 pub use nxe_audio::harmonics;
 
-pub use bands::{BANDS, Band, Generator};
+pub use bands::{BANDS, Band, Generator, Mode};
 pub use density::Density;
 pub use engine::{BAND_COUNT, Engine, Levels, Shape};
 pub use guard::{Guarded, Guards};

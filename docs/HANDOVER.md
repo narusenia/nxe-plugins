@@ -1,7 +1,7 @@
 # 引き継ぎ
 
 **2026-08-31 時点。出荷済み 4 本は公開済み（`v0.1.4` / Air は `v0.1.3`）。
-テスト 591、`mise run check` は通っている**（数え方は
+テスト 600、`mise run check` は通っている**（数え方は
 `cargo test --workspace | grep '^test result:'` の合計）。
 
 ## いま作っているのは `v0.2.0` — 5 本を作り直して同時に出す
@@ -15,19 +15,15 @@ Velour だけ）、**`PUNCH`** の v2 からの回収、**Diorama（旧 Diorama�
 **済んだもの**: 共通 UI が `UI-15`（本ごとのアクセント）/ `UI-16`（Inter）/
 `UI-18`（反転面）/ `UI-19`（ヘッダ）/ `UI-20`（幅 880）/ `UI-21`（勾配を外した）。
 Sparkleur が `SPK-20`（測る）/ `SPK-21`（MODE）/ `SPK-22`（PUNCH）/
-`SPK-23`（窓、**型が確定した**）。Velour が `VEL-18`（測る）。
+`SPK-23`（窓、**型が確定した**）。Velour が `VEL-18`（測る）/ `VEL-19`（MODE）/
+`VEL-20`（窓）。Diorama が `DIO-15`（改名）。**記号は `UI-17`。**
 
 **次に着手できるもの**:
 
-1. **`VEL-19` — Velour の MODE。** `VEL-18` が済んだので着手できる。
-   **動かすのは「層に占める生成成分の割合」** — 層のレベルでも `DRIVE_MAX` でも
-   guard でもない（下記）。そのあと `VEL-20`（窓）
-2. **`UI-17` — 記号 10〜16 個。** `SPK-23` が型を決めたので着手できる。
-   題材は「領域と操作の種類」で、候補は UP / DOWN / GAIN / SOLO / FOCUS /
-   SNAP / LIFT / PUNCH / DE-HARSH / SUB PROT / OVERSAMPLE
-3. **`AIR-14` / `DBL-17` / `DIO-16`** — 残り 3 本の窓を `SPK-23` の型に合わせる
-4. **`DIO-15` — Diorama への改名。** 出荷前に必須（`CLAP_ID` は出荷後に
-   変えられない）。商標と既存プラグインの衝突確認から
+1. **`AIR-14` / `DBL-17` / `DIO-16`** — 残り 3 本の窓を、`SPK-23` が決めて
+   `VEL-20` が 2 本目で確かめた型に合わせる。**2 本目で見つかった欠陥が
+   2 つとも 1 本目にもあった**ので、残りも同じ 2 つを疑うところから
+   （伝達曲線がホバーに追随しない / `root` の `row-between` がメーターを縮める）
 
 **人が要るもの**（どれもリリースの前提）:
 
@@ -36,7 +32,7 @@ Sparkleur が `SPK-20`（測る）/ `SPK-21`（MODE）/ `SPK-22`（PUNCH）/
 - **`DIO-13` の既定値**、**5 本の窓の実機確認**、Sparkleur の既定値の
   主観サインオフ（`SPK-18`）
 
-## Velour の天井は「層の中身」だった（`VEL-18`）
+## Velour の Hard は「素通し分を引く」ことにした（`VEL-18` → `VEL-19`）
 
 **Velour の効きはゲインではない。** 3 つの生成器が作った高調波を素通しの原音に
 **足す**構造なので、「どれだけやっているか」は**足された層のうち入力に無かった
@@ -51,10 +47,19 @@ Sparkleur が `SPK-20`（測る）/ `SPK-21`（MODE）/ `SPK-22`（PUNCH）/
   そのもので、何も削っていない
 - **guard は 2.69 dB 押さえている**が、それは「痛くしない」という約束そのもの
 
+**`VEL-19` はそれを直した。** 生成器が足すものを `Shaper::shape` から
+`Shaper::residual` に替えた——同じ曲線から素通し分を引いて、残りを元の
+レベルまで正規化し直したもの。生成成分が **+8.2〜11.8 dB**、出力は上がらない。
+
+**予定になかった決定**: Hard は自分の drive 上限を持つ（6）。曲線が作ったものを
+9 dB 持ち上げれば**折り返しも一緒に上がる**ので、drive 8 では −52.9 dB で
+`REQ-VEL-005` を割った。6 なら −65.6 dB で、代償は高調波 1.95 dB だけ。
+
 詳細と表は
 [`velour-plan.md`](../plugins/velour/docs/implementation/velour-plan.md) の
-`VEL-18`。測定は `cargo test -p velour-core --test ceiling -- --nocapture
---test-threads=1`。
+`VEL-18` / `VEL-19`。測定は `cargo test -p velour-core --test ceiling --
+--nocapture --test-threads=1` と `cargo test -p velour-core both_modes --
+--nocapture`。
 
 ## UI を直すときのやり方（`SPK-23` で固まった）
 

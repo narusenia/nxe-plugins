@@ -79,13 +79,18 @@ pub const DOWN: Glyph = &[
     Stroke::Line(&[(3.0, 22.0), (21.0, 22.0)]),
 ];
 
-/// A static trim: a slider sitting off its centre.
+/// A bipolar trim: a slider sitting off its centre.
+///
+/// **Named for the kind, not for a knob.** Sparkleur's `GAIN` column and
+/// Velour's `BIAS` column are one operation — a control that rests in the
+/// middle and goes either way — and a set that grows a drawing per parameter is
+/// a font by another name (`UI-17`).
 ///
 /// **Two drawings before this one were read as something else.** A vertical
 /// track with a handle across it was a plus sign at every size; a bipolar bar
 /// filled from the centre was a toggle switch, which is worse than unclear —
 /// it says the wrong thing about the control underneath it.
-pub const GAIN: Glyph = &[
+pub const TRIM: Glyph = &[
     Stroke::Line(&[(3.0, 12.0), (21.0, 12.0)]),
     Stroke::Line(&[(12.0, 7.0), (12.0, 17.0)]),
     Stroke::Fill(14.5, 7.0, 4.0, 10.0),
@@ -182,6 +187,19 @@ pub const MIRROR: Glyph = &[
     Stroke::Solid(&[(15.0, 7.0), (15.0, 17.0), (21.0, 12.0)]),
 ];
 
+/// The shape of the curve, from round to square.
+pub const TEXTURE: Glyph = &[
+    Stroke::Line(&[(3.0, 17.0), (7.0, 7.0), (11.0, 17.0)]),
+    Stroke::Line(&[(13.0, 17.0), (13.0, 7.0), (19.0, 7.0), (19.0, 17.0)]),
+];
+
+/// Something that tracks the level rather than sitting still.
+pub const FOLLOW: Glyph = &[
+    Stroke::Fill(4.0, 12.0, 6.0, 9.0),
+    Stroke::Fill(14.0, 7.0, 6.0, 14.0),
+    Stroke::Line(&[(4.0, 10.0), (10.0, 10.0), (14.0, 5.0), (20.0, 5.0)]),
+];
+
 /// Twice as many samples.
 pub const OVERSAMPLE: Glyph = &[
     Stroke::Line(&[(7.0, 4.0), (7.0, 10.0)]),
@@ -194,10 +212,15 @@ pub const OVERSAMPLE: Glyph = &[
 
 /// Every symbol and the word it is drawn for. **The gallery reads this**, so a
 /// mark that is added without a row here is a mark nobody can look at.
-pub const ALL: [(&str, Glyph); 14] = [
+///
+/// **These name kinds of operation, not parameters.** `TRIM` is Sparkleur's
+/// `GAIN` column and Velour's `BIAS` column; `DE_HARSH` is both of Velour's
+/// guards. Five windows share this list, and one drawing per control would be
+/// the font `UI-17` decided not to build.
+pub const ALL: [(&str, Glyph); 16] = [
     ("UP", UP),
     ("DOWN", DOWN),
-    ("GAIN", GAIN),
+    ("TRIM", TRIM),
     ("SOLO", SOLO),
     ("FOCUS", FOCUS),
     ("DE-HARSH", DE_HARSH),
@@ -209,6 +232,8 @@ pub const ALL: [(&str, Glyph); 14] = [
     ("MIRROR", MIRROR),
     ("DISCLOSURE", DISCLOSURE),
     ("DISCLOSURE_OPEN", DISCLOSURE_OPEN),
+    ("TEXTURE", TEXTURE),
+    ("FOLLOW", FOLLOW),
 ];
 
 /// A drawn mark, fitted to its bounds and painted with

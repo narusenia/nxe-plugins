@@ -23,6 +23,7 @@
 //! `--test-threads=1`, or the tables interleave and none of them can be read.
 
 use nxe_audio::harmonics::{amplitude, at_dbfs, bin_of, db_ratio, pink, rms, tone};
+use velour_core::bands::Mode;
 use velour_core::bands::{AIR_INPUT_CEILING, Generator};
 use velour_core::engine::{BAND_COUNT, Engine, Levels, Shape};
 use velour_core::{BANDS, Band};
@@ -158,6 +159,13 @@ fn flat_out(texture: f32) -> Shape {
         drive: 1.0,
         texture,
         ..Shape::default()
+    }
+}
+
+fn flat_out_in(texture: f32, mode: Mode) -> Shape {
+    Shape {
+        mode,
+        ..flat_out(texture)
     }
 }
 
@@ -409,5 +417,75 @@ fn the_tones_sit_in_the_bands_they_name() {
             NAMES[index],
             TONES[index]
         );
+    }
+}
+
+/// **What `MODE` bought** (`VEL-19`). The pair is the acceptance condition.
+///
+/// `Hard` swaps `shape` for `residual` in every generator: the same curve with
+/// its pass-through taken out and the rest normalised back up
+/// (`nxe_audio::shaper`). What has to come out of that is more harmonics at the
+/// same level — more at a *higher* level would be a volume knob, which is the
+/// thing `VEL-18` found the plugin already had.
+#[test]
+fn what_hard_reaches() {
+    println!("\n  band       soft layer / made / of layer      hard layer / made / of layer");
+    for (band, hz) in TONES.iter().enumerate() {
+        let soft = measure(&flat_out(0.5), &only(band), tone_at(band, REFERENCE_DBFS));
+        let hard = measure(
+            &flat_out_in(0.5, Mode::Hard),
+            &only(band),
+            tone_at(band, REFERENCE_DBFS),
+        );
+        println!(
+            "  {:9} {:8.2} {:8.2} {:9.2}      {:8.2} {:8.2} {:9.2}",
+            NAMES[band],
+            soft.layer_db(),
+            soft.made_db(*hz),
+            soft.made_of_layer_db(*hz),
+            hard.layer_db(),
+            hard.made_db(*hz),
+            hard.made_of_layer_db(*hz),
+        );
+
+        // **More harmonics, against the signal they are added to.** Eight
+        // decibels is the floor; the shaper's own measurement says nine is what
+        // the pass-through was worth at the top of the drive range.
+        let gained = hard.made_db(*hz) - soft.made_db(*hz);
+        assert!(
+            gained > 8.0,
+            "{}: Hard only gained {gained:.2} dB of harmonics",
+            NAMES[band]
+        );
+
+        // **And not by being louder.** A mode that reached further by pushing
+        // the output up would be undone by `OUTPUT`, which is exactly how the
+        // effect came to feel weak in the first place (`VEL-18`: one band at
+        // its top raised the output 5.7 dB and almost all of it was a copy of
+        // the input). `Hard` has to be **at most** as loud as `Soft`.
+        //
+        // The layer itself comes out *quieter* — the pass-through it dropped
+        // was most of it, and the harmonics that replace it lose whatever the
+        // band's output filter does not keep. That is the mode working, not a
+        // shortfall: what is left is all texture.
+        let louder = hard.output_db() - soft.output_db();
+        assert!(
+            louder < 0.5,
+            "{}: Hard raised the output by {louder:.2} dB",
+            NAMES[band]
+        );
+    }
+}
+
+/// **`Soft` is the arithmetic that shipped.** Not close to it — the same
+/// samples, because it is the same call on the same shaper (`REQ-VEL-021`).
+#[test]
+fn soft_is_what_v0_1_4_did() {
+    for (band, name) in NAMES.iter().enumerate() {
+        let dry = tone_at(band, REFERENCE_DBFS);
+        let explicit = measure(&flat_out_in(0.5, Mode::Soft), &only(band), dry.clone());
+        let default = measure(&flat_out(0.5), &only(band), dry);
+        assert_eq!(explicit.layer, default.layer, "{name}");
+        assert_eq!(explicit.output, default.output, "{name}");
     }
 }
