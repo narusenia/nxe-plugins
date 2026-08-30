@@ -86,7 +86,7 @@ Steinberg Media Technologies GmbH`）。`vst3-sys` が GPLv3 を選んだ理由 
 
 | フェイス | ライセンス | どこ | 何に使うか |
 |---|---|---|---|
-| Inter（Light / Regular） | **SIL OFL 1.1** | `crates/nxe-ui/assets/inter/` | 語 |
+| Inter（Regular） | **SIL OFL 1.1** | `crates/nxe-ui/assets/inter/` | 語 |
 | Geist Mono（Regular） | **SIL OFL 1.1** | `crates/nxe-ui/assets/geist/` | 数値 |
 | Lucide | **ISC** | `crates/nxe-ui/assets/lucide/` | アイコン |
 

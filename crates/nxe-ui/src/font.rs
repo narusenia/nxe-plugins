@@ -13,12 +13,16 @@
 //! with its tabular figures, but `tnum` is an OpenType feature and **this vizia
 //! revision has no way to turn one on**, so the mono face is still the answer.
 //!
-//! Two weights of Inter. Hierarchy comes from size and colour; [`title`] is
-//! the one place a weight carries meaning. **Bold was embedded for one commit
-//! and then dropped** — it existed for the wordmark, and once the wordmark went
-//! large and light nothing was left that wanted it (`UI-19`). Nothing else may
-//! reach for a weight; if something does, the rule was wrong and should be
-//! rewritten rather than worked around.
+//! **One weight of Inter.** Hierarchy comes from size and colour, and that is
+//! now true without exception.
+//!
+//! **Two weights were tried for the wordmark and both were dropped.** Bold, at
+//! 17 px, read as another label with the volume turned up (`UI-19`). Light, at
+//! 26 and then 20, read as *faint* — a name that has to be large to be legible
+//! is not quiet (`SPK-23`). What was left after both is the plain face at 18,
+//! which is what the principle said in the first place. Nothing here may reach
+//! for a weight; if something does, the principle was wrong and gets rewritten
+//! rather than worked around.
 //!
 //! **Inter Light's `name` table says family `Inter Light`, subfamily
 //! `Regular`** — only its *typographic* family (name ID 16) says `Inter`.
@@ -36,7 +40,6 @@ use vizia::prelude::*;
 pub const SANS: &str = "Inter";
 pub const MONO: &str = "Geist Mono";
 
-const LIGHT_BYTES: &[u8] = include_bytes!("../assets/inter/Inter-Light.ttf");
 const SANS_BYTES: &[u8] = include_bytes!("../assets/inter/Inter-Regular.ttf");
 const MONO_BYTES: &[u8] = include_bytes!("../assets/geist/GeistMono-Regular.ttf");
 
@@ -47,28 +50,24 @@ const MONO_BYTES: &[u8] = include_bytes!("../assets/geist/GeistMono-Regular.ttf"
 /// theirs by weight rather than by name (see the module docs for why that is
 /// not obvious for Light).
 pub fn install(cx: &mut Context) {
-    cx.add_font_mem(LIGHT_BYTES);
     cx.add_font_mem(SANS_BYTES);
     cx.add_font_mem(MONO_BYTES);
     cx.set_default_font(&[SANS]);
 }
 
-/// The wordmark: the plugin's name, in the one light face this design has.
+/// The wordmark: the plugin's name, set apart by size alone.
 ///
-/// **The weight is set by the modifier, not by CSS.** `font-weight` does parse
-/// in this vizia revision, but keeping it here means the `.title` class stays
-/// one thing — the size and the colour — and there is exactly one place that
-/// knows the exception exists.
+/// **The name only.** `Sparkleur`, not `NXE Sparkleur`: the vendor is its own
+/// mark at the other end of the band (`crate::header`).
 ///
-/// **The name only.** `Sparkleur`, not `NXE Sparkleur`: the vendor sits beside
-/// it as its own small mark (`crate::header`).
+/// It stays a function rather than becoming "just add `.title`" because the
+/// wordmark is a thing this design has opinions about, and they have changed
+/// three times; one place to change them is worth one line.
 pub fn title<T>(cx: &mut Context, text: impl Res<T> + Clone) -> Handle<'_, Label>
 where
     T: ToStringLocalized,
 {
-    Label::new(cx, text)
-        .font_weight(FontWeightKeyword::Light)
-        .class("title")
+    Label::new(cx, text).class("title")
 }
 
 /// A label for a number: Geist Mono, and the `value` class for colour and size.
@@ -92,11 +91,7 @@ mod tests {
     /// silently.
     #[test]
     fn the_faces_are_embedded() {
-        for (name, bytes) in [
-            ("light", LIGHT_BYTES),
-            ("sans", SANS_BYTES),
-            ("mono", MONO_BYTES),
-        ] {
+        for (name, bytes) in [("sans", SANS_BYTES), ("mono", MONO_BYTES)] {
             assert!(bytes.len() > 50_000, "{name} looks truncated");
             assert_eq!(
                 &bytes[..4],
@@ -116,11 +111,9 @@ mod tests {
     /// `font_weight(Light)` would render Regular without a word.
     #[test]
     fn the_faces_land_in_the_family_the_modifier_asks_for() {
-        for (bytes, weight) in [(LIGHT_BYTES, 300), (SANS_BYTES, 400)] {
-            let (family, class) = family_and_weight(bytes);
-            assert_eq!(family, SANS, "a face left the {SANS} family");
-            assert_eq!(class, weight, "{family} at the wrong weight");
-        }
+        let (family, class) = family_and_weight(SANS_BYTES);
+        assert_eq!(family, SANS, "a face left the {SANS} family");
+        assert_eq!(class, 400, "{family} at the wrong weight");
         let (family, class) = family_and_weight(MONO_BYTES);
         assert_eq!(family, MONO);
         assert_eq!(class, 400);

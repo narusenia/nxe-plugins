@@ -282,20 +282,22 @@ Panel / Section / Row / Label / Divider をウィジェットにしていない�
 
 語は [Inter](https://rsms.me/inter/)、数値は
 [Geist Mono](https://vercel.com/font)（どちらも SIL OFL 1.1）。Inter は
-Light と Regular の 2 面。この設計は階層を**サイズと色**で作り、
-**ウェイトが意味を持つのはワードマーク 1 箇所だけ**。
+**Regular 1 面だけ**。この設計は階層を**サイズと色**で作り、**例外は無い**。
+
+**ワードマークに 2 回ウェイトを試して 2 回とも戻した。** Bold は 17 px で
+「音量を上げただけのラベル」に、Light は 26 → 20 px で**細い**（大きくないと
+読めない名前は静かではない）。残ったのが 18 px の素の面で、原則が最初から
+言っていたもの。
 
 - 既定は Inter Regular。`theme::install` が `set_default_font` で入れるので、
   普通の `Label` はそのまま Inter になる
 - **数値は Geist Mono。** `font::value(cx, text)` を使う。Inter の tabular
   figures（`tnum`）は OpenType feature で、**この vizia には feature を
   立てる道が無い**
-- **プラグイン名は `font::title(cx, "Sparkleur")`。** ここだけ Light、26 px。
-  **`NXE` は付けない** — ベンダーは左に小さく別で置く（`nxe_ui::header`）
-- **Light をラベルの大きさに使わない。** 小さい Light は静かではなく細いだけで、
-  暗い地の上では上品になる前に脆くなる（17 px で実際にそう見えた）
-- **2 つ目のウェイトの用途を作らない。** 要るなら「サイズと色で作る」という
-  原則が間違っていたということなので、そのときは原則ごと書き換える
+- **プラグイン名は `font::title(cx, "Sparkleur")`。** 18 px、素の面。
+  **`NXE` は付けない** — ベンダーは帯の反対の端に印として置く（`nxe_ui::header`）
+- **ウェイトに手を出さない。** 要るなら「サイズと色で作る」という原則が
+  間違っていたということなので、そのときは原則ごと書き換える
 
 ```rust
 font::value(cx, lens.map(|v| format!("{v:.1}")));

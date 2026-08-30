@@ -111,14 +111,12 @@ Every rule here was paid for. Where one has a scar, the scar is named.
   is what fixing the decimal count was meant to prevent. **Inter's tabular
   figures are not a way out**: `tnum` is an OpenType feature and this vizia
   revision has no way to turn one on.
-- **One weight carries meaning: the wordmark, set light and large**
-  (`font::title`, 26). Bold shipped for exactly one commit and was dropped when
-  this landed — it existed so a 17 px name would not read as another label, and
-  **size solves that better than weight does**. **Light at label size is thin
-  rather than quiet**: on a dark ground it goes fragile before it goes elegant,
-  so it stays where it is large. A second use for a weight means "size and
-  colour" was the wrong principle, and the principle gets rewritten rather than
-  worked around.
+- **No weight carries meaning. One face, and hierarchy from size and colour.**
+  The wordmark was tried in bold (17 px: another label with the volume turned
+  up) and in light (26 and 20 px: faint — a name that has to be large to be
+  legible is not quiet). It is the plain face at 18. **Both attempts shipped for
+  a commit and came back**; if a third is proposed, the principle is what is
+  wrong, and it gets rewritten rather than worked around.
 - **The wordmark is the product's name with no vendor on it.** `Sparkleur`, not
   `NXE Sparkleur` — the plugin list has already been read by the time the window
   is open.

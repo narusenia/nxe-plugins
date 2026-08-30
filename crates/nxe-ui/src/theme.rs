@@ -362,10 +362,12 @@ pub const FONT_VALUE: f32 = 10.0;
 /// a wordmark. Set in the light face it does not have to: **size carries it,
 /// the way size carries everything else here** (`UI-19`).
 ///
-/// **26 was too much.** It read as a title page rather than as the name of the
-/// window you are already looking at — the wordmark does not need to make a
-/// case for itself. 20 is where it stops asserting and still is not a label.
-pub const FONT_TITLE: f32 = 20.0;
+/// **26 was too much** — it read as a title page rather than as the name of the
+/// window you are already looking at. 20 in the light face was still too much,
+/// **and too thin with it**: a wordmark that has to be large to be legible is
+/// not quiet, it is faint. 18, in the plain face, is where it stops asserting
+/// and is still not a label (`SPK-23`, three looks in a host).
+pub const FONT_TITLE: f32 = 18.0;
 
 /// The height a one-line label occupies at each size.
 ///
@@ -386,7 +388,7 @@ pub const LINE_VALUE: f32 = 14.0;
 /// with the audio (`docs/investigations/ui-frame-cost.md`).
 pub const LINE_READOUT: f32 = 16.0;
 pub const LINE_LABEL: f32 = 16.0;
-pub const LINE_TITLE: f32 = 26.0;
+pub const LINE_TITLE: f32 = 24.0;
 
 const _: () = assert!(LINE_EYEBROW > FONT_EYEBROW, "the eyebrow will clip");
 const _: () = assert!(LINE_VALUE > FONT_VALUE, "the value will clip");
@@ -487,8 +489,9 @@ label {{
     font-size: {FONT_VALUE};
 }}
 
-/* The plugin's name. Set apart by size alone, like everything else here — the
-   light face it is set in is the modifier's job (`font::title`). */
+/* The plugin's name. **Set apart by size alone**, like everything else here.
+   Two weights were tried for it and both came back: bold read as another label
+   with the volume turned up, light read as faint. */
 .title {{
     color: {foreground};
     font-size: {FONT_TITLE};

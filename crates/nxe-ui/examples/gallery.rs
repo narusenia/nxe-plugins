@@ -1667,10 +1667,9 @@ fn spacing(cx: &mut Context) {
 
 fn text(cx: &mut Context) {
     panel(cx, "TEXT", |cx| {
-        // Both weights together: the light one carries only the wordmark, so
-        // the panel has to show what it looks like beside the plain face it is
-        // an exception to rather than on its own.
-        font::title(cx, "TITLE — the wordmark, 26, light");
+        // One weight. The wordmark is apart by size, not by weight — two
+        // attempts at a weight for it are recorded in `font.rs`.
+        font::title(cx, "TITLE — the wordmark, 18");
         Label::new(cx, "TITLE — the same class, regular").class("title");
         Label::new(cx, "LABEL — names a thing, 12, muted").class("label");
         Label::new(cx, "Value — says what it is, 10, Inter").class("value");
