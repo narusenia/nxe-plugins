@@ -149,7 +149,7 @@ vizia = { git = "https://github.com/robbert-vdh/vizia.git", tag = "patched-2024-
 baseview = { git = "https://github.com/narusenia/baseview.git", tag = "nxe-2026-08-30c" }
 
 [patch."https://github.com/robbert-vdh/vizia.git"]
-vizia = { git = "https://github.com/narusenia/vizia.git", tag = "nxe-2026-08-30c" }
+vizia = { git = "https://github.com/narusenia/vizia.git", tag = "nxe-2026-08-30d" }
 
 [profile.release]
 lto = "thin"
