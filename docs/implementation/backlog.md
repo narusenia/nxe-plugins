@@ -10,7 +10,7 @@
 - **順序の判断は [`roadmap.md`](roadmap.md)**。この表は「何があるか」、
   ロードマップは「どの順でやるか、なぜその順か」
 
-最終更新: 2026-08-28
+最終更新: 2026-08-31
 
 ## 凡例
 
@@ -426,6 +426,7 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 |---|---|
 | 値の直接入力を戻す | `UI-3`。`ValueEntry` は `nxe-ui` にあり gallery では動く。プラグインに載せると editor の表示が更新されなくなる（原因未特定） |
 | 見た目の最終調整（フォントサイズ、寸法、余白） | ユーザーの指示で最後にまとめる |
+| Doubler の Detail 表が毎フレーム `String` を 32 個組む | `detail.rs`。値が動くのは操作時だけなので再描画は誘発しないが、形は読み値と同じ（[調査](../investigations/ui-frame-cost.md)） |
 | パワーフォロワの共通化 | **3 個目が来た**（`nxe_audio::guard::Follower` / `sparkleur_core::Detector` / `sparkleur_core::Sparkle`）。ただし形が 3 つとも違う（帯域通過込み / 配列 / 単体）ので、上げるなら何を共通にするかを決めてから |
 
 ## 全単位
@@ -464,6 +465,9 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | UI-13 | `BandField`（領域知識を持たない帯域パネル） | ✅ |
 | UI-8 | `Meter` — **Velour の IN / OUT が使う** | ✅ |
 | UI-9 | `ToggleSwitch` — **3 個目でも要らなかったので落とした**（`SPK-19`） | ❌ |
+| UI-14 | **UI を開くと DAW が重くなる問題。** 体感の原因は `baseview` が**ホストのプロセス全体**でマウス合成を切っていたこと（1 行、誰も戻していなかった）。あわせて窓が開いている間の描画コストも 7 つ直した | ✅ 実機で症状消失、gallery で **22.6 → 約 9 %** `#2`（[調査](../investigations/ui-frame-cost.md)） |
+| — | **上流に投げる。** いちばん効くのは `setMouseCoalescingEnabled` の 1 つ（baseview を使う全プラグインに効いているはず） | ⬜ |
+| — | **femtovg の隣接 draw call マージ。** 部分再描画で 219 → 68 になったので、優先度は下がった。やるなら測り直してから | ⬜ |
 
 ### Doubler — `../../plugins/doubler/docs/implementation/doubler-plan.md`
 
