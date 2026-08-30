@@ -57,6 +57,7 @@ use nxe_ui::input::Gesture;
 use nxe_ui::knob::Knob;
 use nxe_ui::logo;
 use nxe_ui::meter::Meter;
+use nxe_ui::pictogram;
 use nxe_ui::polar::{FieldGesture, FieldPoint, PolarField, PolarFieldModifiers};
 use nxe_ui::segmented::SegmentedControl;
 use nxe_ui::surface;
@@ -548,6 +549,7 @@ fn main() {
                 meters(cx);
                 detail(cx);
                 icons(cx);
+                pictograms(cx);
                 shapes(cx);
                 spacing(cx);
                 text(cx);
@@ -1610,6 +1612,73 @@ fn icons(cx: &mut Context) {
         .height(Auto);
 
         Label::new(cx, "2035 icons; stroke width is fixed by the font").class("subtle");
+    });
+}
+
+/// The plugins' own symbols (`UI-17`).
+///
+/// **Shown at the size they are actually used at, and at 12 px first.** The
+/// smallest place any of these lands is a table's column heading, and a drawing
+/// that only works at 32 px is a drawing that does not work.
+fn pictograms(cx: &mut Context) {
+    panel(cx, "PICTOGRAMS", |cx| {
+        HStack::new(cx, |cx| {
+            for (name, glyph) in pictogram::ALL {
+                VStack::new(cx, |cx| {
+                    for (size, weight) in [
+                        (theme::LINE_EYEBROW, pictogram::WEIGHT),
+                        (theme::LINE_LABEL, pictogram::WEIGHT),
+                        (28.0, pictogram::WEIGHT_STRONG),
+                    ] {
+                        pictogram::Pictogram::weighted(cx, glyph, weight)
+                            .width(Pixels(size))
+                            .height(Pixels(size));
+                    }
+                    Label::new(cx, name).class("subtle");
+                })
+                .width(Auto)
+                .height(Auto)
+                .row_between(Pixels(theme::SPACE_2))
+                .child_left(Stretch(1.0))
+                .child_right(Stretch(1.0));
+            }
+        })
+        .class("row")
+        .height(Auto)
+        .col_between(Pixels(theme::SPACE_3));
+
+        Element::new(cx).class("divider");
+
+        // **The pair is the point** — a mark on its own buys the reader the
+        // same puzzle the reference designs sell (`.agents/rules/ui.md`).
+        HStack::new(cx, |cx| {
+            for (name, glyph) in [
+                ("UP", pictogram::UP),
+                ("DOWN", pictogram::DOWN),
+                ("GAIN", pictogram::GAIN),
+                ("SOLO", pictogram::SOLO),
+            ] {
+                pictogram::heading(cx, glyph, name).width(Auto);
+            }
+        })
+        .class("row")
+        .height(Auto)
+        .col_between(Pixels(theme::SPACE_4));
+
+        HStack::new(cx, |cx| {
+            for (name, glyph) in [
+                ("DE-HARSH", pictogram::DE_HARSH),
+                ("SNAP", pictogram::SNAP),
+                ("PUNCH", pictogram::PUNCH),
+            ] {
+                pictogram::label(cx, glyph, name).width(Auto);
+            }
+        })
+        .class("row")
+        .height(Auto)
+        .col_between(Pixels(theme::SPACE_4));
+
+        Label::new(cx, "drawn paths; the weight follows the hierarchy").class("subtle");
     });
 }
 

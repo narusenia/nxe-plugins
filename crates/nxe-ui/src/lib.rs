@@ -21,6 +21,7 @@ pub mod input;
 pub mod knob;
 pub mod logo;
 pub mod meter;
+pub mod pictogram;
 pub mod polar;
 pub mod readout;
 pub mod segmented;

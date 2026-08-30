@@ -502,6 +502,13 @@ mod tests {
 
         let mut checked = 0;
         for source in SOURCES {
+            // **Whitespace flattened first.** The helpers' arguments are found
+            // by the `", "` between a label and its hint, and `cargo fmt` puts
+            // that pair on two lines as soon as the call gains an argument —
+            // which is exactly what happened when the bars gained their marks
+            // (`UI-17`). The scan went on passing and had quietly stopped
+            // looking at five of them.
+            let source: String = source.split_whitespace().collect::<Vec<_>>().join(" ");
             for rest in source.split(".describe(\"").skip(1) {
                 let hint = rest.split('"').next().unwrap_or_default();
                 checked += 1;
@@ -525,7 +532,10 @@ mod tests {
                 }
             }
         }
-        assert!(checked > 10, "the scan found almost nothing: {checked}");
+        // **A floor, not a smoke test.** `> 10` went on passing while a quarter
+        // of the hints had become invisible to the scan. Nineteen is all of
+        // them: seven written beside `.describe`, twelve handed to a helper.
+        assert!(checked >= 19, "the scan found only {checked} hints");
     }
 
     #[test]

@@ -18,6 +18,7 @@ use super::{Ui, UiEvent};
 use crate::analysis::Analysis;
 use nih_plug_vizia::vizia::prelude::*;
 use nxe_ui::hint::Describe;
+use nxe_ui::pictogram;
 use nxe_ui::{font, theme};
 use sparkleur_core::crossover::BAND_COUNT;
 
@@ -46,11 +47,15 @@ const BAR_HEIGHT: f32 = 10.0;
 /// The right-hand column's own widths. `OVERSAMPLE` does not fit in
 /// [`NAME_WIDTH`], and the extra comes out of the bar rather than out of the
 /// window, so the column's total is unchanged.
-const SIDE_NAME_WIDTH: f32 = 80.0;
+///
+/// **Both grew by 20 for the marks** (`UI-17`), which came out of the gap
+/// between the table and this column rather than out of a bar — the gap was
+/// 96 px and reading as nothing (`the_row_fits_the_window` is what allows it).
+const SIDE_NAME_WIDTH: f32 = 100.0;
 const SIDE_BAR_WIDTH: f32 = 80.0;
 
 /// The right column, which holds what is global rather than per band.
-const SIDE_WIDTH: f32 = 224.0;
+const SIDE_WIDTH: f32 = 244.0;
 
 const NAMES: [&str; BAND_COUNT] = ["SUB", "BODY", "MID", "PRES", "AIR"];
 
@@ -100,11 +105,11 @@ pub fn view(cx: &mut Context) {
 fn table(cx: &mut Context) {
     VStack::new(cx, |cx| {
         HStack::new(cx, |cx| {
-            heading(cx, "", NAME_WIDTH);
-            heading(cx, "UP", BAR_WIDTH);
-            heading(cx, "DOWN", BAR_WIDTH);
-            heading(cx, "GAIN", BAR_WIDTH);
-            heading(cx, "SOLO", SOLO_WIDTH);
+            heading(cx, None, "", NAME_WIDTH);
+            heading(cx, Some(pictogram::UP), "UP", BAR_WIDTH);
+            heading(cx, Some(pictogram::DOWN), "DOWN", BAR_WIDTH);
+            heading(cx, Some(pictogram::GAIN), "GAIN", BAR_WIDTH);
+            heading(cx, Some(pictogram::SOLO), "SOLO", SOLO_WIDTH);
         })
         .height(Auto)
         .width(Auto)
@@ -131,14 +136,26 @@ fn applied(gain_db: f32) -> String {
     format!("{gain_db:+.1}")
 }
 
-fn heading(cx: &mut Context, text: &'static str, width: f32) {
-    // **A column's name is not a control's name** (`crates/nxe-ui/README.md`):
-    // set as an eyebrow it reads as the table's structure instead of joining
-    // the row of labels under it.
-    Label::new(cx, text)
-        .class("eyebrow")
-        .width(Pixels(width))
-        .height(Pixels(theme::LINE_EYEBROW));
+/// A column's name, with the mark that makes it findable (`UI-17`).
+///
+/// **A column's name is not a control's name** (`crates/nxe-ui/README.md`): set
+/// as an eyebrow it reads as the table's structure instead of joining the row
+/// of labels under it. The mark is the eyebrow's own height, so a heading row
+/// does not grow by gaining one.
+fn heading(cx: &mut Context, glyph: Option<pictogram::Glyph>, text: &'static str, width: f32) {
+    match glyph {
+        Some(glyph) => {
+            pictogram::heading(cx, glyph, text).width(Pixels(width));
+        }
+        // The name column, which has no heading and is only here to hold the
+        // table's first column open.
+        None => {
+            Label::new(cx, text)
+                .class("eyebrow")
+                .width(Pixels(width))
+                .height(Pixels(theme::LINE_EYEBROW));
+        }
+    }
 }
 
 fn row(cx: &mut Context, index: usize) {
@@ -250,31 +267,43 @@ fn side(cx: &mut Context) {
         VStack::new(cx, |cx| {
             labelled_bar(
                 cx,
+                pictogram::DE_HARSH,
                 "DE-HARSH",
                 "Harder or softer than CHARACTER chose",
                 |cx| nxe_plug_ui::bar(cx, Ui::params, |p| &p.de_harsh, true),
             );
             labelled_bar(
                 cx,
+                pictogram::SUB_PROTECT,
                 "SUB PROT",
                 "How far the bottom band's lift is closed",
                 |cx| nxe_plug_ui::bar(cx, Ui::params, |p| &p.sub_protect, true),
             );
-            labelled_bar(cx, "SNAP", "How much of AIR waits for a transient", |cx| {
-                nxe_plug_ui::bar(cx, Ui::params, |p| &p.snap, false)
-            });
-            labelled_bar(cx, "LIFT", "Opens the floor under the upward half", |cx| {
-                nxe_plug_ui::bar(cx, Ui::params, |p| &p.lift, false)
-            });
-            labelled_bar(cx, "PUNCH", "How hard a transient is hit", |cx| {
-                nxe_plug_ui::bar(cx, Ui::params, |p| &p.punch, false)
-            });
+            labelled_bar(
+                cx,
+                pictogram::SNAP,
+                "SNAP",
+                "How much of AIR waits for a transient",
+                |cx| nxe_plug_ui::bar(cx, Ui::params, |p| &p.snap, false),
+            );
+            labelled_bar(
+                cx,
+                pictogram::LIFT,
+                "LIFT",
+                "Opens the floor under the upward half",
+                |cx| nxe_plug_ui::bar(cx, Ui::params, |p| &p.lift, false),
+            );
+            labelled_bar(
+                cx,
+                pictogram::PUNCH,
+                "PUNCH",
+                "How hard a transient is hit",
+                |cx| nxe_plug_ui::bar(cx, Ui::params, |p| &p.punch, false),
+            );
 
             HStack::new(cx, |cx| {
-                Label::new(cx, "OVERSAMPLE")
-                    .class("subtle")
-                    .width(Pixels(SIDE_NAME_WIDTH))
-                    .height(Auto);
+                pictogram::label(cx, pictogram::OVERSAMPLE, "OVERSAMPLE")
+                    .width(Pixels(SIDE_NAME_WIDTH));
                 nxe_plug_ui::segmented(cx, Ui::params, |params| &params.oversample, &["2x", "4x"])
                     .describe("2x costs about 11 us and aliases 14 dB higher");
             })
@@ -295,15 +324,13 @@ fn side(cx: &mut Context) {
 
 fn labelled_bar(
     cx: &mut Context,
+    glyph: pictogram::Glyph,
     label: &'static str,
     hint: &'static str,
     content: impl Fn(&mut Context) -> Handle<'_, nxe_ui::bar::Bar>,
 ) {
     HStack::new(cx, |cx| {
-        Label::new(cx, label)
-            .class("subtle")
-            .width(Pixels(SIDE_NAME_WIDTH))
-            .height(Auto);
+        pictogram::label(cx, glyph, label).width(Pixels(SIDE_NAME_WIDTH));
         content(cx)
             .describe(hint)
             .width(Pixels(SIDE_BAR_WIDTH))

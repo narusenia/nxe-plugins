@@ -335,6 +335,27 @@ icon::label(cx, icon::CHEVRON_DOWN).font_size(20.0);
 - Lucide の更新は `mise run icons:generate`。手順は
   [`scripts/generate-icons.py`](../../scripts/generate-icons.py) の docstring
 
+## ピクトグラム
+
+プラグイン自身の記号。**パスで描く**（フォントにしない）。
+
+```rust
+use nxe_ui::pictogram;
+
+pictogram::heading(cx, pictogram::UP, "UP");        // 列の名前（12 px・細）
+pictogram::label(cx, pictogram::SNAP, "SNAP");      // 操作の名前（16 px・太）
+```
+
+- **記号だけで置かない。** この 2 つの関数はどちらも語を伴う。単体で要るときは
+  `Pictogram::new` / `Pictogram::weighted` だが、**併記が「初見でわかる」の担保**
+- **12 px で読めるかがすべて。** 一番小さく出るのは表の列見出し
+  （`theme::LINE_EYEBROW`）で、**3 グリッド単位より細い造形は通らない**
+  （テストが落ちる）
+- 図形は `Stroke::Line` / `Fill` / `Frame` / `Solid` の 4 つだけ。曲線は無い
+- 色は `palette.muted` 固定（Lucide の `.icon` と同じ）。太さは
+  `WEIGHT` / `WEIGHT_STRONG` の 2 段
+- **`ALL` に足すのと同じ変更で gallery に並ぶ。** gallery は `ALL` を読む
+
 ## ウィジェットを足す
 
 1. `src/<name>.rs` に置き、`src/lib.rs` で公開する

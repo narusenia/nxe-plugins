@@ -127,6 +127,30 @@ Every rule here was paid for. Where one has a scar, the scar is named.
   compile-time assertion keeps them near it. A grid is drawn with straight
   lines.
 
+## Marks
+
+- **A mark never replaces its word.** `nxe_ui::pictogram::heading` and
+  `::label` are the two ways one is placed, and both put the name beside it.
+  The symbol is what makes a column findable at a glance; the word is what
+  makes it understandable the first time. A window of symbols alone buys the
+  same unreadability the reference designs sell.
+- **They are drawn paths, not a font.** Lucide's strokes are baked into filled
+  glyphs, so an icon cannot take a weight (`UI-2`) — and these sit beside text
+  at two sizes that want two weights. Lucide stays for what is generic
+  (a chevron); `pictogram` is for what is this product's.
+- **Drawn for 12 px, because the smallest place one lands is a column
+  heading.** Three grid units is the finest feature that survives there, and a
+  test says so. Three drawings were replaced for failing it: `UP` and `DOWN`
+  were a two-bar compression picture that became one grey pair of blocks, and
+  `GAIN` was a fader that read as a plus sign and then a bipolar bar that read
+  as a toggle — **worse than unclear, because it said the wrong thing about the
+  control under it**.
+- **Marks go on columns and lists, not on the macro knobs.** A knob's arc is
+  already the picture, and a mark beside its name competes with it. The window's
+  subject does not need finding.
+- **Nothing is drawn with a curve.** Rules, right angles and flat fills, which
+  is the same vocabulary as everything else on screen.
+
 ## Readings
 
 - **Fixed width, right aligned** (`nxe_ui::readout`). A reading that changes

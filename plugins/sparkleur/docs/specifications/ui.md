@@ -172,13 +172,14 @@ GLOSS が 0.5、CRUSH が 1.0 で、**名前の並びどおりには離れてい
 ### ADVANCED
 
 ```text
-          UP      DOWN     GAIN    SOLO        FOCUS      ◯
-  SUB    ──●──   ──●──   ──●──    [ ]
-  BODY   ──●──   ──●──   ──●──    [ ]        DE-HARSH  ──●──
-  MID    ──●──   ──●──   ──●──    [ ]        SUB PROT  ──●──
-  PRES   ──●──   ──●──   ──●──    [ ]        SNAP      ──●──
-  AIR    ──●──   ──●──   ──●──    [ ]        LIFT      ──●──
-                                          OVERSAMPLE [2x][4x]
+        ▲ UP    ▼ DOWN  ⊣ GAIN  ▮ SOLO         FOCUS      ◯
+  SUB   ──●──   ──●──   ──●──    [ ]
+  BODY  ──●──   ──●──   ──●──    [ ]      ⌂ DE-HARSH   ──●──
+  MID   ──●──   ──●──   ──●──    [ ]      ⊓ SUB PROT   ──●──
+  PRES  ──●──   ──●──   ──●──    [ ]      ↑ SNAP       ──●──
+  AIR   ──●──   ──●──   ──●──    [ ]      ⌐ LIFT       ──●──
+                                          ✳ PUNCH      ──●──
+                                          ⋮ OVERSAMPLE [2x][4x]
 ```
 
 - `UP` / `DOWN` / `GAIN` は `Bar`。`UP` / `DOWN` は**重み**（0 から右へ）、
@@ -190,6 +191,12 @@ GLOSS が 0.5、CRUSH が 1.0 で、**名前の並びどおりには離れてい
 - `FOCUS` は小さい `Knob`（双極）
 - **バーには必ず高さを指定する**（`height: 10px`）。Velour で指定を忘れて
   Advanced の表が「動かないコントロール」になった（`.agents/rules/vizia.md`）
+- **名前の左に記号を置く**（`nxe_ui::pictogram`、`UI-17`）。列見出しの 4 つは
+  `pictogram::heading`（12 px・細）、右の一覧の 6 つは `pictogram::label`
+  （16 px・太）。上の図の記号はその位置を示すためのもので、形ではない
+  （形は gallery が正）。**記号だけにはしない**——語は常に残る
+- `FOCUS` はノブなので記号を置かない。**マクロノブには置かない**という規則
+  （`.agents/rules/ui.md`）
 
 行にポインタが乗ったら `BandField` の対応する区画をハイライトする。
 `Ui::hovered` 1 つで両方向（Doubler / Velour と同じ）。
@@ -201,6 +208,7 @@ GLOSS が 0.5、CRUSH が 1.0 で、**名前の並びどおりには離れてい
 | コンポーネント | 使うところ |
 |---|---|
 | `theme` / `font` / `icon` | 全体。`font::title` でワードマーク |
+| `pictogram` | 列見出し 4 + Advanced の一覧 6（`UI-17`） |
 | `input::Gesture` | 全体 |
 | `Knob` | メイン 7 個、`FOCUS` |
 | `Bar` | Advanced の 15 + 4 個 |

@@ -420,7 +420,6 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | ID | 単位 | 計画 |
 |---|---|---|
 | VEL-19 | **MODE（Soft / Hard）**（Velour）。`VEL-18` が済んだので着手できる。動かすのは**層に占める生成成分の割合** | `../../plugins/velour/docs/implementation/velour-plan.md` |
-| UI-17 | **ピクトグラム 10〜16 個**。`SPK-23` が窓の型を決めたので着手できる | `nxe-ui-plan.md` |
 | VDP-15 | **Parallax への改名**。商標と既存プラグインの衝突を確認してから確定する | `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md` |
 | — | **`VDP-14` の効き幅を実機で聴き直す**（**耳が要る**）。08-28 に一度聴いているが、それは直す前の版。`mise run install vocal-depth` | `vocal-depth-plan.md` |
 | PAR-13 | **既定値と耳**（旧 `VDP-13`。**耳が要る**）。**聴き直しのあと** | `vocal-depth-plan.md` |
@@ -482,7 +481,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | — | **femtovg の隣接 draw call マージ。** 部分再描画で 219 → 68 になったので、優先度は下がった。やるなら測り直してから | ⬜ |
 | UI-15 | **アクセントを本ごとに渡す**（`theme::install(cx, palette)`。明度・彩度を揃えた 5 色） | ✅ `48c8f57` |
 | UI-16 | **Inter への差し替え**（Light / Regular / Bold。数字は Geist Mono 継続） | ✅ `fe72bd8` |
-| UI-17 | **ピクトグラム 10〜16 個**（femtovg のパス。常に語と併記）。**題材は `SPK-23` が決めた窓から** | 🟡 |
+| UI-17 | **ピクトグラム 11 個**（femtovg のパス。常に語と併記）。Sparkleur の窓に 10 個載っている。**12 px で 3 つ描き直した** | ✅ |
 | UI-18 | **反転面**（地がアクセント・描画が `BACKGROUND`。1 窓に 1 枚） | ✅ `49aaff1` |
 | UI-19 | **ヘッダの拡張**（`MODE` の枠 + ホバー中のコントロールの 1 行説明。ワードマークから `NXE` を外し 26 px Light に） | ✅ `bf616c6` |
 | UI-20 | **幅と、窓の高さの計算**（720 → 880 の共通定数。高さは既に部品の合計だった） | ✅ ❓ **実機で 4 ホスト見るのが未了** |
