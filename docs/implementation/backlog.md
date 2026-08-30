@@ -466,7 +466,7 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | UI-13 | `BandField`（領域知識を持たない帯域パネル） | ✅ |
 | UI-8 | `Meter` — **Velour の IN / OUT が使う** | ✅ |
 | UI-9 | `ToggleSwitch` — **3 個目でも要らなかったので落とした**（`SPK-19`） | ❌ |
-| UI-14 | **窓 1 枚がホストの UI スレッドの 62 % を食う問題**。読み値を毎フレームのレンズからハートビート経由に、vizia は見えない背景・枠・アウトラインを描かない、baseview のフレーム タイマーを 30 Hz に、帯域バンクを `is_open()` で止める | ✅ gallery で 22.6 → 10.2 % `#1`。**実機の再計測待ち**（[調査](../investigations/ui-frame-cost.md)） |
+| UI-14 | **窓 1 枚がホストの UI スレッドの 62 % を食う問題**。読み値を毎フレームのレンズからハートビート経由に、vizia は見えない背景・枠・アウトラインを描かない、baseview のフレーム タイマーを 60 Hz に、入力で即描画、帯域バンクを `is_open()` で止める | ✅ gallery で 22.6 → 14.3 % `#1`。**実機の再計測待ち**（[調査](../investigations/ui-frame-cost.md)） |
 | — | **femtovg の隣接 draw call マージ**。219 コマンド / フレームのうち 26 % が直前とマージ可能。crates.io 版なのでフォークが要る | ⬜ 調査済み（[調査](../investigations/ui-frame-cost.md)） |
 
 ### Doubler — `../../plugins/doubler/docs/implementation/doubler-plan.md`

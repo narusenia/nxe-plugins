@@ -10,7 +10,7 @@
    直してあり、**その聴き直しがまだ**。`mise run install vocal-depth` で入る
 2. **UI が DAW を重くしていた問題の対策。** 窓 1 枚が Studio One の UI
    スレッドの **62 %** を食っていた（実測）。原因 4 つを直して gallery では
-   **22.6 % → 10.2 %**、プラグイン側は **10 % 台前半の見込み**。
+   **22.6 % → 14.3 %**、プラグイン側は **15 % 前後の見込み**。
    **実機の再計測がまだ** — 手順は
    [`investigations/ui-frame-cost.md`](investigations/ui-frame-cost.md)
    の「検証してほしいこと」

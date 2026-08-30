@@ -102,14 +102,21 @@ vizia = { git = "https://github.com/robbert-vdh/vizia.git", tag = "patched-2024-
 #    gives every fill and stroke its own draw call — which on Apple Silicon is
 #    an OpenGL-over-Metal pipeline build each time.
 #
-# **baseview, from the same window (16.2 % down to about 9 %):**
+# **baseview and vizia, from the same window (16.2 % down to 14.3 %):**
 #
 # 4. **The macOS frame timer ran at 66.7 Hz** (`CFRunLoopTimer` at 0.015 s),
-#    faster than any common display and faster than a meter needs to be read —
-#    on the host's run loop. It is 30 Hz now, which also caps the redraw rate
-#    whatever asks for one.
+#    faster than any common display and faster than anything that feeds it —
+#    on the host's run loop. It is 60 Hz now. **Not 30**: 30 was tried and it
+#    beats against the plugin's own 30 Hz heartbeat, so some updates land twice
+#    in one frame and are drawn once, and the meters stutter. A frame timer has
+#    to be faster than whatever feeds it.
+# 5. **Input waited for the frame timer.** `vizia_baseview` drew only on the
+#    timer's tick, so a drag was answered at the timer's rate rather than the
+#    pointer's; it now draws at the end of `on_event` as well. This is what
+#    lets the timer be slow without the controls going with it, and it costs
+#    nothing when nothing is being touched (the idle window is still 0.9 %).
 #
-# All four are worth sending upstream; none has been yet.
+# All five are worth sending upstream; none has been yet.
 [patch."https://github.com/RustAudio/baseview.git"]
 baseview = { git = "https://github.com/narusenia/baseview.git", tag = "nxe-2026-08-30" }
 

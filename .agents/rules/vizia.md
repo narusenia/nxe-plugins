@@ -113,8 +113,8 @@ are written up with the numbers in
 So the test is both:
 
 ```bash
-cargo run --release -p nxe-ui --example gallery                   # idle: ~0.5 %
-NXE_GALLERY_HZ=30 cargo run --release -p nxe-ui --example gallery # moving: ~10 %
+cargo run --release -p nxe-ui --example gallery                   # idle: ~0.9 %
+NXE_GALLERY_HZ=30 cargo run --release -p nxe-ui --example gallery # moving: ~14 %
 ```
 
 **`binding_system` re-evaluates every store once per frame, not once per

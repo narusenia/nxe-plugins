@@ -142,6 +142,15 @@ pub fn view(cx: &mut Context) {
             Ui::wet,
             MARKS.iter().map(|(hz, _)| axis_x(*hz)).collect(),
             move |cx, gesture| {
+                // **Rebuild the regions now, not on the next heartbeat.**
+                // `Ui::bands` is written by the heartbeat, which is right for
+                // what the audio thread publishes and wrong for a drag: the
+                // fader would move under the pointer and the region behind it
+                // would follow up to an interval later. The write below has
+                // already happened by the time this is dispatched, so the
+                // refresh sees the new value.
+                cx.emit(UiEvent::Poll);
+
                 let index = match gesture {
                     BandGesture::Begin(index)
                     | BandGesture::End(index)
