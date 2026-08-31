@@ -4,17 +4,25 @@ Audio plugins in Rust, built on [nih-plug](https://github.com/robbert-vdh/nih-pl
 with a [Vizia](https://github.com/vizia/vizia) UI. Each plugin exports **CLAP**
 and **VST3**.
 
-Four plugins ship today. What is being built next, and why in that order, is in
+Five plugins ship today, all at `0.2.0`. What is being built next, and why in
+that order, is in
 [`docs/implementation/roadmap.md`](docs/implementation/roadmap.md).
 
 ## Plugins
 
-| Plugin | What it is | Status |
+| Plugin | What it is | Release |
 |---|---|---|
-| [NXE Doubler](plugins/doubler/docs/requirements/REQ-DBL.md) | Multi-voice doubler — 2/4/8 detuned, delayed, humanized voices from one source | `doubler-v0.1.3` |
-| [NXE Velour](plugins/velour/docs/requirements/REQ-VEL.md) | Vocal presence saturator — three parallel harmonic generators added to an untouched dry path | `velour-v0.1.3` |
-| [NXE Sparkleur](plugins/sparkleur/docs/requirements/REQ-SPK.md) | Multiband dynamics with a transient-gated harmonic generator — five bands, upward and downward | `sparkleur-v0.1.3` |
-| [NXE Air](plugins/air/docs/requirements/REQ-AIR.md) | Signal-driven texture generator — harmonics and noise placed where the source is not, following what it does | `air-v0.1.2` |
+| [NXE Doubler](plugins/doubler/docs/requirements/REQ-DBL.md) | Multi-voice doubler — 2/4/8 detuned, delayed, humanized voices from one source | [`doubler-v0.2.0`](https://github.com/narusenia/nxe-plugins/releases/tag/doubler-v0.2.0) |
+| [NXE Velour](plugins/velour/docs/requirements/REQ-VEL.md) | Vocal presence saturator — three parallel harmonic generators added to an untouched dry path | [`velour-v0.2.0`](https://github.com/narusenia/nxe-plugins/releases/tag/velour-v0.2.0) |
+| [NXE Sparkleur](plugins/sparkleur/docs/requirements/REQ-SPK.md) | Multiband dynamics with a transient-gated harmonic generator — five bands, upward and downward | [`sparkleur-v0.2.0`](https://github.com/narusenia/nxe-plugins/releases/tag/sparkleur-v0.2.0) |
+| [NXE Air](plugins/air/docs/requirements/REQ-AIR.md) | Signal-driven texture generator — harmonics and noise placed where the source is not, following what it does | [`air-v0.2.0`](https://github.com/narusenia/nxe-plugins/releases/tag/air-v0.2.0) |
+| [NXE Diorama](plugins/diorama/docs/requirements/REQ-DIO.md) | A vocal's distance as one knob — early reflections and a direct path that is itself processed, no reverb tail | [`diorama-v0.2.0`](https://github.com/narusenia/nxe-plugins/releases/tag/diorama-v0.2.0) |
+
+**They are meant to be opened side by side.** One width, one typeface, one
+accent per plugin from a family that varies only in hue, and the same shape in
+every window: the figure on the accent, the controls under it, and a strip
+along the bottom carrying the readings and a line describing whatever the
+pointer is on.
 
 ## Formats
 
@@ -46,7 +54,8 @@ touching the interface.
 ## Installing a release build
 
 Each plugin is released on its own, tagged `<plugin>-v<version>`, and attaches a
-zip per platform (`nxe-doubler-0.1.0-macos.zip`). Unpack it and copy the bundles into:
+zip per platform (`nxe-doubler-0.2.0-macos.zip`). Unpack it and copy the bundles
+into:
 
 | | CLAP | VST3 |
 |---|---|---|
