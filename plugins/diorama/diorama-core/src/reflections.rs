@@ -451,6 +451,12 @@ impl Reflections {
     /// design can produce. Drawing both channels would put two stems on almost
     /// every arrival and say nothing the readout does not.
     ///
+    /// **The targets, not the smoothed weights.** Both are resolved by the same
+    /// `resolve`, so the figure is still drawn from what the audio path was
+    /// told rather than from `DEPTH` — but the weights only arrive at their
+    /// targets by being *processed*, so reading them made the figure a picture
+    /// of the smoother rather than of the setting (`DIO-17`).
+    ///
     /// **From the weights, not from the parameters.** A figure computed from
     /// `DEPTH` would agree with the sound only as long as nobody changed the
     /// window; this one cannot disagree.
@@ -458,7 +464,7 @@ impl Reflections {
         let channel = &self.channels[0];
         std::array::from_fn(|index| {
             let position = channel.tap_ms[index] / SPAN_MAX_MS;
-            (position, channel.weights[index].abs())
+            (position, channel.targets[index].abs())
         })
     }
 

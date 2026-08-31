@@ -214,21 +214,13 @@ impl Plugin for Diorama {
 
         // **Each arrival's level against the direct sound, in dB.**
         //
-        // The tap weights are coefficients, not levels: what one is worth
-        // depends on the reflected bus it sits in, and that bus moves with
-        // `DEPTH`. Tap `i` carries `wᵢ² / Σw²` of the bus's power, so its level
-        // is the bus's level plus that share — and subtracting the direct
-        // sound's level makes it a ratio, which is what the figure is about.
-        //
         // **This replaced a linear ratio against a constant that was wrong by
         // fourteen times** (`DIO-17`). `ARRIVAL_CEILING` was 2.0 and the
         // loudest weight the design can produce is 0.14, so the tallest stem
         // drew at 7 % of the plot and the top of the figure was never used.
-        let direct_db = decibels(self.direct_level.rms());
-        let room_db = decibels(self.reflected_level.rms());
         self.analysis
             .arrival_levels
-            .write(&arrival_levels(&pattern, direct_db, room_db));
+            .write(&arrival_levels(&pattern, self.engine.direct_level()));
 
         self.analysis
             .clarity
@@ -248,21 +240,22 @@ const SILENT_ARRIVAL_DB: f32 = -200.0;
 
 /// Each arrival's level against the direct sound, in dB.
 ///
+/// **Both sides are resolved from the macros, not measured.** A tap's weight
+/// already carries the reflection bus's gain
+/// (`diorama_core::Reflections::pattern`), and `direct_level` is what the
+/// direct path is asked for — so this is a ratio of two things the knobs
+/// decide. **It was the measured buses for one commit**, and the figure then
+/// stopped moving unless something was playing: a window that cannot be set up
+/// with the transport stopped is a window nobody sets up (`DIO-17`).
+///
 /// **One place, because the window and its test both need it.** A second copy
-/// of this arithmetic would drift from the sound the first time a weight moved
-/// — the same reason the figure is drawn from the tap weights rather than from
-/// `DEPTH` (`diorama_core::Reflections::pattern`).
-pub(crate) fn arrival_levels(
-    pattern: &[(f32, f32); TAPS],
-    direct_db: f32,
-    room_db: f32,
-) -> [f32; TAPS] {
-    let norm = pattern.iter().map(|(_, w)| w * w).sum::<f32>().sqrt();
+/// of this arithmetic would drift from the sound the first time a weight moved.
+pub(crate) fn arrival_levels(pattern: &[(f32, f32); TAPS], direct_level: f32) -> [f32; TAPS] {
     std::array::from_fn(|index| {
-        if norm <= 0.0 {
+        if direct_level <= 0.0 || pattern[index].1 <= 0.0 {
             return SILENT_ARRIVAL_DB;
         }
-        room_db - direct_db + decibels(pattern[index].1 / norm)
+        decibels(pattern[index].1 / direct_level)
     })
 }
 

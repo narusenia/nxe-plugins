@@ -259,6 +259,22 @@ impl Engine {
         self.reflections.pattern()
     }
 
+    /// The broadband level the direct sound is asked for, linear.
+    ///
+    /// **The figure's reference** (`REQ-DIO-013`): a tap's weight already
+    /// carries the reflection bus's gain, so a weight over this is that
+    /// arrival's level against the voice. **Both sides are resolved from the
+    /// macros**, which is what lets the window answer with the transport
+    /// stopped — the measured buses need signal, and a figure that only moves
+    /// while something is playing is a figure nobody can set up with
+    /// (`DIO-17`).
+    ///
+    /// The loudness normalisation is not in either side and does not need to
+    /// be: it multiplies both paths (`Engine::process`), so it cancels.
+    pub fn direct_level(&self) -> f32 {
+        self.direct.target_level()
+    }
+
     /// How far `CLARITY` is lifting, in dB. **Shown on screen** — a protection
     /// that works invisibly is a control that does nothing (`REQ-DIO-006`).
     pub fn clarity_lift_db(&self) -> f32 {
