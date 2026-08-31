@@ -755,6 +755,7 @@ doc が「4 倍大きいと drive の全域で 10.7 dB 損をする」と書い�
   - [x] Hard でも**折り返しが 4x で −60 dB 以下**
 - **要件**: REQ-VEL-021
 - **依存**: VEL-18
+- **耳**: **2026-08-31 に実機で聴いて良し**
 - **測り方**: `cargo test -p velour-core --test ceiling what_hard -- --nocapture`
   と `cargo test -p velour-core both_modes -- --nocapture`
 
