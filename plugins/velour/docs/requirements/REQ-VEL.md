@@ -1,6 +1,6 @@
 # REQ-VEL — Velour 要件定義
 
-> 最終更新: 2026-08-26
+> 最終更新: 2026-08-31
 
 ## 概要
 
@@ -60,6 +60,7 @@ Logic Pro と GarageBand では読み込めない（`REQ-VEL-014`）。
 | REQ-VEL-018 | 通っている音の表示 | Should | **実装済み**（`VEL-15`） |
 | REQ-VEL-019 | DISTANCE | Won't (v1) | Decided |
 | REQ-VEL-020 | v1 で持たないもの | Won't (v1) | Decided |
+| REQ-VEL-021 | MODE（Soft / Hard） | Should (v0.2.0) | Decided |
 
 ---
 
@@ -587,6 +588,41 @@ Logic Pro と GarageBand では読み込めない（`REQ-VEL-014`）。
 
 ---
 
+## REQ-VEL-021: MODE（Soft / Hard）
+
+- **優先度**: Should (v0.2.0)
+- **ステータス**: Decided
+- **説明**: マクロ層から内部量への**写像だけ**を差し替える 2 値のモード。
+  形と約束は Sparkleur の `REQ-SPK-022` と同じで、写像の中身だけが違う。
+- **既定は Soft。** 既存セッションには `MODE` が保存されておらず、読み込み時に
+  既定値が適用される。
+- **何を差し替えたか**（`VEL-19`）: 生成器が足すものを
+  `Shaper::shape` から `Shaper::residual` に替える。同じ曲線から**素通し分を
+  引いて、残りを元のレベルまで正規化し直したもの**。`VEL-18` が測ったとおり、
+  足していた層は**9 割方が入力の帯域コピー**で、フェーダーを上げて増えるのは
+  主にレベルだった。Hard の層は中身が高調波になる。
+- **`DRIVE_MAX` の 8 は動かしていない。Hard が自分の上限を持つ**
+  （`velour_core::bands::HARD_DRIVE_MAX` = 6）。Hard は曲線が作ったものを
+  9 dB 持ち上げるので**折り返しも一緒に上がり**、drive 8 では −52.9 dB で
+  `REQ-VEL-005` を割る。6 なら −65.6 dB で、代償は高調波 **1.95 dB** だけ
+  （残差は正規化されているので drive はほぼ質しか変えない）。
+  これは `REQ-VEL-020` の順序の**真ん中の一段**で、最後の一段（倍率）には
+  手を出していない。
+- **受入条件**（すべて `velour-core` のテストが見ている）:
+  - `MODE` = Soft のとき **`v0.1.4` とビット一致**（同じ `shape` 呼び出し）
+  - Hard で、同じノブ位置の**生成成分が原音比で +8 dB 以上**。実測は
+    BODY **+8.21** / PRESENCE **+8.33** / AIR **+11.79** dB
+  - **それが音量で稼いだものでないこと** — Hard の出力は Soft より大きく
+    ならない。実測では層はむしろ静かになる（引いた素通し分がその大半だった）
+  - Hard でも**折り返しが 4x で −60 dB 以下**。`nxe_audio::shaper` が記録して
+    いる測り方（11 kHz、ハードニー、実際の AIR 生成器を通す）を、**入った音を
+    基準にして**使う — Hard は基音を抜くので「出てきた音より何 dB 下か」は
+    もう無い数で割ることになる
+- **Harsh / Sib Guard は緩めない。** `REQ-VEL-006` は製品の約束で、効きの天井が
+  そこだった場合でも既定ではなく写像側で解く。
+
+---
+
 ## 対応する仕様
 
 - [`../specifications/dsp.md`](../specifications/dsp.md) — 式・係数・時定数・
@@ -594,5 +630,5 @@ Logic Pro と GarageBand では読み込めない（`REQ-VEL-014`）。
 - [`../specifications/ui.md`](../specifications/ui.md) — 画面・図・必要な
   コンポーネント
 
-**未作成**: `implementation/velour-plan.md`（実装単位と完了条件、
-`backlog.md` への行）
+- [`../implementation/velour-plan.md`](../implementation/velour-plan.md) —
+  実装単位と完了条件

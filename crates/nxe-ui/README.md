@@ -24,13 +24,18 @@ mise run gallery
 ウィンドウを組むとき最初に 1 回、テーマとアイコンフォントを入れる。
 
 ```rust
-use nxe_ui::theme;
+use nxe_ui::theme::{self, Palette};
 
 Application::new(|cx| {
-    theme::install(cx);   // スタイルシート + Lucide フォント
+    theme::install(cx, Palette::SPARKLEUR);   // 書体 + アイコン + パレット + CSS
     // ...
 })
 ```
+
+**パレットは本ごとに 1 つ。** `Palette::DOUBLER` / `VELOUR` / `SPARKLEUR` /
+`AIR` / `PARALLAX` の 5 つがあり、**色相だけが違う** — OKLCH の明度と彩度は
+stop ごとに揃えてあるので、半分まで塗ったバーはどの窓でも同じ重さに見える。
+テストが固定している（`theme::tests::the_palettes_are_one_family`）。
 
 ## ウィジェット
 
@@ -96,36 +101,118 @@ Application::new(|cx| {
 
 ## アクセントの塗り
 
-**塗りは 1 色ではなくグラデーション**（`ACCENT` → `ACCENT_WASH`）。同じ色相の
-まま明度だけ動くので「アクセントは 1 色」の規則はそのままで、**淡いほうが
-「遠い」**を意味する。
+**塗りはフラット**（`UI-21`）。**長さが量**で、その上を走る階調は同じことを
+2 回言っている。値の違うバーが 4 本並ぶと、階調版はどれも右端が同じ淡い色で
+終わるので、**終端の見た目からは値が分からなかった**。
 
-自前描画のウィジェットは `theme::accent_paint(x0, y0, x1, y1)` を使う。
-`(x0, y0)` が**静止端**、`(x1, y1)` が**振り切った端**で、渡すのは
-**トラック全体の範囲**（塗った部分ではない）。そうすると 1/4 まで塗ったバーは
-ランプの 1/4 を見せるので、**値の違うバー同士が重なる範囲で同じ色**になる。
+**自前描画のウィジェットは描画時にパレットを引く。**
 
-CSS 側は `.accent`（左→右）と `.accent-up`（下→上）。
+```rust
+fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
+    let palette = theme::palette(cx);
+    // ... palette.accent / palette.bright / palette.deep / palette.dim
+    canvas.fill_path(&fill, &vg::Paint::color(palette.accent.vg()));
+}
+```
 
-**勾配は「量」にだけ使う。** バーがどこまで行ったか、メーターがどれだけ大きいか、
-ノブがどこまで回ったか。**単に on / off の状態はフラットな `ACCENT`** —
-淡い側に意味を持たせようがないし、**文字が乗ると自分の幅の中で
-コントラストが変わって片端が読みにくくなる**（選択中のセグメントで実際にそう
-なったので、この規則はそこから書いた）。同じ理由で曲線の描線もフラット:
-軌跡であって量ではないし、暗い地の上では淡い側が単に明るいだけで
-「右のほうが大事」に見える。
+`theme::palette` は木を遡って**一番近い `Palette` モデル**を返す。`install` が
+窓の根に 1 つ建てるので、通常はそれが見つかる。**`DataContext` を取るので、
+組み立て中（`Context`）・イベント中（`EventContext`）・描画中（`DrawContext`）の
+どれでも同じ呼び方**でよい。
+
+**部分木に別のパレットを建てると、その下の自前描画だけ色が変わる。**
+gallery の PALETTES パネルが 5 色を同時に見せているのはこれで、プラグインは
+使わない道。**CSS 側は切り替わらない** — vizia はスタイルシートを差し替える
+手段を持たないので、生成する CSS は `install` に渡した 1 つぶんだけ
+（gallery は `NXE_GALLERY_PALETTE` で選ぶ）。
+
+**`bright` / `deep` は塗りではなく「種類の見分け」に使う。** 同種のものが
+何本か並ぶとき（ボイスの組、帯域）だけ `Token::mix` で刻む。
+
+CSS 側は `.accent` 1 つ。**フラットなので向きが無く、横にも縦にも同じものを
+使う。** 色は `install` に渡したパレットで焼き込まれている。
+
+## 反転面
+
+**1 つの窓に 1 枚だけ**、地がアクセントの面を置ける（`.agents/rules/ui.md`）。
+**実際にはステータスバー**（`nxe_ui::status`）がそれで、下記は下敷きの仕組み。
+
+**図にも使える。ただし地を持つものは自分でパレットを読む必要がある。**
+Sparkleur で 1 度失敗した — 隣の伝達曲線が `.panel` のままで、**描線だけ反転して
+真っ黒になった**。図は自前描画と CSS の両方でできていて、**入れ子のパレットに
+従うのは描画だけ**。地を持つものには組み立て時に
+`theme::palette(cx).ground` を渡す。
+
+```rust
+use nxe_ui::surface;
+
+surface::inverted(cx, |cx| {
+    Label::new(cx, "FIELD").class("eyebrow").class("ink-muted");
+    // 図
+});
+```
+
+`surface::inverted` は `Palette::inverted()` を部分木のモデルとして建てるので、
+**中のウィジェットは何も知らなくてよい** — いつもどおり `theme::palette(cx)` を
+引けば、地とインクが入れ替わった色が返る。
+
+**文字だけは例外で、自分で言う必要がある**（`.ink` / `.ink-muted`）。生成する
+CSS は平坦で「この面の中のラベル」を書く手段が無いため、付け忘れるとアクセントの
+上にほぼ白が乗る。**付け忘れが目に見える程度の語数**しか置かないこと。
+
+**塗りも状態も曲線も罫線も、全部フラット。** 以前は「勾配は量、状態はフラット」
+の 2 本立てで、その境界で 1 度失敗している（選択中のセグメントの文字が自分の幅の
+中でコントラストを変えて読みにくくなった）。**境界を無くしたので規則が 1 本
+減った。**
+
+## ステータスバー
+
+窓の**下端に敷く帯**。ホバー中のコントロールの 1 行がここに出る。
+
+```rust
+nxe_ui::status::bar(cx);
+```
+
+**何も乗っていないときは空。** 窓が何のためのものかはヘッダの右が言っていて、
+同じ文を 2 か所に置くことになる。それに**いつも喋っている帯は読まれなくなる**。
+
+**窓幅いっぱいに、端まで**。手前で切れると「窓の床」ではなく「もう 1 枚の
+パネル」に見える。高さは `status::HEIGHT`（窓の高さの足し算の一部）。
+
+**最初はヘッダの右に置いていた。** eyebrow の大きさで黒地の上、しかもポインタが
+居る場所から一番遠い端 — **読みにくかった**。自分の帯を持たせると、色地の上の
+1 行になって窓の中で一番読みやすいものになる。
 
 ## ヘッダ
 
-`nxe_ui::header::header(cx, "NXE SPARKLEUR", "five-band dynamics + sparkle")`。
-ワードマーク・役割の一行・その下の `rule-accent` の 3 点セット。
+```rust
+nxe_ui::header::header(cx, "Sparkleur", "five-band dynamics + sparkle", |cx| {
+    // MODE を持つ本だけここに置く。持たない本は空のクロージャ
+});
+```
+
+**ワードマークは製品名だけ。** ホストのリストは窓を開く前に読み終わっているので、
+窓の中で製品名の前にベンダーを繰り返す意味が無い。
+
+**ベンダーの印はここに置かない。** 1 度ワードマークの左に置いて、**2 つ目の
+ワードマークに見えた** — 窓を読み始める角で 2 つの印が競る。印は宣言されるもの
+ではなく見つけられるものなので、窓の中で一番静かな場所に置く
+（`nxe_ui::logo`）。
+
+**帯の右は窓が何のためのものか**（`role`）。ポインタの 1 行は下の
+ステータスバーに出る。
+
+```rust
+use nxe_ui::hint::Describe;
+
+Knob::new(cx, lens, gesture).describe("how hard the curve is driven");
+```
+
+説明は**呼び出し側が書く** — `Knob` は自分が `DRIVE` だと知らない。**短く保つ**:
+切り詰めの手段が無いので、長すぎる文はワードマークを押しのける。
 
 **3 つのプラグインが同じものを 3 回書いていた**ので上げた。偶然同じなのと
 意図して同じなのは別で、片方が罫線を欲しがった瞬間にずれる。
-
-右の一行は**その窓が何のためのものか**。ホストのプラグイン一覧は名前しか
-くれないが、窓が開いた時点で名前は既に知っている唯一のことなので、名前だけの
-ヘッダは何も足していない。
 
 ## スイスの層
 
@@ -137,7 +224,6 @@ CSS 側は `.accent`（左→右）と `.accent-up`（下→上）。
 | `.heading` | `.eyebrow` を載せる器。下に 1 px の罫線が付く |
 | `.readout` | その区画が見せるための 1 個の数字。**1 区画に 1 つまで** |
 | `.rule` | 1 px の罫線。列の幅いっぱい |
-| `.rule-accent` | 2 px のアクセント。**フラット** — 罫線は量ではないので勾配を持たせない（それに、消えていく端は「描き終わっていない」に見える） |
 
 **角丸は 0 のまま。** グリッドは直線で描く。
 `letter-spacing` と `line-height` はこの vizia に無いので、階層は
@@ -150,9 +236,9 @@ CSS 側は `.accent`（左→右）と `.accent-up`（下→上）。
 二重管理になる。
 
 ```rust
-theme::ACCENT.vg()      // View::draw 用（femtovg）
-theme::ACCENT.vizia()   // vizia の Color が要るところ
-theme::ACCENT.css()     // 生成される CSS 用
+theme::palette(cx).accent.vg()      // View::draw 用（femtovg）
+theme::palette(cx).accent.vizia()   // vizia の Color が要るところ
+theme::Palette::AIR.accent.css()    // 生成される CSS 用
 ```
 
 - **色のリテラルを書かない。** CSS にも `View::draw` にも。生成された CSS に
@@ -164,8 +250,8 @@ theme::ACCENT.css()     // 生成される CSS 用
   何が鳴っているかは、一目で区別できないと重ねる意味が無い
 - **信号は「明るくする」層。** 中間色のグレーで塗ると、下に色が付いている
   ところで濁る。低い不透明度の光なら下を持ち上げるだけで済む
-- 同種のものの組を見分けたいときは**色相を増やさず** `ACCENT_DEEP` と
-  `ACCENT_BRIGHT` の間を `Token::mix` で刻む（`PolarField` の `FieldPoint::tint`）
+- 同種のものの組を見分けたいときは**色相を増やさず** `palette.deep` と
+  `palette.bright` の間を `Token::mix` で刻む（`PolarField` の `FieldPoint::tint`）
 - **角丸は無し**（`RADIUS_CONTROL` / `RADIUS_CARD` とも 0）。丸めようとすると
   コンパイル時アサーションで止まる。定数は残してあるので、気が変われば 1 行
 - 間隔は 4px グリッドの 5 段（`SPACE_1`..`SPACE_5`）。この 5 つ以外を使わない
@@ -194,17 +280,24 @@ Panel / Section / Row / Label / Divider をウィジェットにしていない�
 
 ## フォント
 
-[Geist](https://vercel.com/font)（SIL OFL 1.1）を埋め込んでいる。Sans の
-Regular と Bold、Mono の Regular。この設計は階層を**サイズと色**で作り、
-**太字はワードマーク 1 箇所だけの例外**。
+語は [Inter](https://rsms.me/inter/)、数値は
+[Geist Mono](https://vercel.com/font)（どちらも SIL OFL 1.1）。Inter は
+**Regular 1 面だけ**。この設計は階層を**サイズと色**で作り、**例外は無い**。
 
-- 既定は Geist Sans。`theme::install` が `set_default_font` で入れるので、
-  普通の `Label` はそのまま Geist になる
-- **数値は Geist Mono。** `font::value(cx, text)` を使う
-- **プラグイン名は `font::title(cx, "NXE …")`。** ここだけ Bold。
-  17 px の 1 ウェイトだとただのラベルに見えたので足した。**他のものに使わない** —
-  2 つ目が要るなら「サイズと色で作る」という原則が間違っていたということなので、
-  そのときは原則ごと書き換える
+**ワードマークに 2 回ウェイトを試して 2 回とも戻した。** Bold は 17 px で
+「音量を上げただけのラベル」に、Light は 26 → 20 px で**細い**（大きくないと
+読めない名前は静かではない）。残ったのが 18 px の素の面で、原則が最初から
+言っていたもの。
+
+- 既定は Inter Regular。`theme::install` が `set_default_font` で入れるので、
+  普通の `Label` はそのまま Inter になる
+- **数値は Geist Mono。** `font::value(cx, text)` を使う。Inter の tabular
+  figures（`tnum`）は OpenType feature で、**この vizia には feature を
+  立てる道が無い**
+- **プラグイン名は `font::title(cx, "Sparkleur")`。** 18 px、素の面。
+  **`NXE` は付けない** — ベンダーは帯の反対の端に印として置く（`nxe_ui::header`）
+- **ウェイトに手を出さない。** 要るなら「サイズと色で作る」という原則が
+  間違っていたということなので、そのときは原則ごと書き換える
 
 ```rust
 font::value(cx, lens.map(|v| format!("{v:.1}")));
@@ -223,24 +316,26 @@ the model」、[調査](../../docs/investigations/ui-frame-cost.md)）。
 ライセンス文はフォントの隣（`assets/geist/`）。**バイナリに焼き込まれるので
 リリースのバンドルにも同梱が必要。**
 
-## アイコン
+## ピクトグラム
 
-Lucide の埋め込みフォント。2035 個すべてが定数になっている。
+プラグイン自身の記号。**パスで描く**（フォントにしない）。
 
 ```rust
-use nxe_ui::icon;
+use nxe_ui::pictogram;
 
-icon::label(cx, icon::CHEVRON_DOWN).font_size(20.0);
+pictogram::heading(cx, pictogram::UP, "UP");        // 列の名前（12 px・細）
+pictogram::label(cx, pictogram::SNAP, "SNAP");      // 操作の名前（16 px・太）
 ```
 
-- **`icon::label` で作る。CSS で `font-family` を書かない** — このリビジョンの
-  vizia ではスタイルシートの `font-family` が埋め込みフォントを選ばず、
-  私用領域のコードポイントが無関係な CJK グリフとして描かれる
-- 生のエスケープをビューに書かない。定数を使う
-- **線幅は変えられない**（ストロークをグリフ化したもの）。太さが要るアイコンは
-  `usvg` でパス化して `View::draw` で描く — 記録された例外であって既定ではない
-- Lucide の更新は `mise run icons:generate`。手順は
-  [`scripts/generate-icons.py`](../../scripts/generate-icons.py) の docstring
+- **記号だけで置かない。** この 2 つの関数はどちらも語を伴う。単体で要るときは
+  `Pictogram::new` / `Pictogram::weighted` だが、**併記が「初見でわかる」の担保**
+- **12 px で読めるかがすべて。** 一番小さく出るのは表の列見出し
+  （`theme::LINE_EYEBROW`）で、**3 グリッド単位より細い造形は通らない**
+  （テストが落ちる）
+- 図形は `Stroke::Line` / `Fill` / `Frame` / `Solid` の 4 つだけ。曲線は無い
+- 色は `palette.muted` 固定。太さは
+  `WEIGHT` / `WEIGHT_STRONG` の 2 段
+- **`ALL` に足すのと同じ変更で gallery に並ぶ。** gallery は `ALL` を読む
 
 ## ウィジェットを足す
 

@@ -419,6 +419,7 @@ impl View for PolarField {
     }
 
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
+        let palette = theme::palette(cx);
         let scale = cx.scale_factor();
         let geometry = Geometry::of(cx.bounds(), MARGIN * scale);
         let line = (1.0 * scale).max(1.0);
@@ -453,7 +454,7 @@ impl View for PolarField {
             wedge.close();
             canvas.fill_path(
                 &wedge,
-                &vg::Paint::color(theme::FOREGROUND.at(share * ANALYSIS_ALPHA).vg()),
+                &vg::Paint::color(palette.ink.at(share * ANALYSIS_ALPHA).vg()),
             );
         }
 
@@ -469,7 +470,7 @@ impl View for PolarField {
         );
         frame.move_to(geometry.origin_x - geometry.radius, geometry.origin_y);
         frame.line_to(geometry.origin_x + geometry.radius, geometry.origin_y);
-        let mut paint = vg::Paint::color(theme::BORDER.vg());
+        let mut paint = vg::Paint::color(palette.line.vg());
         paint.set_line_width(line);
         canvas.stroke_path(&frame, &paint);
 
@@ -483,7 +484,7 @@ impl View for PolarField {
             std::f32::consts::TAU,
             vg::Solidity::Hole,
         );
-        let mut paint = vg::Paint::color(theme::ELEVATED.vg());
+        let mut paint = vg::Paint::color(palette.track.vg());
         paint.set_line_width(line);
         canvas.stroke_path(&mid, &paint);
 
@@ -499,7 +500,7 @@ impl View for PolarField {
                     links.line_to(px, py);
                 }
             }
-            let mut paint = vg::Paint::color(theme::ELEVATED.vg());
+            let mut paint = vg::Paint::color(palette.track.vg());
             paint.set_line_width(line);
             canvas.stroke_path(&links, &paint);
         }
@@ -515,7 +516,7 @@ impl View for PolarField {
             path.line_to(x + size, y + size * 0.7);
             path.line_to(x - size, y + size * 0.7);
             path.close();
-            canvas.fill_path(&path, &vg::Paint::color(theme::ACCENT.vg()));
+            canvas.fill_path(&path, &vg::Paint::color(palette.accent.vg()));
         }
 
         for (index, point) in self.points.iter().enumerate() {
@@ -528,13 +529,13 @@ impl View for PolarField {
             if marked {
                 let mut ring = vg::Path::new();
                 ring.circle(x, y, dot + 3.0 * scale);
-                canvas.fill_path(&ring, &vg::Paint::color(theme::ACCENT_DIM.vg()));
+                canvas.fill_path(&ring, &vg::Paint::color(palette.dim.vg()));
             }
 
             let colour = if point.enabled {
-                theme::ACCENT_DEEP.mix(theme::ACCENT_BRIGHT, point.tint)
+                palette.deep.mix(palette.bright, point.tint)
             } else {
-                theme::SUBTLE
+                palette.subtle
             };
             let mut path = vg::Path::new();
             path.circle(x, y, dot);

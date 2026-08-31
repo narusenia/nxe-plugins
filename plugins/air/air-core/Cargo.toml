@@ -2,7 +2,7 @@
 name = "air-core"
 # **The plugin owns its version, not the workspace** (`velour/Cargo.toml`).
 # `air-core` moves with it: they are one shipping unit.
-version = "0.1.2"
+version = "0.2.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

@@ -97,7 +97,7 @@ dependencies = [
 
 [[package]]
 name = "air"
-version = "0.1.3"
+version = "0.2.0"
 dependencies = [
  "air-core",
  "nih_plug",
@@ -110,7 +110,7 @@ dependencies = [
 
 [[package]]
 name = "air-core"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "nxe-audio",
@@ -1028,6 +1028,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "diorama"
+version = "0.2.0"
+dependencies = [
+ "diorama-core",
+ "nih_plug",
+ "nih_plug_vizia",
+ "nxe-dsp",
+ "nxe-plug-ui",
+ "nxe-ui",
+]
+
+[[package]]
+name = "diorama-core"
+version = "0.2.0"
+dependencies = [
+ "criterion",
+ "nxe-audio",
+ "nxe-dsp",
+]
+
+[[package]]
 name = "dispatch"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1046,7 +1067,7 @@ dependencies = [
 
 [[package]]
 name = "doubler"
-version = "0.1.4"
+version = "0.2.0"
 dependencies = [
  "doubler-core",
  "nih_plug",
@@ -1058,7 +1079,7 @@ dependencies = [
 
 [[package]]
 name = "doubler-core"
-version = "0.1.3"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "nxe-audio",
@@ -3030,7 +3051,7 @@ dependencies = [
 
 [[package]]
 name = "sparkleur"
-version = "0.1.4"
+version = "0.2.0"
 dependencies = [
  "nih_plug",
  "nih_plug_vizia",
@@ -3043,7 +3064,7 @@ dependencies = [
 
 [[package]]
 name = "sparkleur-core"
-version = "0.1.3"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "nxe-audio",
@@ -3423,7 +3444,7 @@ dependencies = [
 
 [[package]]
 name = "velour"
-version = "0.1.4"
+version = "0.2.0"
 dependencies = [
  "nih_plug",
  "nih_plug_vizia",
@@ -3436,7 +3457,7 @@ dependencies = [
 
 [[package]]
 name = "velour-core"
-version = "0.1.3"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "nxe-audio",
@@ -3582,27 +3603,6 @@ dependencies = [
  "web-sys",
  "winapi",
  "winit",
-]
-
-[[package]]
-name = "vocal-depth"
-version = "0.1.0"
-dependencies = [
- "nih_plug",
- "nih_plug_vizia",
- "nxe-dsp",
- "nxe-plug-ui",
- "nxe-ui",
- "vocal-depth-core",
-]
-
-[[package]]
-name = "vocal-depth-core"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "nxe-audio",
- "nxe-dsp",
 ]
 
 [[package]]

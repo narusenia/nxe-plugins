@@ -120,26 +120,20 @@ impl View for Meter {
     }
 
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
+        let palette = theme::palette(cx);
         let bounds = cx.bounds();
         let scale = cx.scale_factor();
         let line = scale.max(1.0);
 
         let mut track = vg::Path::new();
         track.rect(bounds.x, bounds.y, bounds.w, bounds.h);
-        canvas.fill_path(&track, &vg::Paint::color(theme::ELEVATED.vg()));
+        canvas.fill_path(&track, &vg::Paint::color(palette.track.vg()));
 
         let (x, y, w, h) = Self::fill(bounds, self.level, self.vertical);
         if w > 0.0 && h > 0.0 {
             let mut fill = vg::Path::new();
             fill.rect(x, y, w, h);
-            // The ramp spans the whole track, so a level reads against the
-            // scale rather than against its own height
-            // (`theme::accent_paint`).
-            let paint = if self.vertical {
-                theme::accent_paint(bounds.x, bounds.y + bounds.h, bounds.x, bounds.y)
-            } else {
-                theme::accent_paint(bounds.x, bounds.y, bounds.x + bounds.w, bounds.y)
-            };
+            let paint = vg::Paint::color(palette.accent.vg());
             canvas.fill_path(&fill, &paint);
         }
 
@@ -155,7 +149,7 @@ impl View for Meter {
                 ticks.rect(mx - line * 0.5, bounds.y, line, bounds.h);
             }
         }
-        canvas.fill_path(&ticks, &vg::Paint::color(theme::BACKGROUND.vg()));
+        canvas.fill_path(&ticks, &vg::Paint::color(palette.ground.vg()));
 
         // **The marker turns white at the top rather than red.** This design has
         // one hue and it belongs to what the plugin is set to (`README.md`), so
@@ -163,9 +157,9 @@ impl View for Meter {
         // accent, which is the message.
         if self.hold > 0.0 {
             let colour = if self.hold >= 1.0 {
-                theme::FOREGROUND
+                palette.ink
             } else {
-                theme::ACCENT_BRIGHT
+                palette.bright
             };
             let thickness = MARKER * scale;
             let (mx, my) = self.at(bounds, self.hold);

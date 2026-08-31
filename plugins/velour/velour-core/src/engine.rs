@@ -11,14 +11,14 @@
 //! mean either recomputing filter coefficients per sample or quantising the
 //! smoothing to block boundaries.
 
-use crate::bands::{BANDS, Band, Generator};
+use crate::bands::{BANDS, Band, Generator, Mode};
 use crate::density::Density;
 use crate::emotion;
 use crate::guard::{GUARDS, Guarded, Guards};
 use crate::texture;
 use nxe_audio::envelope::Envelope;
 use nxe_audio::oversample::{Factor, Oversampler};
-use nxe_audio::shaper::{DRIVE_MAX, DRIVE_MIN, Shaper};
+use nxe_audio::shaper::{DRIVE_MIN, Shaper};
 
 pub const BAND_COUNT: usize = 3;
 
@@ -84,6 +84,10 @@ pub struct Shape {
     pub density: f32,
     /// `-1..=1`, sliding every band edge together.
     pub focus: f32,
+    /// How far the macros reach (`crate::bands::Mode`). **Not part of
+    /// [`CurveState`]**: it does not move the curve, it decides which of the
+    /// curve's two outputs is taken.
+    pub mode: Mode,
     pub factor: Factor,
 }
 
@@ -107,6 +111,11 @@ impl Default for Shape {
             // performance, and that is a choice rather than a default.
             density: 0.0,
             focus: 0.0,
+            // **It has to be `Soft`.** A session saved before this parameter
+            // existed has no value for it and loads with the default; anything
+            // else changes the sound of work that is already finished
+            // (`REQ-VEL-021`).
+            mode: Mode::default(),
             factor: Factor::default(),
         }
     }
@@ -126,13 +135,14 @@ pub struct Levels {
 /// Geometric rather than linear: the audible difference between drive 0.1 and
 /// 0.2 is about the same as between 4 and 8, and a linear map would put nearly
 /// the whole knob in the range where it barely changes.
-pub fn drive_of(knob: f32) -> f32 {
+pub fn drive_of(knob: f32, mode: Mode) -> f32 {
     let knob = if knob.is_finite() {
         knob.clamp(0.0, 1.0)
     } else {
         0.0
     };
-    DRIVE_MIN * (DRIVE_MAX / DRIVE_MIN).powf(knob)
+    let max = mode.drive_max();
+    DRIVE_MIN * (max / DRIVE_MIN).powf(knob)
 }
 
 /// Decibels to a linear gain. Exactly `1.0` at zero, which is what keeps a
@@ -174,7 +184,7 @@ pub fn curve_for(shape: &Shape, band: usize, motion: f32) -> Curve {
     let (curve_bias, hardness, band_drive) = emotion::modulate(
         point.bias,
         point.hardness,
-        drive_of(shape.drive) * curve_drive * (bias * BIAS_OCTAVES).exp2(),
+        drive_of(shape.drive, shape.mode) * curve_drive * (bias * BIAS_OCTAVES).exp2(),
         motion,
     );
 
@@ -250,6 +260,7 @@ pub struct Engine {
     /// The last values the curves were built from, so a block where nothing
     /// moved costs nothing.
     curve: CurveState,
+    mode: Mode,
     /// Which bands are soloed, and whether any is.
     solo: [bool; BAND_COUNT],
     soloing: bool,
@@ -311,6 +322,7 @@ impl Engine {
                 bias: [f32::NAN; BAND_COUNT],
                 motion: f32::NAN,
             },
+            mode: Mode::default(),
             solo: [false; BAND_COUNT],
             soloing: false,
             guards: Guards::new(host_rate),
@@ -342,6 +354,7 @@ impl Engine {
             }
         }
 
+        self.mode = shape.mode;
         self.solo = shape.solo;
         self.soloing = shape.solo.iter().any(|band| *band);
         self.guard_amounts = shape.guards;
@@ -408,6 +421,7 @@ impl Engine {
             shapers,
             trims,
             channels,
+            mode,
             solo,
             soloing,
             guards,
@@ -456,8 +470,9 @@ impl Engine {
                 let value = value * compression;
                 let mut sum = 0.0;
                 for band in 0..BAND_COUNT {
-                    sum +=
-                        generators[band].process(value, &shapers[band]) * bands[band] * trims[band];
+                    sum += generators[band].process(value, &shapers[band], *mode)
+                        * bands[band]
+                        * trims[band];
                 }
                 sum
             });
@@ -961,6 +976,10 @@ mod tests {
                 emotion: value,
                 density: value,
                 focus: value,
+                // Hostile values cannot reach an enum: nih-plug maps a host's
+                // choice onto a variant. What is being probed here is the
+                // floats.
+                mode: Mode::Hard,
                 factor: Factor::Four,
             });
 
@@ -986,25 +1005,36 @@ mod tests {
         }
     }
 
+    /// **Each mode's map covers its own curve and nothing else.** `Hard` stops
+    /// lower, and it has to stop *exactly* there — the number is the aliasing
+    /// budget, not a taste (`crate::bands::HARD_DRIVE_MAX`).
     #[test]
     fn the_drive_map_covers_the_curve_and_nothing_else() {
-        assert!((drive_of(0.0) - DRIVE_MIN).abs() < 1e-6);
-        assert!((drive_of(1.0) - DRIVE_MAX).abs() < 1e-4);
-        // Geometric, so the midpoint is the geometric mean rather than the
-        // arithmetic one.
-        let middle = drive_of(0.5);
-        assert!(
-            (middle - (DRIVE_MIN * DRIVE_MAX).sqrt()).abs() < 1e-4,
-            "{middle}"
-        );
-
-        for knob in [f32::NAN, f32::INFINITY, -1.0, 2.0] {
-            let drive = drive_of(knob);
+        for mode in [Mode::Soft, Mode::Hard] {
+            let max = mode.drive_max();
+            assert!((drive_of(0.0, mode) - DRIVE_MIN).abs() < 1e-6, "{mode:?}");
+            assert!((drive_of(1.0, mode) - max).abs() < 1e-4, "{mode:?}");
+            // Geometric, so the midpoint is the geometric mean rather than the
+            // arithmetic one.
+            let middle = drive_of(0.5, mode);
             assert!(
-                (DRIVE_MIN..=DRIVE_MAX).contains(&drive),
-                "{knob} gave {drive}"
+                (middle - (DRIVE_MIN * max).sqrt()).abs() < 1e-4,
+                "{mode:?}: {middle}"
             );
+
+            for knob in [f32::NAN, f32::INFINITY, -1.0, 2.0] {
+                let drive = drive_of(knob, mode);
+                assert!(
+                    (DRIVE_MIN..=max).contains(&drive),
+                    "{mode:?}: {knob} gave {drive}"
+                );
+            }
         }
+
+        assert!(
+            Mode::Hard.drive_max() < Mode::Soft.drive_max(),
+            "Hard has to stop below Soft, or the folding budget is gone"
+        );
     }
 
     /// **`amount = 0` is exactly static** (`REQ-VEL-008`), and the way to see

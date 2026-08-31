@@ -151,6 +151,18 @@ pub struct Shaper {
     offset: f32,
     /// `1/g`.
     scale: f32,
+    /// How much of the normalised curve's output is the input coming straight
+    /// back out — the first Fourier coefficient at [`PROBE_AMPLITUDE`], divided
+    /// by that amplitude. See [`Shaper::fundamental`].
+    fundamental: f32,
+    /// The RMS gain of what is left once the fundamental is taken out, at the
+    /// probe amplitude — small near [`DRIVE_MIN`], because a straight line
+    /// makes nothing. Reported as well as used, because it is the number that
+    /// says how much of a curve is curve.
+    residual_gain: f32,
+    /// `1/residual_gain`, so [`Shaper::residual`] comes out at the same level
+    /// [`Shaper::shape`] does.
+    residual_scale: f32,
     /// One period of the probe sine. Held rather than recomputed so that
     /// changing a control costs polynomials and no transcendentals.
     probe: [f32; PROBE_POINTS],
@@ -175,6 +187,9 @@ impl Shaper {
             hardness: f32::NAN,
             offset: 0.0,
             scale: 1.0,
+            fundamental: 1.0,
+            residual_gain: 0.0,
+            residual_scale: 0.0,
             probe,
         };
         shaper.set(DRIVE_MIN, 0.0, 0.0);
@@ -203,17 +218,88 @@ impl Shaper {
         self.offset = f(bias, hardness);
 
         // The RMS the curve returns for the probe sine, against the RMS the
-        // probe sine went in with.
+        // probe sine went in with — and, in the same pass, how much of that
+        // output is the probe itself.
+        //
+        // **The fundamental is one more accumulator, not a second integral.**
+        // `probe[i]` is `A·sin θ`, so correlating against it and dividing by
+        // `A²` is the Fourier coefficient; the loop already visits every point.
         let mut energy = 0.0;
+        let mut correlation = 0.0;
         for sample in &self.probe {
             let shaped = f(drive * sample + bias, hardness) - self.offset;
             energy += shaped * shaped;
+            correlation += shaped * sample;
         }
         let out = (energy / PROBE_POINTS as f32).sqrt();
         let reference = PROBE_AMPLITUDE / 2.0f32.sqrt();
         let gain = out / reference;
 
         self.scale = if gain > GAIN_FLOOR { 1.0 / gain } else { 1.0 };
+
+        // `a₁ = (2/N)·Σ shaped·sin θ`, and `sin θ = probe/A`.
+        let first = 2.0 * correlation / (PROBE_POINTS as f32 * PROBE_AMPLITUDE);
+        self.fundamental = first * self.scale / PROBE_AMPLITUDE;
+
+        // What is left when the pass-through is taken out, measured the same
+        // way `g` is. A second pass rather than a third accumulator: the
+        // residual depends on `scale` and `fundamental`, and both are only
+        // known once the first pass has finished.
+        let mut residual = 0.0;
+        for sample in &self.probe {
+            let shaped = (f(drive * sample + bias, hardness) - self.offset) * self.scale;
+            let left = shaped - self.fundamental * sample;
+            residual += left * left;
+        }
+        self.residual_gain = (residual / PROBE_POINTS as f32).sqrt() / reference;
+
+        // **Normalised the same way, and for the same reason.** Without it
+        // `DRIVE` would be a volume knob again — the harmonics alone run from
+        // 50 dB down at `DRIVE_MIN` to 9 down at `DRIVE_MAX`, so a caller using
+        // this would hear the drive as loudness rather than as character.
+        //
+        // **Zero rather than one below the floor.** A curve with no harmonics
+        // in it has nothing to normalise, and the alternative — passing the
+        // residual through un-scaled — would hand back numerical noise
+        // amplified by whatever the caller does next. Nothing in range reaches
+        // it: the smallest measured is `0.003`.
+        self.residual_scale = if self.residual_gain > GAIN_FLOOR {
+            1.0 / self.residual_gain
+        } else {
+            0.0
+        };
+    }
+
+    /// **How much of this curve is not a curve at all**: the gain the input
+    /// comes back out at, once the normalisation has been applied.
+    ///
+    /// A saturator's output is its input plus what the curve made, and at the
+    /// levels these run at the first term dominates — Velour measured its
+    /// whole added layer as 85 % pass-through with every control at its top
+    /// (`VEL-18`). A caller that wants the harmonics on their own subtracts
+    /// `fundamental() * input`; [`Shaper::residual`] is that.
+    pub fn fundamental(&self) -> f32 {
+        self.fundamental
+    }
+
+    /// The RMS gain of the harmonics alone, at [`PROBE_AMPLITUDE`]. Near
+    /// [`DRIVE_MIN`] this is nearly zero, because a straight line makes nothing.
+    pub fn residual_gain(&self) -> f32 {
+        self.residual_gain
+    }
+
+    /// **The harmonics alone**, at the level [`Shaper::shape`] returns.
+    ///
+    /// `shape(x)` with the pass-through taken out and the rest normalised back
+    /// up, so a generator built on this adds texture where one built on `shape`
+    /// adds a band-limited copy of its input with texture on top.
+    ///
+    /// **Exact only at [`PROBE_AMPLITUDE`]**, like everything else here: the
+    /// pass-through gain is measured at one amplitude, so a much louder signal
+    /// leaves some fundamental behind. That is the same trade `g` makes and it
+    /// is bounded by the same thing — the reference sits where the material is.
+    pub fn residual(&self, input: f32) -> f32 {
+        (self.shape(input) - self.fundamental * input) * self.residual_scale
     }
 
     /// One sample through the curve. **Audio rate.**
@@ -515,5 +601,98 @@ mod tests {
         assert!((f_soft(SOFT_LIMIT - 1e-3) - 1.0).abs() < 1e-4);
         assert!((f_hard(1.0) - 1.0).abs() < 1e-6);
         assert!((f_hard(1.0 - 1e-3) - 1.0).abs() < 1e-4);
+    }
+
+    /// One period of the probe sine, at the amplitude the normalisation is
+    /// exact at.
+    fn probe(points: usize) -> Vec<f32> {
+        sine(PROBE_AMPLITUDE, 1, points)
+    }
+
+    /// **The finding `VEL-18` was built on.** Most of what a normalised curve
+    /// returns is the signal that went into it, all the way to the top of the
+    /// drive range — which is why a generator that adds `shape(x)` adds mostly
+    /// level.
+    #[test]
+    fn the_curve_is_mostly_its_own_input() {
+        let mut shaper = Shaper::new();
+        shaper.set(DRIVE_MIN, 0.0, 0.0);
+        assert!(
+            (shaper.fundamental() - 1.0).abs() < 1e-3,
+            "a straight line is not all pass-through: {}",
+            shaper.fundamental()
+        );
+
+        shaper.set(DRIVE_MAX, 0.3, 0.35);
+        assert!(
+            shaper.fundamental() > 0.9,
+            "the top of the range is only {} pass-through",
+            shaper.fundamental()
+        );
+        // And what is left over is a tenth of it, which is the whole reason
+        // `residual` exists.
+        assert!(
+            (0.3..0.4).contains(&shaper.residual_gain()),
+            "the harmonics measure {}",
+            shaper.residual_gain()
+        );
+    }
+
+    /// **`residual` has no fundamental in it, and comes out at the same level
+    /// `shape` does.** Both halves matter: the first is what makes it texture
+    /// rather than a duplicate, the second is what stops a caller hearing the
+    /// swap as a volume change.
+    #[test]
+    fn the_residual_is_the_harmonics_at_the_same_level() {
+        const POINTS: usize = 512;
+        let input = probe(POINTS);
+        let mut shaper = Shaper::new();
+
+        for (drive, bias, hardness) in [(1.0, 0.0, 0.0), (4.0, 0.3, 0.35), (DRIVE_MAX, 0.6, 0.9)] {
+            shaper.set(drive, bias, hardness);
+            let shaped: Vec<f32> = input.iter().map(|x| shaper.shape(*x)).collect();
+            let residual: Vec<f32> = input.iter().map(|x| shaper.residual(*x)).collect();
+
+            let level = rms(&residual) / rms(&shaped);
+            assert!(
+                (0.9..1.1).contains(&level),
+                "drive {drive}: the residual is {level} of the curve's level"
+            );
+
+            let left = amplitude(&residual, 1) / amplitude(&shaped, 1);
+            assert!(
+                left < 0.05,
+                "drive {drive}: {left} of the fundamental survived"
+            );
+        }
+    }
+
+    /// **What `MODE` is worth, at the level it is exact at.** The harmonics
+    /// come back louder against the input by however much of the curve was
+    /// pass-through — 9 dB at the top of the drive range.
+    #[test]
+    fn the_residual_carries_more_harmonics_than_the_curve() {
+        const POINTS: usize = 512;
+        let input = probe(POINTS);
+        let mut shaper = Shaper::new();
+        shaper.set(DRIVE_MAX, 0.3, 0.35);
+
+        let energy = |signal: &[f32]| -> f32 {
+            (2..=16)
+                .map(|h| {
+                    let a = amplitude(signal, h);
+                    a * a * 0.5
+                })
+                .sum::<f32>()
+                .sqrt()
+        };
+
+        let shaped: Vec<f32> = input.iter().map(|x| shaper.shape(*x)).collect();
+        let residual: Vec<f32> = input.iter().map(|x| shaper.residual(*x)).collect();
+        let gain_db = 20.0 * (energy(&residual) / energy(&shaped)).log10();
+        assert!(
+            gain_db > 8.0,
+            "the residual only carries {gain_db:.2} dB more harmonics"
+        );
     }
 }

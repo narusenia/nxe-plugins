@@ -87,6 +87,7 @@ impl View for Knob {
     }
 
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
+        let palette = theme::palette(cx);
         let bounds = cx.bounds();
         let centre_x = bounds.x + bounds.w * 0.5;
         let centre_y = bounds.y + bounds.h * 0.5;
@@ -101,19 +102,18 @@ impl View for Knob {
 
         let mut track = vg::Path::new();
         track.arc(centre_x, centre_y, radius, start, end, vg::Solidity::Hole);
-        let mut paint = vg::Paint::color(theme::ELEVATED.vg());
+        let mut paint = vg::Paint::color(palette.track.vg());
         paint.set_line_width(width);
         paint.set_line_cap(vg::LineCap::Butt);
         canvas.stroke_path(&track, &paint);
 
         // The lit arc. The ramp runs across the widget from the resting end of
         // the sweep to the far one, so it agrees with a bar filled to the same
-        // value (`theme::accent_paint`).
+        // value (`Palette::paint`).
         if self.value > 0.0 {
             let mut filled = vg::Path::new();
             filled.arc(centre_x, centre_y, radius, start, angle, vg::Solidity::Hole);
-            let mut paint =
-                theme::accent_paint(bounds.x, bounds.y + bounds.h, bounds.x + bounds.w, bounds.y);
+            let mut paint = vg::Paint::color(palette.accent.vg());
             paint.set_line_width(width);
             paint.set_line_cap(vg::LineCap::Butt);
             canvas.stroke_path(&filled, &paint);
@@ -130,7 +130,7 @@ impl View for Knob {
                 centre_y + sin * (inner + END_LENGTH * scale),
             );
         }
-        let mut paint = vg::Paint::color(theme::BORDER.vg());
+        let mut paint = vg::Paint::color(palette.line.vg());
         paint.set_line_width(scale.max(1.0));
         paint.set_line_cap(vg::LineCap::Butt);
         canvas.stroke_path(&ends, &paint);

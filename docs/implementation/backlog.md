@@ -24,43 +24,53 @@
 
 ## 現在地
 
+**次は `v0.2.0` — 5 本を作り直して同時に出す**（2026-08-31 に計画）。中身は
+**5 本の窓の作り直し**（fors 方向、`UI-15`〜`UI-20`）、**Hard モード**
+（Sparkleur と Velour だけ）、**`PUNCH`** の v2 からの回収。**Diorama
+（旧 Diorama）はこの版で初出荷**する — 旧 UI で 1 本だけ出さないため。
+順序の根拠は [`roadmap.md`](roadmap.md) の「v0.2.0」。
+
+**先頭は「測る」2 単位**（`SPK-20` / `VEL-18`）。「かかりが弱い」は耳の不満で、
+そこから実装に届く道は測定しかない。Hard は写像を持ち上げるものなので、
+止めているのが写像でなければ効かない。
+
 **4 本とも実装完了・公開済み**（2026-08-31）。`doubler-v0.1.4` /
 `velour-v0.1.4` / `sparkleur-v0.1.4` / `air-v0.1.3`。**テスト 558 本、
 `mise run check` は通っている。**
 
-**5 本目 Vocal Depth が `VDP-14` まで来た**（2026-08-28）。DSP・ラッパ・窓・
+**5 本目 Diorama が `DIO-14` まで来た**（2026-08-28）。DSP・ラッパ・窓・
 CPU まで全部入っていて、**実機で一度聴いて効き幅を作り直した**。
-**残っているのは人が要る 3 つだけ** — `VDP-13`（既定値、耳）、**実機での
+**残っているのは人が要る 3 つだけ** — `DIO-13`（既定値、耳）、**実機での
 見た目の確認**、**製品名の確定**。
 
-**`VDP-14` は実機の耳から生えた。** 「`DEPTH` が多少の差すぎる」「遠い近いという
-変化には思えない」に対して測ったら、**`REQ-VDP-002` の「直接音の比 FAR ↓」が
+**`DIO-14` は実機の耳から生えた。** 「`DEPTH` が多少の差すぎる」「遠い近いという
+変化には思えない」に対して測ったら、**`REQ-DIO-002` の「直接音の比 FAR ↓」が
 実装されていなかった** — Presence 帯を傾けるだけで広帯域のレベルを触っていな
 かった。直接/反射比が **+30 → +17 dB** しか動いていなかったのを
-**+25.6 → +2.3 dB** にした。**`VDP-5` がゲートのために狭めた `DEPTH` →
+**+25.6 → +2.3 dB** にした。**`DIO-5` がゲートのために狭めた `DEPTH` →
 `DAMPING` の幅も戻した**（それは判断のときに却下された手だった）。
 
-- `vocal-depth-core`: `reflections` / `direct` / `damping` / `width` /
+- `diorama-core`: `reflections` / `direct` / `damping` / `width` /
   `clarity` / `depth` / `engine`。テスト 55 本 + 詰めの 2 バイナリ
-- `vocal-depth`: CLAP + VST3、パラメータ 8 個、**窓あり**（到着の図 +
+- `diorama`: CLAP + VST3、パラメータ 8 個、**窓あり**（到着の図 +
   読み値 7 セル + メーター 4 本）
 - `nxe-audio` が増えた: `delay`（`doubler-core` から。**2 個目の客が要求した**）、
   `biquad` の `response` / `magnitude` / `peaking` / `one_pole_lowpass`
 - `nxe-ui` が増えた: `taps::TapField`（到着の図。gallery にも入れた）
 - CPU は **20.9 µs / 予算 533** で**ラインで一番安い**
 
-**`VDP-3` のゲートは通った** — ただし**許容を ±0.5 → ±1.0 dB に改訂**した
-うえで（ユーザー判断）。`REQ-VDP-008` の ±0.5 dB は素材を跨いでは達成できないと
+**`DIO-3` のゲートは通った** — ただし**許容を ±0.5 → ±1.0 dB に改訂**した
+うえで（ユーザー判断）。`REQ-DIO-008` の ±0.5 dB は素材を跨いでは達成できないと
 実測で分かったため（Presence 帯の割合が素材で 10 倍違う）。理由と代案は
-`REQ-VDP.md` の `REQ-VDP-008`。
+`REQ-DIO.md` の `REQ-DIO-008`。
 
 | | 状態 |
 |---|---|
 | Doubler / Velour / Sparkleur / Air | **全単位 ✅**。残るのは `DBL-13`（既定値、耳）と Sparkleur の既定値の主観サインオフだけ。**どちらもリリースの阻害要因ではない** |
-| Vocal Depth | **`VDP-12` まで完了**（DSP・窓・CPU。パラメータ 8 個）。残るのは `VDP-13`（耳）・実機確認・製品名 |
+| Diorama | **`DIO-12` / `DIO-15` / `DIO-16` 完了**（DSP・窓・CPU・改名。パラメータ 8 個）。**残るのは `DIO-14` の聴き直しと `DIO-13`（耳）だけ** |
 | Vocal Glue | 要件のみ。実装単位はまだ無い |
 | CPU（予算 533 µs） | Doubler 85 / Velour 128 / Sparkleur 129 / **Air 47**（エンジンのみ） |
-| 共通クレート | `nxe-audio`（処理。`delay` が `VDP-1` で増えた）/ `nxe-dsp`（解析）/ `nxe-ui`（ウィジェット）/ `nxe-plug-ui`（結線） |
+| 共通クレート | `nxe-audio`（処理。`delay` が `DIO-1` で増えた）/ `nxe-dsp`（解析）/ `nxe-ui`（ウィジェット）/ `nxe-plug-ui`（結線） |
 
 **この節から下は追記ログで、同じ内容が
 [`../HANDOVER.md`](../HANDOVER.md) にもある。** 状態の正は上の表と
@@ -409,14 +419,15 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 | ID | 単位 | 計画 |
 |---|---|---|
-| VDP-13 | **既定値と耳**（Vocal Depth。**耳が要る**）。測れるものは `defaults.rs` で固定してから。**`VDP-14` で効き幅が変わったので、まず聴き直しから** | `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md` |
-| — | **`NXE Vocal Depth` を実機で見る・聴く**（4 ホスト、窓の寸法、既定値）。`mise run install vocal-depth` | `vocal-depth-plan.md` |
-| — | **製品名の確定**（`REQ-VDP-014`）。`CLAP_ID` は出荷後に変えられない | `REQ-VDP.md` の概要 |
-| — | **Advanced の偏差**（Vocal Depth、`REQ-VDP-009`）。**前に `dsp.md`** | `vocal-depth-plan.md` |
-| DBL-13 | 既定値の詰めと実機確認（フェーズ 4。**耳が要る**） | `doubler-plan.md` |
+| — | **`DIO-14` の効き幅を実機で聴き直す**（**耳が要る**）。08-28 に一度聴いているが、それは直す前の版。`mise run install diorama` | `diorama-plan.md` |
+| DIO-13 | **既定値と耳**（**耳が要る**）。**聴き直しのあと** | `diorama-plan.md` |
+| — | **Advanced の偏差**（Diorama、`REQ-DIO-009`）。**前に `dsp.md`** | `diorama-plan.md` |
+| DBL-13 | 既定値の詰めと実機確認（**耳が要る**） | `doubler-plan.md` |
 
-Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`）は完了。
-**gallery で見る**（`mise run gallery`）。
+**`v0.2.0` のタグを打つ前に人が要るもの**: `DIO-14` の聴き直しと `DIO-13` の
+既定値。**それだけ**——5 本の窓の見た目・Hard・PUNCH は 2026-08-31 に実機で
+通った。`DBL-13` と Sparkleur の主観サインオフ（`SPK-18`）は残っているが、
+**どちらもリリースの阻害要因ではない**。
 
 ## 積み残し（どれも単位を持っていない小物）
 
@@ -453,7 +464,7 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | ID | 単位 | 状態 |
 |---|---|---|
 | UI-1 | テーマトークンと gallery の中身 | ✅ |
-| UI-2 | Lucide アイコン埋め込みと定数生成 | ✅ |
+| UI-2 | Lucide アイコン埋め込みと定数生成 | ✅ **`UI-17` で撤去**（パスに置き換え） |
 | UI-3 | 共通の入力ふるまい（ドラッグ / 微調整 / リセット / 値入力 / ジェスチャー通知） | ✅ ❓ 値の直接入力は差し戻し |
 | UI-4 | `Knob`（大小 2 サイズ） | ✅ |
 | UI-5 | `Bar` | ✅ |
@@ -468,6 +479,13 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | UI-14 | **UI を開くと DAW が重くなる問題。** 体感の原因は `baseview` が**ホストのプロセス全体**でマウス合成を切っていたこと（1 行、誰も戻していなかった）。あわせて窓が開いている間の描画コストも 7 つ直した | ✅ 実機で症状消失、gallery で **22.6 → 約 9 %** `#2`（[調査](../investigations/ui-frame-cost.md)） |
 | — | **上流に投げる。** いちばん効くのは `setMouseCoalescingEnabled` の 1 つ（baseview を使う全プラグインに効いているはず） | ⬜ |
 | — | **femtovg の隣接 draw call マージ。** 部分再描画で 219 → 68 になったので、優先度は下がった。やるなら測り直してから | ⬜ |
+| UI-15 | **アクセントを本ごとに渡す**（`theme::install(cx, palette)`。明度・彩度を揃えた 5 色） | ✅ `48c8f57` |
+| UI-16 | **Inter への差し替え**（Light / Regular / Bold。数字は Geist Mono 継続） | ✅ `fe72bd8` |
+| UI-17 | **ピクトグラム 11 個**（femtovg のパス。常に語と併記）。Sparkleur の窓に 10 個載っている。**12 px で 3 つ描き直した** | ✅ |
+| UI-18 | **反転面**（地がアクセント・描画が `BACKGROUND`。1 窓に 1 枚） | ✅ `49aaff1` |
+| UI-19 | **ヘッダの拡張**（`MODE` の枠 + ホバー中のコントロールの 1 行説明。ワードマークから `NXE` を外し 26 px Light に） | ✅ `bf616c6` |
+| UI-20 | **幅と、窓の高さの計算**（720 → 880 の共通定数。高さは既に部品の合計だった） | ✅ ❓ **実機で 4 ホスト見るのが未了** |
+| UI-21 | **勾配を外す**（塗りは全部フラット。`wash` と `.accent-up` も落とした） | ✅ `8fcebf3` |
 
 ### Doubler — `../../plugins/doubler/docs/implementation/doubler-plan.md`
 
@@ -489,6 +507,7 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | DBL-12 | CPU 予算の確認（criterion） | ✅ 69.4 µs / 予算 533 µs |
 | DBL-16 | 通っている音の表示（`REQ-DBL-015`） | ✅ |
 | DBL-13 | 既定値の詰めと実機確認 | 🟡 |
+| DBL-17 | **窓の追随** — タブは残した。反転面は図だけ。Detail の表に記号 4 つ | ✅ |
 
 ### Velour — `../../plugins/velour/docs/implementation/velour-plan.md`
 
@@ -515,6 +534,9 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | VEL-14 | UI Advanced タブ | ✅ |
 | VEL-16 | CPU 予算の確認（criterion） | ✅ 128 µs / 予算 533 µs |
 | VEL-17 | 既定値の詰めと実機確認（**耳が要る**） | ✅ |
+| VEL-18 | **天井の所在を測った** — 天井は**層の中身**（8 割強が帯域コピー）。`AIR_INPUT_CEILING` は無実 | ✅ |
+| VEL-19 | **MODE（Soft / Hard）** — 生成器が `shape` ではなく `residual` を足す。生成成分 **+8.2〜11.8 dB**、出力は上がらない。Hard は drive 上限 6 | ✅ |
+| VEL-20 | **窓の追随** — 反転面・ステータスバー・`MODE`・記号。表と右列の 204 px の空白を潰した | ✅ |
 
 ### Sparkleur — `../../plugins/sparkleur/docs/implementation/sparkleur-plan.md`
 
@@ -546,6 +568,10 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | SPK-17 | CPU 予算 | ✅ **129 µs / 予算 533** |
 | SPK-18 | 既定値と耳 | ✅ 測定分は全部。**主観サインオフのみ未了**（リリースの阻害要因ではない） |
 | SPK-19 | **1 画面と、既にある数字を出す** — スイス様式への作り直し。3 つ全部に及んだ | ✅ |
+| SPK-20 | **天井の所在を測る** → **天井は上下コンプのしきい値**。guard / `LIFT` / ゲートは無実 | ✅ `3716b18` |
+| SPK-21 | **MODE（Soft / Hard）** — しきい値を −18/−36 → −24/−18 に。到達 0.7 → 6.9 dB、出力は +0.36 dB | ✅ `1d59554` |
+| SPK-22 | **PUNCH**（`REQ-SPK-020` を v2 から回収）。受入は**アタック対本体** — crest factor は道具として弱かった | ✅ `206afec` |
+| SPK-23 | **窓の作り直し** — 型は実機 5 往復で確定。反転面・ステータスバー・書体・寸法 | ✅ ❓ **記号は `UI-17`** |
 
 ### Air — `../../plugins/air/docs/implementation/air-plan.md`
 
@@ -575,48 +601,52 @@ Velour が共通クレートに要求した 3 つ（`UI-13` / `UI-8` / `DSP-4`�
 | AIR-11 | 解析の配線 | ✅ `AIR-10` に含めた |
 | AIR-12 | CPU 予算 | ✅ **エンジン 47.2 µs / 予算 533** |
 | AIR-13 | 既定値と耳 | ✅ 7 本確定、`defaults.rs` が測って固定 |
+| AIR-14 | **窓の追随** — 検波器の 3 ゲージを Advanced の各行へ。252 px の空白を潰した | ✅ |
 
-### Vocal Depth — `../../plugins/vocal-depth/docs/implementation/vocal-depth-plan.md`
+### Diorama — `../../plugins/diorama/docs/implementation/diorama-plan.md`
 
-**ゲートは `VDP-3`**（`DEPTH` 全域で出力の RMS が ±0.5 dB、`REQ-VDP-008`）。
+**ゲートは `DIO-3`**（`DEPTH` 全域で出力の RMS が ±0.5 dB、`REQ-DIO-008`）。
 **1 番目ではない** — 連動する項が全部揃って初めて測れるので、材料を 2 つ
 作ってから 3 番目に置く。崩れたら `DEPTH` を 1 本のマクロにした意味が消える。
 
-**`VDP-4`（ラッパ）が `VDP-5`〜`VDP-7` より前**なのは `VEL-5` / `AIR-4` と
+**`DIO-4`（ラッパ）が `DIO-5`〜`DIO-7` より前**なのは `VEL-5` / `AIR-4` と
 同じ判断 — `DAMPING` と `CLARITY` は効いたかの判断が耳寄り。
 
 **共有クレートに上げるものが 2 つある**（`dsp.md` で出た）。どちらも数十行なので
-単位は起こさず、`VDP-1` と `VDP-3` の中で片付ける — `doubler-core` の
+単位は起こさず、`DIO-1` と `DIO-3` の中で片付ける — `doubler-core` の
 `DelayLine`（**2 個目の客が要求した**）と `biquad::Coefficients::magnitude`
 （信号を見ない正規化が振幅特性を要求する）。**唯一の新規 DSP は初期反射**で、
-`vocal-depth-core` に置く（`nxe-audio` に上げるのは Vocal Glue が要求したとき）。
+`diorama-core` に置く（`nxe-audio` に上げるのは Vocal Glue が要求したとき）。
 
 | ID | 単位 | 状態 |
 |---|---|---|
-| VDP-1 | 初期反射。`vocal-depth-core` もここで作った。`DelayLine` を `doubler-core` から `nxe-audio` に上げた | ✅ 120 ms 以降 −25.5 dB、段 0.36 対 88 `e60ffa4` |
-| VDP-2 | 直接音（Presence の並列帯 + Transient） | ✅ 帯域差 14.79 dB、定常への寄与 0.045 dB `84419ac` |
-| VDP-3 | `DEPTH` とラウドネス正規化（**ゲート**）。`Coefficients::response` / `magnitude` / `peaking` を足した | ✅ **許容を ±1.0 dB に改訂して通過** — ピンク 0.48 / ホワイト 0.80 / フレーズ 0.77 dB `0402d71` |
-| VDP-4 | ラッパとパラメータ（**ここで音が出る**）。パラメータは 5 個（`DAMPING` / `WIDTH` / `CLARITY` は `VDP-5`〜`VDP-7`） | ✅ **実機確認だけ残り** `5c29f43` |
-| VDP-5 | `DAMPING`（直接音と反射で違う量） | ✅ コーナー 1.9 oct 差 `d9e5e8d` |
-| VDP-6 | 距離依存のステレオ幅 | ✅ モノ和の櫛形 0.0 dB `ed752da` |
-| VDP-7 | `CLARITY`（明瞭度の保持と公開） | ✅ 普通の素材で厳密に 0 `3081667` |
-| VDP-8 | 詰め（レート・ブロック・極端値・確保・継ぎ目） | ✅ 段が背景の 1.0 倍（対照 90）`34100c4` |
-| VDP-9 | UI マクロ層（メイン 7 本 + `OUTPUT`）。**Advanced の偏差は別単位に切った** | ✅ `f67708c` |
-| VDP-10 | UI の図。**到着の図**（`nxe_ui::taps::TapField`） | ✅ `f67708c` |
-| VDP-11 | 読み値・メーター・解析の配線 | ✅ 7 セル + メーター 4 本 `f67708c` |
-| VDP-12 | CPU 予算 | ✅ **20.9 µs / 予算 533** `3c91c95` |
-| VDP-13 | 既定値と耳 | 🟡 **耳が要る** |
-| VDP-14 | **距離の効き幅の作り直し**（実機で「遠い近いに聞こえない」と出た）。直接音の広帯域レベルを足し、反射と `DAMPING` の範囲を広げた | ✅ 比 +25.6 → +2.3 dB |
-| — | **Advanced の偏差**（`REQ-VDP-009`）。パラメータ 7 個とエンジンの変更。**前に `dsp.md` が各偏差の数を書く** | ⬜ |
+| DIO-1 | 初期反射。`diorama-core` もここで作った。`DelayLine` を `doubler-core` から `nxe-audio` に上げた | ✅ 120 ms 以降 −25.5 dB、段 0.36 対 88 `e60ffa4` |
+| DIO-2 | 直接音（Presence の並列帯 + Transient） | ✅ 帯域差 14.79 dB、定常への寄与 0.045 dB `84419ac` |
+| DIO-3 | `DEPTH` とラウドネス正規化（**ゲート**）。`Coefficients::response` / `magnitude` / `peaking` を足した | ✅ **許容を ±1.0 dB に改訂して通過** — ピンク 0.48 / ホワイト 0.80 / フレーズ 0.77 dB `0402d71` |
+| DIO-4 | ラッパとパラメータ（**ここで音が出る**）。パラメータは 5 個（`DAMPING` / `WIDTH` / `CLARITY` は `DIO-5`〜`DIO-7`） | ✅ **実機確認だけ残り** `5c29f43` |
+| DIO-5 | `DAMPING`（直接音と反射で違う量） | ✅ コーナー 1.9 oct 差 `d9e5e8d` |
+| DIO-6 | 距離依存のステレオ幅 | ✅ モノ和の櫛形 0.0 dB `ed752da` |
+| DIO-7 | `CLARITY`（明瞭度の保持と公開） | ✅ 普通の素材で厳密に 0 `3081667` |
+| DIO-8 | 詰め（レート・ブロック・極端値・確保・継ぎ目） | ✅ 段が背景の 1.0 倍（対照 90）`34100c4` |
+| DIO-9 | UI マクロ層（メイン 7 本 + `OUTPUT`）。**Advanced の偏差は別単位に切った** | ✅ `f67708c` |
+| DIO-10 | UI の図。**到着の図**（`nxe_ui::taps::TapField`） | ✅ `f67708c` |
+| DIO-11 | 読み値・メーター・解析の配線 | ✅ 7 セル + メーター 4 本 `f67708c` |
+| DIO-12 | CPU 予算 | ✅ **20.9 µs / 予算 533** `3c91c95` |
+| DIO-13 | 既定値と耳 | 🟡 **耳が要る** |
+| DIO-14 | **距離の効き幅の作り直し**（実機で「遠い近いに聞こえない」と出た）。直接音の広帯域レベルを足し、反射と `DAMPING` の範囲を広げた | ✅ 比 +25.6 → +2.3 dB |
+| DIO-15 | **Diorama への改名**（ディレクトリ・crate・文書・単位の接頭辞・`CLAP_ID`・`VST3_CLASS_ID`）。`Parallax` は衝突で落とした | ✅ |
+| DIO-16 | **窓の追随** — 読み値 7 つを 5（帯）と 2（規則の下）に割った。**実機で見た**（08-31） | ✅ |
+| DIO-17 | **図が高さと幅を使っていない** — 定数が 14 倍ずれ、直接音とタップで目盛りが違った。縦軸を「直接音に対する比」に、軸を 100 ms に | ✅ |
+| — | **Advanced の偏差**（`REQ-DIO-009`）。パラメータ 7 個とエンジンの変更。**前に `dsp.md` が各偏差の数を書く** | ⬜ |
 
 **`dsp.md` は書けた**（2026-08-28、
-[`specifications/dsp.md`](../../plugins/vocal-depth/docs/specifications/dsp.md)）。
+[`specifications/dsp.md`](../../plugins/diorama/docs/specifications/dsp.md)）。
 計画書が投げていた 5 つの問いに答えが入っている — **タップ時刻は動かさず
 `DEPTH` は重み包絡を動かす**、13 本 × 2 チャネルの素数 ms、オールパス 3 段、
-`DAMPING` の比 1.2 : 3.0 oct、そして `VDP-3` の正規化は**固定した 32 点の
+`DAMPING` の比 1.2 : 3.0 oct、そして `DIO-3` の正規化は**固定した 32 点の
 ピンク重み格子の上で振幅特性の 2 乗和を解析的に足して割る**形。
 **数字は 1 つも測っていない** — どれが測定でどれが耳かは `dsp.md` の
-「耳で詰める定数」が正。**`ui.md` は未作成**（`VDP-9` の前に書く）。
+「耳で詰める定数」が正。**`ui.md` は未作成**（`DIO-9` の前に書く）。
 
 ### Vocal Glue
 

@@ -158,6 +158,7 @@ pub struct Sparkle {
     hold: f32,
     settings: Settings,
     opening: f32,
+    transient: f32,
     gain: f32,
 }
 
@@ -178,6 +179,7 @@ impl Sparkle {
                 ..Settings::default()
             },
             opening: 0.0,
+            transient: 0.0,
             gain: 0.0,
         };
         sparkle.set(Settings::default());
@@ -218,6 +220,7 @@ impl Sparkle {
         let fast = self.fast.push(squared);
         let slow = self.slow.push(squared);
         let raw = opening_of(fast, slow);
+        self.transient = raw;
         // Opens at once and closes over `HOLD_SECONDS`, so two consonants in a
         // row are one opening rather than two.
         self.opening = if raw > self.opening {
@@ -259,6 +262,21 @@ impl Sparkle {
         self.opening
     }
 
+    /// The same detector **before the hold**, `0..=1` (`REQ-SPK-020`).
+    ///
+    /// [`opening`](Self::opening) opens at once and closes over
+    /// `HOLD_SECONDS`, so two consonants in a row read as one — which is what
+    /// the layer wants and the opposite of what hitting a transient wants.
+    /// **Held, it stays up through the body of a note**: `SPK-22` drove `PUNCH`
+    /// from it first and measured the crest factor going *down*, because the
+    /// boost was landing on the sustain as much as on the attack.
+    ///
+    /// This is the un-held tap of the same fast-over-slow ratio. **Not a second
+    /// detector** — one detector, read at two points.
+    pub fn transient(&self) -> f32 {
+        self.transient
+    }
+
     /// The lid's corner, in Hz.
     pub fn lid_hz(&self) -> f32 {
         (self.sample_rate * INPUT_CEILING).min(INPUT_CEILING_HZ)
@@ -272,6 +290,7 @@ impl Sparkle {
         self.fast.reset();
         self.slow.reset();
         self.opening = 0.0;
+        self.transient = 0.0;
     }
 
     fn tune_lid(&mut self) {

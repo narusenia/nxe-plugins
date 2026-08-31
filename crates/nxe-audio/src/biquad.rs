@@ -107,8 +107,8 @@ impl Coefficients {
     /// inconsistent with the new ones — which **excites that Nyquist-adjacent
     /// mode**. The result is a burst of ringing at half the sample rate every
     /// time the corner is retuned, and it gets *worse* the more often you
-    /// retune: Vocal Depth's damping measured 7 to 12 times the background
-    /// roughness that way, rising as the retune step was made finer (`VDP-8`).
+    /// retune: Diorama's damping measured 7 to 12 times the background
+    /// roughness that way, rising as the retune step was made finer (`DIO-8`).
     ///
     /// A one-pole has a single real pole and nothing to ring. `b1`, `b2` and
     /// `a2` are zero, so [`Biquad::process`] runs it unchanged and
@@ -135,12 +135,12 @@ impl Coefficients {
 
     /// A peaking section: `gain_db` at `hz`, unity away from it.
     ///
-    /// **Written for a band that has to come *down*** (`VDP-3`). Everything
+    /// **Written for a band that has to come *down*** (`DIO-3`). Everything
     /// before it here added parallel bands — `x + (G - 1) · BandPass(x)` — and
     /// that shape is fine while `G > 1`, but with `G < 1` the subtraction runs
     /// into the band-pass's phase: where its response is near `±90°`,
     /// `|1 + (G - 1) · H|` is **above** one, so a "cut" band bumps at both
-    /// skirts. Measured on Vocal Depth's presence band: a nominal 6 dB cut took
+    /// skirts. Measured on Diorama's presence band: a nominal 6 dB cut took
     /// **0.18 dB** of pink-weighted power away as a subtracted band-pass and
     /// **0.71 dB** as a peaking section — three quarters of the cut was going
     /// back in through the skirts. A minimum-phase section cuts what it says it
@@ -180,7 +180,7 @@ impl Coefficients {
     /// **Complex, not just a magnitude.** The caller that asked for this
     /// evaluates a *parallel* band — `1 + (G - 1) · H(f)` — and a band-pass has
     /// phase, so summing magnitudes there answers a different question
-    /// (`vocal_depth_core::depth`, `VDP-3`).
+    /// (`diorama_core::depth`, `DIO-3`).
     ///
     /// `H(e^{jω}) = (b0 + b1·e^{-jω} + b2·e^{-2jω}) / (1 + a1·e^{-jω} +
     /// a2·e^{-2jω})`.
@@ -316,7 +316,7 @@ mod tests {
 
     /// A one-pole lowpass is 3.01 dB down at its corner and falls at 6 dB an
     /// octave, and — the reason it exists — **retuning it does not ring**
-    /// (`VDP-8`).
+    /// (`DIO-8`).
     #[test]
     fn a_one_pole_lowpass_falls_at_six_decibels_an_octave() {
         const RATE: f32 = 48_000.0;
@@ -339,7 +339,7 @@ mod tests {
         // And a moving corner leaves no ringing: sweep it across a tone,
         // retuning every sample, and look for a second difference bigger than
         // the tone's own. A second-order section does this at 7 to 12 times the
-        // background (`VDP-8`).
+        // background (`DIO-8`).
         let tone: Vec<f32> = (0..24_000)
             .map(|index| (index as f32 * TAU * 700.0 / RATE).sin() * 0.5)
             .collect();
@@ -368,7 +368,7 @@ mod tests {
 
     /// A peaking section hits its gain at its centre, comes back to unity away
     /// from it, and — the reason it exists — **a cut actually removes power**
-    /// where a parallel band-pass did not (`VDP-3`).
+    /// where a parallel band-pass did not (`DIO-3`).
     #[test]
     fn a_peaking_section_boosts_and_cuts_where_it_says() {
         const RATE: f32 = 48_000.0;
@@ -400,7 +400,7 @@ mod tests {
         );
     }
 
-    /// The comparison that moved Vocal Depth off the parallel band: with a
+    /// The comparison that moved Diorama off the parallel band: with a
     /// **negative** gain, a subtracted band-pass gives most of the cut back
     /// through its skirts, and a peaking section does not.
     #[test]

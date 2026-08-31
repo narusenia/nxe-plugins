@@ -90,18 +90,29 @@ pub(crate) fn poll(analysis: &Analysis, figures: &mut [String], gauges: &mut [f3
     gauges[SPARKLE] = analysis.sparkle.read()[0];
 }
 
-pub fn view(cx: &mut Context) {
-    nxe_ui::readout::strip(cx, |cx| {
-        nxe_ui::readout::cell(cx, "IN", Ui::readouts.index(IN), "dB");
-        nxe_ui::readout::cell(cx, "OUT", Ui::readouts.index(OUT), "dB");
-        nxe_ui::readout::cell(cx, "REDUCTION", Ui::readouts.index(REDUCTION), "dB");
+/// The figures, on the right of the status bar.
+///
+/// **They were a strip of their own under the header** at the headline size,
+/// and that was a lot of window for five short numbers — it pushed the figure
+/// the plugin exists to show down past it. On one line at the bottom they take
+/// no height that was not already spent, and the right of the bar was empty
+/// (`SPK-23`, looked at in a host).
+pub fn status(cx: &mut Context) {
+    nxe_ui::status::bar(cx, |cx| {
+        nxe_ui::status::figure(cx, "IN", Ui::readouts.index(IN), "dB");
+        nxe_ui::status::figure(cx, "OUT", Ui::readouts.index(OUT), "dB");
+        // **`GR`, not `REDUCTION`.** The strip shares its line with the
+        // sentence about whatever the pointer is on, and a long name pushed
+        // that sentence into the figures. `GR` is what a compressor's reduction
+        // meter is called everywhere else (`SPK-23`).
+        nxe_ui::status::figure(cx, "GR", Ui::readouts.index(REDUCTION), "dB");
 
         // **The gate, as a bar rather than a number.** What is asked of it is
         // "is it lighting up on this material", which a moving bar answers at a
         // glance and a figure flickering between 0 and 100 does not.
-        nxe_ui::readout::meter_cell(cx, "SPARKLE", Ui::gauges.index(SPARKLE));
+        nxe_ui::status::gauge(cx, "SPARK", Ui::gauges.index(SPARKLE));
 
-        nxe_ui::readout::cell(cx, "DE-HARSH", Ui::readouts.index(DE_HARSH), "dB");
+        nxe_ui::status::figure(cx, "HARSH", Ui::readouts.index(DE_HARSH), "dB");
     });
 }
 

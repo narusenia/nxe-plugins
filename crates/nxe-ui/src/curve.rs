@@ -235,6 +235,7 @@ impl View for CurveView {
     }
 
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
+        let palette = theme::palette(cx);
         let bounds = cx.bounds();
         let scale = cx.scale_factor();
         let line = scale.max(1.0);
@@ -252,7 +253,7 @@ impl View for CurveView {
             let (right, _) = at(start.max(*end), 0.0);
             let mut path = vg::Path::new();
             path.rect(left, bounds.y, (right - left).max(0.0), bounds.h);
-            canvas.fill_path(&path, &vg::Paint::color(theme::ACCENT_DIM.at(0.05).vg()));
+            canvas.fill_path(&path, &vg::Paint::color(palette.dim.at(0.05).vg()));
         }
 
         // The signal, filled from the floor.
@@ -280,7 +281,7 @@ impl View for CurveView {
             path.close();
             canvas.fill_path(
                 &path,
-                &vg::Paint::color(theme::FOREGROUND.at(ANALYSIS_ALPHA).vg()),
+                &vg::Paint::color(palette.ink.at(ANALYSIS_ALPHA).vg()),
             );
         }
 
@@ -290,7 +291,7 @@ impl View for CurveView {
             grid.move_to(gx, bounds.y);
             grid.line_to(gx, bounds.y + bounds.h);
         }
-        let mut paint = vg::Paint::color(theme::ELEVATED.vg());
+        let mut paint = vg::Paint::color(palette.track.vg());
         paint.set_line_width(line);
         canvas.stroke_path(&grid, &paint);
 
@@ -313,7 +314,7 @@ impl View for CurveView {
             resting.move_to(bounds.x, centre_y);
             resting.line_to(bounds.x + bounds.w, centre_y);
         }
-        let mut paint = vg::Paint::color(theme::BORDER.vg());
+        let mut paint = vg::Paint::color(palette.line.vg());
         paint.set_line_width(line);
         canvas.stroke_path(&resting, &paint);
 
@@ -327,11 +328,7 @@ impl View for CurveView {
                     path.line_to(px, py);
                 }
             }
-            // The ramp runs left to right across the plot, so the curve says
-            // which way it is read — the far end of the axis is the pale end,
-            // the same as a bar filled to the far end
-            // (`theme::accent_paint`).
-            let mut paint = theme::accent_paint(bounds.x, bounds.y, bounds.x + bounds.w, bounds.y);
+            let mut paint = vg::Paint::color(palette.accent.vg());
             paint.set_line_width(CURVE_WIDTH * scale);
             paint.set_line_cap(vg::LineCap::Butt);
             canvas.stroke_path(&path, &paint);
@@ -350,11 +347,11 @@ impl View for CurveView {
             // rather than merging with it wherever the two cross.
             let mut back = vg::Path::new();
             back.circle(px, py, radius);
-            canvas.fill_path(&back, &vg::Paint::color(theme::BACKGROUND.vg()));
+            canvas.fill_path(&back, &vg::Paint::color(palette.ground.vg()));
 
             let mut ring = vg::Path::new();
             ring.circle(px, py, radius);
-            let mut paint = vg::Paint::color(theme::FOREGROUND.vg());
+            let mut paint = vg::Paint::color(palette.ink.vg());
             paint.set_line_width(line);
             canvas.stroke_path(&ring, &paint);
         }
@@ -366,12 +363,12 @@ impl View for CurveView {
             if self.dragging == Some(index) {
                 let mut ring = vg::Path::new();
                 ring.circle(px, py, radius + 3.0 * scale);
-                canvas.fill_path(&ring, &vg::Paint::color(theme::ACCENT_DIM.vg()));
+                canvas.fill_path(&ring, &vg::Paint::color(palette.dim.vg()));
             }
 
             let mut path = vg::Path::new();
             path.circle(px, py, radius);
-            canvas.fill_path(&path, &vg::Paint::color(theme::ACCENT_BRIGHT.vg()));
+            canvas.fill_path(&path, &vg::Paint::color(palette.bright.vg()));
         }
     }
 }

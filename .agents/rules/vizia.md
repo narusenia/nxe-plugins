@@ -35,22 +35,18 @@ what the windows have to look like and how they have to read — are
 What the tokens are *for* — one accent, gradients only for quantities, rules as
 structure — is [`ui.md`](ui.md).
 
-## Icons
+## Marks
 
-- Icons are Lucide glyphs from the embedded `lucide.ttf`, referenced through
-  the generated constants (`nxe_ui::icon::CHEVRON_DOWN`), never as a raw escape
-  in a view.
-- **Build them with `icon::label`, and never set `font-family` in CSS.** On the
-  vizia revision `nih_plug_vizia` pins, a stylesheet's `font-family` does not
-  select an embedded font; the glyphs come from a fallback face instead. Because
-  the codepoints are in the private use area, that failure renders as unrelated
-  CJK glyphs rather than as a blank or a missing-glyph box, so it is easy to
-  mistake for a broken font file. The family has to come from the modifier.
-- The generated constant module is generated, not edited. Regenerate it from
-  Lucide's `font/info.json` when the font is updated.
-- Stroke width is not adjustable in the font. An icon that needs a variable
-  stroke has to be drawn as a path in `View::draw`; that is a deliberate,
-  documented exception, not the default.
+- **There is no icon font.** Every symbol is a path in `View::draw`
+  (`nxe_ui::pictogram`). Lucide was embedded in `UI-2` and came out in `UI-17`:
+  its strokes were baked into filled glyphs so an icon could not take a weight,
+  and by the end it cost 859 KB in every bundle for two icons.
+- **A mark's drawing is fixed at build time.** A `Pictogram` takes a `Glyph`, not
+  a lens on one, so a symbol that changes with state changes by having its
+  subtree rebuilt — `Binding` on the state, the glyph chosen inside. That is
+  once per click rather than once per frame, which is the right way round.
+- What a mark may and may not do — never replacing its word, drawn to survive
+  12 px — is [`ui.md`](ui.md).
 
 ## What this vizia revision does and does not do
 
@@ -71,10 +67,11 @@ unifies dev-dependency features once a dev target is built).
 **A stylesheet's `font-family` does not select an embedded font.** The
 declaration parses and the conversion to cosmic-text's family list looks correct
 on inspection, but the glyphs come from a fallback face. Set the family with the
-`font_family` modifier. For icons, `icon::label` does this. The failure mode is
-worth knowing: private use codepoints in a fallback face render as unrelated CJK
-glyphs, so it looks like a corrupt font file rather than a font that was never
-selected.
+`font_family` modifier. The failure mode is worth knowing: private use
+codepoints in a fallback face render as unrelated CJK glyphs, so it looks like a
+corrupt font file rather than a font that was never selected. It applies to every embedded face —
+`font::value` reaches the mono family this way, and the icon font's private-use
+codepoints are how the trap was found.
 
 **`draw_text` renders the view's own text, nothing else.** A custom `View` cannot
 put labels at arbitrary positions inside itself, so a widget cannot label its own
@@ -84,10 +81,18 @@ was given (`CurveView`), or report what the pointer is over so the caller can
 highlight the matching row elsewhere (`PolarField`).
 
 **The default font is set through `set_default_font`, not CSS.** Same reason as
-the icon family — a stylesheet's `font-family` does not select an embedded face.
-`theme::install` registers Geist and makes it the default, so a plain `Label`
+above — a stylesheet's `font-family` does not select an embedded face.
+`theme::install` registers Inter and makes it the default, so a plain `Label`
 needs nothing. A different family for one label needs the modifier;
 `font::value` is that for figures.
+
+**A weight is reached through the modifier too, and which face it lands on
+depends on the `name` table.** `fontdb` files a face under its *typographic*
+family (name ID 16) when it has one and under ID 1 otherwise — Inter Light says
+`Inter Light` in ID 1 and `Inter` only in ID 16. Had the preference gone the
+other way, `font_weight(Light)` would have rendered Regular without a word, so
+`font::tests` reads the name tables out of the files rather than trusting the
+constants.
 
 **A container's `on_press` needs its content marked `pointer-events: none`.**
 Vizia emits a press only when the entity hovered on mouse-up is the one hovered

@@ -13,10 +13,12 @@
 | `plugins/doubler/doubler` | **GPL-3.0-only** | 出荷するプラグイン |
 | `plugins/velour/velour` | **GPL-3.0-only** | 出荷するプラグイン |
 | `plugins/sparkleur/sparkleur` | **GPL-3.0-only** | 出荷するプラグイン |
+| `plugins/air/air` | **GPL-3.0-only** | 出荷するプラグイン |
+| `plugins/diorama/diorama` | **GPL-3.0-only** | 出荷するプラグイン |
 
 境界は 1 つだけ。**`vst3-sys` をリンクするか、しないか。**
 
-## なぜ下の 4 つが GPL なのか
+## なぜ下の側が GPL なのか
 
 `nih_plug` は `vst3-sys` に無条件で依存していて、`vst3-sys` は GPLv3:
 
@@ -26,12 +28,12 @@
 
 **nih-plug 本体は ISC。** GPL はここからしか来ていない。
 
-**配布するバンドルは `.clap` も `.vst3` も GPLv3。** 3 つのプラグインは 1 つの
+**配布するバンドルは `.clap` も `.vst3` も GPLv3。** 5 つのプラグインは 1 つの
 cdylib から `nih_export_clap!` と `nih_export_vst3!` を両方呼んでいて、
 `cargo xtask bundle` はその**同じバイナリ**を両方のバンドルに入れる。だから
 「CLAP 版は VST3 を含まないので緩い」は**この構成では成り立たない**。
 
-## なぜ上の 6 つは緩くできるのか
+## なぜ上の側は緩くできるのか
 
 `vst3-sys` を一切引かないから。依存を数えて確かめてある:
 
@@ -76,6 +78,26 @@ Steinberg Media Technologies GmbH`）。`vst3-sys` が GPLv3 を選んだ理由 
 「駄目なら戻すのはラッパだけ」が成り立つのは **`air-core` まで**（テストごと
 無傷）で、UI 層はそうではない。**やるなら UI が固まってからワークスペース
 一括で**、`VST3_CLASS_ID` と状態のシリアライズ形式の一致を先に測ってから。
+
+## 埋め込むフォント
+
+**フォントはバイナリに焼き込まれる。** `include_bytes!` なので、`nxe-ui` を
+リンクした時点でフェイスはそのプラグインの一部になる。**どれもライセンス文の
+同梱を要求する**ので、リリースのバンドルにライセンス文が入っていないと条件を
+満たさない。
+
+| フェイス | ライセンス | どこ | 何に使うか |
+|---|---|---|---|
+| Inter（Regular） | **SIL OFL 1.1** | `crates/nxe-ui/assets/inter/` | 語 |
+| Geist Mono（Regular） | **SIL OFL 1.1** | `crates/nxe-ui/assets/geist/` | 数値 |
+
+**OFL はフォント自体の条件で、それをリンクしたソフトウェアには伝染しない。**
+`nxe-ui` が MIT OR Apache-2.0 のままでいられるのはこのため — 上の境界
+（`vst3-sys` をリンクするか）とは別の話。**フォントを改変して再配布する場合は
+別の条件が付く**（OFL の予約名条項）が、ここでは無改変で埋め込んでいる。
+
+**Geist Sans は 0.2.0 で外した**（`UI-16`）。語の面が Inter に替わり、Geist は
+Mono だけが残っている。ライセンス文はその Mono のために置いてある。
 
 ## 貢献するとき
 

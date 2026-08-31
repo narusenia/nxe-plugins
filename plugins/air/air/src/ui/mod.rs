@@ -10,6 +10,7 @@ use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
 use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
 use nxe_ui::curve::Curve;
 use nxe_ui::heartbeat::Lifeline;
+use nxe_ui::hint::Describe;
 use nxe_ui::{font, theme};
 use std::sync::Arc;
 use std::time::Duration;
@@ -28,19 +29,22 @@ mod readout;
 /// the column below has a known height — `nxe_ui::theme::LINE_*` exists so that
 /// the text lines do too — so adding a row moves the window instead of running
 /// off the bottom of it (`.agents/rules/ui.md`).
-pub(crate) const WIDTH: u32 = 720;
+pub(crate) const WIDTH: u32 = theme::WINDOW_WIDTH;
 const HEIGHT: u32 = (theme::SPACE_3 * 2.0
     + nxe_ui::header::HEIGHT
     + theme::SPACE_3
-    + nxe_ui::readout::HEIGHT
-    + theme::SPACE_3
-    + field::HEIGHT
+    + FIGURE_HEIGHT
     + theme::SPACE_3
     + knob_block_height(MAIN_KNOB)
     + theme::SPACE_3
     + theme::RULE
     + theme::SPACE_3
-    + advanced::HEIGHT) as u32;
+    + advanced::HEIGHT
+    + nxe_ui::status::HEIGHT) as u32;
+
+/// The figure's row, including the inverted surface's own padding
+/// (`nxe_ui::surface`).
+const FIGURE_HEIGHT: f32 = field::HEIGHT + theme::SPACE_4 * 2.0;
 
 /// **All seven the same size.** Sparkleur separates "what shapes the sound"
 /// from "how much of it arrives", but every one of Air's seven decides how the
@@ -149,7 +153,7 @@ pub fn create(
     // `ViziaTheming::None`: the plugin brings its own stylesheet and wants none
     // of vizia's defaults leaking into it.
     create_vizia_editor(state, ViziaTheming::None, move |cx, _| {
-        theme::install(cx);
+        theme::install(cx, theme::Palette::AIR);
 
         // **Started before the model, because the model holds what stops
         // it.** The lifeline dies with the window's context, and the
@@ -169,36 +173,63 @@ pub fn create(
         }
         .build(cx);
 
-        HStack::new(cx, |cx| {
-            VStack::new(cx, |cx| {
-                nxe_ui::header::header(cx, "NXE AIR", "signal-driven texture");
-                readout::view(cx);
-                // The figure. It is what the plugin *is* (`ui.md`).
-                field::view(cx);
-                main_row(cx);
-                Element::new(cx).class("rule");
-                advanced::view(cx);
+        VStack::new(cx, |cx| {
+            HStack::new(cx, |cx| {
+                VStack::new(cx, |cx| {
+                    nxe_ui::header::header(cx, "Air", "signal-driven texture", |_| {});
+                    // The figure. It is what the plugin *is* (`ui.md`), and it
+                    // is the window's one inverted surface (`UI-18`).
+                    figure_row(cx);
+                    main_row(cx);
+                    Element::new(cx).class("rule");
+                    advanced::view(cx);
+                })
+                .width(Stretch(1.0))
+                .height(Stretch(1.0))
+                .row_between(Pixels(theme::SPACE_3));
+
+                // **Outside everything else**, because "is this louder or
+                // better" is a question asked while looking at any of it
+                // (`.agents/rules/ui.md`).
+                meters::view(cx);
             })
             .width(Stretch(1.0))
             .height(Stretch(1.0))
-            .row_between(Pixels(theme::SPACE_3));
+            .col_between(Pixels(theme::SPACE_3))
+            .child_space(Pixels(theme::SPACE_3));
 
-            // **Outside everything else**, because "is this louder or better"
-            // is a question asked while looking at any of it
-            // (`.agents/rules/ui.md`).
-            meters::view(cx);
+            // **Flush to the bottom edge, and the full width of the window.**
+            // A strip that stopped at the meters would read as one more panel
+            // rather than as the window's floor (`nxe_ui::status`).
+            readout::status(cx);
         })
         // **`.root` is what paints the window.** Without it the ground is the
         // host's black while every `.panel` sits at `BACKGROUND`, so the panels
         // read as lighter boxes — the theme's "two levels, not three" needs the
         // window to be one of them. Sparkleur shipped one build without it
         // (`.agents/rules/vizia.md`).
+        //
+        // **No child space, and no row between.** The padding belongs to the
+        // row above the strip so the strip can reach the edges; `.root` sets
+        // `row-between: SPACE_4`, and those 16 px come out of the row, leaving
+        // anything `Stretch(1.0)` in it — the meter strip — short of the
+        // fixed-height column beside it (`SPK-23`).
         .class("root")
         .width(Stretch(1.0))
         .height(Stretch(1.0))
-        .col_between(Pixels(theme::SPACE_3))
-        .child_space(Pixels(theme::SPACE_3));
+        .child_space(Pixels(0.0))
+        .row_between(Pixels(0.0));
     })
+}
+
+/// The figure, on the accent — the window's one exception
+/// (`.agents/rules/ui.md`).
+fn figure_row(cx: &mut Context) {
+    nxe_ui::surface::inverted(cx, |cx| {
+        field::view(cx);
+    })
+    .height(Pixels(FIGURE_HEIGHT))
+    .width(Stretch(1.0));
 }
 
 /// The seven controls, on one line.
@@ -254,9 +285,9 @@ pub(crate) fn knob_block<P, F>(
     F: Fn(&Arc<AirParams>) -> &P + Copy + 'static,
 {
     VStack::new(cx, |cx| {
-        // The tooltip goes on the knob rather than the whole block, so it does
+        // The description goes on the knob rather than the whole block, so it does
         // not follow the pointer around the label and the number.
-        nxe_plug_ui::knob(cx, Ui::params, to_param, size).tooltip(move |cx| theme::hint(cx, hint));
+        nxe_plug_ui::knob(cx, Ui::params, to_param, size).describe(hint);
         Label::new(cx, label)
             .class("label")
             .height(Pixels(theme::LINE_LABEL));

@@ -21,6 +21,7 @@ use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
 use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
 use nxe_ui::curve::Curve;
 use nxe_ui::heartbeat::Lifeline;
+use nxe_ui::hint::Describe;
 use nxe_ui::{font, theme};
 use sparkleur_core::crossover::BAND_COUNT;
 use std::sync::Arc;
@@ -34,23 +35,23 @@ use std::time::Duration;
 /// the text lines do too — so adding a row to the table moves the window
 /// instead of running off the bottom of it. It ran off the bottom three times
 /// in one afternoon before this (`SPK-19`).
-const WIDTH: u32 = 720;
+const WIDTH: u32 = theme::WINDOW_WIDTH;
 const HEIGHT: u32 = (theme::SPACE_3 * 2.0
     + nxe_ui::header::HEIGHT
     + theme::SPACE_3
-    + nxe_ui::readout::HEIGHT
-    + theme::SPACE_3
-    + field::HEIGHT
+    + FIGURE_HEIGHT
     + theme::SPACE_3
     + knob_block_height(SHAPE_KNOB)
     + theme::SPACE_3
     + theme::RULE
     + theme::SPACE_3
-    + advanced::HEIGHT) as u32;
+    + advanced::HEIGHT
+    + nxe_ui::status::HEIGHT) as u32;
 
-/// The knob sizes. The five that shape the sound are the large ones; the two
-/// that decide how much of it arrives are smaller and sit apart, because they
-/// are a different question (`ui.md`).
+/// The knob sizes. **The five that shape the sound are the large ones**; the
+/// three beyond the break are smaller, because none of them is the shape —
+/// `FOCUS` is set on the figure's rail and this is its number, `MIX` and
+/// `OUTPUT` are how much arrives (`ui.md`).
 const SHAPE_KNOB: f32 = 52.0;
 const OUTPUT_KNOB: f32 = 38.0;
 
@@ -125,7 +126,12 @@ impl Model for Ui {
                 self.bands = field::bands_of(&self.params, self.host_rate, &self.analysis);
                 readout::poll(&self.analysis, &mut self.readouts, &mut self.gauges);
                 advanced::poll(&self.analysis, &mut self.applied_gains);
-                curve::poll(&self.params, &self.analysis, &mut self.curve_point);
+                curve::poll(
+                    &self.params,
+                    self.hovered,
+                    &self.analysis,
+                    &mut self.curve_point,
+                );
             }
         });
     }
@@ -180,7 +186,7 @@ pub fn create(
     // `ViziaTheming::None`: the plugin brings its own stylesheet and wants none
     // of vizia's defaults leaking into it.
     create_vizia_editor(state, ViziaTheming::None, move |cx, _| {
-        theme::install(cx);
+        theme::install(cx, theme::Palette::SPARKLEUR);
 
         // **Read once, when the window opens.** The rate decides where the top
         // boundary is capped (`sparkleur_core::crossover`), and that is the
@@ -213,70 +219,119 @@ pub fn create(
         }
         .build(cx);
 
-        HStack::new(cx, |cx| {
-            VStack::new(cx, |cx| {
-                header(cx);
+        VStack::new(cx, |cx| {
+            HStack::new(cx, |cx| {
+                VStack::new(cx, |cx| {
+                    header(cx);
 
-                // **The three numbers a compressor is read by**, above
-                // everything and never hidden (`SPK-19`).
-                readout::view(cx);
+                    // The figure. It is what the plugin *is* (`ui.md`).
+                    figure_row(cx);
 
-                // The figure. It is what the plugin *is* (`ui.md`).
-                figure_row(cx);
+                    // **No tabs.** They hid seventeen of the thirty-five
+                    // controls behind a click, and the question a multiband
+                    // compressor is used to answer — which band is doing what —
+                    // cannot be asked of half a panel (`SPK-19`).
+                    shape_row(cx);
+                    Element::new(cx).class("rule");
+                    advanced::view(cx);
+                })
+                .width(Stretch(1.0))
+                .height(Stretch(1.0))
+                .row_between(Pixels(theme::SPACE_3));
 
-                // **No tabs.** They hid seventeen of the thirty-five controls
-                // behind a click, and the question a multiband compressor is
-                // used to answer — which band is doing what — cannot be asked
-                // of half a panel (`SPK-19`). Everything is on screen.
-                shape_row(cx);
-                Element::new(cx).class("rule");
-                advanced::view(cx);
+                // **Outside everything else**, because "is this louder or
+                // better" is a question asked while looking at any of it
+                // (`ui.md`).
+                meters::view(cx);
             })
             .width(Stretch(1.0))
             .height(Stretch(1.0))
-            .row_between(Pixels(theme::SPACE_3));
+            .col_between(Pixels(theme::SPACE_3))
+            .child_space(Pixels(theme::SPACE_3));
 
-            // **Outside everything else**, because "is this louder or better"
-            // is a question asked while looking at any of it (`ui.md`).
-            meters::view(cx);
+            // **Flush to the bottom edge, and the full width of the window.**
+            // A strip that stopped at the meters would read as one more panel
+            // rather than as the window's floor (`nxe_ui::status`).
+            readout::status(cx);
         })
         // **`.root` is what paints the window.** Without it the background is
         // whatever the host's window is — black — and every `.panel`, which
         // sits at `BACKGROUND`, reads as a lighter box on it. The theme's
         // "two levels, not three" only works when the window is one of them
         // (measured off a screenshot: panels 0x0A, window 0x00).
+        //
+        // **No child space here**: the padding belongs to the row above the
+        // status bar, so the strip can reach the edges.
+        //
+        // **And no row between, which `.root` sets to `SPACE_4`.** That 16 px
+        // is invisible — it lands between the row and the status bar, where the
+        // window is black either way — but it comes out of the row, and the row
+        // is what the window's height was computed for. The column's parts have
+        // fixed heights so they drew at full size and overflowed; the meter
+        // strip is `Stretch(1.0)` so it simply came out **16 px short and
+        // stopped above the table beside it** (`SPK-23`, seen in a host and
+        // then measured off the screenshot: 590 px where 606 was available).
+        //
+        // **Every window that puts a status bar under a stretched row needs
+        // this line.** The four still to be rebuilt are `VEL-20`, `AIR-14`,
+        // `DBL-17` and `DIO-16`.
         .class("root")
         .width(Stretch(1.0))
         .height(Stretch(1.0))
-        .col_between(Pixels(theme::SPACE_3))
-        .child_space(Pixels(theme::SPACE_3));
+        .child_space(Pixels(0.0))
+        .row_between(Pixels(0.0));
     })
 }
 
 /// The figure and the window that reads one band of it, side by side.
+///
+/// **On the accent ground — the window's exception** (`.agents/rules/ui.md`).
+/// It is what the plugin *is*, and a glance should land on it.
+///
+/// **The transfer curve beside it had to stop being a `.panel` first.** For one
+/// build it was one, and it went *completely black*: its traces followed the
+/// nested palette and inverted, while its ground came from the stylesheet,
+/// which cannot see one. Anything that carries its own ground onto this surface
+/// has to read the palette for it (`curve::view`).
+///
+/// **The labels inside say `.ink-muted` for themselves**, for the same reason.
 fn figure_row(cx: &mut Context) {
-    HStack::new(cx, |cx| {
-        field::view(cx);
-        curve::view(cx);
+    nxe_ui::surface::inverted(cx, |cx| {
+        HStack::new(cx, |cx| {
+            field::view(cx);
+            curve::view(cx);
+        })
+        // **Not `.class("row")`.** That centres its children vertically, and
+        // `child-top: 1s` / `child-bottom: 1s` are two more stretches for the
+        // height to be divided among (`.agents/rules/vizia.md`). Both children
+        // here are given an explicit height and want the whole of it.
+        .height(Pixels(field::HEIGHT))
+        .width(Stretch(1.0))
+        .col_between(Pixels(theme::SPACE_3));
     })
-    // **Not `.class("row")`.** That centres its children vertically, and
-    // `child-top: 1s` / `child-bottom: 1s` are two more stretches for the
-    // height to be divided among (`.agents/rules/vizia.md`). Both children here
-    // are given an explicit height and want the whole of it.
-    .height(Pixels(field::HEIGHT))
-    .width(Stretch(1.0))
-    .col_between(Pixels(theme::SPACE_3));
+    .height(Pixels(FIGURE_HEIGHT))
+    .width(Stretch(1.0));
 }
 
+/// The inverted panel's height: the figure, plus the panel's own padding.
+const FIGURE_HEIGHT: f32 = field::HEIGHT + theme::SPACE_4 * 2.0;
+
 fn header(cx: &mut Context) {
-    // The shipped name, in full — `NAME` in `lib.rs`, the bundle, and the
-    // host's plugin list all say the same thing — with the one line that says
-    // what the window is for, and the rule under both (`nxe_ui::header`).
+    // The product's name — the vendor is its own mark to the left — with what
+    // the window is for on the right, and the rule under both
+    // (`nxe_ui::header`).
     //
     // **No wrapping row.** `.class("row")` centres its children vertically, and
     // the header wants the whole of the height it asks for
     // (`.agents/rules/vizia.md`).
-    nxe_ui::header::header(cx, "NXE SPARKLEUR", "five-band dynamics + sparkle");
+    //
+    // **`MODE` is in the band rather than in a panel** because it changes what
+    // every other control does. A switch that re-scales the whole window and
+    // sits in a row of ordinary controls gets missed (`.agents/rules/ui.md`).
+    nxe_ui::header::header(cx, "Sparkleur", "five-band dynamics + sparkle", |cx| {
+        nxe_plug_ui::segmented(cx, Ui::params, |params| &params.mode, &["Soft", "Hard"])
+            .describe("How far every macro reaches");
+    });
 }
 
 /// The seven controls that shape the sound, on one line.
@@ -301,8 +356,27 @@ fn shape_row(cx: &mut Context) {
             |params| &params.speed,
         );
 
-        Element::new(cx).width(Stretch(1.0)).height(Pixels(0.0));
+        // **A fixed gap, not a stretched one.** As `Stretch(1.0)` it was an
+        // eighth of the row — a whole knob's cell of nothing, and with the two
+        // neighbouring knobs centred in their own cells the visible hole came
+        // to about 170 px. The break between "what it does" and "how much
+        // arrives" is worth saying; it is not worth a knob (`ui.md`).
+        Element::new(cx)
+            .width(Pixels(theme::SPACE_5))
+            .height(Pixels(0.0));
 
+        // **`FOCUS` is here rather than in Advanced.** It has a knob as well as
+        // the figure's rail for the same reason `MIX` does — the figure is for
+        // reading, a knob is for setting a number — and beside the list of bars
+        // it was a knob on its own, leaving that column short of the table next
+        // to it (`SPK-23`, looked at in a host).
+        knob_block(
+            cx,
+            "FOCUS",
+            "Slides every band edge",
+            OUTPUT_KNOB,
+            |params| &params.focus,
+        );
         knob_block(
             cx,
             "MIX",
@@ -342,7 +416,7 @@ pub(crate) fn knob_block<P, F>(
     VStack::new(cx, |cx| {
         // The tooltip goes on the knob rather than the whole block, so it does
         // not follow the pointer around the label and the number.
-        nxe_plug_ui::knob(cx, Ui::params, to_param, size).tooltip(move |cx| theme::hint(cx, hint));
+        nxe_plug_ui::knob(cx, Ui::params, to_param, size).describe(hint);
         Label::new(cx, label)
             .class("label")
             .height(Pixels(theme::LINE_LABEL));
@@ -376,7 +450,7 @@ where
 fn character_knob(cx: &mut Context) {
     VStack::new(cx, |cx| {
         nxe_plug_ui::knob(cx, Ui::params, |params| &params.character, SHAPE_KNOB)
-            .tooltip(|cx| theme::hint(cx, "POLISH through GLOSS to CRUSH"));
+            .describe("POLISH through GLOSS to CRUSH");
         Label::new(cx, "CHARACTER").class("label");
         font::value(
             cx,
@@ -451,10 +525,62 @@ mod tests {
     /// host's generic view, and **nothing else would notice** — it compiles, it
     /// saves, it automates, and the window simply never mentions it. Thirty-three
     /// is enough of them for one to go missing quietly.
+    /// **The status bar cannot clip.** A sentence longer than the space the
+    /// figures leave is drawn straight over them (`SPK-23`, seen in a host),
+    /// and neither the text handling nor the `clip-path` binding in this vizia
+    /// revision offers a way to cut it. So the limit is enforced here, on the
+    /// source that writes the sentences.
+    #[test]
+    fn no_hint_is_longer_than_the_strip() {
+        const SOURCES: [&str; 4] = [
+            include_str!("mod.rs"),
+            include_str!("advanced.rs"),
+            include_str!("field.rs"),
+            include_str!("curve.rs"),
+        ];
+
+        let mut checked = 0;
+        for source in SOURCES {
+            // **Whitespace flattened first.** The helpers' arguments are found
+            // by the `", "` between a label and its hint, and `cargo fmt` puts
+            // that pair on two lines as soon as the call gains an argument —
+            // which is exactly what happened when the bars gained their marks
+            // (`UI-17`). The scan went on passing and had quietly stopped
+            // looking at five of them.
+            let source: String = source.split_whitespace().collect::<Vec<_>>().join(" ");
+            for rest in source.split(".describe(\"").skip(1) {
+                let hint = rest.split('"').next().unwrap_or_default();
+                checked += 1;
+                assert!(
+                    hint.chars().count() <= nxe_ui::status::MAX_HINT,
+                    "{hint:?} is {} characters",
+                    hint.chars().count()
+                );
+            }
+            // The knob and bar helpers take theirs as an argument, so they are
+            // written at the call site rather than beside `.describe`.
+            for rest in source.split("\", \"").skip(1) {
+                let hint = rest.split('"').next().unwrap_or_default();
+                if hint.starts_with(char::is_uppercase) && hint.contains(' ') {
+                    checked += 1;
+                    assert!(
+                        hint.chars().count() <= nxe_ui::status::MAX_HINT,
+                        "{hint:?} is {} characters",
+                        hint.chars().count()
+                    );
+                }
+            }
+        }
+        // **A floor, not a smoke test.** `> 10` went on passing while a quarter
+        // of the hints had become invisible to the scan. Nineteen is all of
+        // them: seven written beside `.describe`, twelve handed to a helper.
+        assert!(checked >= 19, "the scan found only {checked} hints");
+    }
+
     #[test]
     fn every_parameter_has_a_control() {
         const PARAMS: &str = include_str!("../params.rs");
-        const COUNT: usize = 33;
+        const COUNT: usize = 35;
         const SOURCES: [&str; 4] = [
             include_str!("mod.rs"),
             include_str!("advanced.rs"),

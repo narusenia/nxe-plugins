@@ -2,11 +2,11 @@
 //!
 //! One line holds one source channel. Doubler gives every voice its own read
 //! position on a shared line (`plugins/doubler/docs/specifications/dsp.md`);
-//! Vocal Depth reads a fixed set of taps off one
-//! (`plugins/vocal-depth/docs/specifications/dsp.md`).
+//! Diorama reads a fixed set of taps off one
+//! (`plugins/diorama/docs/specifications/dsp.md`).
 //!
-//! **Written inside `doubler-core` and moved here when Vocal Depth asked for
-//! it** (`VDP-1`) — a shared module is created by the second caller, not in
+//! **Written inside `doubler-core` and moved here when Diorama asked for
+//! it** (`DIO-1`) — a shared module is created by the second caller, not in
 //! anticipation of one (`docs/specifications/architecture.md`).
 //!
 //! Reads are interpolated with a 4-point Catmull-Rom (Hermite) kernel. Linear
@@ -101,9 +101,9 @@ impl DelayLine {
     /// Reads at a whole-sample delay, skipping the interpolator.
     ///
     /// For a caller whose read positions never move, which is where the
-    /// interpolation is pure cost: Vocal Depth reads 13 fixed taps per channel
+    /// interpolation is pure cost: Diorama reads 13 fixed taps per channel
     /// per sample, and Catmull-Rom would be four times the arithmetic for an
-    /// answer it already has exactly (`REQ-VDP-003`).
+    /// answer it already has exactly (`REQ-DIO-003`).
     ///
     /// `delay` is clamped the same way [`read`](Self::read) clamps, so a
     /// parameter-derived tap cannot index outside the line.

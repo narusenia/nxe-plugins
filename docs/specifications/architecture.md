@@ -12,7 +12,7 @@ crates/
   nxe-audio/                      共通の音声処理（カーブ・オーバーサンプラ・
                                   biquad・エンベロープ・相対検出器）
   nxe-dsp/                        共通の解析（レベル・ステレオ像・スペクトラム）
-  nxe-ui/                         共通 Vizia ウィジェット・テーマ・Lucide アイコン
+  nxe-ui/                         共通 Vizia ウィジェット・テーマ・記号
     examples/gallery.rs           ウィジェット一覧を単体アプリとして起動
   nxe-plug-ui/                    nih-plug のパラメータと nxe-ui の結線
 plugins/

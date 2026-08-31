@@ -141,47 +141,73 @@ fn point_of(level_db: f32, gain_db: f32) -> Option<(f32, f32)> {
 /// Where the shown band is sitting on its own curve. Called on the heartbeat —
 /// **not read inside a lens**, which is re-evaluated once per frame
 /// (`nxe_ui::readout`).
-pub(crate) fn poll(params: &SparkleurParams, analysis: &Analysis, point: &mut Option<(f32, f32)>) {
-    let band = shown(params, None);
+pub(crate) fn poll(
+    params: &SparkleurParams,
+    hovered: Option<usize>,
+    analysis: &Analysis,
+    point: &mut Option<(f32, f32)>,
+) {
+    let band = shown(params, hovered);
     *point = point_of(analysis.levels.read()[band], analysis.gains.read()[band]);
 }
 
 pub fn view(cx: &mut Context) {
+    // **The frame is painted from the palette, not from `.panel`.** This panel
+    // sits on the window's inverted surface, and **a stylesheet cannot see a
+    // nested palette**: styled by CSS the ground stayed black while the traces
+    // inverted to black with the surface, and the curve disappeared entirely
+    // (`SPK-23`, seen in a host). Read here, at build time, inside the surface.
+    let palette = theme::palette(cx);
     VStack::new(cx, |cx| {
-        CurveView::new(
-            cx,
-            // Recomputed whenever a parameter or the hover moves, which is what
-            // makes the window follow `CHARACTER`.
-            Ui::params.map(|params| curve_of(params, None)),
-            // No bands, no handles, no analysis behind it: `CurveView` was not
-            // changed to serve this beyond the reference line (`ui.md`).
-            Vec::<nxe_ui::curve::Span>::new(),
-            Vec::<nxe_ui::curve::Grip>::new(),
-            Vec::new(),
-            |_cx, _index, _gesture| {},
-        )
-        .reference(diagonal())
-        .point(Ui::curve_point)
-        // **Both sides given, not stretched.** A stretching plot would take the
-        // height the row hands it and the width the panel hands it, and those
-        // are not the same number.
-        .width(Pixels(PLOT))
-        .height(Pixels(PLOT));
+        // **Bound to the hover, which it was not.** `shown` has taken a hovered
+        // band since `SPK-19` and every call site passed `None`, so pointing at
+        // a region ringed it in the figure and marked its row in the table
+        // while this panel went on drawing PRESENCE — three places disagreeing
+        // about one question (`SPK-23`, seen in a host: AIR ringed, the label
+        // reading PRESENCE).
+        //
+        // A `Binding` rather than a second lens: `Ui::params` and `Ui::hovered`
+        // are two lenses and a `map` can only see one. The subtree is rebuilt
+        // when the pointer crosses into another band, which is not often.
+        Binding::new(cx, Ui::hovered, move |cx, hovered| {
+            let hovered = hovered.get(cx);
+            CurveView::new(
+                cx,
+                // Recomputed whenever a parameter moves, which is what makes
+                // the window follow `CHARACTER`.
+                Ui::params.map(move |params| curve_of(params, hovered)),
+                // No bands, no handles, no analysis behind it: `CurveView` was
+                // not changed to serve this beyond the reference line
+                // (`ui.md`).
+                Vec::<nxe_ui::curve::Span>::new(),
+                Vec::<nxe_ui::curve::Grip>::new(),
+                Vec::new(),
+                |_cx, _index, _gesture| {},
+            )
+            .reference(diagonal())
+            .point(Ui::curve_point)
+            // **Both sides given, not stretched.** A stretching plot would take
+            // the height the row hands it and the width the panel hands it, and
+            // those are not the same number.
+            .width(Pixels(PLOT))
+            .height(Pixels(PLOT));
 
-        // Centred on the label itself, **not with stretch on the column**:
-        // `child-left: 1s` and `child-right: 1s` on the parent are two more
-        // stretches for the curve's own `Stretch(1.0)` width to share, which
-        // left Velour's window drawn a third of the width it was given
-        // (`.agents/rules/vizia.md`).
-        Label::new(
-            cx,
-            Ui::params.map(|params| NAMES[shown(params, None)].to_string()),
-        )
-        .class("subtle")
-        .width(Stretch(1.0))
-        .height(Pixels(LABEL))
-        .child_left(Stretch(1.0))
-        .child_right(Stretch(1.0));
+            // Centred on the label itself, **not with stretch on the column**:
+            // `child-left: 1s` and `child-right: 1s` on the parent are two more
+            // stretches for the curve's own `Stretch(1.0)` width to share, which
+            // left Velour's window drawn a third of the width it was given
+            // (`.agents/rules/vizia.md`).
+            Label::new(
+                cx,
+                Ui::params.map(move |params| NAMES[shown(params, hovered)].to_string()),
+            )
+            .class("subtle")
+            .class("ink-muted")
+            .width(Stretch(1.0))
+            .height(Pixels(LABEL))
+            .child_left(Stretch(1.0))
+            .child_right(Stretch(1.0));
+        });
     })
     // **A frame, like the meter strip's.** Without one the curve is a line
     // floating in the black beside the figure, and it reads as something that
@@ -192,7 +218,11 @@ pub fn view(cx: &mut Context) {
     // and those are two more stretches for the height to be divided among
     // (`.agents/rules/vizia.md`). The panel came out 58 px tall with a 140 px
     // plot hanging out of the bottom of it.
-    .class("panel")
+    .background_color(palette.ground.vizia())
+    .border_width(Pixels(theme::RULE))
+    .border_color(palette.line.vizia())
+    .child_space(Pixels(theme::SPACE_4))
+    .row_between(Pixels(theme::SPACE_3))
     .width(Pixels(WIDTH))
     .height(Pixels(super::field::HEIGHT));
 }

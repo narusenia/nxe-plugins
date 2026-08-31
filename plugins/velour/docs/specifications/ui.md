@@ -69,7 +69,7 @@
 | 層 | 何 | 色 |
 |---|---|---|
 | 一番下 | **原音のスペクトラム**（`REQ-VEL-018`） | `FOREGROUND` を薄く。既存の `.analysis` と同じ約束 — 信号はニュートラル |
-| 中間 | **3 帯域の区画。高さがその帯域の量** | `ACCENT_DEEP` → `ACCENT_BRIGHT` の 3 段。設定はアクセント |
+| 中間 | **3 帯域の区画。高さがその帯域の量** | `palette.deep` → `palette.bright` の 3 段。設定はアクセント |
 | 上 | **生成バスだけのスペクトラム** = 足している倍音そのもの | `ACCENT` の線 |
 
 区画の色を濃淡で刻むのは Doubler の Voice Field と同じ手。**色相は増やさない** —
@@ -139,33 +139,39 @@ Doubler と同じ「図が主役、ノブは図を動かす道具」。
 ### MAIN
 
 ```text
-  DRIVE   BODY   PRESENCE   AIR   TEXTURE   DENSITY
-    ◯      ◯       ◯       ◯      ◯        ◯
-
-                    MIX    OUTPUT
-                     ◯       ◯
+  DRIVE  BODY  PRESENCE  AIR  TEXTURE  DENSITY  │  FOCUS  MIX  OUTPUT
+    ◯      ◯      ◯      ◯      ◯        ◯     │    ◯     ◯      ◯
 ```
+
+**1 行、区切りは 24 px の間。** 左の 6 つが音の形で、大きい。右の 3 つは小さく、
+どれも形ではない——`FOCUS` は図のレールで決めるもので**ここはその数字**、
+`MIX` と `OUTPUT` は届く量。**`FOCUS` は Advanced から出した**（`VEL-20`）。
 
 `TEXTURE` のトラックに **Warm / Clear / Edge** を刻む（`REQ-VEL-004`）。
 離散モードを捨てた代わりに名前という手がかりをここで返す。
 
+**`MODE`（Soft / Hard）はヘッダの枠**、ワードマークの隣（`REQ-VEL-021`、
+Sparkleur と同じ位置）。
+
 ### ADVANCED
 
 ```text
-          BIAS      TEXTURE    SOLO         FOCUS      ◯
-  BODY   ──●──      ──●──      [ ]
-  PRES   ──●──      ──●──      [ ]        GUARD
-  AIR    ──●──      ──●──      [ ]          HARSH  ──●──
-                                            SIB    ──●──
-                                          EMOTION  ──●──
-                                       OVERSAMPLE [2x][4x]
+        ⊣ BIAS     ⋀ TEXTURE   ▮ SOLO      ⌂ HARSH      ──●──
+  BODY  ──●──      ──●──        [ ]        ⌂ SIB        ──●──
+  PRES  ──●──      ──●──        [ ]        ↗ EMOTION    ──●──
+  AIR   ──●──      ──●──        [ ]        ⋮ OVERSAMPLE [2x][4x]
 ```
 
 - `Bias_i` / `Texture_i` / Guard / `EMOTION` は `Bar`（双極は `Bar::bipolar`）
 - `SOLO` は **`.segment` を当てた `Label`** に `checked` と `on_press`。
   `crates/nxe-ui/README.md` の通り**新しいウィジェットは要らない**
-- `FOCUS` は小さい `Knob`（双極）
 - オーバーサンプルは `SegmentedControl`
+- **名前の左に記号を置く**（`nxe_ui::pictogram`、`UI-17`）。上の図の記号は
+  位置を示すためのもので、形ではない（形は gallery が正）。
+  **`HARSH` と `SIB` は同じ記号** — 2 つの帯域に対する 1 つの操作で、記号は
+  パラメータではなく**種類**に付く
+- **右列の 4 行は、最終行が表の最終行と揃うように間隔を計算する**
+  （`SIDE_ROW_GAP`）。4 行と 3 行 + 見出しなので、揃うと言わない限り揃わない
 
 行にポインタが乗ったら `BandField` の対応する区画をハイライトする。Doubler の
 `Ui::hovered`（1 つの値、両方向）をそのまま踏む。

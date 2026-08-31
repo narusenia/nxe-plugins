@@ -102,44 +102,67 @@ pub const WIDTH: f32 = PLOT + theme::SPACE_4 * 2.0;
 const _: () = assert!(PLOT > 0.0);
 
 pub fn view(cx: &mut Context) {
+    // **The frame is painted from the palette, not from `.panel`.** This panel
+    // sits on the window's inverted surface, and **a stylesheet cannot see a
+    // nested palette**: styled by CSS the ground stayed black while the traces
+    // inverted with the surface, and the curve disappeared (`SPK-23`, seen in a
+    // host). Read here, at build time, inside the surface.
+    let palette = theme::palette(cx);
     VStack::new(cx, |cx| {
-        CurveView::new(
-            cx,
-            // Recomputed whenever a parameter or the hover moves, which is what
-            // makes the window follow `TEXTURE`.
-            Ui::params.map(|params| curve_of(params, None)),
-            // No bands, no handles, no analysis behind it: `CurveView` was not
-            // changed to serve this, and it did not need to be (`ui.md`).
-            Vec::<nxe_ui::curve::Span>::new(),
-            Vec::<nxe_ui::curve::Grip>::new(),
-            // One gridline, down the middle: the input's zero, which is what the
-            // asymmetry is read against.
-            vec![0.5],
-            |_cx, _index, _gesture| {},
-        )
-        // **Both sides given, not stretched.** A stretching plot takes the
-        // height the row hands it and the width the panel hands it, and those
-        // are not the same number.
-        .width(Pixels(PLOT))
-        .height(Pixels(PLOT));
+        // **Bound to the hover, which it was not.** `shown` has taken a hovered
+        // band since `VEL-13` and every call site passed `None`, so pointing at
+        // a region ringed it in the figure and marked its row in the table while
+        // this panel went on drawing PRESENCE — three places disagreeing about
+        // one question. Sparkleur had the same defect and it was found by
+        // looking at a screenshot (`SPK-23`).
+        //
+        // A `Binding` rather than a second lens: `Ui::params` and `Ui::hovered`
+        // are two lenses and a `map` can only see one.
+        Binding::new(cx, Ui::hovered, move |cx, hovered| {
+            let hovered = hovered.get(cx);
+            CurveView::new(
+                cx,
+                // Recomputed whenever a parameter moves, which is what makes
+                // the window follow `TEXTURE`.
+                Ui::params.map(move |params| curve_of(params, hovered)),
+                // No bands, no handles, no analysis behind it: `CurveView` was
+                // not changed to serve this, and it did not need to be
+                // (`ui.md`).
+                Vec::<nxe_ui::curve::Span>::new(),
+                Vec::<nxe_ui::curve::Grip>::new(),
+                // One gridline, down the middle: the input's zero, which is
+                // what the asymmetry is read against.
+                vec![0.5],
+                |_cx, _index, _gesture| {},
+            )
+            // **Both sides given, not stretched.** A stretching plot takes the
+            // height the row hands it and the width the panel hands it, and
+            // those are not the same number.
+            .width(Pixels(PLOT))
+            .height(Pixels(PLOT));
 
-        // Centred on the label itself, **not with stretch on the column**:
-        // `child-left: 1s` and `child-right: 1s` on the parent are two more
-        // stretches for the curve's own `Stretch(1.0)` width to share, which
-        // left it drawn a third of the width it was given
-        // (`.agents/rules/vizia.md`).
-        Label::new(
-            cx,
-            Ui::params.map(|params| NAMES[shown(params, None)].to_string()),
-        )
-        .class("subtle")
-        .width(Stretch(1.0))
-        .height(Pixels(LABEL))
-        .child_left(Stretch(1.0))
-        .child_right(Stretch(1.0));
+            // Centred on the label itself, **not with stretch on the column**:
+            // `child-left: 1s` and `child-right: 1s` on the parent are two more
+            // stretches for the curve's own `Stretch(1.0)` width to share,
+            // which left it drawn a third of the width it was given
+            // (`.agents/rules/vizia.md`).
+            Label::new(
+                cx,
+                Ui::params.map(move |params| NAMES[shown(params, hovered)].to_string()),
+            )
+            .class("subtle")
+            .class("ink-muted")
+            .width(Stretch(1.0))
+            .height(Pixels(LABEL))
+            .child_left(Stretch(1.0))
+            .child_right(Stretch(1.0));
+        });
     })
     // **A frame, like the meter strip's** (`SPK-15`).
-    .class("panel")
+    .background_color(palette.ground.vizia())
+    .border_width(Pixels(theme::RULE))
+    .border_color(palette.line.vizia())
+    .child_space(Pixels(theme::SPACE_4))
     .width(Pixels(WIDTH))
     .height(Pixels(super::field::HEIGHT))
     .row_between(Pixels(theme::SPACE_1));

@@ -93,16 +93,20 @@ pub(crate) fn poll(analysis: &Analysis, figures: &mut [String], gauges: &mut [f3
     }
 }
 
-pub fn view(cx: &mut Context) {
-    nxe_ui::readout::strip(cx, |cx| {
-        nxe_ui::readout::cell(cx, "IN", Ui::readouts.index(IN), "dB");
-        nxe_ui::readout::cell(cx, "OUT", Ui::readouts.index(OUT), "dB");
-        nxe_ui::readout::cell(cx, "GUARD", Ui::readouts.index(GUARD), "dB");
-        nxe_ui::readout::cell(cx, "WIDTH", Ui::readouts.index(WIDTH), "");
-
-        for (position, (name, _)) in DETECTORS.iter().enumerate() {
-            nxe_ui::readout::meter_cell(cx, name, Ui::gauges.index(position));
-        }
+/// The strip at the foot of the window: the hover's one-line description on
+/// the left, these on the right (`nxe_ui::status`).
+///
+/// **The three detector gauges are not here.** Seven cells and a sentence do
+/// not fit on one line, and the gauges were the ones in the wrong place: a
+/// reading of what `ENV` is doing belongs beside the `ENV` deviation it
+/// explains, which is where `AIR-14` moved them. Four figures leave the
+/// sentence most of the strip.
+pub fn status(cx: &mut Context) {
+    nxe_ui::status::bar(cx, |cx| {
+        nxe_ui::status::figure(cx, "IN", Ui::readouts.index(IN), "dB");
+        nxe_ui::status::figure(cx, "OUT", Ui::readouts.index(OUT), "dB");
+        nxe_ui::status::figure(cx, "GUARD", Ui::readouts.index(GUARD), "dB");
+        nxe_ui::status::figure(cx, "WIDTH", Ui::readouts.index(WIDTH), "");
     });
 }
 

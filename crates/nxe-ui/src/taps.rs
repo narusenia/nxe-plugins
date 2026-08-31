@@ -4,7 +4,7 @@
 //! the left edge; every reflection stands where it arrives. Moving a voice away
 //! moves the weight of the picture to the right, which is the same gesture the
 //! ear makes sense of — so the figure is the mechanism rather than a
-//! visualisation of it (`plugins/vocal-depth/docs/specifications/ui.md`).
+//! visualisation of it (`plugins/diorama/docs/specifications/ui.md`).
 //!
 //! ## Why not a spectrum
 //!
@@ -16,7 +16,7 @@
 //!
 //! ## What it does not draw
 //!
-//! **No decay curve, no tail.** The plugin has neither (`REQ-VDP-020`), and a
+//! **No decay curve, no tail.** The plugin has neither (`REQ-DIO-020`), and a
 //! drawn envelope would promise one. **No frequency information**: the damping
 //! is a readout, not a shape here, because two quantities in one picture with no
 //! axis for the second is how a figure stops being readable.
@@ -111,6 +111,7 @@ impl View for TapField {
     }
 
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
+        let palette = theme::palette(cx);
         let bounds = cx.bounds();
         let scale = cx.scale_factor();
         let line = scale.max(1.0);
@@ -121,7 +122,7 @@ impl View for TapField {
         frame.rect(bounds.x, bounds.y, bounds.w, bounds.h);
         canvas.stroke_path(
             &frame,
-            &vg::Paint::color(theme::BORDER.vg()).with_line_width(line),
+            &vg::Paint::color(palette.line.vg()).with_line_width(line),
         );
 
         // The floor the stems stand on, which is what makes the picture read as
@@ -131,12 +132,10 @@ impl View for TapField {
         floor.line_to(bounds.x + bounds.w, bottom - line);
         canvas.stroke_path(
             &floor,
-            &vg::Paint::color(theme::BORDER.vg()).with_line_width(line),
+            &vg::Paint::color(palette.line.vg()).with_line_width(line),
         );
 
-        // **The ramp spans the whole plot**, so two stems of the same height are
-        // the same colour whatever else is on screen (`theme::accent_paint`).
-        let paint = theme::accent_paint(bounds.x, bottom, bounds.x, bounds.y);
+        let paint = vg::Paint::color(palette.accent.vg());
 
         // **Every stem in one path, filled once.** They all take the same
         // paint, and femtovg gives every `fill_path` its own draw call whatever

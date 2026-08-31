@@ -35,18 +35,33 @@
 //! reported, and guessing at it is how this investigation went wrong twice.
 //!
 //! Unset or `0` leaves the window idle, which stays the default.
+//!
+//! ## Palettes
+//!
+//! `NXE_GALLERY_PALETTE` picks which plugin's palette the **stylesheet** is
+//! built from (`doubler` / `velour` / `sparkleur` / `air` / `diorama`;
+//! `air` is the default). It has to be chosen at startup because vizia has no
+//! way to replace a stylesheet once it is added.
+//!
+//! **The custom-drawn widgets do not need it.** They read the palette from the
+//! nearest `Palette` model above them, so the PALETTES panel shows all five at
+//! once — that is the half of `theme::install` the plugins never exercise.
 
 use nxe_ui::band::{Band, BandField, BandFieldModifiers, BandGesture};
 use nxe_ui::bar::Bar;
 use nxe_ui::curve::{Curve, CurveView, CurveViewModifiers, Grip, Span};
 use nxe_ui::dots::DotField;
 use nxe_ui::entry::ValueEntry;
+use nxe_ui::hint::Describe;
 use nxe_ui::input::Gesture;
 use nxe_ui::knob::Knob;
+use nxe_ui::logo;
 use nxe_ui::meter::Meter;
+use nxe_ui::pictogram;
 use nxe_ui::polar::{FieldGesture, FieldPoint, PolarField, PolarFieldModifiers};
 use nxe_ui::segmented::SegmentedControl;
-use nxe_ui::{font, icon, theme};
+use nxe_ui::surface;
+use nxe_ui::{font, theme};
 use std::time::Duration;
 use vizia::prelude::*;
 
@@ -63,6 +78,8 @@ struct Demo {
     rows: Vec<f32>,
     voices: usize,
     source: usize,
+    /// What the mode slot in the header holds on the two plugins that have one.
+    mode: usize,
     /// The Doubler's default shape, read as pan and delay.
     field: Vec<FieldPoint>,
     /// How far the source markers sit from the origin. Dragging one moves them
@@ -159,6 +176,7 @@ enum DemoEvent {
     SetRow(usize, f32),
     SetVoices(usize),
     SetSource(usize),
+    SetMode(usize),
     MovePoint {
         index: usize,
         angle: f32,
@@ -318,6 +336,7 @@ impl Model for Demo {
                 self.source = *index;
                 self.anchors = anchors_of(self.source, self.anchor_radius);
             }
+            DemoEvent::SetMode(index) => self.mode = *index,
             DemoEvent::Gesture(name) => self.last_gesture = (*name).to_owned(),
             DemoEvent::ToggleDetail => self.detail_open = !self.detail_open,
             DemoEvent::SetBand(index, level) => {
@@ -407,9 +426,23 @@ fn motion_hz() -> u32 {
     rate_from("NXE_GALLERY_HZ")
 }
 
+/// Which palette the stylesheet is built from, out of `NXE_GALLERY_PALETTE`.
+///
+/// **Only the stylesheet.** Everything drawn by hand follows whichever
+/// `Palette` model is nearest above it, which is why the PALETTES panel can
+/// show five at once.
+fn palette_from_env() -> theme::Palette {
+    let name = std::env::var("NXE_GALLERY_PALETTE").unwrap_or_default();
+    theme::Palette::ALL
+        .into_iter()
+        .find(|(plugin, _)| plugin.eq_ignore_ascii_case(&name))
+        .map(|(_, palette)| palette)
+        .unwrap_or(theme::Palette::AIR)
+}
+
 fn main() {
     Application::new(|cx| {
-        theme::install(cx);
+        theme::install(cx, palette_from_env());
 
         // **Started before the model, because the model holds what stops it**
         // (`nxe_ui::heartbeat`).
@@ -449,6 +482,7 @@ fn main() {
             ],
             voices: 1,
             source: 0,
+            mode: 0,
             field: default_field(),
             anchor_radius: 0.10,
             anchors: anchors_of(0, 0.10),
@@ -494,7 +528,12 @@ fn main() {
         // the start rather than when someone notices it has stopped fitting.
         ScrollView::new(cx, 0.0, 0.0, false, true, |cx| {
             VStack::new(cx, |cx| {
-                nxe_ui::header::header(cx, "nxe-ui", "tokens and widgets");
+                nxe_ui::header::header(cx, "nxe-ui", "tokens and widgets", |cx| {
+                    SegmentedControl::new(cx, Demo::mode, &["Soft", "Hard"], |cx, index| {
+                        cx.emit(DemoEvent::SetMode(index));
+                    })
+                    .describe("how far the macros are allowed to reach");
+                });
 
                 grid(cx);
                 readouts(cx);
@@ -509,7 +548,7 @@ fn main() {
                 tap_field(cx);
                 meters(cx);
                 detail(cx);
-                icons(cx);
+                pictograms(cx);
                 shapes(cx);
                 spacing(cx);
                 text(cx);
@@ -578,8 +617,8 @@ fn readouts(cx: &mut Context) {
     });
 }
 
-/// The Swiss layer: eyebrows over rules, one readout per region, and the accent
-/// as a gradient rather than a block.
+/// The Swiss layer: eyebrows over rules, one readout per region, and the flat
+/// accent fill.
 ///
 /// **This panel is the design, not a widget.** Everything below it is a control
 /// that happens to be styled; this is the grid those controls sit on, shown on
@@ -615,19 +654,18 @@ fn grid(cx: &mut Context) {
         .height(Auto)
         .col_between(Pixels(theme::SPACE_4));
 
-        Element::new(cx).class("rule-accent");
-
-        // The two rules, side by side, so the weight difference is visible.
+        // The rule. **One kind** — the 2 px accent bar under the wordmark was
+        // the only other one, and it went with the wordmark's redesign.
         VStack::new(cx, |cx| {
             Label::new(cx, "rule").class("subtle");
             Element::new(cx).class("rule");
-            Label::new(cx, "rule-accent").class("subtle");
-            Element::new(cx).class("rule-accent");
         })
         .height(Auto)
         .row_between(Pixels(theme::SPACE_2));
 
-        // The gradient fill, horizontal and vertical.
+        // The fill, lying down and standing up. **One class for both**: a flat
+        // fill has no direction to get wrong, which is half of why it replaced
+        // the ramp.
         HStack::new(cx, |cx| {
             VStack::new(cx, |cx| {
                 Label::new(cx, "accent").class("subtle");
@@ -638,9 +676,9 @@ fn grid(cx: &mut Context) {
             .row_between(Pixels(theme::SPACE_1));
 
             VStack::new(cx, |cx| {
-                Label::new(cx, "accent-up").class("subtle");
+                Label::new(cx, "accent · upright").class("subtle");
                 Element::new(cx)
-                    .class("accent-up")
+                    .class("accent")
                     .width(Pixels(10.0))
                     .height(Pixels(48.0));
             })
@@ -650,6 +688,58 @@ fn grid(cx: &mut Context) {
         })
         .height(Auto)
         .col_between(Pixels(theme::SPACE_4));
+    });
+}
+
+/// The strip along the bottom of a window.
+///
+/// **In a panel here rather than at the foot of the gallery**, because the
+/// gallery scrolls and a window does not — pinning it to the bottom of a
+/// scrolling page would say something about it that is not true.
+fn status(cx: &mut Context) {
+    panel(cx, "STATUS BAR", |cx| {
+        Label::new(
+            cx,
+            "hover a control anywhere and this says what it is; the window's one inverted surface",
+        )
+        .class("subtle");
+        nxe_ui::status::bar(cx, |cx| {
+            nxe_ui::status::figure(cx, "IN", Demo::readouts.index(0), "dB");
+            nxe_ui::status::figure(cx, "OUT", Demo::readouts.index(1), "dB");
+            nxe_ui::status::gauge(cx, "GATE", Demo::gauge);
+        });
+    });
+}
+
+/// The vendor's mark at the sizes it might be used at.
+///
+/// **A logotype has no descenders to give it air**, so it goes loud a size
+/// before a letterform would. The header uses the smallest of these; the row
+/// exists so that judgement can be made by looking rather than by arguing.
+fn logotype(cx: &mut Context) {
+    panel(cx, "LOGOTYPE", |cx| {
+        HStack::new(cx, |cx| {
+            for (label, height) in [("10", 10.0f32), ("14", 14.0), ("20", 20.0), ("32", 32.0)] {
+                VStack::new(cx, move |cx| {
+                    logo::Mark::new(cx)
+                        .width(Pixels(logo::width_at(height)))
+                        .height(Pixels(height));
+                    Label::new(cx, label).class("subtle");
+                })
+                .width(Auto)
+                .height(Auto)
+                .row_between(Pixels(theme::SPACE_2));
+            }
+        })
+        .class("row")
+        .height(Auto)
+        .col_between(Pixels(theme::SPACE_5));
+
+        Label::new(
+            cx,
+            "drawn from assets/nxe/logo.svg; painted with subtle, so it inverts with the surface",
+        )
+        .class("subtle");
     });
 }
 
@@ -664,17 +754,105 @@ fn colours(cx: &mut Context) {
         .height(Auto);
     });
 
-    panel(cx, "TEXT AND ACCENT", |cx| {
+    panel(cx, "TEXT", |cx| {
         HStack::new(cx, |cx| {
             swatch(cx, "foreground", theme::FOREGROUND);
             swatch(cx, "muted", theme::MUTED);
             swatch(cx, "subtle", theme::SUBTLE);
-            swatch(cx, "accent", theme::ACCENT);
-            swatch(cx, "accent-bright", theme::ACCENT_BRIGHT);
-            swatch(cx, "accent-dim", theme::ACCENT_DIM);
         })
         .class("row")
         .height(Auto);
+    });
+
+    palettes(cx);
+    logotype(cx);
+    status(cx);
+    inverted(cx);
+}
+
+/// The one panel in a window whose ground is the accent.
+///
+/// **Both grounds, one above the other**, because the question is never how the
+/// inverted panel looks on its own — it is whether the two read as one window.
+fn inverted(cx: &mut Context) {
+    panel(cx, "INVERTED SURFACE", |cx| {
+        Label::new(
+            cx,
+            "the figure the window exists to show goes here; rows of controls stay on black",
+        )
+        .class("subtle");
+
+        surface::inverted(cx, |cx| {
+            Label::new(cx, "FIELD").class("eyebrow").class("ink-muted");
+            HStack::new(cx, |cx| {
+                Knob::new(cx, 0.62, |_, _| {}).size(Pixels(56.0));
+                VStack::new(cx, |cx| {
+                    // Sized like the BARS panel below. A bar with no height is
+                    // a hairline, which is how the first version of this panel
+                    // looked like the palette was broken when it was not.
+                    Bar::new(cx, 0.62, |_, _| {})
+                        .height(Pixels(10.0))
+                        .width(Stretch(1.0));
+                    Bar::bipolar(cx, 0.30, |_, _| {})
+                        .height(Pixels(10.0))
+                        .width(Stretch(1.0));
+                    Meter::horizontal(cx, 0.55, 0.72, vec![0.25, 0.5, 0.75])
+                        .height(Pixels(10.0))
+                        .width(Stretch(1.0));
+                })
+                .height(Auto)
+                .width(Stretch(1.0))
+                .row_between(Pixels(theme::SPACE_2));
+            })
+            .class("row")
+            .height(Auto);
+            Label::new(cx, "a word on the accent needs .ink").class("ink");
+        })
+        .height(Auto);
+    });
+}
+
+/// The five accent ramps, and the same drawn widget under each of them.
+///
+/// **The swatches prove the values; the bars prove the path.** A swatch is an
+/// `Element` with its colour set directly, so it would look right even if
+/// nothing could reach the palette at draw time. The `Bar` under each nested
+/// `Palette` model is the actual mechanism the plugins use — if that path
+/// breaks, this row goes uniform and the swatches above it do not.
+fn palettes(cx: &mut Context) {
+    panel(cx, "PALETTES", |cx| {
+        HStack::new(cx, |cx| {
+            for (name, palette) in theme::Palette::ALL {
+                VStack::new(cx, move |cx| {
+                    palette.build(cx);
+                    // Three stops, no labels on them: five ramps side by side
+                    // do not have room for fifteen words, and the point of the
+                    // row is the comparison rather than the names.
+                    HStack::new(cx, move |cx| {
+                        for stop in [palette.bright, palette.accent, palette.deep] {
+                            Element::new(cx)
+                                .width(Stretch(1.0))
+                                .height(Pixels(36.0))
+                                .background_color(stop.vizia());
+                        }
+                    })
+                    .height(Auto)
+                    .width(Stretch(1.0));
+                    // Drawn, not a swatch: this is the path a plugin uses, and
+                    // it is the half that would break silently.
+                    Bar::new(cx, 0.62, |_, _| {})
+                        .height(Pixels(10.0))
+                        .width(Stretch(1.0));
+                    Label::new(cx, name).class("label");
+                })
+                .width(Stretch(1.0))
+                .height(Auto)
+                .row_between(Pixels(theme::SPACE_2));
+            }
+        })
+        .class("row")
+        .height(Auto)
+        .col_between(Pixels(theme::SPACE_3));
     });
 }
 
@@ -787,7 +965,8 @@ fn segments(cx: &mut Context) {
             Label::new(cx, "VOICES").class("label");
             SegmentedControl::new(cx, Demo::voices, &["2", "4", "8"], |cx, index| {
                 cx.emit(DemoEvent::SetVoices(index));
-            });
+            })
+            .describe("how many copies of the voice are generated");
 
             Label::new(cx, "SOURCE").class("label");
             SegmentedControl::new(
@@ -795,7 +974,8 @@ fn segments(cx: &mut Context) {
                 Demo::source,
                 &["Mono Sum", "True Stereo"],
                 |cx, index| cx.emit(DemoEvent::SetSource(index)),
-            );
+            )
+            .describe("whether the two channels are summed before the split");
         })
         .class("row")
         .height(Auto);
@@ -1155,7 +1335,7 @@ fn band_field(cx: &mut Context) {
 
 /// A stand-in for a generated layer: a broad rise with a couple of peaks in it,
 /// so the field has something with shape to draw.
-/// Ten arrivals with a window over them, the shape Vocal Depth's reflections
+/// Ten arrivals with a window over them, the shape Diorama's reflections
 /// have. `distance` slides the window, which is what its `DEPTH` does.
 fn sample_taps(distance: f32) -> Vec<nxe_ui::taps::Tap> {
     const MS: [f32; 10] = [11.0, 13.0, 17.0, 23.0, 31.0, 43.0, 53.0, 67.0, 79.0, 89.0];
@@ -1333,17 +1513,21 @@ fn detail(cx: &mut Context) {
 
     panel(cx, "DETAIL (disclosure)", |cx| {
         HStack::new(cx, |cx| {
-            icon::label(
-                cx,
-                Demo::detail_open.map(|open| {
-                    if *open {
-                        icon::CHEVRON_UP
-                    } else {
-                        icon::CHEVRON_DOWN
-                    }
-                }),
-            )
-            .class("decoration");
+            // **A `Binding` rather than a lens on the glyph.** A `Pictogram`
+            // takes its drawing at build time, so the way it changes is the
+            // subtree being rebuilt — which for a control that flips on a
+            // click is once, not once a frame.
+            Binding::new(cx, Demo::detail_open, |cx, open| {
+                let glyph = if open.get(cx) {
+                    pictogram::DISCLOSURE_OPEN
+                } else {
+                    pictogram::DISCLOSURE
+                };
+                pictogram::Pictogram::weighted(cx, glyph, pictogram::WEIGHT_STRONG)
+                    .class("decoration")
+                    .width(Pixels(theme::LINE_LABEL))
+                    .height(Pixels(theme::LINE_LABEL));
+            });
             Label::new(cx, "DETAIL").class("label").class("decoration");
         })
         .class("hoverable")
@@ -1394,44 +1578,71 @@ fn detail(cx: &mut Context) {
     });
 }
 
-fn icons(cx: &mut Context) {
-    panel(cx, "ICONS", |cx| {
-        // The ones the Doubler UI actually uses. Anything added to a plugin
-        // gets a row here in the same change (`.agents/rules/vizia.md`).
+/// The plugins' own symbols (`UI-17`).
+///
+/// **Shown at the size they are actually used at, and at 12 px first.** The
+/// smallest place any of these lands is a table's column heading, and a drawing
+/// that only works at 32 px is a drawing that does not work.
+fn pictograms(cx: &mut Context) {
+    panel(cx, "PICTOGRAMS", |cx| {
         HStack::new(cx, |cx| {
-            for (glyph, name) in [
-                (icon::CHEVRON_DOWN, "chevron-down"),
-                (icon::CHEVRON_UP, "chevron-up"),
-                (icon::SLIDERS_HORIZONTAL, "sliders-horizontal"),
-                (icon::ROTATE_CCW, "rotate-ccw"),
-            ] {
+            for (name, glyph) in pictogram::ALL {
                 VStack::new(cx, |cx| {
-                    icon::label(cx, glyph).font_size(24.0);
+                    for (size, weight) in [
+                        (theme::LINE_EYEBROW, pictogram::WEIGHT),
+                        (theme::LINE_LABEL, pictogram::WEIGHT),
+                        (28.0, pictogram::WEIGHT_STRONG),
+                    ] {
+                        pictogram::Pictogram::weighted(cx, glyph, weight)
+                            .width(Pixels(size))
+                            .height(Pixels(size));
+                    }
                     Label::new(cx, name).class("subtle");
                 })
                 .width(Auto)
                 .height(Auto)
-                .row_between(Pixels(theme::SPACE_1));
+                .row_between(Pixels(theme::SPACE_2))
+                .child_left(Stretch(1.0))
+                .child_right(Stretch(1.0));
             }
         })
         .class("row")
-        .height(Auto);
+        .height(Auto)
+        .col_between(Pixels(theme::SPACE_3));
 
         Element::new(cx).class("divider");
 
-        // Size and colour are `font-size` and `color`, like any other text.
+        // **The pair is the point** — a mark on its own buys the reader the
+        // same puzzle the reference designs sell (`.agents/rules/ui.md`).
         HStack::new(cx, |cx| {
-            for size in [12.0, 16.0, 20.0, 28.0] {
-                icon::label(cx, icon::WAVES).font_size(size);
+            for (name, glyph) in [
+                ("UP", pictogram::UP),
+                ("DOWN", pictogram::DOWN),
+                ("GAIN", pictogram::TRIM),
+                ("SOLO", pictogram::SOLO),
+            ] {
+                pictogram::heading(cx, glyph, name).width(Auto);
             }
-            icon::label(cx, icon::WAVES)
-                .font_size(28.0)
-                .color(theme::ACCENT.vizia());
         })
         .class("row")
-        .height(Auto);
+        .height(Auto)
+        .col_between(Pixels(theme::SPACE_4));
 
-        Label::new(cx, "2035 icons; stroke width is fixed by the font").class("subtle");
+        HStack::new(cx, |cx| {
+            for (name, glyph) in [
+                ("DE-HARSH", pictogram::DE_HARSH),
+                ("SNAP", pictogram::SNAP),
+                ("PUNCH", pictogram::PUNCH),
+                ("MIRROR", pictogram::MIRROR),
+            ] {
+                pictogram::label(cx, glyph, name).width(Auto);
+            }
+        })
+        .class("row")
+        .height(Auto)
+        .col_between(Pixels(theme::SPACE_4));
+
+        Label::new(cx, "drawn paths; the weight follows the hierarchy").class("subtle");
     });
 }
 
@@ -1472,11 +1683,12 @@ fn spacing(cx: &mut Context) {
             ("24", theme::SPACE_5),
         ] {
             HStack::new(cx, |cx| {
+                let accent = theme::palette(cx).accent.vizia();
                 Label::new(cx, name).class("subtle").width(Pixels(24.0));
                 for _ in 0..4 {
                     Element::new(cx)
                         .size(Pixels(16.0))
-                        .background_color(theme::ACCENT.vizia())
+                        .background_color(accent)
                         .border_radius(Pixels(theme::RADIUS_CONTROL));
                 }
             })
@@ -1488,19 +1700,18 @@ fn spacing(cx: &mut Context) {
 
 fn text(cx: &mut Context) {
     panel(cx, "TEXT", |cx| {
-        // Both, side by side: the wordmark is the one place the bold face is
-        // used, so the panel has to show what it looks like against the plain
-        // one it is an exception to.
-        font::title(cx, "TITLE — the wordmark, 17, bold");
+        // One weight. The wordmark is apart by size, not by weight — two
+        // attempts at a weight for it are recorded in `font.rs`.
+        font::title(cx, "TITLE — the wordmark, 18");
         Label::new(cx, "TITLE — the same class, regular").class("title");
         Label::new(cx, "LABEL — names a thing, 12, muted").class("label");
-        Label::new(cx, "Value — says what it is, 10, Geist Sans").class("value");
+        Label::new(cx, "Value — says what it is, 10, Inter").class("value");
         Label::new(cx, "Subtle — gridlines, units, disabled rows").class("subtle");
         Element::new(cx).class("divider");
         font::value(cx, "-12.0 ct    22.0 ms    L70    0.0 dB");
         Label::new(
             cx,
-            "figures are Geist Mono: a digit changing does not shift the rest",
+            "figures stay in Geist Mono: a digit changing does not shift the rest",
         )
         .class("subtle");
 

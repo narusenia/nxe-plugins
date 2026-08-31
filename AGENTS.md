@@ -25,8 +25,8 @@ with the code, and fix the document in the same change.
 - `crates/nxe-plug-ui`: the adapter between nih-plug's parameters and the
   `nxe-ui` widgets — **the only crate allowed to know both**. Separate from
   `nxe-ui` so that `examples/gallery` never links nih-plug
-- `crates/nxe-ui`: shared Vizia widgets, theme tokens, and the embedded Lucide
-  icon font. **Depends on Vizia only, never on nih-plug** — widgets take a
+- `crates/nxe-ui`: shared Vizia widgets, theme tokens, and the plugins' own
+  drawn symbols. **Depends on Vizia only, never on nih-plug** — widgets take a
   value plus a callback, and each plugin owns the thin adapter that binds them
   to its own parameters. `examples/gallery.rs` runs every widget as a plain
   desktop app, which is how UI work is iterated without launching a DAW.
@@ -51,9 +51,15 @@ with the code, and fix the document in the same change.
   on the audio path. `noise` is the only block written for it, and it is
   written not to know what Air is: two more plugins want a noise generator, and
   the second to ask moves the file into `nxe-audio` unchanged
-- `plugins/air/air`: the Air nih-plug wrapper. **Being built**: parameters and
-  `process` are in (`AIR-4`), the Follow Engine, the protection and the whole
-  interface are not
+- `plugins/air/air`: the Air nih-plug wrapper — parameter declarations, the
+  Vizia UI, and the binding between them
+- `plugins/diorama/diorama-core`: the Diorama DSP — a vocal's distance, built
+  from early reflections and a direct path that is itself processed. **No
+  reverb tail**: 10–120 ms only. Host-agnostic, allocation-free on the audio
+  path
+- `plugins/diorama/diorama`: the Diorama nih-plug wrapper. **Not shipped yet** —
+  the only one of the five that has never been released, which is why it could
+  still be renamed (`DIO-15`, it was `Vocal Depth`)
 - `docs/`: monorepo-wide documents (architecture, cross-plugin backlog and
   roadmap). Indexed by `docs/README.md`
 - `plugins/<name>/docs/`: that plugin's own requirements, specifications, and
@@ -77,6 +83,10 @@ follows. That string is the plugin's `NAME`, its bundle name in `bundler.toml`,
 and how it appears in a host's plugin list. The **crate** keeps the bare name
 (`doubler`, `doubler-core`) so paths stay short, and the documents use the bare
 name as shorthand.
+
+**The window's wordmark is the bare name** — `Doubler`, with `NXE` beside it as
+its own small mark (`UI-19`). The list has already been read by the time the
+window is open, so repeating the vendor inside it buys nothing.
 
 The vendor is `NXE`. CLAP ids are `com.nxe.<name>`. **A shipped `CLAP_ID` or
 `VST3_CLASS_ID` must never change** — a host stores it in the project file, so

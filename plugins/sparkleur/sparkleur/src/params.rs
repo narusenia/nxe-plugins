@@ -4,7 +4,7 @@
 //! nih-plug, so the translation lives here
 //! (`docs/specifications/architecture.md`).
 //!
-//! **Thirty-three parameters, seven of them everyday** (`ui.md`). Adding one
+//! **Thirty-five parameters, seven of them everyday** (`ui.md`). Adding one
 //! later is safe — nih-plug keys them by id, not by position — but **changing
 //! or removing an id is not**, so the ids below are as final as `CLAP_ID`.
 //!
@@ -19,7 +19,9 @@
 use nih_plug::prelude::*;
 use nxe_audio::oversample::Factor;
 use sparkleur_core::character;
+use sparkleur_core::dynamics::Mode;
 use sparkleur_core::engine::{Levels, Shape};
+use std::sync::Arc;
 
 /// How hard the Sparkle bus runs internally.
 ///
@@ -33,6 +35,36 @@ pub enum FactorParam {
     #[id = "4x"]
     #[name = "4x"]
     Four,
+}
+
+/// How far the macros are allowed to reach (`REQ-SPK-022`).
+///
+/// A separate type from `sparkleur_core::dynamics::Mode` for the same reason
+/// [`FactorParam`] is: deriving nih-plug's `Enum` on the shared type would make
+/// the core depend on nih-plug.
+///
+/// **The variants carry `#[id]`, and that is what makes this safe to extend.**
+/// nih-plug writes an enum with ids into saved state as its id string rather
+/// than as a number, so a third step can be added later without moving what an
+/// existing session means.
+#[derive(Enum, Debug, PartialEq, Eq, Clone, Copy, Default)]
+pub enum ModeParam {
+    #[id = "soft"]
+    #[name = "Soft"]
+    #[default]
+    Soft,
+    #[id = "hard"]
+    #[name = "Hard"]
+    Hard,
+}
+
+impl From<ModeParam> for Mode {
+    fn from(value: ModeParam) -> Self {
+        match value {
+            ModeParam::Soft => Mode::Soft,
+            ModeParam::Hard => Mode::Hard,
+        }
+    }
 }
 
 impl From<FactorParam> for Factor {
@@ -87,12 +119,29 @@ pub struct SparkleurParams {
     #[id = "lift"]
     pub lift: FloatParam,
 
+    /// How hard a transient is hit (`REQ-SPK-020`).
+    ///
+    /// **Zero by default.** It is measurable now — the attack stands further
+    /// above the body — but whether it is *wanted* is still an ear's call, and
+    /// a plugin that arrives already hitting has made that call for everyone
+    /// (`SPK-22`).
+    #[id = "punch"]
+    pub punch: FloatParam,
+
     /// Deviations from what `CHARACTER` chose for the two protections
     /// (`REQ-SPK-008`).
     #[id = "deharsh"]
     pub de_harsh: FloatParam,
     #[id = "subprot"]
     pub sub_protect: FloatParam,
+
+    /// How far the macros reach (`REQ-SPK-022`).
+    ///
+    /// **The default is `Soft`, and it has to be.** A session saved before this
+    /// parameter existed has no value for it, so it loads with the default —
+    /// anything but `Soft` changes the sound of work that is already finished.
+    #[id = "mode"]
+    pub mode: EnumParam<ModeParam>,
 
     #[id = "os"]
     pub oversample: EnumParam<FactorParam>,
@@ -193,9 +242,12 @@ impl Default for SparkleurParams {
             // Closed. The floor is the thing that stops silence coming up, and
             // opening it is a deliberate move toward OTT (`REQ-SPK-003`).
             lift: percentage("Lift", 0.0),
+            punch: percentage("Punch", 0.0),
 
             de_harsh: bipolar("De-Harsh"),
             sub_protect: bipolar("Sub Protect"),
+
+            mode: EnumParam::new("Mode", ModeParam::Soft),
 
             // 4x by default: 2x is a cost saving, not an equal — it leaves
             // aliasing about 14 dB higher (`nxe_audio::oversample`).
@@ -230,6 +282,13 @@ impl Default for SparkleurParams {
 
 /// A `-1..=1` control resting at zero. Five of these, so the shape lives in one
 /// place and a deviation from it would be visible.
+///
+/// **Read as a signed percentage.** It used to print `0.00`: a bare number with
+/// no unit, sitting in a row where everything else said `35 %`, `100 %`,
+/// `0.0 dB` or `0.00 oct`. Three of the seven macro knobs read that way and
+/// none of them said what the number was. And the sign is always printed, for
+/// the reason every other figure here prints it — a minus that appears the
+/// moment the knob crosses centre makes the row twitch (`.agents/rules/ui.md`).
 fn bipolar(name: &'static str) -> FloatParam {
     FloatParam::new(
         name,
@@ -240,7 +299,15 @@ fn bipolar(name: &'static str) -> FloatParam {
         },
     )
     .with_smoother(SmoothingStyle::Linear(30.0))
-    .with_value_to_string(formatters::v2s_f32_rounded(2))
+    .with_value_to_string(Arc::new(|value| format!("{:+.0} %", value * 100.0)))
+    .with_string_to_value(Arc::new(|text| {
+        text.trim()
+            .trim_end_matches('%')
+            .trim()
+            .parse::<f32>()
+            .ok()
+            .map(|value| value / 100.0)
+    }))
 }
 
 /// A `0..=100%` control.
@@ -290,6 +357,7 @@ impl SparkleurParams {
             speed: self.speed.smoothed.next_step(samples),
             snap: self.snap.smoothed.next_step(samples),
             lift: self.lift.smoothed.next_step(samples),
+            punch: self.punch.smoothed.next_step(samples),
             de_harsh: self.de_harsh.smoothed.next_step(samples),
             sub_protect: self.sub_protect.smoothed.next_step(samples),
             // **Order matters**: these arrays are filled by position, and
@@ -323,6 +391,7 @@ impl SparkleurParams {
                 self.solo_air.value(),
             ],
             factor: self.oversample.value().into(),
+            mode: self.mode.value().into(),
         }
     }
 
@@ -340,6 +409,7 @@ impl SparkleurParams {
             speed: self.speed.value(),
             snap: self.snap.value(),
             lift: self.lift.value(),
+            punch: self.punch.value(),
             de_harsh: self.de_harsh.value(),
             sub_protect: self.sub_protect.value(),
             up: [
@@ -371,6 +441,7 @@ impl SparkleurParams {
                 self.solo_air.value(),
             ],
             factor: self.oversample.value().into(),
+            mode: self.mode.value().into(),
         }
     }
 
@@ -414,10 +485,10 @@ mod tests {
     /// **Thirty-three** (`ui.md`). If this moves, the count in the interface
     /// specification moves with it.
     #[test]
-    fn there_are_thirty_three_parameters() {
+    fn there_are_thirty_five_parameters() {
         let params = SparkleurParams::default();
         let count = params.param_map().len();
-        assert_eq!(count, 33, "the parameter count moved");
+        assert_eq!(count, 35, "the parameter count moved");
     }
 
     /// Every control that defers to `CHARACTER` rests at zero, and the weights

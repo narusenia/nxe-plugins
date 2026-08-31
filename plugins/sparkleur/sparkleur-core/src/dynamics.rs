@@ -32,11 +32,63 @@
 
 use crate::crossover::BAND_COUNT;
 
-/// The provisional thresholds, in dB **on the detector's scale** — which reads
-/// a band's RMS plus the asymmetry of its follower (`SPK-3`). They are settled
-/// by ear in `SPK-18`, and they cannot be calculated for exactly that reason.
+/// The thresholds, in dB **on the detector's scale** — which reads a band's RMS
+/// plus the asymmetry of its follower (`SPK-3`).
+///
+/// **These are `Soft`'s, and they are what shipped.** They leave an 18 dB gap
+/// where neither side of the compressor acts, and `SPK-20` measured that a
+/// mixed vocal sits inside it: at −18 dBFS the bands read −19.6 to −24.8, so
+/// everything at maximum moved the output by 0.03 dB. They stay exactly where
+/// they are because a project that was mixed with them has to keep sounding
+/// the way it did (`REQ-SPK-022`).
 pub const DOWN_THRESHOLD_DB: f32 = -18.0;
 pub const UP_THRESHOLD_DB: f32 = -36.0;
+
+/// How far the macros are allowed to reach (`REQ-SPK-022`).
+///
+/// **The only thing this changes is where the two thresholds sit.** `SPK-20`
+/// went looking for what was holding the effect back and ruled out the
+/// protections, `LIFT` and the Sparkle gate one at a time; what was left was
+/// the gap between these two numbers, which had never been settled.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum Mode {
+    /// What shipped. **The default, and it has to be**: a session saved before
+    /// this parameter existed loads with the default, so anything else changes
+    /// the sound of work that is already finished.
+    #[default]
+    Soft,
+    /// The gap closed around where a vocal actually sits, so both sides work on
+    /// the material the plugin is for. The two overlap rather than leaving a
+    /// dead zone — a band between them is pulled toward the window from both
+    /// ends, which is what the product set out to replace.
+    Hard,
+}
+
+impl Mode {
+    /// `(down, up)`, in dB on the detector's scale.
+    pub const fn thresholds(self) -> (f32, f32) {
+        match self {
+            Self::Soft => (DOWN_THRESHOLD_DB, UP_THRESHOLD_DB),
+            Self::Hard => (HARD_DOWN_THRESHOLD_DB, HARD_UP_THRESHOLD_DB),
+        }
+    }
+}
+
+/// Placed from the measurement, not from taste (`SPK-20`, `SPK-21`).
+///
+/// At −18 dBFS the bands read −19.6 to −24.8, so **the pair straddles where the
+/// material actually is**: the downward side starts just under it and the
+/// upward side reaches just over it. Both act at once on anything in between,
+/// which is the squeeze the product set out to replace.
+///
+/// **Chosen by measuring five pairs, not by picking a number.** What ruled the
+/// others out was loudness: a threshold much lower than this reaches further
+/// (−30 / −26 gives 7.7 dB of reduction) but takes the output down 4.3 dB with
+/// it, and a plugin that mostly makes things quieter reads as worse rather than
+/// as more. This pair moves the reach from 0.7 dB to 6.9 dB while leaving the
+/// output within 0.4 dB of where it was.
+pub const HARD_DOWN_THRESHOLD_DB: f32 = -24.0;
+pub const HARD_UP_THRESHOLD_DB: f32 = -18.0;
 
 /// Where the upward side stops working, and how far below that it has faded out
 /// entirely.
@@ -79,6 +131,21 @@ pub struct Curve {
 }
 
 impl Curve {
+    /// The same curve with the mode's thresholds.
+    ///
+    /// **The ratios, the knee and the trim are `CHARACTER`'s** and do not move:
+    /// the axis says what kind of thing happens, and the mode says at what
+    /// level it starts happening. Mixing the two would make `Hard` a second
+    /// `CHARACTER`.
+    pub const fn in_mode(self, mode: Mode) -> Self {
+        let (down_threshold_db, up_threshold_db) = mode.thresholds();
+        Self {
+            down_threshold_db,
+            up_threshold_db,
+            ..self
+        }
+    }
+
     /// The middle of the `CHARACTER` axis (`dsp.md`). Until `SPK-5` builds the
     /// axis, this is what everything runs at.
     pub const GLOSS: Self = Self {
@@ -266,6 +333,34 @@ mod tests {
 
     fn gain(level_db: f32) -> f32 {
         band_gain_db(level_db, &CURVE, &NEUTRAL, 1.0, FLOOR_DB)
+    }
+
+    /// **The default has to be what shipped.** A session saved before `MODE`
+    /// existed loads with the default, so anything else changes the sound of
+    /// work that is already finished (`REQ-SPK-022`).
+    #[test]
+    fn the_default_mode_is_what_shipped() {
+        assert_eq!(Mode::default(), Mode::Soft);
+        assert_eq!(
+            Mode::Soft.thresholds(),
+            (DOWN_THRESHOLD_DB, UP_THRESHOLD_DB)
+        );
+        assert_eq!(Curve::GLOSS.in_mode(Mode::Soft), Curve::GLOSS);
+    }
+
+    /// And `Hard` may only move the two thresholds. Anything else in the curve
+    /// is `CHARACTER`'s, and a mode that touched it would be a second axis.
+    #[test]
+    fn hard_moves_the_thresholds_and_nothing_else() {
+        let soft = Curve::GLOSS;
+        let hard = soft.in_mode(Mode::Hard);
+        assert_ne!(hard.down_threshold_db, soft.down_threshold_db);
+        assert_ne!(hard.up_threshold_db, soft.up_threshold_db);
+        assert_eq!(hard.down_ratio, soft.down_ratio);
+        assert_eq!(hard.up_ratio, soft.up_ratio);
+        assert_eq!(hard.knee_db, soft.knee_db);
+        assert_eq!(hard.ceiling_db, soft.ceiling_db);
+        assert_eq!(hard.trim_db, soft.trim_db);
     }
 
     /// **`SPARK` = 0 is exactly nothing** (`REQ-SPK-009`) — not nearly, at any

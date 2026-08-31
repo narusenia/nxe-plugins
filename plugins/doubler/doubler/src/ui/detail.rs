@@ -13,6 +13,7 @@ use crate::params::DoublerParams;
 use doubler_core::{MAX_VOICES, Voices, mirror_partner, pan_for};
 use mirror::Mirror;
 use nih_plug_vizia::vizia::prelude::*;
+use nxe_ui::pictogram;
 use nxe_ui::{font, theme};
 
 /// How much a row fades when its voice is not live.
@@ -76,6 +77,18 @@ impl Column {
             Column::Detune => "DETUNE",
             Column::Pan => "PAN",
             Column::Gain => "GAIN",
+        }
+    }
+
+    /// The mark beside the name (`UI-17`). **Four kinds of offset**, which is
+    /// why `GAIN` shares `TRIM` with two other windows and the other three are
+    /// this table's own.
+    fn glyph(self) -> pictogram::Glyph {
+        match self {
+            Column::Delay => pictogram::DELAY,
+            Column::Detune => pictogram::DETUNE,
+            Column::Pan => pictogram::PAN,
+            Column::Gain => pictogram::TRIM,
         }
     }
 }
@@ -199,9 +212,7 @@ pub fn view(cx: &mut Context) {
         HStack::new(cx, |cx| {
             Label::new(cx, "").class("label").width(Pixels(INDEX_WIDTH));
             for column in COLUMNS {
-                Label::new(cx, column.label())
-                    .class("label")
-                    .width(Stretch(1.0));
+                pictogram::label(cx, column.glyph(), column.label()).width(Stretch(1.0));
             }
         })
         .class("row")
