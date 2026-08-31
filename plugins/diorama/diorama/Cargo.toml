@@ -21,3 +21,10 @@ nih_plug = { workspace = true }
 nih_plug_vizia = { workspace = true }
 nxe-plug-ui = { workspace = true }
 nxe-ui = { workspace = true }
+
+# **Test signals only.** `nxe-audio` is permissive and this crate is GPL either
+# way, so a dev-dependency changes nothing about the bundle — what it buys is
+# the window's figure being checked against the real engine rather than against
+# a second copy of its arithmetic (`DIO-17`).
+[dev-dependencies]
+nxe-audio = { workspace = true }

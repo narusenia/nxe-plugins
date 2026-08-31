@@ -1034,6 +1034,7 @@ dependencies = [
  "diorama-core",
  "nih_plug",
  "nih_plug_vizia",
+ "nxe-audio",
  "nxe-dsp",
  "nxe-plug-ui",
  "nxe-ui",

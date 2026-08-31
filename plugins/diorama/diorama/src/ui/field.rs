@@ -21,18 +21,33 @@ pub const HEIGHT: f32 = 200.0;
 /// The axis labels' own line, under the plot.
 pub const MARKS_HEIGHT: f32 = theme::LINE_VALUE;
 
-/// The span the figure covers, which is the span the reflections live in
-/// (`REQ-DIO-003`).
-pub const SPAN_MS: f32 = 120.0;
+/// The span the figure covers.
+///
+/// **The arrivals, not the requirement's range.** `REQ-DIO-003` names
+/// 10–120 ms and that number includes the diffusion smear that rides on every
+/// tap; this figure draws arrivals, and the last one is at 89 ms
+/// (`diorama_core::reflections::TAP_MS_LAST`). An axis to 120 left a quarter of
+/// the plot permanently empty, which reads as a plugin that stops early rather
+/// than as a figure that draws one thing (`DIO-17`, seen in a host).
+pub const SPAN_MS: f32 = 100.0;
 
-const MARKS: [(f32, &str); 7] = [
+/// What the core normalises a tap's position against, over what this figure
+/// spans. **The positions arrive already divided by the core's number**, so the
+/// axis cannot be shortened without saying so here.
+pub const SPAN_RATIO: f32 = diorama_core::reflections::SPAN_MAX_MS / SPAN_MS;
+
+const _: () = assert!(
+    diorama_core::reflections::TAP_MS_LAST < SPAN_MS,
+    "the last arrival falls off the figure"
+);
+
+const MARKS: [(f32, &str); 6] = [
     (0.0, "0"),
     (20.0, "20"),
     (40.0, "40"),
     (60.0, "60"),
     (80.0, "80"),
-    (100.0, "100"),
-    (120.0, "120 ms"),
+    (100.0, "100 ms"),
 ];
 
 /// Milliseconds onto `0..=1` across the view. **Linear**, because time is —
@@ -101,8 +116,10 @@ mod tests {
         }
     }
 
-    /// **The figure covers the range the reflections are specified to live in**
-    /// (`REQ-DIO-003`). A figure narrower than the sound would hide arrivals.
+    /// **The figure covers every arrival, after the axis was shortened**
+    /// (`DIO-17`). A figure narrower than the sound would hide one, and the
+    /// positions arrive normalised against the core's 120 ms rather than
+    /// against this axis — so the rescale is part of what is being checked.
     #[test]
     fn the_span_covers_every_arrival() {
         let mut reflections = diorama_core::Reflections::new(48_000.0);
@@ -110,11 +127,22 @@ mod tests {
             distance: 1.0,
             amount: 1.0,
         });
+        let mut latest = 0.0f32;
         for (position, _) in reflections.pattern() {
+            let placed = position * SPAN_RATIO;
             assert!(
-                (0.0..=1.0).contains(&position),
-                "an arrival at {position} of the span is off the figure"
+                (0.0..=1.0).contains(&placed),
+                "an arrival at {placed} of the span is off the figure"
             );
+            latest = latest.max(placed);
         }
+
+        // **And it fills the axis.** The complaint that started this unit was
+        // that the right of the figure was never used; a span that grew back
+        // would bring it straight back.
+        assert!(
+            latest > 0.8,
+            "the last arrival only reaches {latest} across"
+        );
     }
 }

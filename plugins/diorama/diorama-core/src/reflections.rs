@@ -54,7 +54,7 @@ const TAP_MS_RIGHT: [f32; TAPS] = [13.0, 19.0, 29.0, 37.0, 43.0, 53.0, 61.0, 71.
 /// so a tap at 113 ms would put a third of the energy outside the range
 /// `REQ-DIO-003` names — measured, `DIO-1`. Ending at 89 ms leaves the tail
 /// room to finish inside it.
-const TAP_MS_LAST: f32 = 89.0;
+pub const TAP_MS_LAST: f32 = 89.0;
 
 /// The tap tables have to end where [`TAP_MS_LAST`] says, and start inside the
 /// range the requirement names. **Checked at compile time rather than in a
@@ -70,7 +70,7 @@ const T_REF_MS: f32 = 11.0;
 /// The window the tap positions are normalised into — the range
 /// `REQ-DIO-003` puts the reflections in.
 const SPAN_MIN_MS: f32 = 10.0;
-const SPAN_MAX_MS: f32 = 120.0;
+pub const SPAN_MAX_MS: f32 = 120.0;
 
 /// Width of the Gaussian window [`Settings::distance`] slides over the taps.
 ///

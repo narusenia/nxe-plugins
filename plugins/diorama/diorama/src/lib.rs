@@ -13,6 +13,7 @@
 
 use analysis::{Analysis, METERS};
 use diorama_core::Engine;
+use diorama_core::reflections::TAPS;
 use nih_plug::prelude::*;
 use nxe_dsp::{Correlation, Level};
 use std::sync::Arc;
@@ -210,14 +211,24 @@ impl Plugin for Diorama {
         self.analysis
             .arrivals
             .write(&std::array::from_fn(|index| pattern[index].0));
-        // **Against the loudest weight the design can produce**, so the figure
-        // does not rescale itself as `ROOM` is turned down — a picture whose
-        // ceiling moves cannot be read for level.
+
+        // **Each arrival's level against the direct sound, in dB.**
+        //
+        // The tap weights are coefficients, not levels: what one is worth
+        // depends on the reflected bus it sits in, and that bus moves with
+        // `DEPTH`. Tap `i` carries `wᵢ² / Σw²` of the bus's power, so its level
+        // is the bus's level plus that share — and subtracting the direct
+        // sound's level makes it a ratio, which is what the figure is about.
+        //
+        // **This replaced a linear ratio against a constant that was wrong by
+        // fourteen times** (`DIO-17`). `ARRIVAL_CEILING` was 2.0 and the
+        // loudest weight the design can produce is 0.14, so the tallest stem
+        // drew at 7 % of the plot and the top of the figure was never used.
+        let direct_db = decibels(self.direct_level.rms());
+        let room_db = decibels(self.reflected_level.rms());
         self.analysis
             .arrival_levels
-            .write(&std::array::from_fn(|index| {
-                (pattern[index].1 / ARRIVAL_CEILING).clamp(0.0, 1.0)
-            }));
+            .write(&arrival_levels(&pattern, direct_db, room_db));
 
         self.analysis
             .clarity
@@ -230,14 +241,30 @@ impl Plugin for Diorama {
     }
 }
 
-/// The tap weight the figure treats as full height.
+/// What an arrival reads as when there is no reflection bus at all — `ROOM` at
+/// zero, where every weight is zero and the ratio is undefined rather than
+/// small.
+const SILENT_ARRIVAL_DB: f32 = -200.0;
+
+/// Each arrival's level against the direct sound, in dB.
 ///
-/// **A fixed ceiling, not the loudest weight of the moment.** A figure that
-/// rescales itself cannot be read for level — turning `ROOM` down would leave
-/// the picture unchanged, which is exactly the thing it is there to show. The
-/// number is the earliest tap at full amount and `ROOM` at its top
-/// (`diorama_core::reflections`).
-const ARRIVAL_CEILING: f32 = 2.0;
+/// **One place, because the window and its test both need it.** A second copy
+/// of this arithmetic would drift from the sound the first time a weight moved
+/// — the same reason the figure is drawn from the tap weights rather than from
+/// `DEPTH` (`diorama_core::Reflections::pattern`).
+pub(crate) fn arrival_levels(
+    pattern: &[(f32, f32); TAPS],
+    direct_db: f32,
+    room_db: f32,
+) -> [f32; TAPS] {
+    let norm = pattern.iter().map(|(_, w)| w * w).sum::<f32>().sqrt();
+    std::array::from_fn(|index| {
+        if norm <= 0.0 {
+            return SILENT_ARRIVAL_DB;
+        }
+        room_db - direct_db + decibels(pattern[index].1 / norm)
+    })
+}
 
 /// An amplitude in dB, floored so a silent bus reads as silence rather than as
 /// a very large negative number.

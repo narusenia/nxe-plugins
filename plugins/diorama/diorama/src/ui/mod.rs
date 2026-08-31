@@ -85,6 +85,11 @@ pub(crate) struct Ui {
     analysis: Arc<Analysis>,
     /// The reactive copies. Updating these is what makes the display move.
     arrivals: Vec<Tap>,
+    /// The direct sound's stem. **Always full height, because it is the scale**
+    /// (`DIO-17`): every arrival is drawn as its level *against* this one, so
+    /// the reference has to stand at the top or the ratio has nothing to be
+    /// read against. Its absolute level is on the meters and on the strip's
+    /// `DIR`, where a level belongs.
     direct: f32,
     peaks: Vec<f32>,
     holds: Vec<f32>,
@@ -109,9 +114,13 @@ impl Model for Ui {
                 self.arrivals = positions
                     .iter()
                     .zip(levels.iter())
-                    .map(|(&position, &level)| Tap { position, level })
+                    .map(|(&position, &decibels)| Tap {
+                        // **Rescaled**: the core normalises against its own
+                        // 120 ms and this axis spans 100 (`ui/field`).
+                        position: position * field::SPAN_RATIO,
+                        level: arrival_position(decibels),
+                    })
                     .collect();
-                self.direct = level_position(self.analysis.buses.read()[0]);
 
                 let peaks = self.analysis.peaks.read();
                 let holds = self.analysis.holds.read();
@@ -137,15 +146,22 @@ pub(crate) fn meter_position(amplitude: f32) -> f32 {
     ((db - METER_FLOOR_DB) / -METER_FLOOR_DB).clamp(0.0, 1.0)
 }
 
-/// A level already in dB as a height in the figure.
+/// How far below the direct sound an arrival can be and still be drawn.
 ///
-/// **The same floor as the meters**, so the direct sound's stem and the OUT bar
-/// cannot disagree about how loud it is.
-fn level_position(decibels: f32) -> f32 {
+/// **Measured, not chosen** (`DIO-17`). With `ROOM` at its top, an arrival sits
+/// between **+0.3 dB** of the direct sound at `DEPTH` 1 and **−39.2 dB** at
+/// `DEPTH` 0. A floor of 48 puts the far end at a fifth of the plot's height
+/// and the near end at the top, so **`DEPTH` moves the pattern up the figure**
+/// — which is the one thing this window exists to show. The meters' −60 would
+/// squeeze the whole range into the top half.
+pub(crate) const ARRIVAL_FLOOR_DB: f32 = -48.0;
+
+/// An arrival's level against the direct sound as a height in the figure.
+fn arrival_position(decibels: f32) -> f32 {
     if !decibels.is_finite() {
         return 0.0;
     }
-    ((decibels - METER_FLOOR_DB) / -METER_FLOOR_DB).clamp(0.0, 1.0)
+    ((decibels - ARRIVAL_FLOOR_DB) / -ARRIVAL_FLOOR_DB).clamp(0.0, 1.0)
 }
 
 pub fn create(
@@ -167,7 +183,7 @@ pub fn create(
             params: params.clone(),
             analysis: analysis.clone(),
             arrivals: Vec::new(),
-            direct: 0.0,
+            direct: 1.0,
             peaks: vec![0.0; METERS],
             holds: vec![0.0; METERS],
             readouts: vec![String::new(); readout::FIGURES],
@@ -393,5 +409,82 @@ mod tests {
         // this pins is that it *is* arithmetic, so a part changing size moves
         // the window instead of running off it.
         assert!(super::HEIGHT > super::field::HEIGHT as u32);
+    }
+}
+
+#[cfg(test)]
+mod arrivals {
+    use super::*;
+    use diorama_core::depth::Macros;
+    use nxe_audio::harmonics::{at_dbfs, pink};
+
+    /// The figure's heights at one `DEPTH`, loudest first.
+    fn heights(depth: f32) -> Vec<f32> {
+        const RATE: f32 = 48_000.0;
+        let mut engine = diorama_core::Engine::new(RATE);
+        engine.set(Macros {
+            depth,
+            direct: 0.5,
+            room: 1.0,
+            damping: 0.5,
+            width: 0.6,
+            clarity: 0.0,
+            mix: 1.0,
+            output: 0.0,
+        });
+
+        // **The buses as an RMS, which is what the wrapper publishes.**
+        // `Engine::buses` reports the sample just processed, and one sample of
+        // pink noise is as likely to be a zero crossing as anything else.
+        let dry = at_dbfs(pink(1.0, (RATE * 0.5) as usize), -18.0);
+        let (mut direct, mut room) = (0.0f64, 0.0f64);
+        for sample in &dry {
+            engine.process(*sample, *sample);
+            let ((d, _), (r, _)) = engine.buses();
+            direct += f64::from(d) * f64::from(d);
+            room += f64::from(r) * f64::from(r);
+        }
+        let count = dry.len() as f64;
+        let db = |power: f64| 20.0 * ((power / count).sqrt().max(1e-9) as f32).log10();
+
+        let mut heights: Vec<f32> = crate::arrival_levels(&engine.pattern(), db(direct), db(room))
+            .iter()
+            .map(|decibels| arrival_position(*decibels))
+            .collect();
+        heights.sort_by(|a, b| b.partial_cmp(a).unwrap());
+        heights
+    }
+
+    /// **The figure has to use its height** (`DIO-17`).
+    ///
+    /// It did not: the arrivals were drawn as a linear ratio against a constant
+    /// that was wrong by fourteen times, so the tallest stem reached 7 % of the
+    /// plot and the top two thirds were never touched. Seen in a host, then
+    /// measured.
+    #[test]
+    fn depth_moves_the_pattern_up_the_figure() {
+        let near = heights(0.0);
+        let far = heights(1.0);
+
+        // Far: the reflections stand with the direct sound, which is what being
+        // a long way off means.
+        assert!(
+            far[0] > 0.85,
+            "the loudest arrival only reaches {} across the plot",
+            far[0]
+        );
+        // Near: low, and still drawn. A floor that swallowed them would hide
+        // the thing `DEPTH` is being turned down *from*.
+        assert!(
+            (0.1..0.7).contains(&near[0]),
+            "the near pattern sits at {}",
+            near[0]
+        );
+        // And the two are not the same picture.
+        assert!(
+            far[0] - near[0] > 0.3,
+            "DEPTH moved the pattern by {}",
+            far[0] - near[0]
+        );
     }
 }
