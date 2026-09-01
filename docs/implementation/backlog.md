@@ -423,7 +423,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | DIO-13 | **既定値と耳**（**耳が要る**）。**聴き直しのあと** | `diorama-plan.md` |
 | — | **Advanced の偏差**（Diorama、`REQ-DIO-009`）。**前に `dsp.md`** | `diorama-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（**耳が要る**） | `doubler-plan.md` |
-| PUM-5 | **Pumice のノード曲線**（6 本、双極 `depth`） | `pumice-plan.md` |
+| PUM-6 | **Pumice の dry / `MIX` / `OUTPUT` / `DELTA`** | `pumice-plan.md` |
 | — | **Pumice をもう一度実機で聴く**（**耳が要る**）。`PUM-4b` で効きが 2.4 倍になった。`mise run install pumice` | `pumice-plan.md` |
 | — | **Bitwig と Reaper で PDC を見る**（**人が要る**）。方式の判断には影響しない — 落ちてもホスト固有の問題 | `pumice-plan.md` |
 
@@ -680,7 +680,7 @@ AU の道が閉じる（`REQ-PUM-015`）。答え合わせの相手としては�
 | PUM-3 | 参照とゲイン計算（`STATIC`）＋ ラッパ（**ここで音が出る**）。`smoothing` / `reference` / `gain` / `engine` の 4 モジュール | 🟡 **測って通った**（入力ゲイン ±12 dB で 0.2 dB 以内、普通の素材で 1 dB 未満、テスト 26 本）。**ホストで聴くのが未了** |
 | PUM-4 | **適応 WHERE と `MODE`**（**ゲート**）。`engine.rs` の中（`adaptive.rs` は起こさず、`gain::Follower` の対称版）。**WHERE の周波数平滑を仕様から落とした** | ✅ **ゲート通過** — 掃引鋸波で `ADAPTIVE` 最大 0.29 dB / `STATIC` 2.2〜4.5 dB。受入条件も測って書き直した |
 | PUM-4b | **「効きが弱い」を測った**（実機の感想から生えた単位）。仕様の誤りが**6 つ** — 参照が自分を含む / 1 ビンの分散 / 地図が無音を平均 / `SLOPE` の二重上限 / **ゼロから始まる平均のバイアス** / **`reset()` が地図を消していた** | ✅ 削減 **3.4 → 15.6〜17.1 dB**、普通の素材 **0.71 → 0.01 dB**、`ADAPTIVE` の立ち上がり **8〜20 秒 → 1 秒** |
-| PUM-5 | ノード曲線（6 本、双極 `depth`） | ⬜ |
+| PUM-5 | ノード曲線（6 本、双極 `depth`）+ 動作範囲。ラッパは `#[nested(array)]` で 26 パラメータ | ✅ ノード 0 本で重みが厳密に 1、守るノードが削減を止める、`DEPTH`=0 で −120 dB 以下。テスト 9 本 |
 | PUM-6 | dry / `MIX` / `OUTPUT` / `DELTA` | ⬜ |
 | PUM-7 | レート・ブロックサイズ非依存 | ⬜ |
 | PUM-8 | CPU 予算（criterion）。見積り 50〜80 µs | ⬜ |

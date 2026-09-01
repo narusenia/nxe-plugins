@@ -208,6 +208,8 @@ mod tests {
                     speed: 0.5,
                     mode: pumice_core::Mode::Adaptive,
                     quality,
+                    nodes: [pumice_core::Node::default(); pumice_core::NODES],
+                    range: pumice_core::Range::default(),
                 });
                 assert_eq!(engine.latency(), quality.block(rate));
             }

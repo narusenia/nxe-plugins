@@ -10,7 +10,8 @@
 //! follower alone, which is what soothe does and what `MODE` will offer as the
 //! way out when the adaptive path is wrong for a piece of material.
 
-use crate::gain::{Computer, Follower, range_into, smooth_into};
+use crate::gain::{Computer, Follower, smooth_into};
+use crate::nodes::{NODES, Node, Range, weight_into};
 
 /// `10·log10(x)` is `10/log2(10)` times `log2(x)`, so a power ratio in dB is
 /// `2^(dB / 3.0103)` — the constant `nxe_audio::guard` keeps.
@@ -127,10 +128,9 @@ pub struct Settings {
     /// **Not reachable from any control** (`REQ-PUM-005`). The floor that
     /// keeps the reconstruction from warbling.
     pub gain_smoothing_octaves: f32,
-    pub low_hz: f32,
-    pub high_hz: f32,
     /// How wide each edge of the operating range fades, in octaves, centred on
-    /// the edge.
+    /// the edge. **Where the edges are is a control** (`nodes::Range`); how
+    /// softly they fade is not.
     pub edge_octaves: f32,
 }
 
@@ -155,8 +155,6 @@ impl Settings {
         map_peak_seconds: 2.0,
         where_seconds: 6.0,
         gain_smoothing_octaves: 1.0 / 12.0,
-        low_hz: 100.0,
-        high_hz: 18_000.0,
         edge_octaves: 0.5,
     };
 }
@@ -172,6 +170,10 @@ pub struct Controls {
     pub speed: f32,
     pub mode: Mode,
     pub quality: Quality,
+    /// Where the reduction is allowed to go (`REQ-PUM-004`).
+    pub nodes: [Node; NODES],
+    /// The band the plugin works in at all.
+    pub range: Range,
 }
 
 /// What decides that a bin is resonance rather than a note (`REQ-PUM-003`).
@@ -210,8 +212,8 @@ struct Detector {
     reduction_db: Vec<f32>,
     smoothed_db: Vec<f32>,
     gain: Vec<f32>,
-    /// The operating range as a per-bin weight. Rebuilt when the bin spacing
-    /// changes, never per frame.
+    /// The nodes and the operating range as a per-bin weight. Rebuilt when one
+    /// of them moves, never per frame.
     weight: Vec<f32>,
     follower: Follower,
     /// Symmetric, and slow: this is an exponential moving average wearing the
@@ -386,8 +388,10 @@ pub struct Engine {
     detector: Detector,
     sample_rate: f32,
     /// What [`Detector::weight`] was last built for, so a rebuild only happens
-    /// when the spacing actually moved.
+    /// when something actually moved.
     weight_bins: usize,
+    weight_nodes: [Node; NODES],
+    weight_range: Range,
 }
 
 impl Engine {
@@ -398,6 +402,8 @@ impl Engine {
             detector: Detector::new(settings),
             sample_rate,
             weight_bins: 0,
+            weight_nodes: [Node::default(); NODES],
+            weight_range: Range::default(),
         };
         engine.rebuild_weight();
         engine
@@ -445,7 +451,12 @@ impl Engine {
         let settings = self.detector.settings;
 
         self.stft.set_quality(controls.quality);
-        if self.stft.block() / 2 + 1 != self.weight_bins {
+        if self.stft.block() / 2 + 1 != self.weight_bins
+            || controls.nodes != self.weight_nodes
+            || controls.range != self.weight_range
+        {
+            self.weight_nodes = controls.nodes;
+            self.weight_range = controls.range;
             self.rebuild_weight();
         }
 
@@ -502,13 +513,13 @@ impl Engine {
     fn rebuild_weight(&mut self) {
         let block = self.stft.block();
         let bins = block / 2 + 1;
-        let settings = self.detector.settings;
-        range_into(
+        let edge = self.detector.settings.edge_octaves;
+        weight_into(
             bins,
             self.sample_rate / block as f32,
-            settings.low_hz,
-            settings.high_hz,
-            settings.edge_octaves,
+            &self.weight_nodes,
+            self.weight_range,
+            edge,
             &mut self.detector.weight[..bins],
         );
         self.weight_bins = bins;
@@ -591,6 +602,8 @@ mod tests {
             speed: 0.5,
             mode,
             quality: Quality::Normal,
+            nodes: [Node::default(); NODES],
+            range: Range::default(),
         }
     }
 
@@ -980,17 +993,76 @@ mod tests {
         );
     }
 
+    /// `REQ-PUM-004`: a protecting node stops the reduction where it is put,
+    /// and `DEPTH` = 0 is still exactly nothing however the nodes are set.
+    #[test]
+    fn a_node_steers_the_reduction() {
+        use nxe_audio::biquad::{Biquad, Coefficients};
+        let rate = 48_000.0;
+        let hz = 2_500.0;
+
+        let mut input = noise(rate as usize * 12);
+        let mut filter = Biquad::new(Coefficients::peaking(hz, 4.0, 18.0, rate));
+        for sample in input.iter_mut() {
+            *sample = filter.process(*sample) * 0.3;
+        }
+
+        let mut protecting = [Node::default(); NODES];
+        protecting[0] = Node {
+            enabled: true,
+            freq_hz: hz,
+            width_octaves: 1.0,
+            depth: -1.0,
+        };
+
+        let plain = {
+            let mut engine = Engine::new(rate, Settings::DEFAULT);
+            engine.set(with_mode(1.0, Mode::Adaptive));
+            run(&mut engine, &input);
+            engine.reduction_curve()[engine.bin_of(hz)]
+        };
+        let protected = {
+            let mut engine = Engine::new(rate, Settings::DEFAULT);
+            engine.set(Controls {
+                nodes: protecting,
+                ..with_mode(1.0, Mode::Adaptive)
+            });
+            run(&mut engine, &input);
+            engine.reduction_curve()[engine.bin_of(hz)]
+        };
+
+        assert!(plain < -6.0, "the resonance was not found: {plain:.2} dB");
+        assert!(
+            protected > -0.5,
+            "a protecting node still let {protected:.2} dB through"
+        );
+
+        // And with `DEPTH` at zero the nodes cannot do anything at all.
+        let mut deepening = protecting;
+        deepening[0].depth = 1.0;
+        let mut engine = Engine::new(rate, Settings::DEFAULT);
+        engine.set(Controls {
+            nodes: deepening,
+            ..with_mode(0.0, Mode::Adaptive)
+        });
+        let output = run(&mut engine, &input);
+        let latency = engine.latency();
+        let mut worst: f32 = 0.0;
+        for index in (2048 * 4)..input.len() {
+            worst = worst.max((output[index] - input[index - latency]).abs());
+        }
+        let error = 20.0 * worst.max(f32::MIN_POSITIVE).log10();
+        assert!(error <= -120.0, "DEPTH zero with nodes moved {error:.1} dB");
+    }
+
     #[test]
     fn every_quality_runs() {
         let rate = 48_000.0;
         for quality in Quality::ALL {
             let mut engine = Engine::new(rate, Settings::DEFAULT);
             engine.set(Controls {
-                depth: 1.0,
-                sharpness: 0.5,
-                speed: 0.5,
-                mode: Mode::Adaptive,
                 quality,
+                ..with_mode(1.0, Mode::Adaptive)
             });
             assert_eq!(engine.latency(), quality.block(rate));
             let output = run(&mut engine, &noise(quality.block(rate) * 5));
