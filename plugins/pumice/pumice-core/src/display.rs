@@ -30,6 +30,17 @@ pub const HIGH_HZ: f32 = 20_000.0;
 /// Below this a point is treated as silence rather than converted to dB.
 const FLOOR_DB: f32 = -120.0;
 
+/// How many bins a grid step has to span before the point is an average of
+/// them, and below how many it is read between them.
+///
+/// **Continuous, and blended between the two** (`PUM-10e`). The first version
+/// decided with `high - low >= 2` on the *rounded* bin indices, and those flip
+/// between one and two as the grid moves across bin boundaries — so the two
+/// behaviours alternated point by point and the curve grew **spikes**. The
+/// span in bins is monotone in frequency, so it crosses over exactly once.
+const NARROW_SPAN: f32 = 1.0;
+const WIDE_SPAN: f32 = 3.0;
+
 /// `10·log10(x)` through the `log2` the hardware has.
 const DECIBELS_PER_OCTAVE_POWER: f32 = 3.010_3;
 
@@ -70,26 +81,44 @@ pub fn resample_into(values: &[f32], bin_hz: f32, out: &mut [f32; CURVE_POINTS])
     // overlapping or leaving holes.
     let step = (HIGH_HZ / LOW_HZ).powf(0.5 / (CURVE_POINTS - 1) as f32);
 
+    // How wide one grid step is, measured in bins. **Continuous in the
+    // frequency**, which is what makes the crossover happen once.
+    let span_of = |centre: f32| centre * (step - 1.0 / step) / bin_hz;
+
     for (index, slot) in out.iter_mut().enumerate() {
         let centre = point_hz(index);
-        let low = ((centre / step) / bin_hz).floor().max(0.0) as usize;
-        let high = (((centre * step) / bin_hz).ceil() as usize).min(last);
-        let (low, high) = if low > high {
-            (high, high)
-        } else {
-            (low, high)
-        };
+        let span = span_of(centre);
 
-        *slot = if high - low >= 2 {
-            let total: f32 = values[low..=high].iter().sum();
-            total / (high - low + 1) as f32
-        } else {
-            // The grid is finer than the bins here: read between them.
-            let position = (centre / bin_hz).clamp(0.0, last as f32);
+        // **Never bin zero.** DC is not a frequency anybody reads off a
+        // spectrum, and it is the one bin whose contents mean something else —
+        // a block's offset rather than a level.
+        let first = 1.min(last);
+
+        let interpolated = {
+            let position = (centre / bin_hz).clamp(first as f32, last as f32);
             let left = position.floor() as usize;
             let right = (left + 1).min(last);
             let fraction = position - left as f32;
             values[left] + (values[right] - values[left]) * fraction
+        };
+
+        *slot = if span <= NARROW_SPAN {
+            interpolated
+        } else {
+            let low = (((centre / step) / bin_hz).floor().max(0.0) as usize).max(first);
+            let high = (((centre * step) / bin_hz).ceil() as usize).clamp(low, last);
+            let total: f32 = values[low..=high].iter().sum();
+            let averaged = total / (high - low + 1) as f32;
+
+            if span >= WIDE_SPAN {
+                averaged
+            } else {
+                // **Blended across the crossover.** Switching outright puts a
+                // step where the two disagree, and a step in a drawn spectrum
+                // is a spike.
+                let t = (span - NARROW_SPAN) / (WIDE_SPAN - NARROW_SPAN);
+                interpolated + (averaged - interpolated) * t
+            }
         };
     }
 }
@@ -164,12 +193,53 @@ mod tests {
         let mut out = [0.0; CURVE_POINTS];
         resample_into(&values, 23.437_5, &mut out);
 
-        for index in 1..CURVE_POINTS {
+        // **From the first point above bin one.** The axis starts at 20 Hz and
+        // the first usable bin is at 23.4, so the handful of points below it
+        // all read that bin — which is the axis running out of transform, not
+        // the grid stepping.
+        let first = (0..CURVE_POINTS)
+            .find(|index| point_hz(*index) > 23.437_5)
+            .expect("the axis reaches the first bin");
+        for index in (first + 1)..CURVE_POINTS {
             assert!(
                 out[index] > out[index - 1],
                 "point {index} sits at {} beside {}",
                 out[index],
                 out[index - 1]
+            );
+        }
+    }
+
+    /// **No spikes anywhere on a smooth input** (`PUM-10e`). The first fix
+    /// chose between interpolating and averaging on rounded bin indices, which
+    /// flip back and forth across bin boundaries — so the curve grew a thorn
+    /// wherever the choice changed.
+    #[test]
+    fn a_smooth_input_stays_smooth() {
+        // A curve with a shape, so the test is not passed by a straight line:
+        // a broad hump on a slope.
+        let values: Vec<f32> = (0..1025)
+            .map(|bin| {
+                let hz = bin as f32 * 23.437_5;
+                let hump = (-((hz / 2_500.0).log2()).powi(2)).exp2();
+                20.0 + hz * 0.002 + 30.0 * hump
+            })
+            .collect();
+
+        let mut out = [0.0; CURVE_POINTS];
+        resample_into(&values, 23.437_5, &mut out);
+
+        // Every point within a whisker of the line between its neighbours.
+        // A thorn is exactly a point that is not.
+        for index in 1..CURVE_POINTS - 1 {
+            let between = (out[index - 1] + out[index + 1]) * 0.5;
+            let span = (out[index + 1] - out[index - 1]).abs().max(0.5);
+            assert!(
+                (out[index] - between).abs() < span,
+                "point {index} at {} spikes off the line through {} and {}",
+                out[index],
+                out[index - 1],
+                out[index + 1]
             );
         }
     }
