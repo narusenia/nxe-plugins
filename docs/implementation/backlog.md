@@ -423,6 +423,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | DIO-13 | **既定値と耳**（**耳が要る**）。**聴き直しのあと** | `diorama-plan.md` |
 | — | **Advanced の偏差**（Diorama、`REQ-DIO-009`）。**前に `dsp.md`** | `diorama-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（**耳が要る**） | `doubler-plan.md` |
+| PUM-1 | **Pumice のゲート — 空のラッパで PDC を通す**（**人が 4 ホストを開く**）。ここが駄目なら FFT 方式ごと選び直す | `pumice-plan.md` |
 
 **`v0.2.0` のタグを打つ前に人が要るもの**: `DIO-14` の聴き直しと `DIO-13` の
 既定値。**それだけ**——5 本の窓の見た目・Hard・PUNCH は 2026-08-31 に実機で
@@ -486,6 +487,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | UI-19 | **ヘッダの拡張**（`MODE` の枠 + ホバー中のコントロールの 1 行説明。ワードマークから `NXE` を外し 26 px Light に） | ✅ `bf616c6` |
 | UI-20 | **幅と、窓の高さの計算**（720 → 880 の共通定数。高さは既に部品の合計だった） | ✅ ❓ **実機で 4 ホスト見るのが未了** |
 | UI-21 | **勾配を外す**（塗りは全部フラット。`wash` と `.accent-up` も落とした） | ✅ `8fcebf3` |
+| UI-22 | **`NodeField`** — 自由な x 配置・追加・削除を持つ図。Pumice が使う。**リポジトリで一番大きい UI 投資**（`CurveView` は x 固定、`BandField` は領域の端しか動かない） | ⬜ |
 
 ### Doubler — `../../plugins/doubler/docs/implementation/doubler-plan.md`
 
@@ -647,6 +649,44 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 ピンク重み格子の上で振幅特性の 2 乗和を解析的に足して割る**形。
 **数字は 1 つも測っていない** — どれが測定でどれが耳かは `dsp.md` の
 「耳で詰める定数」が正。**`ui.md` は未作成**（`DIO-9` の前に書く）。
+
+### Pumice — `../../plugins/pumice/docs/implementation/pumice-plan.md`
+
+**ゲートが 2 つある。ラインで初めて。**
+
+**`PUM-1` が 1 番目**（`roadmap.md` の基準 0）。**ラインで初めてレイテンシを
+申告する製品**で、4 ホストで PDC が効かなければ FFT 方式ごと選び直すことに
+なる。`PUM-1` は DSP を 1 行も持たない — 申告した分だけ遅らせるだけなので、
+**自分自身が試験になっている**。
+
+**`PUM-4` が 2 つ目**（`REQ-PUM-003`、倍音を削らずに共鳴だけ削る）。
+`PUM-3` で `STATIC` を先に作るのは、**受入条件が `STATIC` との比較で
+書かれている**ため。
+
+**共有クレートに上げるものは無い。** OLA バッファは `pumice-core` に置く
+（1 個目の客しか居ない）。**`nih_plug::util::stft::StftHelper` は使わない** —
+`nih_plug` は GPL 側なので、依存すると `pumice-core` が寛容側から移り、
+AU の道が閉じる（`REQ-PUM-015`）。答え合わせの相手としては使う。
+
+**新しい依存が 1 つ**: `realfft`（MIT）。`pumice-core` にだけ入る。
+**`nxe-audio` / `nxe-dsp` の実行時依存ゼロは保つ。**
+
+| ID | 単位 | 状態 |
+|---|---|---|
+| PUM-1 | **空のラッパで PDC を通す**（**ゲート**）。2 クレート・`bundler.toml`・`QUALITY` 1 個だけ。**人が 4 ホストを開く** | ⬜ |
+| PUM-2 | OLA バッファと窓（`pumice-core` に自作） | ⬜ |
+| PUM-3 | 参照とゲイン計算（`STATIC`）＋ ラッパ（**ここで音が出る**） | ⬜ |
+| PUM-4 | **適応 WHERE と `MODE`**（**ゲート**） | ⬜ |
+| PUM-5 | ノード曲線（6 本、双極 `depth`） | ⬜ |
+| PUM-6 | dry / `MIX` / `OUTPUT` / `DELTA` | ⬜ |
+| PUM-7 | レート・ブロックサイズ非依存 | ⬜ |
+| PUM-8 | CPU 予算（criterion）。見積り 50〜80 µs | ⬜ |
+| PUM-9 | 解析の受け渡し。**`nxe_dsp::Spectrum` を回さない**（STFT からそのまま） | ⬜ |
+| PUM-10 | 窓 | ⬜ |
+| PUM-11 | 既定値と耳。**`DEPTH` という名前を使えるかもここで決着**（`REQ-PUM-010`） | ⬜ |
+
+**要件・DSP 仕様・UI 仕様・計画は書けた**（2026-09-01）。**数字は 1 つも
+測っていない** — どれが測定でどれが耳かは `dsp.md` の「耳で詰める定数」が正。
 
 ### Vocal Glue
 

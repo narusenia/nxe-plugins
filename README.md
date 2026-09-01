@@ -17,6 +17,7 @@ that order, is in
 | [NXE Sparkleur](plugins/sparkleur/docs/requirements/REQ-SPK.md) | Multiband dynamics with a transient-gated harmonic generator — five bands, upward and downward | [`sparkleur-v0.2.0`](https://github.com/narusenia/nxe-plugins/releases/tag/sparkleur-v0.2.0) |
 | [NXE Air](plugins/air/docs/requirements/REQ-AIR.md) | Signal-driven texture generator — harmonics and noise placed where the source is not, following what it does | [`air-v0.2.0`](https://github.com/narusenia/nxe-plugins/releases/tag/air-v0.2.0) |
 | [NXE Diorama](plugins/diorama/docs/requirements/REQ-DIO.md) | A vocal's distance as one knob — early reflections and a direct path that is itself processed, no reverb tail | [`diorama-v0.2.0`](https://github.com/narusenia/nxe-plugins/releases/tag/diorama-v0.2.0) |
+| [NXE Pumice](plugins/pumice/docs/requirements/REQ-PUM.md) | Dynamic resonance suppression for a single vocal — a long-term average decides *where*, a short one decides *when*, so partials are left alone | not released |
 
 **They are meant to be opened side by side.** One width, one typeface, one
 accent per plugin from a family that varies only in hue, and the same shape in

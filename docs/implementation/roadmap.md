@@ -235,10 +235,13 @@ Velour の `VEL-1` と同じ位置。
 `plugins/<name>/docs/` に移る）。
 
 ```text
-Air → Diorama → Vocal Glue → Impact → Growl
-                 ↑
-        Bass Density はどこにでも差し込める
+Air → Diorama → Pumice → Vocal Glue → Impact → Growl
+                          ↑
+                 Bass Density はどこにでも差し込める
 ```
+
+**Pumice は構想 6 本の外から入った**（2026-09-01）。構想文書を持たず、
+要件から直接書いた 1 本目。
 
 ### 並べた根拠
 
@@ -314,6 +317,58 @@ Velour の `VEL-1`、Sparkleur の `SPK-2` と同じ「崩れたら方式ごと�
 3 本とも**単体テストで通る**。Doubler の `DBL-2` のようにラッパを前倒しして
 実機で聴く必要が無いので、コアを先に固められる。
 
+
+## Pumice を Vocal Glue の前に置く理由
+
+Pumice（単体ボーカルの動的共鳴抑制）は
+[`REQ-PUM.md`](../../plugins/pumice/docs/requirements/REQ-PUM.md)。
+
+**「Vocal Glue が安くなるから」ではない。** その理屈は最初に考えたもので、
+**方式を FFT に決めた時点で崩れた**。Vocal Glue の `Spectral Cohesion`
+（`REQ-GLU-003`）は `RelativeGuard<N>` の一般化＝減算型バンドパスバンクで
+作ると決まっていて、**Pumice の STFT エンジンはそこに何も渡さない**。
+Vocal Glue は自分で減算型を書く。
+
+**置く理由は「単体で価値がある」こと。** 挿す対象が違う — Vocal Glue は
+複数の声が混ざったバス、Pumice は 1 本のボーカル。ラインの他の 5 本は
+全部「足す・動かす」製品で、**引く製品が 1 本も無い**。
+
+**先にやる理由は、リスクが 2 つとも早く分かること。**
+
+1. **PDC**（`PUM-1`）。ラインで初めてレイテンシを申告する。**空に近い
+   ラッパのうちに 4 ホストで確かめる** — 基準 0 そのもので、駄目なら
+   方式ごと選び直す。この確認は Pumice のためだけでなく、**将来
+   ルックアヘッドや直線位相を持つ製品すべての前提**になる
+2. **音声パスの FFT**（`PUM-8`）。`nxe_dsp::spectrum` も Sparkleur の
+   spectral flux も「もっと安いもので同じ仕事ができる」で FFT を却下して
+   いる。**Pumice で実測が出れば、その判断が今も正しいかが分かる**
+
+**Vocal Glue はこの 2 つのどちらも要らない**（レイテンシ 0、FFT 無し）ので、
+Pumice の結果を待つ必要が無い。**待つ必要が無い側を後ろに置いた。**
+
+### Pumice の中での順序
+
+```text
+PUM-1  PDC（ゲート）      ← 人が 4 ホストを開く。ここが全部の前提
+PUM-2  OLA
+PUM-3  STATIC（音が出る）  ← ホストの既定パラメータ UI で判断
+PUM-4  ADAPTIVE（ゲート）  ← STATIC との比較でしか測れない
+PUM-5〜9
+UI-22  NodeField          ← パラメータ集合が凍ってから（基準 1）
+PUM-10 窓
+PUM-11 耳
+```
+
+**ゲートが 2 つあるのはラインで初めて。** 1 つ目は方式の前提（PDC）、
+2 つ目は製品の主張（倍音を削らない）。**性質が違うので分けている** —
+`PUM-1` が駄目なら FFT ごと捨てるが、`PUM-4` が駄目なら `ADAPTIVE` だけを
+落として `STATIC` の製品として出せる。
+
+**`UI-22`（`NodeField`）がリポジトリで一番大きい UI 投資。** `CurveView` は
+x 固定、`BandField` は領域の端しか動かない。**自由な x 配置・追加・削除を
+持つものが無い**ので 3 個目を作ることになり、`band.rs` が
+「なぜ `CurveView` を拡張しなかったか」に書いた理屈がそのまま効く。
+だから**一番後ろ**に置く（基準 1）。
 
 ## v0.2.0 — 5 本を作り直す
 

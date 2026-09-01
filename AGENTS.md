@@ -60,6 +60,16 @@ with the code, and fix the document in the same change.
 - `plugins/diorama/diorama`: the Diorama nih-plug wrapper. **Not shipped yet** —
   the only one of the five that has never been released, which is why it could
   still be renamed (`DIO-15`, it was `Vocal Depth`)
+- `plugins/pumice/pumice-core`: the Pumice DSP — dynamic resonance suppression
+  for a single vocal. **The only engine in the line with an FFT on the audio
+  path**, and the only one whose plugin reports latency
+  (`docs/specifications/architecture.md` says why both are exceptions rather
+  than broken rules). Host-agnostic, allocation-free on the audio path; the
+  overlap-add buffering is written here rather than borrowed from
+  `nih_plug::util::stft`, which would move the crate to the GPL side
+- `plugins/pumice/pumice`: the Pumice nih-plug wrapper. **Documents only** —
+  nothing is implemented, and `PUM-1` is a gate that needs four DAWs opened by
+  hand before anything else is written
 - `docs/`: monorepo-wide documents (architecture, cross-plugin backlog and
   roadmap). Indexed by `docs/README.md`
 - `plugins/<name>/docs/`: that plugin's own requirements, specifications, and
