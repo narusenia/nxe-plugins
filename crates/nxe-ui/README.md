@@ -47,6 +47,7 @@ stop ごとに揃えてあるので、半分まで塗ったバーはどの窓で
 | [`polar::PolarField`](src/polar.rs) | 半円上の点をドラッグする 2 軸フィールド。基準点（アンカー）も半径方向にドラッグできる。`PolarFieldModifiers` で `.highlight(lens)`（外から 1 点を指す）と `.density(lens)`（方向ごとの信号量を扇形で背後に敷く） | `impl Res<Vec<FieldPoint>>` ×2（点と基準点） | `Fn(&mut EventContext, FieldGesture)` |
 | [`entry::ValueEntry`](src/entry.rs) | クリックで打ち込める数値 | `impl Lens<Target = String>`（表示文字列） | `Fn(&mut EventContext, &str)` |
 | [`curve::CurveView`](src/curve.rs) | 曲線・帯・縦ドラッグのハンドル。`CurveViewModifiers` の `.analysis(lens)` で信号のカーブを背後に塗り、`.reference(lens)` で読み取りの基準線を差し替える（既定は窓の中央の水平線。入出力の伝達曲線は対角線に対して読む） | `impl Res<...>` ×3（曲線・帯・ハンドル） | `Fn(&mut EventContext, usize, Gesture)` |
+| [`node::NodeField`](src/node.rs) | 対数周波数のパネル。**点を自由な位置に置き、追加し、削除できる**唯一の図。信号のカーブ（床から塗る）、削減のカーブ（天井から下げる）、重みのカーブ（アクセントの線）の 3 層。`NodeFieldModifiers` で `.analysis(lens)` / `.reduction(lens)`。**点は caller が動かす** — ドラッグはポインタの位置を報告するだけ（`polar.rs` の傷） | `impl Res<Vec<FieldNode>>` + `impl Res<Curve>` | `Fn(&mut EventContext, NodeGesture)` |
 | [`band::BandField`](src/band.rs) | 対数周波数のパネル。掴める帯域の区画と信号のカーブ 2 本。`BandFieldModifiers` で `.highlight(lens)`、`.focus(lens)`（下端のレールを横に引いて全区画をまとめて動かす）、`.unity(y)`（「変化なし」の線を引く。呼ばなければ区画は床から生える） | `impl Res<Vec<Band>>` + `impl Res<Curve>` ×2 | `Fn(&mut EventContext, BandGesture)` |
 | [`meter::Meter`](src/meter.rs) | レベルバー 1 本とピークホールドの印。`new` が縦、`horizontal` が横。操作は無い | `impl Res<f32>` ×2（レベル・ホールド） | — |
 
@@ -81,6 +82,12 @@ stop ごとに揃えてあるので、半分まで塗ったバーはどの窓で
 
 `Bar` も**縦**ドラッグ。横バーを横に引くのは一見自然だが、行を積んだときに端を
 越えて隣に入る誤操作が起きる。
+
+`NodeField` は [`node::NodeGesture`](src/node.rs)。`Begin` / `Change` /
+`Width` / `End` に加えて、空きのダブルクリックが `Add`、点のダブルクリックが
+`Remove`、そして `Hover`。**右クリックとスクロールは使っていない** — どちらも
+このリポジトリに前例が無く、ホストのコンテキストメニューと baseview の
+スクロール挙動は DAW を開くまで分からない。
 
 `BandField` は [`band::BandGesture`](src/band.rs)。区画の分（`Begin` /
 `Change { index, level }` / `End` / `Reset` / `Hover`）と、下端のレールの分

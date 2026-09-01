@@ -31,6 +31,7 @@ Label / Divider / Disclosure は CSS のクラスと Vizia 組み込みの `Butt
 | `PolarField` | UI-7 | Doubler の Voice Field |
 | `CurveView` | UI-10 | Doubler の Filter View / Velour の伝達曲線 |
 | `BandField` | UI-13 | Velour の Band Field |
+| `NodeField` | UI-22 | Pumice の図。**自由な x 配置・追加・削除を持つ唯一の図** |
 | `Meter` | UI-8 | Velour の IN / OUT |
 | `ToggleSwitch` | UI-9 | **まだ誰も使わない**（下記） |
 
@@ -632,6 +633,36 @@ Hz も dB も知らず、正規化した x と 0..=1 の高さだけを受け取
 - **踏んだ罠**: `the_window_is_the_size_of_its_parts` が **`720` という数を
   直接書いていた**。共通定数と突き合わせる形に直した — 数を書くのは、1 つの窓が
   黙って他の 4 つと違う幅になる道
+
+### UI-22 — NodeField 🟡
+
+Pumice の図（`plugins/pumice/docs/specifications/ui.md`）。
+
+**`CurveView` も `BandField` も拡張しなかった。** `CurveView` のハンドルは
+**x が固定**で高さだけが動き、`BandField` は**点ではなく区画の端**を動かす。
+自由配置には 2 軸のドラッグ、点ごとの 3 つ目の値、そして点を作って壊す
+ジェスチャーが要る — `band.rs` が `CurveView` を拡張しなかったときと同じ判断で、
+既存の呼び出し側が全部払って何も使わないことになる。
+
+**3 層を「3 つの設定」に見せない。** 1 つは届いているもの、1 つはプラグインが
+やっていること、1 つはユーザーが頼んだこと。`dots.rs` の「同じ種類の 2 本の
+曲線は同じものの 2 つの設定に読める」に従って、**信号は床からの塗り、削減は
+天井から下げる塗り、重みだけがアクセントの線**にした。
+
+**点は caller が動かす。** `polar.rs` の傷をそのまま継いでいる — ドラッグは
+ポインタの位置を報告するだけで、点は束縛された値が変わったときに描き直す。
+Pumice の caller はノードを 6 本で頭打ちにし、周波数を動作範囲で clamp する
+ので、**まさに clamp する caller がここに居る**。
+
+**幅は選択中のノードの左右のグリップ。** `Shift` は既に fine drag なので
+修飾キーには載せられず、右クリックとスクロールは前例がゼロ。
+
+- [x] `Hz` も `dB` も知らない（正規化座標だけ）
+- [x] caller が値を書くまで点が動かない
+- [x] ポインタが乗っているノードを報告する
+- [x] gallery に追加（6 本まで、追加・削除・幅つき）
+- [ ] **`mise run gallery` で見る**
+- [ ] **アイドルの窓が CPU を食わない**（`ps -o %cpu`、`vizia.md`）
 
 ### UI-21 — 勾配を外す ✅
 

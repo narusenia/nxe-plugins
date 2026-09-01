@@ -423,7 +423,8 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | DIO-13 | **既定値と耳**（**耳が要る**）。**聴き直しのあと** | `diorama-plan.md` |
 | — | **Advanced の偏差**（Diorama、`REQ-DIO-009`）。**前に `dsp.md`** | `diorama-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（**耳が要る**） | `doubler-plan.md` |
-| UI-22 | **`NodeField`** — Pumice の図。自由な x 配置・追加・削除。gallery で単体検証 | `nxe-ui-plan.md` |
+| PUM-10 | **Pumice の窓**。図は全幅、下を左右分割 | `pumice-plan.md` |
+| — | **`mise run gallery` で `NodeField` を見る**（**目が要る**）。6 本置いて掴んで消せるか、幅のグリップが引けるか、アイドルで CPU を食わないか（`ps -o %cpu`） | `nxe-ui-plan.md` |
 | — | **Pumice をもう一度実機で聴く**（**耳が要る**）。`PUM-4b` で効きが 2.4 倍になった。`mise run install pumice` | `pumice-plan.md` |
 | — | **Bitwig と Reaper で PDC を見る**（**人が要る**）。方式の判断には影響しない — 落ちてもホスト固有の問題 | `pumice-plan.md` |
 
@@ -489,7 +490,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | UI-19 | **ヘッダの拡張**（`MODE` の枠 + ホバー中のコントロールの 1 行説明。ワードマークから `NXE` を外し 26 px Light に） | ✅ `bf616c6` |
 | UI-20 | **幅と、窓の高さの計算**（720 → 880 の共通定数。高さは既に部品の合計だった） | ✅ ❓ **実機で 4 ホスト見るのが未了** |
 | UI-21 | **勾配を外す**（塗りは全部フラット。`wash` と `.accent-up` も落とした） | ✅ `8fcebf3` |
-| UI-22 | **`NodeField`** — 自由な x 配置・追加・削除を持つ図。Pumice が使う。**リポジトリで一番大きい UI 投資**（`CurveView` は x 固定、`BandField` は領域の端しか動かない） | ⬜ |
+| UI-22 | **`NodeField`** — 自由な x 配置・追加・削除を持つ図。3 層（信号 / 削減 / 重み）+ 幅のグリップ。`CurveView` は x 固定、`BandField` は領域の端しか動かない | 🟡 **コードは通った**（テスト 6 本、gallery に追加）。**`mise run gallery` で見るのが未了** |
 
 ### Doubler — `../../plugins/doubler/docs/implementation/doubler-plan.md`
 

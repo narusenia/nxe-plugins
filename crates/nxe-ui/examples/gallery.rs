@@ -57,6 +57,7 @@ use nxe_ui::input::Gesture;
 use nxe_ui::knob::Knob;
 use nxe_ui::logo;
 use nxe_ui::meter::Meter;
+use nxe_ui::node::{FieldNode, NodeField, NodeFieldModifiers, NodeGesture};
 use nxe_ui::pictogram;
 use nxe_ui::polar::{FieldGesture, FieldPoint, PolarField, PolarFieldModifiers};
 use nxe_ui::segmented::SegmentedControl;
@@ -121,6 +122,15 @@ struct Demo {
     /// Which region the pointer is over. Fed straight back into the widget's
     /// `highlight`, which is how a figure and a table point at the same thing.
     hovered: Option<usize>,
+    /// Free-placed nodes, and the weight curve they add up to.
+    ///
+    /// **Derived, like `curves` and `bands`** — a lens can only map one field,
+    /// so a curve that depends on six nodes is computed when they move.
+    nodes: Vec<FieldNode>,
+    node_weight: Curve,
+    /// Which node the pointer is over. A plugin prints this in its status bar,
+    /// because a widget cannot draw text at arbitrary positions.
+    node_hovered: Option<usize>,
     /// What came in, and what is being added to it.
     dry: Curve,
     added: Curve,
@@ -196,6 +206,15 @@ enum DemoEvent {
     HoverBand(Option<usize>),
     SetSolo(usize),
     SetMeter(f32),
+    MoveNode {
+        index: usize,
+        x: f32,
+        y: f32,
+    },
+    SetNodeWidth(usize, f32),
+    AddNode(f32, f32),
+    RemoveNode(usize),
+    HoverNode(Option<usize>),
 }
 
 impl Demo {
@@ -204,6 +223,32 @@ impl Demo {
     const BAND_EDGES: [(f32, f32); 3] = [(90.0, 520.0), (480.0, 5_200.0), (4_800.0, 20_000.0)];
 
     /// Recomputes everything derived from `focus`, `solo` and `meter`.
+    /// The weight curve the nodes add up to, in the widget's own coordinates.
+    ///
+    /// **The same shape Pumice computes**, in normalized `x` instead of octaves:
+    /// a gaussian per node whose half-maximum sits at half its width, summed on
+    /// top of the resting line. The gallery has no Hz, which is the point — the
+    /// widget does not either.
+    fn refresh_nodes(&mut self) {
+        const POINTS: usize = 128;
+        self.node_weight = (0..POINTS)
+            .map(|index| {
+                let x = index as f32 / (POINTS - 1) as f32;
+                let mut sum = 0.0;
+                for node in &self.nodes {
+                    if node.half_width <= 0.0 {
+                        continue;
+                    }
+                    let distance = (x - node.x) / node.half_width;
+                    // `0.5` is the resting line, so a node's height above it is
+                    // what it contributes.
+                    sum += (node.y - 0.5) * (-(distance * distance)).exp2();
+                }
+                (x, (0.5 + sum).clamp(0.0, 1.0))
+            })
+            .collect();
+    }
+
     fn refresh_bands(&mut self) {
         // An octave either way, which is what a voice-range control has to
         // cover: a male fundamental near 110 Hz against a female one near 220.
@@ -368,6 +413,45 @@ impl Model for Demo {
                 self.meter = *value;
                 self.refresh_bands();
             }
+
+            // **The caller moves the node, not the widget** (`node.rs`). Every
+            // one of these clamps, and the widget redraws from what comes back.
+            DemoEvent::MoveNode { index, x, y } => {
+                if let Some(node) = self.nodes.get_mut(*index) {
+                    node.x = x.clamp(0.0, 1.0);
+                    node.y = y.clamp(0.0, 1.0);
+                    self.refresh_nodes();
+                }
+            }
+            DemoEvent::SetNodeWidth(index, half_width) => {
+                if let Some(node) = self.nodes.get_mut(*index) {
+                    // A floor, so a node cannot be shrunk until its own grips
+                    // are unreachable.
+                    node.half_width = half_width.clamp(0.008, 0.5);
+                    self.refresh_nodes();
+                }
+            }
+            DemoEvent::AddNode(x, y) => {
+                // **Six, the way Pumice is fixed at six**: a host stores
+                // automation against parameter ids, so the count cannot grow at
+                // run time. Full means full — nothing is quietly evicted.
+                if self.nodes.len() < 6 {
+                    self.nodes.push(FieldNode {
+                        x: x.clamp(0.0, 1.0),
+                        y: y.clamp(0.0, 1.0),
+                        half_width: 0.05,
+                    });
+                    self.refresh_nodes();
+                }
+            }
+            DemoEvent::RemoveNode(index) => {
+                if *index < self.nodes.len() {
+                    self.nodes.remove(*index);
+                    self.node_hovered = None;
+                    self.refresh_nodes();
+                }
+            }
+            DemoEvent::HoverNode(over) => self.node_hovered = *over,
         });
     }
 }
@@ -511,6 +595,22 @@ fn main() {
             focus: 0.5,
             solo: 0,
             hovered: None,
+            // Two to start with, so the figure has something in it and adding
+            // a third is visibly a thing you can do.
+            nodes: vec![
+                FieldNode {
+                    x: log_x(400.0),
+                    y: 0.72,
+                    half_width: 0.045,
+                },
+                FieldNode {
+                    x: log_x(3_000.0),
+                    y: 0.34,
+                    half_width: 0.070,
+                },
+            ],
+            node_weight: Vec::new(),
+            node_hovered: None,
             dry: sample_analysis(),
             added: Vec::new(),
             meter: 0.62,
@@ -522,6 +622,7 @@ fn main() {
         };
         demo.refresh();
         demo.refresh_bands();
+        demo.refresh_nodes();
         demo.build(cx);
 
         // The gallery grows every time a widget is added, so it scrolls from
@@ -544,6 +645,7 @@ fn main() {
                 field(cx);
                 curves(cx);
                 band_field(cx);
+                node_field(cx);
                 dot_field(cx);
                 tap_field(cx);
                 meters(cx);
@@ -1252,6 +1354,83 @@ fn band_gesture_name(gesture: BandGesture) -> &'static str {
         BandGesture::FocusEnd => "focus end",
         BandGesture::FocusReset => "focus reset (double click)",
     }
+}
+
+fn node_gesture_name(gesture: NodeGesture) -> &'static str {
+    match gesture {
+        NodeGesture::Begin(_) => "begin",
+        NodeGesture::Change { .. } => "change",
+        NodeGesture::Width { .. } => "width",
+        NodeGesture::End(_) => "end",
+        NodeGesture::Add { .. } => "add (double click)",
+        NodeGesture::Remove(_) => "remove (double click)",
+        NodeGesture::Hover(_) => "hover",
+    }
+}
+
+fn node_field(cx: &mut Context) {
+    const MARKS: [(f32, &str); 6] = [
+        (20.0, "20"),
+        (100.0, "100"),
+        (500.0, "500"),
+        (2000.0, "2k"),
+        (8000.0, "8k"),
+        (20000.0, "20k"),
+    ];
+
+    panel(cx, "NODE FIELD", |cx| {
+        NodeField::new(
+            cx,
+            Demo::nodes,
+            Demo::node_weight,
+            MARKS.iter().map(|(hz, _)| log_x(*hz)).collect(),
+            |cx, gesture| {
+                match gesture {
+                    NodeGesture::Change { index, x, y } => {
+                        cx.emit(DemoEvent::MoveNode { index, x, y })
+                    }
+                    NodeGesture::Width { index, half_width } => {
+                        cx.emit(DemoEvent::SetNodeWidth(index, half_width))
+                    }
+                    NodeGesture::Add { x, y } => cx.emit(DemoEvent::AddNode(x, y)),
+                    NodeGesture::Remove(index) => cx.emit(DemoEvent::RemoveNode(index)),
+                    NodeGesture::Hover(over) => cx.emit(DemoEvent::HoverNode(over)),
+                    _ => {}
+                }
+                cx.emit(DemoEvent::Gesture(node_gesture_name(gesture)));
+            },
+        )
+        // What is arriving, behind everything.
+        .analysis(Demo::dry)
+        // **The figure's subject**: what the plugin is doing about it.
+        .reduction(Demo::added)
+        .height(Pixels(200.0))
+        .width(Stretch(1.0));
+
+        // The axis labels are the caller's, placed with the caller's own
+        // mapping — the widget cannot draw text at arbitrary positions.
+        HStack::new(cx, |cx| {
+            for (hz, text) in MARKS {
+                Label::new(cx, text)
+                    .class("subtle")
+                    .position_type(PositionType::SelfDirected)
+                    .left(Percentage(log_x(hz) * 100.0));
+            }
+        })
+        .height(Pixels(16.0))
+        .width(Stretch(1.0));
+
+        // What a plugin's status bar would be printing. The widget reports what
+        // the pointer is over and nothing else; the words are the caller's.
+        Label::new(
+            cx,
+            Demo::node_hovered.map(|over| match over {
+                Some(index) => format!("node {}", index + 1),
+                None => "—".to_owned(),
+            }),
+        )
+        .class("subtle");
+    });
 }
 
 fn band_field(cx: &mut Context) {
