@@ -39,6 +39,30 @@ pub enum QualityParam {
     High,
 }
 
+/// What decides that a bin is resonance rather than a note (`REQ-PUM-003`).
+///
+/// A separate type from `pumice_core::Mode` for the same reason
+/// [`QualityParam`] is separate from `Quality`.
+#[derive(Enum, Debug, PartialEq, Eq, Clone, Copy, Default)]
+pub enum ModeParam {
+    #[id = "adaptive"]
+    #[name = "Adaptive"]
+    #[default]
+    Adaptive,
+    #[id = "static"]
+    #[name = "Static"]
+    Static,
+}
+
+impl From<ModeParam> for pumice_core::Mode {
+    fn from(value: ModeParam) -> Self {
+        match value {
+            ModeParam::Adaptive => pumice_core::Mode::Adaptive,
+            ModeParam::Static => pumice_core::Mode::Static,
+        }
+    }
+}
+
 impl From<QualityParam> for pumice_core::Quality {
     fn from(value: QualityParam) -> Self {
         match value {
@@ -66,6 +90,15 @@ pub struct PumiceParams {
     #[id = "speed"]
     pub speed: FloatParam,
 
+    /// What counts as resonance (`REQ-PUM-003`).
+    ///
+    /// **`Adaptive` is the default and this is the first release**, so the
+    /// discipline that pinned Sparkleur's `MODE` to `Soft` — a session saved
+    /// before the parameter existed loads with the default — does not bind
+    /// here. It binds from now on.
+    #[id = "mode"]
+    pub mode: EnumParam<ModeParam>,
+
     /// **`.non_automatable()`, and that is the point** (`REQ-PUM-008`).
     ///
     /// Each step reports a different latency. A host asked to redo delay
@@ -88,6 +121,7 @@ impl Default for PumiceParams {
             depth: unit("Depth", 0.5),
             sharpness: unit("Sharpness", 0.5),
             speed: unit("Speed", 0.5),
+            mode: EnumParam::new("Mode", ModeParam::Adaptive),
             quality: EnumParam::new("Quality", QualityParam::Normal).non_automatable(),
         }
     }
@@ -106,6 +140,7 @@ impl PumiceParams {
             depth: self.depth.smoothed.next_step(samples),
             sharpness: self.sharpness.smoothed.next_step(samples),
             speed: self.speed.smoothed.next_step(samples),
+            mode: self.mode.value().into(),
             quality: self.quality.value().into(),
         }
     }
@@ -135,7 +170,7 @@ mod tests {
             .into_iter()
             .map(|(id, _, _)| id)
             .collect();
-        assert_eq!(ids, vec!["depth", "sharpness", "speed", "quality"]);
+        assert_eq!(ids, vec!["depth", "sharpness", "speed", "mode", "quality"]);
     }
 
     /// `REQ-PUM-008`: a latency-changing parameter must never be a lane.

@@ -42,6 +42,15 @@ impl Follower {
         }
     }
 
+    /// The same time constant both ways — what a long-term average wants.
+    ///
+    /// **Reusing this rather than writing a mean.** A symmetric one-pole *is*
+    /// an exponential moving average, and a second type holding the same state
+    /// for the same arithmetic is the thing `protect.rs` warns about.
+    pub fn set_symmetric(&mut self, seconds: f32, frame_rate: f32) {
+        self.set(seconds, seconds, frame_rate);
+    }
+
     /// `frame_rate` is `sample_rate / hop`, not the sample rate.
     pub fn set(&mut self, attack_seconds: f32, release_seconds: f32, frame_rate: f32) {
         self.attack = nxe_audio::envelope::coefficient(attack_seconds, frame_rate);

@@ -17,9 +17,11 @@
 //! - [`gain`] — from that excess to a gain, and the floor that stops warbling
 //! - [`engine`] — the whole of it, and **every ear-tuned constant in one block**
 //!
-//! **`STATIC` only** (`PUM-3`). The long-term map that decides *where*
-//! resonance lives — the half that makes this "the vocal soothe" rather than
-//! "a soothe" — is `PUM-4`.
+//! **Both halves of the detection are here** (`PUM-4`). A long-term map decides
+//! *where* resonance lives, a short-term follower decides *when* it is
+//! sounding, and a bin is only pulled where both agree — which is what leaves a
+//! singer's partials alone. `Mode::Static` turns the map off and is what soothe
+//! does.
 
 pub mod engine;
 pub mod gain;
@@ -28,6 +30,6 @@ pub mod reference;
 pub mod smoothing;
 pub mod stft;
 
-pub use engine::{Controls, Engine, Settings};
+pub use engine::{Controls, Engine, Mode, Settings};
 pub use quality::Quality;
 pub use stft::{Frame, Stft};

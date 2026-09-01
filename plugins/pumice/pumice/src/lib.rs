@@ -11,9 +11,9 @@
 //! runs. Bitwig and Reaper are still to be checked; a failure there would be
 //! that host's, not the method's.
 //!
-//! **`STATIC` only, and no `MIX` yet** (`PUM-3`). The output is the wet path.
-//! The dry delay line and `MIX` arrive together in `PUM-6`, because the only
-//! reason to hold a dry copy is to have something aligned to mix against.
+//! **No `MIX` yet** (`PUM-6`). The output is the wet path; the dry delay line
+//! and `MIX` arrive together, because the only reason to hold a dry copy is to
+//! have something aligned to mix against.
 //!
 //! The window is `PUM-10`; there is no editor yet.
 
@@ -206,6 +206,7 @@ mod tests {
                     depth: 0.5,
                     sharpness: 0.5,
                     speed: 0.5,
+                    mode: pumice_core::Mode::Adaptive,
                     quality,
                 });
                 assert_eq!(engine.latency(), quality.block(rate));
