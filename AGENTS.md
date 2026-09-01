@@ -67,9 +67,12 @@ with the code, and fix the document in the same change.
   than broken rules). Host-agnostic, allocation-free on the audio path; the
   overlap-add buffering is written here rather than borrowed from
   `nih_plug::util::stft`, which would move the crate to the GPL side
-- `plugins/pumice/pumice`: the Pumice nih-plug wrapper. **Documents only** —
-  nothing is implemented, and `PUM-1` is a gate that needs four DAWs opened by
-  hand before anything else is written
+- `plugins/pumice/pumice`: the Pumice nih-plug wrapper. **Implemented up to its
+  window**; what is left is an ear on the defaults. Its figure
+  (`nxe_ui::node::NodeField`) is the only one in the line whose points can be
+  put anywhere, added and removed. **Its adaptive detection was dropped from
+  v1** — the product's whole claim, measured and found not to work, with the
+  three failed statistics recorded in `REQ-PUM-003` rather than deleted
 - `docs/`: monorepo-wide documents (architecture, cross-plugin backlog and
   roadmap). Indexed by `docs/README.md`
 - `plugins/<name>/docs/`: that plugin's own requirements, specifications, and
