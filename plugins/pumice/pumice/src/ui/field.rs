@@ -35,6 +35,18 @@ pub const HEIGHT: f32 = 200.0;
 /// The axis labels' own line, under the plot.
 pub const MARKS_HEIGHT: f32 = theme::LINE_VALUE;
 
+/// The level labels' own column, beside the plot. Three characters and a sign.
+pub const LEVELS_WIDTH: f32 = 22.0;
+
+/// The spectrum's window, and where its lines go.
+///
+/// **The vertical axis had no scale at all**, so a peak's height said nothing:
+/// 6 dB above its neighbours and 20 drew the same picture until you compared
+/// them. These are the spectrum's decibels — the reduction hangs from the top
+/// in its own units and the weight is read against the middle, but *level* is
+/// what a person means by a vertical axis on a spectrum.
+pub const LEVELS: [(f32, &str); 4] = [(0.0, "0"), (-24.0, "-24"), (-48.0, "-48"), (-72.0, "-72")];
+
 /// Where the gridlines and the labels go.
 const MARKS: [(f32, &str); 6] = [
     (20.0, "20"),
@@ -44,6 +56,12 @@ const MARKS: [(f32, &str); 6] = [
     (8_000.0, "8k"),
     (20_000.0, "20k"),
 ];
+
+/// A level in dB as a height in the figure. **The window owns the scale**
+/// (`super::SPECTRUM_FLOOR_DB`), so this takes it rather than repeating it.
+pub fn level_position(db: f32, floor_db: f32, ceiling_db: f32) -> f32 {
+    ((db - floor_db) / (ceiling_db - floor_db)).clamp(0.0, 1.0)
+}
 
 /// The total span of the axis, in octaves — what a node's width in octaves is
 /// measured against when it becomes a width in the figure.
@@ -84,22 +102,54 @@ pub fn view(cx: &mut Context) {
 
     VStack::new(cx, move |cx| {
         let bases = bases.clone();
-        NodeField::new(
-            cx,
-            Ui::nodes,
-            Ui::weight,
-            MARKS
-                .iter()
-                .map(|(hz, _)| params::hz_to_position(*hz))
-                .collect(),
-            move |cx, gesture| {
-                handle(&bases, cx, gesture);
-            },
-        )
-        .analysis(Ui::spectrum)
-        .reduction(Ui::reduction)
+        // The plot, and the level labels in a column beside it.
+        HStack::new(cx, move |cx| {
+            let bases = bases.clone();
+            NodeField::new(
+                cx,
+                Ui::nodes,
+                Ui::weight,
+                MARKS
+                    .iter()
+                    .map(|(hz, _)| params::hz_to_position(*hz))
+                    .collect(),
+                LEVELS
+                    .iter()
+                    .map(|(db, _)| {
+                        level_position(*db, super::SPECTRUM_FLOOR_DB, super::SPECTRUM_CEILING_DB)
+                    })
+                    .collect(),
+                move |cx, gesture| {
+                    handle(&bases, cx, gesture);
+                },
+            )
+            .analysis(Ui::spectrum)
+            .reduction(Ui::reduction)
+            .height(Stretch(1.0))
+            .width(Stretch(1.0));
+
+            // **The caller places them**, with the caller's own mapping — the
+            // widget cannot draw text at arbitrary positions (`nxe_ui::node`).
+            VStack::new(cx, |cx| {
+                for (db, text) in LEVELS {
+                    Label::new(cx, text)
+                        .class("subtle")
+                        .position_type(PositionType::SelfDirected)
+                        .top(Percentage(
+                            (1.0 - level_position(
+                                db,
+                                super::SPECTRUM_FLOOR_DB,
+                                super::SPECTRUM_CEILING_DB,
+                            )) * 100.0,
+                        ));
+                }
+            })
+            .width(Pixels(LEVELS_WIDTH))
+            .height(Stretch(1.0));
+        })
         .height(Pixels(HEIGHT - MARKS_HEIGHT - theme::SPACE_1))
-        .width(Stretch(1.0));
+        .width(Stretch(1.0))
+        .col_between(Pixels(theme::SPACE_1));
 
         // The axis labels are the caller's, placed with the caller's own
         // mapping — the widget cannot draw text at arbitrary positions
@@ -113,7 +163,10 @@ pub fn view(cx: &mut Context) {
             }
         })
         .height(Pixels(MARKS_HEIGHT))
-        .width(Stretch(1.0));
+        // Short by the level column, so the frequency marks line up with the
+        // plot rather than with the row.
+        .width(Stretch(1.0))
+        .right(Pixels(LEVELS_WIDTH + theme::SPACE_1));
     })
     .height(Pixels(HEIGHT))
     .width(Stretch(1.0))

@@ -204,6 +204,17 @@ pub struct PumiceParams {
     #[id = "speed"]
     pub speed: FloatParam,
 
+    /// **How easily it reacts.** How far above its own neighbourhood a bin has
+    /// to sit before anything is taken out of it.
+    ///
+    /// **It was an internal constant, and that was the gap** (`PUM-10c`). The
+    /// default is measured — 4.5 dB is where white noise and a sung line's
+    /// partials both read nothing (`pumice_core::Settings::threshold_db`) — but
+    /// a measurement on synthetic material is a starting point, not an answer
+    /// for every voice. Turning it **down** makes the plugin react to less.
+    #[id = "thresh"]
+    pub threshold: FloatParam,
+
     /// What counts as resonance (`REQ-PUM-003`).
     ///
     /// **`Adaptive` is the default and this is the first release**, so the
@@ -266,6 +277,17 @@ impl Default for PumiceParams {
             depth: unit("Depth", 0.5),
             sharpness: unit("Sharpness", 0.5),
             speed: unit("Speed", 0.5),
+            threshold: FloatParam::new(
+                "Threshold",
+                pumice_core::Settings::DEFAULT.threshold_db,
+                FloatRange::Linear {
+                    min: 0.0,
+                    max: 12.0,
+                },
+            )
+            .with_unit(" dB")
+            .with_value_to_string(formatters::v2s_f32_rounded(1))
+            .with_smoother(SmoothingStyle::Linear(SMOOTHING_MS)),
             mode: EnumParam::new("Mode", ModeParam::Adaptive),
             mix: unit("Mix", 1.0),
             output: FloatParam::new(
@@ -308,6 +330,7 @@ impl PumiceParams {
             depth: self.depth.smoothed.next_step(samples),
             sharpness: self.sharpness.smoothed.next_step(samples),
             speed: self.speed.smoothed.next_step(samples),
+            threshold_db: self.threshold.smoothed.next_step(samples),
             mix: self.mix.smoothed.next_step(samples),
             // **0 dB has to come out exactly 1.0**, or `OUTPUT` at rest is a
             // rounding error away from unity.
@@ -394,6 +417,7 @@ mod tests {
             "depth".to_string(),
             "sharpness".to_string(),
             "speed".to_string(),
+            "thresh".to_string(),
             "mode".to_string(),
             "mix".to_string(),
             "output".to_string(),

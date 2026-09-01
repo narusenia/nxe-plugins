@@ -85,8 +85,8 @@ const REDUCTION_FLOOR_DB: f32 = -24.0;
 
 /// The spectrum's window, in dB. Wide enough that a vocal's noise floor is not
 /// drawn as silence and its peaks are not drawn flat against the top.
-const SPECTRUM_FLOOR_DB: f32 = -84.0;
-const SPECTRUM_CEILING_DB: f32 = 0.0;
+pub(crate) const SPECTRUM_FLOOR_DB: f32 = -84.0;
+pub(crate) const SPECTRUM_CEILING_DB: f32 = 0.0;
 
 pub fn default_state() -> Arc<ViziaState> {
     ViziaState::new(|| (WIDTH, HEIGHT))
@@ -315,6 +315,13 @@ fn split_row(cx: &mut Context) {
             HStack::new(cx, |cx| {
                 knob_block(
                     cx,
+                    "THRESHOLD",
+                    "How easily it reacts at all",
+                    SIDE_KNOB,
+                    |p| &p.threshold,
+                );
+                knob_block(
+                    cx,
                     "SHARPNESS",
                     "How narrow a peak has to be",
                     SIDE_KNOB,
@@ -431,7 +438,7 @@ mod tests {
         /// has one and so does `PumiceParams`. Their ids are `d_1`..`d_6` and
         /// `depth`, so the parameter map is unambiguous even though the field
         /// names are not.
-        const COUNT: usize = 14;
+        const COUNT: usize = 15;
         const SOURCES: [&str; 3] = [
             include_str!("mod.rs"),
             include_str!("field.rs"),

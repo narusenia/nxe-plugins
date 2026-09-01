@@ -75,6 +75,7 @@ fn working(quality: Quality) -> Controls {
         depth: 0.7,
         sharpness: 0.5,
         speed: 0.6,
+        threshold_db: Settings::DEFAULT.threshold_db,
         mix: 0.9,
         output: 1.0,
         delta: false,

@@ -226,6 +226,10 @@ pub struct Controls {
     pub sharpness: f32,
     /// `0..=1`. Zero is the slow end.
     pub speed: f32,
+    /// How far above its neighbourhood a bin has to sit before anything
+    /// happens, in dB. **The measured default is
+    /// [`Settings::threshold_db`]**; this is the control over it.
+    pub threshold_db: f32,
     /// `0..=1`. Zero is the dry path alone (`REQ-PUM-012`).
     pub mix: f32,
     /// A **linear** gain, applied last.
@@ -288,6 +292,7 @@ struct Detector {
     computer: Computer,
     settings: Settings,
     depth: f32,
+    threshold_db: f32,
     feature_octaves: f32,
     mode: Mode,
     /// The loudest frame lately, as total power — what [`Settings::map_gate_db`]
@@ -331,6 +336,7 @@ impl Detector {
             },
             settings,
             depth: 0.0,
+            threshold_db: settings.threshold_db,
             feature_octaves: settings.feature_wide_octaves,
             mode: Mode::default(),
             loudest: 0.0,
@@ -422,7 +428,10 @@ impl Detector {
             // "hot now" — which is `STATIC` — decides how far. A partial fails
             // the first and gets nothing; a resonance passes it and gets
             // exactly what `STATIC` would take.
-            let threshold = self.settings.map_gate_threshold_db;
+            // The gate moves with the control, keeping the distance the
+            // measurement found between the two.
+            let threshold = self.settings.map_gate_threshold_db
+                + (self.threshold_db - self.settings.threshold_db);
             let range = self.settings.map_gate_range_db.max(f32::MIN_POSITIVE);
             for (bin, allowed) in self.allowed[..bins].iter_mut().enumerate() {
                 let above = self.where_db[bin] * confidence - threshold;
@@ -603,6 +612,12 @@ impl Engine {
         }
 
         self.detector.depth = controls.depth.clamp(0.0, 1.0);
+        // **The threshold is a control now** (`PUM-10c`). It was a measured
+        // constant and it still has a measured default, but "how easily does it
+        // react" is the question a user asks about this plugin first and there
+        // was nowhere to answer it.
+        self.detector.threshold_db = controls.threshold_db;
+        self.detector.computer.threshold_db = controls.threshold_db;
         self.mix = controls.mix.clamp(0.0, 1.0);
         self.output = controls.output;
         self.delta = controls.delta;
@@ -793,6 +808,7 @@ mod tests {
             speed: 0.5,
             mode,
             quality: Quality::Normal,
+            threshold_db: Settings::DEFAULT.threshold_db,
             mix: 1.0,
             output: 1.0,
             delta: false,

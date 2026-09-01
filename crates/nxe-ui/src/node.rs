@@ -139,6 +139,15 @@ pub struct NodeField {
     reduction: Curve,
     /// Gridline positions in normalized `x`. Fixed for the life of the view.
     grid: Vec<f32>,
+    /// Gridline positions in normalized `y`, for a caller that labels the
+    /// vertical axis.
+    ///
+    /// **A figure with a scale on one axis and none on the other cannot be
+    /// read**: the spectrum behind the nodes is a level, and without lines to
+    /// count nobody can say whether a peak is 6 dB or 20 above its
+    /// neighbours. Empty draws none, which is what a field with no vertical
+    /// quantity wants.
+    rows: Vec<f32>,
     dragging: Option<Grabbed>,
     /// Where the pointer went down, and what the value was then — the same
     /// shape `polar.rs` uses, so `Shift` behaves the way it does everywhere.
@@ -154,6 +163,7 @@ impl NodeField {
         nodes: impl Res<Vec<FieldNode>> + 'static,
         weight: impl Res<Curve> + 'static,
         grid: Vec<f32>,
+        rows: Vec<f32>,
         on_gesture: impl Fn(&mut EventContext, NodeGesture) + 'static,
     ) -> Handle<'a, Self> {
         let initial_nodes = nodes.get_val(cx);
@@ -165,6 +175,7 @@ impl NodeField {
             analysis: Curve::new(),
             reduction: Curve::new(),
             grid,
+            rows,
             dragging: None,
             grab: (0.0, 0.0),
             grab_value: (0.0, 0.0),
@@ -453,6 +464,11 @@ impl View for NodeField {
             grid.move_to(gx, bounds.y);
             grid.line_to(gx, bounds.y + bounds.h);
         }
+        for y in &self.rows {
+            let (_, gy) = at(0.0, *y);
+            grid.move_to(bounds.x, gy);
+            grid.line_to(bounds.x + bounds.w, gy);
+        }
         let mut paint = vg::Paint::color(palette.track.vg());
         paint.set_line_width(line);
         canvas.stroke_path(&grid, &paint);
@@ -576,6 +592,7 @@ mod tests {
             analysis: Curve::new(),
             reduction: Curve::new(),
             grid: Vec::new(),
+            rows: Vec::new(),
             dragging: None,
             grab: (0.0, 0.0),
             grab_value: (0.0, 0.0),

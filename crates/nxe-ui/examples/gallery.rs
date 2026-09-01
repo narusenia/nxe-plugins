@@ -1384,6 +1384,9 @@ fn node_field(cx: &mut Context) {
             Demo::nodes,
             Demo::node_weight,
             MARKS.iter().map(|(hz, _)| log_x(*hz)).collect(),
+            // Horizontal lines too: a spectrum behind the nodes is a level, and
+            // a level with no lines to count cannot be read.
+            vec![0.25, 0.5, 0.75],
             |cx, gesture| {
                 match gesture {
                     NodeGesture::Change { index, x, y } => {

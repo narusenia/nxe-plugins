@@ -274,6 +274,7 @@ mod tests {
                     depth: 0.5,
                     sharpness: 0.5,
                     speed: 0.5,
+                    threshold_db: 4.5,
                     mode: pumice_core::Mode::Adaptive,
                     quality,
                     mix: 1.0,
