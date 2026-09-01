@@ -50,8 +50,6 @@ pub(crate) const WIDTH: u32 = theme::WINDOW_WIDTH;
 const HEIGHT: u32 = (theme::SPACE_3 * 2.0
     + nxe_ui::header::HEIGHT
     + theme::SPACE_3
-    + nxe_ui::readout::HEIGHT
-    + theme::SPACE_3
     + FIGURE_HEIGHT
     + theme::SPACE_3
     + SPLIT_HEIGHT
@@ -143,13 +141,9 @@ impl Model for Ui {
                     (db / REDUCTION_FLOOR_DB).clamp(0.0, 1.0)
                 });
                 // `0.5` is the resting line and the weight runs `0..=2`.
-                self.weight = curve(&self.analysis.weight.read(), |weight| {
-                    (weight * 0.5).clamp(0.0, 1.0)
-                });
                 self.peaks = self.analysis.peaks.read().to_vec();
                 self.holds = self.analysis.holds.read().to_vec();
                 self.readouts = readout::figures(&self.analysis, &self.peaks);
-                self.sync_nodes();
             }
             UiEvent::Sync => self.sync_nodes(),
             UiEvent::Hover(over) => {
@@ -164,8 +158,32 @@ impl Model for Ui {
 }
 
 impl Ui {
-    /// The nodes as the figure draws them, read back out of the parameters.
+    /// The nodes as the figure draws them, read back out of the parameters,
+    /// **and the curve they add up to**.
+    ///
+    /// **The weight is sampled, not read back off the engine's bins.** It is
+    /// what the user set, it has an exact value at every frequency, and going
+    /// through the bins drew stairs below 300 Hz — a logarithmic display grid
+    /// steps 5.6 Hz at 100 Hz against a bin every 23.4
+    /// (`pumice_core::nodes::weight_at`).
     fn sync_nodes(&mut self) {
+        let nodes: [pumice_core::Node; pumice_core::NODES] =
+            std::array::from_fn(|index| self.params.nodes[index].resolve());
+        let range = pumice_core::Range {
+            low_hz: params::position_to_hz(self.params.low.value()),
+            high_hz: params::position_to_hz(self.params.high.value()),
+        };
+        let edge = pumice_core::Settings::DEFAULT.edge_octaves;
+
+        self.weight = (0..pumice_core::CURVE_POINTS)
+            .map(|index| {
+                let hz = pumice_core::display::point_hz(index);
+                let weight = pumice_core::nodes::weight_at(hz, &nodes, range, edge);
+                // `0.5` is the resting line and the weight runs `0..=2`.
+                (params::hz_to_position(hz), (weight * 0.5).clamp(0.0, 1.0))
+            })
+            .collect();
+
         self.nodes = self
             .params
             .nodes
@@ -229,7 +247,6 @@ pub fn create(
                     nxe_plug_ui::segmented(cx, Ui::params, |p| &p.quality, &["L", "N", "H"])
                         .describe("How fine the transform is, and how much latency");
                 });
-                readout::strip(cx);
                 figure_row(cx);
                 split_row(cx);
             })
@@ -450,8 +467,6 @@ mod tests {
 
         let parts = nxe_ui::theme::SPACE_3 * 2.0
             + nxe_ui::header::HEIGHT
-            + nxe_ui::theme::SPACE_3
-            + nxe_ui::readout::HEIGHT
             + nxe_ui::theme::SPACE_3
             + super::FIGURE_HEIGHT
             + nxe_ui::theme::SPACE_3

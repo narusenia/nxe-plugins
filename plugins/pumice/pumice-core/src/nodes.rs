@@ -25,8 +25,6 @@
 //! `DEPTH` alone. Nodes are for making exceptions to that, which means the
 //! curve has to be exactly flat when none are on.
 
-use crate::gain::range_into;
-
 /// How many nodes a host will ever see. **Fixed at build time.**
 pub const NODES: usize = 6;
 
@@ -73,7 +71,37 @@ impl Default for Range {
     }
 }
 
-/// The weight curve: the operating range, times one plus the nodes.
+/// The weight at one frequency: the operating range, times one plus the nodes.
+///
+/// **The one implementation.** [`weight_into`] samples it per bin for the
+/// engine and a window samples it per pixel for the figure — and a figure that
+/// read the engine's bins would draw **stairs below 300 Hz**, because a
+/// logarithmic display grid is finer than a linear FFT's bins down there
+/// (at 100 Hz the grid steps 5.6 Hz against a bin every 23.4).
+///
+/// A weight is not a measurement. It is what the user asked for, and it has an
+/// exact value at every frequency, so nothing about it has to go through bins.
+///
+/// **Built when something moves, never per frame.** Six nodes against up to
+/// 8193 bins is the one piece of arithmetic here that would be wasteful at hop
+/// rate, and nothing about it depends on the signal.
+pub fn weight_at(hz: f32, nodes: &[Node; NODES], range: Range, edge_octaves: f32) -> f32 {
+    let inside = crate::gain::range_at(hz, range.low_hz, range.high_hz, edge_octaves);
+    if inside == 0.0 {
+        return 0.0;
+    }
+
+    // Exactly one inside the range when nothing is on, which is what
+    // `REQ-PUM-004` promises and what lets `DEPTH` alone be the product on the
+    // way in.
+    let mut sum = 1.0_f32;
+    for node in nodes.iter().filter(|node| node.enabled) {
+        sum += node.depth * bump(hz, node);
+    }
+    inside * sum.clamp(0.0, 2.0)
+}
+
+/// The weight curve per bin.
 ///
 /// **Built when something moves, never per frame.** Six nodes against up to
 /// 8193 bins is the one piece of arithmetic here that would be wasteful at hop
@@ -86,29 +114,8 @@ pub fn weight_into(
     edge_octaves: f32,
     out: &mut [f32],
 ) {
-    range_into(bins, bin_hz, range.low_hz, range.high_hz, edge_octaves, out);
-
-    let active = nodes.iter().filter(|node| node.enabled).count();
-    if active == 0 {
-        // Exactly flat inside the range, which is what `REQ-PUM-004` promises
-        // and what lets `DEPTH` alone be the product on the way in.
-        return;
-    }
-
     for (bin, value) in out.iter_mut().enumerate().take(bins) {
-        if *value == 0.0 {
-            continue;
-        }
-        let hz = bin as f32 * bin_hz;
-        if hz <= 0.0 {
-            continue;
-        }
-
-        let mut sum = 1.0_f32;
-        for node in nodes.iter().filter(|node| node.enabled) {
-            sum += node.depth * bump(hz, node);
-        }
-        *value *= sum.clamp(0.0, 2.0);
+        *value = weight_at(bin as f32 * bin_hz, nodes, range, edge_octaves);
     }
 }
 

@@ -183,6 +183,14 @@ pub fn smooth_into(
 /// curve is smoothed again over 1/12 octave before it reaches the audio
 /// ([`smooth_into`]), which is what actually decides whether that is heard.
 /// If it ever is, the fix is a wider edge down there, not a finer transform.
+pub fn range_at(hz: f32, low_hz: f32, high_hz: f32, edge_octaves: f32) -> f32 {
+    if hz <= 0.0 || low_hz <= 0.0 || high_hz <= 0.0 {
+        return 0.0;
+    }
+    let half = edge_octaves * 0.5;
+    ramp((hz / low_hz).log2(), half) * ramp((high_hz / hz).log2(), half)
+}
+
 pub fn range_into(
     bins: usize,
     bin_hz: f32,
@@ -191,16 +199,8 @@ pub fn range_into(
     edge_octaves: f32,
     out: &mut [f32],
 ) {
-    let half = edge_octaves * 0.5;
     for (bin, value) in out.iter_mut().enumerate().take(bins) {
-        let hz = bin as f32 * bin_hz;
-        *value = if hz <= 0.0 {
-            0.0
-        } else {
-            let octaves_above_low = (hz / low_hz).log2();
-            let octaves_below_high = (high_hz / hz).log2();
-            ramp(octaves_above_low, half) * ramp(octaves_below_high, half)
-        };
+        *value = range_at(bin as f32 * bin_hz, low_hz, high_hz, edge_octaves);
     }
 }
 

@@ -46,7 +46,11 @@ use vizia::vg;
 const GRAB: f32 = 12.0;
 
 /// How close to a width grip, horizontally.
-const GRIP_GRAB: f32 = 8.0;
+///
+/// **Wider than it looks.** The grips are thin marks on purpose — a second
+/// round thing beside a round thing reads as another node — so what makes them
+/// catchable is the reach, not the drawing.
+const GRIP_GRAB: f32 = 10.0;
 
 /// How opaque the signal fill is. Light enough that the curves and the nodes
 /// stay in front of it.
@@ -59,6 +63,13 @@ const REDUCTION_ALPHA: f32 = 0.30;
 const CURVE_WIDTH: f32 = 2.0;
 const NODE_RADIUS: f32 = 5.0;
 const GRIP_HEIGHT: f32 = 7.0;
+/// The grips grow when the node is being worked on, so it is clear which one
+/// the pointer has.
+const GRIP_HEIGHT_ACTIVE: f32 = 11.0;
+/// How opaque a resting node's width bar is. Visible enough to say "this is
+/// how wide, and these ends move", faint enough that six of them are not a
+/// second curve.
+const SPAN_ALPHA: f32 = 0.45;
 
 /// A node in the view's own coordinates.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -199,30 +210,26 @@ impl NodeField {
 
     /// A width grip, if the pointer is on one.
     ///
-    /// Only the hovered or dragged node shows them, so only that node's are
-    /// grabbable — otherwise six nodes' worth of grips would cover the panel.
+    /// **Every node's grips are live, because every node's are drawn.** They
+    /// were shown only on the hovered node, and nobody could find out how to
+    /// set a width — a handle that appears only once you are already on it is a
+    /// handle nobody discovers.
     fn nearest_grip(&self, bounds: BoundingBox, x: f32, y: f32, scale: f32) -> Option<usize> {
-        let index = self
-            .dragging
-            .map(|grabbed| match grabbed {
-                Grabbed::Node(index) | Grabbed::Width(index) => index,
-            })
-            .or(self.hovered)?;
-        let node = self.nodes.get(index)?;
-        let (_, ny) = self.position(bounds, node);
-
-        if (ny - y).abs() > GRAB * scale {
-            return None;
-        }
-        let span = node.half_width.max(0.0) * bounds.w;
-        let left = bounds.x + node.x * bounds.w - span;
-        let right = bounds.x + node.x * bounds.w + span;
         let reach = GRIP_GRAB * scale;
-        if (left - x).abs() <= reach || (right - x).abs() <= reach {
-            Some(index)
-        } else {
-            None
-        }
+        self.nodes
+            .iter()
+            .enumerate()
+            .filter_map(|(index, node)| {
+                let (nx, ny) = self.position(bounds, node);
+                if (ny - y).abs() > GRAB * scale {
+                    return None;
+                }
+                let span = node.half_width.max(0.0) * bounds.w;
+                let distance = ((nx - span) - x).abs().min(((nx + span) - x).abs());
+                (distance <= reach).then_some((index, distance))
+            })
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+            .map(|(index, _)| index)
     }
 
     /// Where a drag has taken the grabbed thing, in the view's coordinates.
@@ -503,26 +510,49 @@ impl View for NodeField {
             })
             .or(self.hovered);
 
+        // **Every node's width is drawn, not just the one under the pointer.**
+        // A bar through the node with a mark at each end says two things at
+        // once: how wide this node is, and that its ends are what widen it.
+        // Grips that appeared on hover alone were a handle nobody found.
         for (index, node) in self.nodes.iter().enumerate() {
             let (px, py) = self.position(bounds, node);
             let radius = NODE_RADIUS * scale;
+            let span = node.half_width.max(0.0) * bounds.w;
+            let working = active == Some(index);
+            let height = if working {
+                GRIP_HEIGHT_ACTIVE * scale
+            } else {
+                GRIP_HEIGHT * scale
+            };
 
-            // The width grips, on the one node being worked on. Marks rather
-            // than dots: they move one value along one axis, and a second round
-            // thing beside a round thing reads as another node.
-            if active == Some(index) {
-                let span = node.half_width.max(0.0) * bounds.w;
-                let height = GRIP_HEIGHT * scale;
-                let mut grips = vg::Path::new();
-                for side in [-1.0_f32, 1.0] {
-                    let gx = px + side * span;
-                    grips.move_to(gx, py - height);
-                    grips.line_to(gx, py + height);
-                }
-                let mut paint = vg::Paint::color(palette.bright.vg());
-                paint.set_line_width(line * 2.0);
-                canvas.stroke_path(&grips, &paint);
+            let mut bar = vg::Path::new();
+            bar.move_to(px - span, py);
+            bar.line_to(px + span, py);
+            let mut paint = vg::Paint::color(if working {
+                palette.bright.vg()
+            } else {
+                palette.bright.at(SPAN_ALPHA).vg()
+            });
+            paint.set_line_width(line);
+            canvas.stroke_path(&bar, &paint);
 
+            // Marks rather than dots: they move one value along one axis, and a
+            // second round thing beside a round thing reads as another node.
+            let mut grips = vg::Path::new();
+            for side in [-1.0_f32, 1.0] {
+                let gx = px + side * span;
+                grips.move_to(gx, py - height);
+                grips.line_to(gx, py + height);
+            }
+            let mut paint = vg::Paint::color(if working {
+                palette.bright.vg()
+            } else {
+                palette.bright.at(SPAN_ALPHA).vg()
+            });
+            paint.set_line_width(line * 2.0);
+            canvas.stroke_path(&grips, &paint);
+
+            if working {
                 let mut halo = vg::Path::new();
                 halo.circle(px, py, radius + 3.0 * scale);
                 canvas.fill_path(&halo, &vg::Paint::color(palette.dim.vg()));
@@ -598,20 +628,28 @@ mod tests {
         assert_eq!(view.nearest(bounds(), 500.0, 100.0, 1.0), None);
     }
 
-    /// Only the node being worked on offers its grips — six nodes' worth would
-    /// cover the panel.
+    /// **Every node's grips are live**, because every node's are drawn. They
+    /// used to appear on hover only, and a handle that appears once the pointer
+    /// is already on it is a handle nobody discovers.
     #[test]
-    fn only_the_active_node_offers_grips() {
-        let mut view = field(vec![node(0.5, 0.5)]);
+    fn every_node_offers_its_grips() {
+        let view = field(vec![node(0.5, 0.5)]);
         // 0.05 of 800 px is 40 px either side of 400.
-        assert_eq!(view.nearest_grip(bounds(), 360.0, 100.0, 1.0), None);
-
-        view.hovered = Some(0);
         assert_eq!(view.nearest_grip(bounds(), 360.0, 100.0, 1.0), Some(0));
         assert_eq!(view.nearest_grip(bounds(), 440.0, 100.0, 1.0), Some(0));
         // Not in the middle, and not far above.
         assert_eq!(view.nearest_grip(bounds(), 400.0, 100.0, 1.0), None);
         assert_eq!(view.nearest_grip(bounds(), 360.0, 10.0, 1.0), None);
+    }
+
+    /// With two nodes in reach, the nearer grip wins.
+    #[test]
+    fn the_nearer_grip_wins() {
+        let view = field(vec![node(0.3, 0.5), node(0.7, 0.5)]);
+        // 0.3 of 800 is 240, so its right grip is at 280.
+        assert_eq!(view.nearest_grip(bounds(), 282.0, 100.0, 1.0), Some(0));
+        // 0.7 of 800 is 560, so its left grip is at 520.
+        assert_eq!(view.nearest_grip(bounds(), 518.0, 100.0, 1.0), Some(1));
     }
 
     #[test]

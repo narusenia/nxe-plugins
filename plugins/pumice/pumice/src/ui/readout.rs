@@ -4,10 +4,10 @@
 //! already publishes (`analysis.rs`) — anything the audio thread writes and
 //! nobody reads is a cost already paid for no return (`.agents/rules/ui.md`).
 //!
-//! **`REDUCTION` is the strip's subject and the only `.readout` in the band.**
-//! A panel where every figure is the headline size has no subject
-//! (`.agents/rules/ui.md`), and the question this plugin is watched for is *how
-//! much is it taking out*.
+//! **There is no band of figures under the header.** There was, and it printed
+//! `REDUCTION` / `IN` / `OUT` at the headline size — the same three the strip
+//! along the bottom already carries. One window does not say the same thing
+//! twice, and the row it took back is 40 px the figure now has.
 //!
 //! **The status bar prints the node under the pointer.** The figure cannot label
 //! its own points — vizia's `draw_text` only renders a view's own text — so the
@@ -71,16 +71,6 @@ pub(crate) fn figures(analysis: &Analysis, peaks: &[f32]) -> Vec<String> {
     );
     out[REDUCTION] = reduction(analysis.readouts.read()[0]);
     out
-}
-
-/// The band under the header.
-pub fn strip(cx: &mut Context) {
-    nxe_ui::readout::strip(cx, |cx| {
-        // **The subject first and biggest.**
-        nxe_ui::readout::cell(cx, "REDUCTION", Ui::readouts.index(REDUCTION), "dB");
-        nxe_ui::readout::cell(cx, "IN", Ui::readouts.index(IN), "dB");
-        nxe_ui::readout::cell(cx, "OUT", Ui::readouts.index(OUT), "dB");
-    });
 }
 
 /// The strip at the foot of the window.

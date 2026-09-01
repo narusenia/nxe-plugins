@@ -404,7 +404,12 @@ impl Detector {
     }
 }
 
-/// The three curves the figure draws.
+/// The two **measured** curves the figure draws.
+///
+/// **The weight is not here.** It is what the user set, it has an exact value
+/// at every frequency, and a figure that read it back off the engine's bins
+/// drew stairs below 300 Hz (`nodes::weight_at`). The window samples it
+/// directly instead, which is also 128 fewer atomics a block.
 ///
 /// Held by the caller rather than returned, so publishing a frame allocates
 /// nothing (`REQ-PUM-016`).
@@ -415,8 +420,6 @@ pub struct Curves {
     pub spectrum_db: [f32; CURVE_POINTS],
     /// What is being taken out, in dB. Negative.
     pub reduction_db: [f32; CURVE_POINTS],
-    /// The nodes and the operating range, `0..=2`.
-    pub weight: [f32; CURVE_POINTS],
 }
 
 impl Default for Curves {
@@ -424,7 +427,6 @@ impl Default for Curves {
         Self {
             spectrum_db: [0.0; CURVE_POINTS],
             reduction_db: [0.0; CURVE_POINTS],
-            weight: [0.0; CURVE_POINTS],
         }
     }
 }
@@ -501,7 +503,7 @@ impl Engine {
         &self.detector.smoothed_db[..self.detector.bins]
     }
 
-    /// The three curves the figure draws, on the figure's own logarithmic
+    /// The measured curves the figure draws, on the figure's own logarithmic
     /// axis (`REQ-PUM-018`).
     ///
     /// **The reduction is the gain the audio actually got**, not a second
@@ -514,6 +516,7 @@ impl Engine {
         crate::display::resample_power_db_into(
             &self.detector.power[..bins],
             bin_hz,
+            crate::display::full_scale(self.stft.block()),
             &mut into.spectrum_db,
         );
         crate::display::resample_into(
@@ -521,7 +524,6 @@ impl Engine {
             bin_hz,
             &mut into.reduction_db,
         );
-        crate::display::resample_into(&self.detector.weight[..bins], bin_hz, &mut into.weight);
     }
 
     /// Which bin a frequency lands in, for a caller reading
@@ -1536,15 +1538,6 @@ mod tests {
             engine.reduction_curve()[engine.bin_of(hz)]
         );
         assert!(curves.spectrum_db[point] > curves.spectrum_db[point / 2]);
-
-        // Nothing on means the weight is flat inside the range and zero outside.
-        let inside = (0..CURVE_POINTS)
-            .filter(|index| {
-                let hz = crate::display::point_hz(*index);
-                (300.0..8_000.0).contains(&hz)
-            })
-            .all(|index| (curves.weight[index] - 1.0).abs() < 0.05);
-        assert!(inside, "the weight is not flat inside the range");
 
         // **Three seconds of silence and the figure is empty** (`REQ-PUM-013`).
         run(&mut engine, &vec![0.0; rate as usize * 3]);

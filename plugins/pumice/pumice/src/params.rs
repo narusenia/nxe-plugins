@@ -177,7 +177,7 @@ impl NodeParams {
         }
     }
 
-    fn resolve(&self) -> pumice_core::Node {
+    pub fn resolve(&self) -> pumice_core::Node {
         pumice_core::Node {
             enabled: self.enabled.value(),
             freq_hz: position_to_hz(self.freq.value()),

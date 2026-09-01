@@ -41,9 +41,6 @@ pub struct Analysis {
     /// that is not working — which is the mistake `REQ-SPK-008` records about
     /// Sparkleur's guard.
     pub reduction: Handoff<CURVE_POINTS>,
-    /// The nodes and the operating range, `0..=2`. What the user set, as
-    /// against what the plugin is doing with it.
-    pub weight: Handoff<CURVE_POINTS>,
     /// The deepest reduction, in dB.
     pub readouts: Handoff<READOUTS>,
 }

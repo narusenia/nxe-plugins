@@ -210,7 +210,6 @@ impl Plugin for Pumice {
         self.engine.curves(&mut self.curves);
         self.analysis.spectrum.write(&self.curves.spectrum_db);
         self.analysis.reduction.write(&self.curves.reduction_db);
-        self.analysis.weight.write(&self.curves.weight);
         self.analysis
             .peaks
             .write(&std::array::from_fn(|index| self.meters[index].peak()));

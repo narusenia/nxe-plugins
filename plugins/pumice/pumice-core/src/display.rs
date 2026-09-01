@@ -71,10 +71,33 @@ pub fn resample_into(values: &[f32], bin_hz: f32, out: &mut [f32; CURVE_POINTS])
 }
 
 /// The same, converting power to dB on the way.
-pub fn resample_power_db_into(power: &[f32], bin_hz: f32, out: &mut [f32; CURVE_POINTS]) {
+/// What a transform's power has to be divided by to read as dBFS.
+///
+/// **A transform's magnitude scales with its size**, and this was missed: a
+/// full-scale sine through a 2048-point Hann-windowed FFT peaks at `A·N/4`, so
+/// its power read **+34 dB** rather than 0 and every drawn spectrum sat flat
+/// against the top of the figure whatever was playing.
+///
+/// The detection never noticed, because it works on the *ratio* of a bin to its
+/// neighbourhood and a scale cancels out of a ratio. Only the picture was
+/// wrong — which is the kind of bug a figure hides until somebody plays
+/// something through it.
+pub fn full_scale(block: usize) -> f32 {
+    let peak = block as f32 * 0.25;
+    peak * peak
+}
+
+/// The same, converting power to dBFS on the way. `scale` is [`full_scale`].
+pub fn resample_power_db_into(
+    power: &[f32],
+    bin_hz: f32,
+    scale: f32,
+    out: &mut [f32; CURVE_POINTS],
+) {
     resample_into(power, bin_hz, out);
+    let scale = scale.max(f32::MIN_POSITIVE);
     for value in out.iter_mut() {
-        let level = DECIBELS_PER_OCTAVE_POWER * value.max(f32::MIN_POSITIVE).log2();
+        let level = DECIBELS_PER_OCTAVE_POWER * (*value / scale).max(f32::MIN_POSITIVE).log2();
         *value = level.max(FLOOR_DB);
     }
 }
@@ -151,10 +174,57 @@ mod tests {
         }
     }
 
+    /// **The scale is the transform's, and it has to be divided out.**
+    ///
+    /// Without this the drawn spectrum read **+34 dB** at 2048 points and sat
+    /// flat against the top of the figure whatever was playing — the detection
+    /// never noticed, because it works on ratios and a scale cancels out of a
+    /// ratio.
+    ///
+    /// Measured at [`full_scale`] rather than with a tone: the resampling
+    /// *averages*, so a single loud bin is diluted by however many bins one
+    /// grid step spans (12 dB at 12 kHz with a 1024-point transform). That
+    /// dilution is the anti-aliasing working, and it would hide what this test
+    /// is for.
+    #[test]
+    fn the_transforms_own_scale_is_divided_out() {
+        for block in [1024_usize, 2048, 4096] {
+            let bins = block / 2 + 1;
+            let power = vec![full_scale(block); bins];
+
+            let mut out = [0.0; CURVE_POINTS];
+            resample_power_db_into(&power, 48_000.0 / block as f32, full_scale(block), &mut out);
+            for (index, value) in out.iter().enumerate() {
+                assert!(
+                    value.abs() < 0.01,
+                    "block {block}, point {index} reads {value:.2} dB"
+                );
+            }
+        }
+    }
+
+    /// And a lone bin comes out *below* full scale, because the grid step it
+    /// falls in is averaged. This is the behaviour, not a defect.
+    #[test]
+    fn a_lone_bin_is_diluted_by_its_grid_step() {
+        let block = 2048_usize;
+        let bins = block / 2 + 1;
+        let mut power = vec![0.0_f32; bins];
+        power[bins / 2] = full_scale(block);
+
+        let mut out = [0.0; CURVE_POINTS];
+        resample_power_db_into(&power, 48_000.0 / block as f32, full_scale(block), &mut out);
+        let loudest = out.iter().fold(f32::MIN, |a, b| a.max(*b));
+        assert!(
+            (-30.0..-1.0).contains(&loudest),
+            "a lone full-scale bin reads {loudest:.1} dB"
+        );
+    }
+
     #[test]
     fn silence_becomes_the_floor_rather_than_minus_infinity() {
         let mut out = [0.0; CURVE_POINTS];
-        resample_power_db_into(&vec![0.0; 1025], 23.437_5, &mut out);
+        resample_power_db_into(&vec![0.0; 1025], 23.437_5, full_scale(2048), &mut out);
         for value in &out {
             assert_eq!(*value, FLOOR_DB);
         }
