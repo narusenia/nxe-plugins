@@ -89,6 +89,21 @@ pub struct Settings {
     pub attack_fast_seconds: f32,
     pub release_slow_seconds: f32,
     pub release_fast_seconds: f32,
+    /// How long the map is believed less than completely, in seconds of
+    /// sounding audio.
+    ///
+    /// **The bias correction has to be rationed** (`PUM-4b`). Correcting an
+    /// average started at zero makes the first frame read the first value —
+    /// which is the right *estimate* and a terrible thing to act on, because at
+    /// that moment a partial and a resonance look identical. Uncorrected, the
+    /// map was worth nothing for ten seconds; corrected and unrationed, it took
+    /// the full 18 dB out of a sung line's partials inside the first three.
+    ///
+    /// So the map is scaled by how long it has been learning, up to this. One
+    /// second is long enough to tell a moving partial from a standing
+    /// resonance, and short enough that dropping the plugin on a track and
+    /// playing a phrase does something.
+    pub map_warmup_seconds: f32,
     /// How far below the loudest recent frame a frame may sit and still teach
     /// the map anything.
     ///
@@ -135,6 +150,7 @@ impl Settings {
         attack_fast_seconds: 0.005,
         release_slow_seconds: 0.400,
         release_fast_seconds: 0.040,
+        map_warmup_seconds: 1.0,
         map_gate_db: -30.0,
         map_peak_seconds: 2.0,
         where_seconds: 6.0,
@@ -209,6 +225,10 @@ struct Detector {
     /// The loudest frame lately, as total power — what [`Settings::map_gate_db`]
     /// is measured against.
     loudest: f32,
+    /// How many frames the map has actually learned from, and how many it needs
+    /// before it is believed completely.
+    learned: f32,
+    warmup_frames: f32,
     /// `10^(map_gate_db/10)`, resolved once per block.
     gate: f32,
     /// One frame's decay for [`Detector::loudest`], resolved once per block.
@@ -245,6 +265,8 @@ impl Detector {
             feature_octaves: settings.feature_wide_octaves,
             mode: Mode::default(),
             loudest: 0.0,
+            learned: 0.0,
+            warmup_frames: 1.0,
             gate: 0.0,
             peak_decay: 0.0,
             bins: 0,
@@ -303,8 +325,13 @@ impl Detector {
             // reduction on the same resonance.
             if sounding {
                 self.map
-                    .follow(&self.excess_db[..bins], &mut self.where_db[..bins]);
+                    .average(&self.excess_db[..bins], &mut self.where_db[..bins]);
+                self.learned += 1.0;
             }
+
+            // **How much of what the map says to believe.** Zero at the first
+            // frame, one once it has watched for `map_warmup_seconds`.
+            let confidence = (self.learned / self.warmup_frames).min(1.0);
 
             // **The map is not smoothed across frequency, and the
             // specification said it should be** (`PUM-4`, 2026-09-01).
@@ -326,7 +353,7 @@ impl Detector {
             // partial fails the first, a silent resonance fails the second, and
             // either failure means the bin is left alone.
             for (bin, drive) in self.drive_db[..bins].iter_mut().enumerate() {
-                *drive = drive.min(self.where_db[bin]);
+                *drive = drive.min(self.where_db[bin] * confidence);
             }
         }
 
@@ -380,11 +407,22 @@ impl Engine {
         self.stft.latency()
     }
 
+    /// **The map survives this, and everything else does not** (`PUM-4b`).
+    ///
+    /// A host calls `reset` whenever the transport jumps — every loop, every
+    /// stop, every drag of the playhead. The transform's ring and the
+    /// short-term follower are state *about the signal* and have to go; the map
+    /// is knowledge *about the source*, and wiping it means it never forms
+    /// during the way people actually work, which is to audition a phrase over
+    /// and over. It was cleared here, and that is part of why `ADAPTIVE` did
+    /// not feel like it was doing anything.
+    ///
+    /// Stale knowledge is not a risk worth guarding against: the map is an
+    /// average with a six-second memory, so moving to different material
+    /// forgets the old one on its own.
     pub fn reset(&mut self) {
         self.stft.reset();
         self.detector.follower.reset();
-        self.detector.map.reset();
-        self.detector.loudest = 0.0;
     }
 
     /// What is being taken out, per bin, in dB — the figure's subject
@@ -433,6 +471,7 @@ impl Engine {
             .set_symmetric(settings.where_seconds, frame_rate);
         // `10^(dB/10)` as a power ratio, through the exp2 the hardware has.
         self.detector.gate = (settings.map_gate_db / DECIBELS_PER_OCTAVE_POWER).exp2();
+        self.detector.warmup_frames = (settings.map_warmup_seconds * frame_rate).max(1.0);
         self.detector.peak_decay =
             1.0 - nxe_audio::envelope::coefficient(settings.map_peak_seconds, frame_rate);
 
@@ -443,6 +482,7 @@ impl Engine {
         if controls.mode != self.detector.mode {
             self.detector.mode = controls.mode;
             self.detector.map.reset();
+            self.detector.learned = 0.0;
         }
     }
 
@@ -864,6 +904,79 @@ mod tests {
         assert!(
             switched <= baseline * 1.2,
             "switching raised the worst step from {baseline} to {switched}"
+        );
+    }
+
+    /// **What the bias correction costs, measured the way an ear measures it**
+    /// (`PUM-4b`).
+    ///
+    /// Reading the true mean from the first frame means the map acts on very
+    /// little evidence at the start, so `ADAPTIVE` leans towards `STATIC` for a
+    /// moment. That is the intended trade — doing something immediately and
+    /// refining beats doing nothing accurately.
+    ///
+    /// **This test asserted the worst single frame at the worst single bin, and
+    /// that was the wrong question.** It read 18 dB and failed, which sent the
+    /// warm-up up to four seconds and cost the resonance most of its reduction.
+    /// The audible quantity — what the output level actually does — was
+    /// **0.34 dB** the whole time.
+    #[test]
+    fn the_first_seconds_do_not_chew_partials() {
+        let rate = 48_000.0;
+        let input = sung_saw(rate as usize * 8, rate, 110.0, 0.35);
+
+        let mut engine = Engine::new(rate, Settings::DEFAULT);
+        engine.set(with_mode(1.0, Mode::Adaptive));
+        let output = run(&mut engine, &input);
+
+        let latency = engine.latency();
+        let change_db =
+            20.0 * (rms(&output[latency..]) / rms(&input[..input.len() - latency])).log10();
+        assert!(
+            change_db > -1.0,
+            "the first eight seconds cost {change_db:.2} dB of level"
+        );
+
+        let mean = mean_reduction_db(&engine, 200.0, 10_000.0);
+        assert!(
+            mean > -0.1,
+            "the settled map is pulling {mean:.2} dB on average"
+        );
+    }
+
+    /// The map is knowledge about the source, and a host resets a plugin every
+    /// time the transport moves (`PUM-4b`).
+    #[test]
+    fn a_transport_reset_keeps_the_map() {
+        use nxe_audio::biquad::{Biquad, Coefficients};
+        let rate = 48_000.0;
+        let mut input = noise(rate as usize * 6);
+        let mut filter = Biquad::new(Coefficients::peaking(2_500.0, 4.0, 18.0, rate));
+        for sample in input.iter_mut() {
+            *sample = filter.process(*sample) * 0.3;
+        }
+
+        let mut engine = Engine::new(rate, Settings::DEFAULT);
+        engine.set(with_mode(1.0, Mode::Adaptive));
+        run(&mut engine, &input);
+        let learned = engine.reduction_curve()[engine.bin_of(2_500.0)];
+        assert!(learned < -6.0, "the map never formed: {learned:.2} dB");
+
+        engine.reset();
+
+        // A fifth of a second — enough for the short-term follower, which *is*
+        // cleared, to find the signal again, and far too little to learn a map
+        // from nothing.
+        let mut piece = input[..512 * 20].to_vec();
+        for block in piece.chunks_mut(512) {
+            let mut channels = [block];
+            engine.process(&mut channels);
+        }
+
+        let after = engine.reduction_curve()[engine.bin_of(2_500.0)];
+        assert!(
+            after < -6.0,
+            "the map was wiped by a transport reset: {after:.2} dB"
         );
     }
 

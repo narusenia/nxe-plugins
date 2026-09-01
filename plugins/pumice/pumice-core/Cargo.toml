@@ -11,9 +11,8 @@ description = "The Pumice DSP, independent of any plugin host"
 
 # nih-plug, Vizia and any host API stay out (`.agents/rules/rust.md`,
 # `REQ-PUM-015`). That rule is why `nih_plug::util::stft::StftHelper` is not
-# used even though it does exactly what `PUM-2` will write: depending on
-# `nih_plug` moves this crate to the GPL side and closes the AU door
-# (`LICENSING.md`).
+# used even though it does exactly what `PUM-2` writes: depending on `nih_plug`
+# moves this crate to the GPL side and closes the AU door (`LICENSING.md`).
 [dependencies]
 nxe-audio.workspace = true
 realfft = "3.5"
