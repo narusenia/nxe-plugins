@@ -10,6 +10,7 @@
 //! follower alone, which is what soothe does and what `MODE` will offer as the
 //! way out when the adaptive path is wrong for a piece of material.
 
+use crate::display::CURVE_POINTS;
 use crate::gain::{Computer, Follower, smooth_into};
 use crate::nodes::{NODES, Node, Range, weight_into};
 
@@ -403,6 +404,31 @@ impl Detector {
     }
 }
 
+/// The three curves the figure draws.
+///
+/// Held by the caller rather than returned, so publishing a frame allocates
+/// nothing (`REQ-PUM-016`).
+#[derive(Clone, Copy, Debug)]
+pub struct Curves {
+    /// Input power, in dB, floored rather than allowed to reach negative
+    /// infinity.
+    pub spectrum_db: [f32; CURVE_POINTS],
+    /// What is being taken out, in dB. Negative.
+    pub reduction_db: [f32; CURVE_POINTS],
+    /// The nodes and the operating range, `0..=2`.
+    pub weight: [f32; CURVE_POINTS],
+}
+
+impl Default for Curves {
+    fn default() -> Self {
+        Self {
+            spectrum_db: [0.0; CURVE_POINTS],
+            reduction_db: [0.0; CURVE_POINTS],
+            weight: [0.0; CURVE_POINTS],
+        }
+    }
+}
+
 /// The whole of Pumice, driven a buffer at a time.
 pub struct Engine {
     stft: Stft,
@@ -473,6 +499,29 @@ impl Engine {
     /// rather than only as a change in level.
     pub fn reduction_curve(&self) -> &[f32] {
         &self.detector.smoothed_db[..self.detector.bins]
+    }
+
+    /// The three curves the figure draws, on the figure's own logarithmic
+    /// axis (`REQ-PUM-018`).
+    ///
+    /// **The reduction is the gain the audio actually got**, not a second
+    /// calculation from the same parameters — a figure computed separately
+    /// agrees with the sound only until one of them is changed.
+    pub fn curves(&self, into: &mut Curves) {
+        let bins = self.detector.bins;
+        let bin_hz = self.sample_rate / self.stft.block() as f32;
+
+        crate::display::resample_power_db_into(
+            &self.detector.power[..bins],
+            bin_hz,
+            &mut into.spectrum_db,
+        );
+        crate::display::resample_into(
+            &self.detector.smoothed_db[..bins],
+            bin_hz,
+            &mut into.reduction_db,
+        );
+        crate::display::resample_into(&self.detector.weight[..bins], bin_hz, &mut into.weight);
     }
 
     /// Which bin a frequency lands in, for a caller reading
@@ -1448,6 +1497,66 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// `REQ-PUM-018`: the curve the figure draws is the gain the audio got, and
+    /// it decays to nothing when the sound stops.
+    #[test]
+    fn the_published_curves_follow_the_sound() {
+        use nxe_audio::biquad::{Biquad, Coefficients};
+        let rate = 48_000.0;
+        let hz = 2_500.0;
+
+        let mut input = noise(rate as usize * 8);
+        let mut filter = Biquad::new(Coefficients::peaking(hz, 4.0, 18.0, rate));
+        for sample in input.iter_mut() {
+            *sample = filter.process(*sample) * 0.3;
+        }
+
+        let mut engine = Engine::new(rate, Settings::DEFAULT);
+        engine.set(with_mode(1.0, Mode::Adaptive));
+        run(&mut engine, &input);
+
+        let mut curves = Curves::default();
+        engine.curves(&mut curves);
+
+        // The resonance shows in both the spectrum and the reduction, at the
+        // frequency it was put.
+        let point = (0..CURVE_POINTS)
+            .min_by(|a, b| {
+                (crate::display::point_hz(*a) - hz)
+                    .abs()
+                    .total_cmp(&(crate::display::point_hz(*b) - hz).abs())
+            })
+            .unwrap();
+        assert!(
+            curves.reduction_db[point] < -6.0,
+            "the figure shows {:.2} dB where the engine takes {:.2}",
+            curves.reduction_db[point],
+            engine.reduction_curve()[engine.bin_of(hz)]
+        );
+        assert!(curves.spectrum_db[point] > curves.spectrum_db[point / 2]);
+
+        // Nothing on means the weight is flat inside the range and zero outside.
+        let inside = (0..CURVE_POINTS)
+            .filter(|index| {
+                let hz = crate::display::point_hz(*index);
+                (300.0..8_000.0).contains(&hz)
+            })
+            .all(|index| (curves.weight[index] - 1.0).abs() < 0.05);
+        assert!(inside, "the weight is not flat inside the range");
+
+        // **Three seconds of silence and the figure is empty** (`REQ-PUM-013`).
+        run(&mut engine, &vec![0.0; rate as usize * 3]);
+        engine.curves(&mut curves);
+        assert!(
+            curves.reduction_db.iter().all(|db| db.abs() < 0.01),
+            "the reduction did not decay"
+        );
+        assert!(
+            curves.spectrum_db.iter().all(|db| *db < -100.0),
+            "the spectrum did not decay"
+        );
     }
 
     #[test]

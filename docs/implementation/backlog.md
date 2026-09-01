@@ -423,7 +423,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | DIO-13 | **既定値と耳**（**耳が要る**）。**聴き直しのあと** | `diorama-plan.md` |
 | — | **Advanced の偏差**（Diorama、`REQ-DIO-009`）。**前に `dsp.md`** | `diorama-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（**耳が要る**） | `doubler-plan.md` |
-| PUM-9 | **Pumice の解析の受け渡し**（`Handoff`）。`nxe_dsp::Spectrum` は回さない | `pumice-plan.md` |
+| UI-22 | **`NodeField`** — Pumice の図。自由な x 配置・追加・削除。gallery で単体検証 | `nxe-ui-plan.md` |
 | — | **Pumice をもう一度実機で聴く**（**耳が要る**）。`PUM-4b` で効きが 2.4 倍になった。`mise run install pumice` | `pumice-plan.md` |
 | — | **Bitwig と Reaper で PDC を見る**（**人が要る**）。方式の判断には影響しない — 落ちてもホスト固有の問題 | `pumice-plan.md` |
 
@@ -684,7 +684,7 @@ AU の道が閉じる（`REQ-PUM-015`）。答え合わせの相手としては�
 | PUM-6 | dry / `MIX` / `OUTPUT` / `DELTA`。dry は 256 サンプルの固定チャンクで取る（ホストに最大バッファ長を聞かずに線の長さが決まる） | ✅ `MIX`=0 で −120 dB 以下、dry の遅延が申告値とサンプル一致、`DELTA` + dry = wet。テスト 6 本 |
 | PUM-7 | レート・ブロックサイズ非依存 | ✅ 4 レート × 3 段、ブロック 1/7/64/256/257/512/4096 で一致、時定数が 3 レートで 20 ms 以内。テスト 4 本 |
 | PUM-8 | CPU 予算（criterion）。**512 サンプル単位では `HIGH` が hop 境界を越えず測定が壊れる**ので 8 ブロック単位 | ✅ **30.6 µs / 予算 533**（見積り 50〜80 より安い）。**ラインで 2 番目に安い**。3 段のコストがほぼ同じ＝`QUALITY` は CPU の取引ではない |
-| PUM-9 | 解析の受け渡し。**`nxe_dsp::Spectrum` を回さない**（STFT からそのまま） | ⬜ |
+| PUM-9 | 解析の受け渡し。**`nxe_dsp::Spectrum` を回さない**（STFT からそのまま）。渡すのはビンではなく対数格子 128 点で、高域は平均する | ✅ 3 秒で減衰、図と音が同じ配列から出る。テスト 7 本 |
 | PUM-10 | 窓 | ⬜ |
 | PUM-11 | 既定値と耳。**`DEPTH` という名前を使えるかもここで決着**（`REQ-PUM-010`） | ⬜ |
 

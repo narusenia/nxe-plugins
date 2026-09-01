@@ -16,6 +16,7 @@
 //! - [`reference`] — what a bin is judged against, and by how much it exceeds it
 //! - [`gain`] — from that excess to a gain, and the floor that stops warbling
 //! - [`nodes`] — where the reduction is allowed to go, as a curve the user draws
+//! - [`display`] — the same curves on the figure's own logarithmic axis
 //! - [`engine`] — the whole of it, and **every ear-tuned constant in one block**
 //!
 //! **Both halves of the detection are here** (`PUM-4`). A long-term map decides
@@ -24,6 +25,7 @@
 //! singer's partials alone. `Mode::Static` turns the map off and is what soothe
 //! does.
 
+pub mod display;
 pub mod engine;
 pub mod gain;
 pub mod nodes;
@@ -32,7 +34,8 @@ pub mod reference;
 pub mod smoothing;
 pub mod stft;
 
-pub use engine::{Controls, Engine, Mode, Settings};
+pub use display::CURVE_POINTS;
+pub use engine::{Controls, Curves, Engine, Mode, Settings};
 pub use nodes::{NODES, Node, Range};
 pub use quality::Quality;
 pub use stft::{Frame, Stft};

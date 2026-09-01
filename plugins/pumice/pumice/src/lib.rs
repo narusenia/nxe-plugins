@@ -13,10 +13,13 @@
 //!
 //! The window is `PUM-10`; there is no editor yet.
 
+use analysis::{Analysis, METERS};
 use nih_plug::prelude::*;
-use pumice_core::{Engine, Settings};
+use nxe_dsp::Level;
+use pumice_core::{Curves, Engine, Settings};
 use std::sync::Arc;
 
+mod analysis;
 mod params;
 
 use params::PumiceParams;
@@ -27,6 +30,14 @@ const FALLBACK_SAMPLE_RATE: f32 = 48_000.0;
 
 struct Pumice {
     params: Arc<PumiceParams>,
+    /// What the editor reads. **The audio thread writes; nothing else touches
+    /// the analysers below** (`analysis.rs`).
+    analysis: Arc<Analysis>,
+    /// IN L, IN R, OUT L, OUT R.
+    meters: [Level; METERS],
+    /// Scratch for the figure's curves, so publishing a frame allocates
+    /// nothing.
+    curves: Curves,
     engine: Engine,
     sample_rate: f32,
     /// What was last reported to the host. Compared each block so that
@@ -41,6 +52,9 @@ impl Default for Pumice {
     fn default() -> Self {
         Self {
             params: Arc::new(PumiceParams::default()),
+            analysis: Arc::new(Analysis::default()),
+            meters: std::array::from_fn(|_| Level::new(FALLBACK_SAMPLE_RATE)),
+            curves: Curves::default(),
             engine: Engine::new(FALLBACK_SAMPLE_RATE, Settings::DEFAULT),
             sample_rate: FALLBACK_SAMPLE_RATE,
             reported_latency: usize::MAX,
@@ -98,6 +112,7 @@ impl Plugin for Pumice {
         if buffer_config.sample_rate != self.sample_rate {
             self.sample_rate = buffer_config.sample_rate;
             self.engine = Engine::new(self.sample_rate, Settings::DEFAULT);
+            self.meters = std::array::from_fn(|_| Level::new(self.sample_rate));
         }
 
         self.engine.set(self.params.controls(1));
@@ -108,6 +123,9 @@ impl Plugin for Pumice {
 
     fn reset(&mut self) {
         self.engine.reset();
+        for meter in &mut self.meters {
+            meter.reset();
+        }
     }
 
     fn process(
@@ -144,7 +162,50 @@ impl Plugin for Pumice {
             count += 1;
         }
 
+        // **Before the engine**, because it replaces the buffer in place.
+        for (index, channel) in channels[..count].iter().enumerate() {
+            for sample in channel.iter() {
+                self.meters[index].push(*sample);
+            }
+        }
+        if count == 1 {
+            // Under the mono layout the right meter mirrors the left rather
+            // than reading a channel that does not exist.
+            for sample in channels[0].iter() {
+                self.meters[1].push(*sample);
+            }
+        }
+
         self.engine.process(&mut channels[..count]);
+
+        for (index, channel) in channels[..count].iter().enumerate() {
+            for sample in channel.iter() {
+                self.meters[2 + index].push(*sample);
+            }
+        }
+        if count == 1 {
+            for sample in channels[0].iter() {
+                self.meters[3].push(*sample);
+            }
+        }
+
+        // One frame per block. The editor reads whatever is there — a frame it
+        // misses is a frame nobody would have seen.
+        //
+        // **Reading, never writing** (`REQ-PUM-018`): everything here comes out
+        // of the engine, and nothing here goes back in. Stopping the analysis
+        // would not change a sample.
+        self.engine.curves(&mut self.curves);
+        self.analysis.spectrum.write(&self.curves.spectrum_db);
+        self.analysis.reduction.write(&self.curves.reduction_db);
+        self.analysis.weight.write(&self.curves.weight);
+        self.analysis
+            .peaks
+            .write(&std::array::from_fn(|index| self.meters[index].peak()));
+        self.analysis
+            .holds
+            .write(&std::array::from_fn(|index| self.meters[index].hold()));
+        self.analysis.readouts.write(&[self.engine.reduction_db()]);
 
         ProcessStatus::Normal
     }

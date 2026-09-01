@@ -16,5 +16,5 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 pumice-core = { workspace = true }
-nxe-audio = { workspace = true }
+nxe-dsp = { workspace = true }
 nih_plug = { workspace = true }

@@ -2580,7 +2580,7 @@ name = "pumice"
 version = "0.2.0"
 dependencies = [
  "nih_plug",
- "nxe-audio",
+ "nxe-dsp",
  "pumice-core",
 ]
 
