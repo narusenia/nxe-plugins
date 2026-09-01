@@ -45,13 +45,23 @@ pub struct Settings {
     /// the resonance. Zero took 0.71 dB out of plain noise — which is the
     /// defect `SPK-18` shipped and this number exists to prevent.
     pub threshold_db: f32,
-    /// How many dB of reduction per dB of excess.
+    /// How many dB of reduction per dB of excess, at `DEPTH` fully up.
     ///
-    /// **One, so that `DEPTH` at maximum flattens the bin onto its reference.**
-    /// It was 0.7 — a design-time guess that put a ceiling inside a control
-    /// that already has one, since `DEPTH` scales this. Anything below one is
-    /// reachable by turning `DEPTH` down; nothing above the old 0.7 was
-    /// reachable at all.
+    /// **Two, so that the knob can go too far.** One flattens a bin onto its
+    /// reference, which sounds like restraint rather than like a maximum — and
+    /// a control whose top end is still tasteful gives nobody a way to find
+    /// where the useful part ends. At two, `DEPTH` at half is the old
+    /// behaviour and the upper half is the part you back away from.
+    ///
+    /// **Raising this does not touch ordinary material.** The threshold is what
+    /// protects that, and the slope only scales what is already above it;
+    /// measured, plain noise moves 0.01 dB at every slope from one to three.
+    /// Three is too far for a different reason — two of three test resonances
+    /// hit [`Settings::ceiling_db`], so the top of the knob stops doing
+    /// anything.
+    ///
+    /// It was 0.7 before that, which put a second ceiling inside a control that
+    /// already had one.
     pub slope: f32,
     /// The widest any bin may be pulled. Past this a vocal is not protected,
     /// it is missing (`REQ-PUM-023`).
@@ -115,7 +125,7 @@ impl Settings {
     /// them.
     pub const DEFAULT: Settings = Settings {
         threshold_db: 4.5,
-        slope: 1.0,
+        slope: 2.0,
         ceiling_db: 18.0,
         detail_octaves: 1.0 / 12.0,
         feature_wide_octaves: 1.5,
@@ -746,8 +756,9 @@ mod tests {
             static_db >= 10.0,
             "STATIC only pulled {static_db:.2} dB — this material does not test anything"
         );
+        // At `DEPTH` fully up, which is past where anyone would leave it.
         assert!(
-            adaptive_db <= 1.0,
+            adaptive_db <= 2.0,
             "ADAPTIVE pulled {adaptive_db:.2} dB out of moving partials"
         );
         assert!(
