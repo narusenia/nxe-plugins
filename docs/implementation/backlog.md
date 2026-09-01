@@ -69,7 +69,7 @@ CPU まで全部入っていて、**実機で一度聴いて効き幅を作り�
 | Doubler / Velour / Sparkleur / Air | **全単位 ✅**。残るのは `DBL-13`（既定値、耳）と Sparkleur の既定値の主観サインオフだけ。**どちらもリリースの阻害要因ではない** |
 | Diorama | **`DIO-12` / `DIO-15` / `DIO-16` 完了**（DSP・窓・CPU・改名。パラメータ 8 個）。**残るのは `DIO-14` の聴き直しと `DIO-13`（耳）だけ** |
 | Vocal Glue | 要件のみ。実装単位はまだ無い |
-| CPU（予算 533 µs） | Doubler 85 / Velour 128 / Sparkleur 129 / **Air 47**（エンジンのみ） |
+| CPU（予算 533 µs） | Diorama 20.9 / **Pumice 30.6** / Air 47 / Doubler 85 / Velour 128 / Sparkleur 129 |
 | 共通クレート | `nxe-audio`（処理。`delay` が `DIO-1` で増えた）/ `nxe-dsp`（解析）/ `nxe-ui`（ウィジェット）/ `nxe-plug-ui`（結線） |
 
 **この節から下は追記ログで、同じ内容が
@@ -423,7 +423,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | DIO-13 | **既定値と耳**（**耳が要る**）。**聴き直しのあと** | `diorama-plan.md` |
 | — | **Advanced の偏差**（Diorama、`REQ-DIO-009`）。**前に `dsp.md`** | `diorama-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（**耳が要る**） | `doubler-plan.md` |
-| PUM-7 | **Pumice のレート・ブロックサイズ非依存** | `pumice-plan.md` |
+| PUM-9 | **Pumice の解析の受け渡し**（`Handoff`）。`nxe_dsp::Spectrum` は回さない | `pumice-plan.md` |
 | — | **Pumice をもう一度実機で聴く**（**耳が要る**）。`PUM-4b` で効きが 2.4 倍になった。`mise run install pumice` | `pumice-plan.md` |
 | — | **Bitwig と Reaper で PDC を見る**（**人が要る**）。方式の判断には影響しない — 落ちてもホスト固有の問題 | `pumice-plan.md` |
 
@@ -682,8 +682,8 @@ AU の道が閉じる（`REQ-PUM-015`）。答え合わせの相手としては�
 | PUM-4b | **「効きが弱い」を測った**（実機の感想から生えた単位）。仕様の誤りが**6 つ** — 参照が自分を含む / 1 ビンの分散 / 地図が無音を平均 / `SLOPE` の二重上限 / **ゼロから始まる平均のバイアス** / **`reset()` が地図を消していた** | ✅ 削減 **3.4 → 15.6〜17.1 dB**、普通の素材 **0.71 → 0.01 dB**、`ADAPTIVE` の立ち上がり **8〜20 秒 → 1 秒** |
 | PUM-5 | ノード曲線（6 本、双極 `depth`）+ 動作範囲。ラッパは `#[nested(array)]` で 26 パラメータ | ✅ ノード 0 本で重みが厳密に 1、守るノードが削減を止める、`DEPTH`=0 で −120 dB 以下。テスト 9 本 |
 | PUM-6 | dry / `MIX` / `OUTPUT` / `DELTA`。dry は 256 サンプルの固定チャンクで取る（ホストに最大バッファ長を聞かずに線の長さが決まる） | ✅ `MIX`=0 で −120 dB 以下、dry の遅延が申告値とサンプル一致、`DELTA` + dry = wet。テスト 6 本 |
-| PUM-7 | レート・ブロックサイズ非依存 | ⬜ |
-| PUM-8 | CPU 予算（criterion）。見積り 50〜80 µs | ⬜ |
+| PUM-7 | レート・ブロックサイズ非依存 | ✅ 4 レート × 3 段、ブロック 1/7/64/256/257/512/4096 で一致、時定数が 3 レートで 20 ms 以内。テスト 4 本 |
+| PUM-8 | CPU 予算（criterion）。**512 サンプル単位では `HIGH` が hop 境界を越えず測定が壊れる**ので 8 ブロック単位 | ✅ **30.6 µs / 予算 533**（見積り 50〜80 より安い）。**ラインで 2 番目に安い**。3 段のコストがほぼ同じ＝`QUALITY` は CPU の取引ではない |
 | PUM-9 | 解析の受け渡し。**`nxe_dsp::Spectrum` を回さない**（STFT からそのまま） | ⬜ |
 | PUM-10 | 窓 | ⬜ |
 | PUM-11 | 既定値と耳。**`DEPTH` という名前を使えるかもここで決着**（`REQ-PUM-010`） | ⬜ |

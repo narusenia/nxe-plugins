@@ -1323,6 +1323,133 @@ mod tests {
         );
     }
 
+    /// `REQ-PUM-017`: the host's buffer size must not reach the output, and the
+    /// dry path is now chunked independently of it.
+    #[test]
+    fn the_block_size_does_not_change_the_output_with_the_dry_path() {
+        let rate = 48_000.0;
+        let input = noise(2048 * 5);
+        let controls = Controls {
+            mix: 0.6,
+            output: 0.8,
+            ..with_mode(1.0, Mode::Adaptive)
+        };
+
+        let mut reference = Vec::new();
+        for chunk in [512, 1, 7, 64, 256, 257, 4096] {
+            let mut engine = Engine::new(rate, Settings::DEFAULT);
+            engine.set(controls);
+            let mut output = input.clone();
+            for piece in output.chunks_mut(chunk) {
+                let mut channels = [piece];
+                engine.process(&mut channels);
+            }
+            if reference.is_empty() {
+                reference = output;
+            } else {
+                assert_eq!(output, reference, "block size {chunk}");
+            }
+        }
+    }
+
+    /// `REQ-PUM-017`: a time constant is in seconds, so the same `SPEED` has to
+    /// take the same *time* at every rate.
+    ///
+    /// Measured as how long the reduction takes to reach half of where it
+    /// settles, on a resonance that switches on.
+    #[test]
+    fn the_time_constants_are_the_same_seconds_at_every_rate() {
+        use nxe_audio::biquad::{Biquad, Coefficients};
+
+        let mut times = Vec::new();
+        for rate in [44_100.0_f32, 48_000.0, 96_000.0] {
+            let seconds = 12;
+            let length = rate as usize * seconds;
+            let mut input = noise(length);
+            let mut filter = Biquad::new(Coefficients::peaking(2_500.0, 4.0, 18.0, rate));
+            for sample in input.iter_mut() {
+                *sample = filter.process(*sample) * 0.3;
+            }
+
+            let mut engine = Engine::new(rate, Settings::DEFAULT);
+            // `STATIC`, so what is being timed is the short follower rather
+            // than the map's warm-up.
+            engine.set(with_mode(1.0, Mode::Static));
+            let bin = engine.bin_of(2_500.0);
+
+            // Settle, then measure from silence into the tone.
+            let mut warm = input[..length / 2].to_vec();
+            for piece in warm.chunks_mut(512) {
+                let mut channels = [piece];
+                engine.process(&mut channels);
+            }
+            let settled = engine.reduction_curve()[bin];
+
+            engine.reset();
+            let mut half_at = None;
+            let mut elapsed = 0usize;
+            let mut second = input[length / 2..].to_vec();
+            for piece in second.chunks_mut(64) {
+                let mut channels = [piece];
+                engine.process(&mut channels);
+                elapsed += 64;
+                if half_at.is_none() && engine.reduction_curve()[bin] <= settled * 0.5 {
+                    half_at = Some(elapsed as f32 / rate);
+                }
+            }
+            times.push(half_at.expect("the reduction never got half way"));
+        }
+
+        let span = times.iter().fold(f32::MIN, |a, b| a.max(*b))
+            - times.iter().fold(f32::MAX, |a, b| a.min(*b));
+        assert!(
+            span < 0.020,
+            "half-way times differ by {:.1} ms across rates: {times:?}",
+            span * 1000.0
+        );
+    }
+
+    /// `REQ-PUM-016`: one non-finite sample must not latch anything for good.
+    #[test]
+    fn a_non_finite_sample_does_not_latch_the_engine() {
+        let rate = 48_000.0;
+        let mut engine = Engine::new(rate, Settings::DEFAULT);
+        engine.set(with_mode(1.0, Mode::Adaptive));
+
+        let mut input = noise(2048 * 8);
+        input[1000] = f32::NAN;
+        input[1001] = f32::INFINITY;
+        input[1002] = -f32::INFINITY;
+
+        let output = run(&mut engine, &input);
+        // The transform spreads a non-finite sample over one window, and it has
+        // to be gone after that rather than for ever.
+        let settled = 2048 * 4;
+        assert!(
+            output[settled..].iter().all(|sample| sample.is_finite()),
+            "a non-finite sample survived a window"
+        );
+    }
+
+    /// Every rate the requirement names has to build and run.
+    #[test]
+    fn every_rate_runs() {
+        for rate in [44_100.0_f32, 48_000.0, 96_000.0, 192_000.0] {
+            for quality in Quality::ALL {
+                let mut engine = Engine::new(rate, Settings::DEFAULT);
+                engine.set(Controls {
+                    quality,
+                    ..with_mode(1.0, Mode::Adaptive)
+                });
+                let output = run(&mut engine, &noise(quality.block(rate) * 4));
+                assert!(
+                    output.iter().all(|sample| sample.is_finite()),
+                    "{quality:?} at {rate} Hz"
+                );
+            }
+        }
+    }
+
     #[test]
     fn every_quality_runs() {
         let rate = 48_000.0;
