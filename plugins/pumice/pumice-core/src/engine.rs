@@ -64,11 +64,15 @@ pub struct Settings {
     pub threshold_db: f32,
     /// How many dB of reduction per dB of excess, at `DEPTH` fully up.
     ///
-    /// **Two, so that the knob can go too far.** One flattens a bin onto its
+    /// **Three, so that the knob can go too far.** One flattens a bin onto its
     /// reference, which sounds like restraint rather than like a maximum — and
     /// a control whose top end is still tasteful gives nobody a way to find
-    /// where the useful part ends. At two, `DEPTH` at half is the old
-    /// behaviour and the upper half is the part you back away from.
+    /// where the useful part ends.
+    ///
+    /// It went 0.7 → 1.0 → 2.0 → 3.0, each step because an ear said the top of
+    /// the knob was still polite. **Four is where it stops being a knob**: with
+    /// the ceiling raised to match, an 18 dB resonance loses 29.8 of a possible
+    /// 30, so the last part of the travel does nothing.
     ///
     /// **Raising this does not touch ordinary material.** The threshold is what
     /// protects that, and the slope only scales what is already above it;
@@ -82,6 +86,12 @@ pub struct Settings {
     pub slope: f32,
     /// The widest any bin may be pulled. Past this a vocal is not protected,
     /// it is missing (`REQ-PUM-023`).
+    ///
+    /// **24, up from 18** (`PUM-10b`). It has to stay ahead of what
+    /// [`Settings::slope`] can ask for or the top of `DEPTH` dies against it —
+    /// at slope 3 an 18 dB resonance asks for 23.8. This is looser protection
+    /// than 18 was, and it is only reachable at `DEPTH` fully up on a bin the
+    /// adaptive gate has opened, which takes a genuinely standing resonance.
     pub ceiling_db: f32,
     /// How much of a bin's neighbourhood is averaged before it is compared to
     /// anything.
@@ -134,6 +144,36 @@ pub struct Settings {
     /// How fast the loudest-recent-frame reference decays. Long enough to span
     /// a breath, short enough to follow a fade.
     pub map_peak_seconds: f32,
+    /// How far the map has to read before a bin is open at all, in dB.
+    ///
+    /// **Not [`Settings::threshold_db`], and that was the mistake** (`PUM-10b`).
+    /// A gate on the map is a different statistic from a threshold on the
+    /// follower: `WHEN` rectifies, so ordinary material pushes it to 1–5 dB,
+    /// while `WHERE` is a mean and ordinary material leaves it at zero.
+    /// Measured, over 200 Hz to 10 kHz:
+    ///
+    /// | | worst `WHERE` |
+    /// |---|---|
+    /// | white noise | **0.0 dB** |
+    /// | a sung sawtooth's partials | **6.0 dB** |
+    /// | an 18 dB resonance | **13.5 dB** |
+    ///
+    /// 8 opens above the partials and below the resonance.
+    pub map_gate_threshold_db: f32,
+    /// How much further the map has to read before the bin is **fully** open.
+    ///
+    /// **The map is a gate, not a ceiling** (`PUM-10b`). It was combined with
+    /// the short-term follower as `min(WHEN, WHERE)`, and that made the *mean*
+    /// excess the limit on the reduction — a mean is always below the peak the
+    /// follower rides, so `ADAPTIVE` was systematically weaker than `STATIC`
+    /// by however much the material fluctuated. It answered the wrong
+    /// question: the map is supposed to say **where** a cut is allowed, and the
+    /// follower says **how much**.
+    ///
+    /// Now the reduction is `STATIC`'s, multiplied by how open the gate is. So
+    /// where the map says "this is always hot" the two modes agree exactly, and
+    /// where it says "this moves" nothing happens at all.
+    pub map_gate_range_db: f32,
     /// How long the map of *where* resonance lives takes to form
     /// (`REQ-PUM-003`).
     ///
@@ -156,8 +196,8 @@ impl Settings {
     /// them.
     pub const DEFAULT: Settings = Settings {
         threshold_db: 4.5,
-        slope: 2.0,
-        ceiling_db: 18.0,
+        slope: 3.0,
+        ceiling_db: 24.0,
         detail_octaves: 1.0 / 12.0,
         feature_wide_octaves: 1.5,
         feature_narrow_octaves: 0.15,
@@ -166,6 +206,8 @@ impl Settings {
         attack_fast_seconds: 0.005,
         release_slow_seconds: 0.400,
         release_fast_seconds: 0.040,
+        map_gate_threshold_db: 8.0,
+        map_gate_range_db: 4.0,
         map_warmup_seconds: 1.0,
         map_gate_db: -30.0,
         map_peak_seconds: 2.0,
@@ -230,6 +272,8 @@ struct Detector {
     /// The long-term map: how far this bin **usually** sits above its
     /// neighbourhood (`REQ-PUM-003`).
     where_db: Vec<f32>,
+    /// How open each bin is to being cut, `0..=1`. One everywhere in `STATIC`.
+    allowed: Vec<f32>,
     drive_db: Vec<f32>,
     reduction_db: Vec<f32>,
     smoothed_db: Vec<f32>,
@@ -272,6 +316,7 @@ impl Detector {
             reference: vec![0.0; MAX_BINS],
             excess_db: vec![0.0; MAX_BINS],
             where_db: vec![0.0; MAX_BINS],
+            allowed: vec![1.0; MAX_BINS],
             drive_db: vec![0.0; MAX_BINS],
             reduction_db: vec![0.0; MAX_BINS],
             smoothed_db: vec![0.0; MAX_BINS],
@@ -373,17 +418,26 @@ impl Detector {
             // long enough to fill the map is a real limitation of `ADAPTIVE`,
             // and it is what `Mode::Static` is for.
             //
-            // **`min` is the product.** "Usually hot" *and* "hot now". A
-            // partial fails the first, a silent resonance fails the second, and
-            // either failure means the bin is left alone.
-            for (bin, drive) in self.drive_db[..bins].iter_mut().enumerate() {
-                *drive = drive.min(self.where_db[bin] * confidence);
+            // **The gate is the product.** "Usually hot" opens the bin;
+            // "hot now" — which is `STATIC` — decides how far. A partial fails
+            // the first and gets nothing; a resonance passes it and gets
+            // exactly what `STATIC` would take.
+            let threshold = self.settings.map_gate_threshold_db;
+            let range = self.settings.map_gate_range_db.max(f32::MIN_POSITIVE);
+            for (bin, allowed) in self.allowed[..bins].iter_mut().enumerate() {
+                let above = self.where_db[bin] * confidence - threshold;
+                *allowed = (above / range).clamp(0.0, 1.0);
             }
+        }
+
+        if self.mode == Mode::Static {
+            self.allowed[..bins].fill(1.0);
         }
 
         self.computer.reduction_db_into(
             &self.drive_db[..bins],
             &self.weight[..bins],
+            &self.allowed[..bins],
             self.depth,
             &mut self.reduction_db[..bins],
         );

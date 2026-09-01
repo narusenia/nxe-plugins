@@ -146,11 +146,21 @@ pub struct Computer {
 impl Computer {
     /// **`DEPTH` multiplies last**, which is what makes `DEPTH` = 0 exactly
     /// nothing however the nodes are set (`REQ-PUM-002`).
-    pub fn reduction_db_into(&self, drive_db: &[f32], weight: &[f32], depth: f32, out: &mut [f32]) {
+    ///
+    /// `gate` is the adaptive map's answer to *is a cut allowed here*, `0..=1`,
+    /// and one everywhere in `STATIC` (`engine::Settings::map_gate_range_db`).
+    pub fn reduction_db_into(
+        &self,
+        drive_db: &[f32],
+        weight: &[f32],
+        gate: &[f32],
+        depth: f32,
+        out: &mut [f32],
+    ) {
         for (bin, value) in out.iter_mut().enumerate() {
             let excess = (drive_db[bin] - self.threshold_db).max(0.0);
             let reduction = (self.slope * excess).min(self.ceiling_db);
-            *value = -reduction * weight[bin] * depth;
+            *value = -reduction * weight[bin] * gate[bin] * depth;
         }
     }
 }
@@ -232,7 +242,7 @@ mod tests {
         let drive = vec![30.0; 64];
         let weight = vec![1.0; 64];
         let mut out = vec![9.9; 64];
-        COMPUTER.reduction_db_into(&drive, &weight, 0.0, &mut out);
+        COMPUTER.reduction_db_into(&drive, &weight, &[1.0; 64], 0.0, &mut out);
         assert!(out.iter().all(|value| *value == 0.0));
     }
 
@@ -242,7 +252,7 @@ mod tests {
         let drive = vec![120.0; 64];
         let weight = vec![2.0; 64];
         let mut out = vec![0.0; 64];
-        COMPUTER.reduction_db_into(&drive, &weight, 1.0, &mut out);
+        COMPUTER.reduction_db_into(&drive, &weight, &[1.0; 64], 1.0, &mut out);
         for value in &out {
             // Weight may double it — that is `REQ-PUM-004`'s node range — but
             // the per-band reduction before weighting cannot pass the ceiling.
@@ -257,7 +267,7 @@ mod tests {
         let drive = vec![-3.0; 64];
         let weight = vec![1.0; 64];
         let mut out = vec![9.9; 64];
-        COMPUTER.reduction_db_into(&drive, &weight, 1.0, &mut out);
+        COMPUTER.reduction_db_into(&drive, &weight, &[1.0; 64], 1.0, &mut out);
         assert!(out.iter().all(|value| *value == 0.0));
     }
 
@@ -265,7 +275,7 @@ mod tests {
     fn a_negative_weight_gives_back_reduction() {
         let drive = vec![10.0; 4];
         let mut out = vec![0.0; 4];
-        COMPUTER.reduction_db_into(&drive, &[1.0, 0.5, 0.0, -1.0], 1.0, &mut out);
+        COMPUTER.reduction_db_into(&drive, &[1.0, 0.5, 0.0, -1.0], &[1.0; 4], 1.0, &mut out);
         assert!(out[0] < out[1] && out[1] < out[2]);
         assert_eq!(out[2], 0.0);
         assert!(

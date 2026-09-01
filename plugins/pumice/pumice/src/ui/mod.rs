@@ -81,7 +81,7 @@ pub(crate) const METER_FLOOR_DB: f32 = -60.0;
 /// bin may lose at most, so a fill scaled to it uses the whole plot and never
 /// clips — the mistake `DIO-17` records was a figure scaled to a number the
 /// engine could not reach.
-const REDUCTION_FLOOR_DB: f32 = -18.0;
+const REDUCTION_FLOOR_DB: f32 = -24.0;
 
 /// The spectrum's window, in dB. Wide enough that a vocal's noise floor is not
 /// drawn as silence and its peaks are not drawn flat against the top.
@@ -144,6 +144,10 @@ impl Model for Ui {
                 self.peaks = self.analysis.peaks.read().to_vec();
                 self.holds = self.analysis.holds.read().to_vec();
                 self.readouts = readout::figures(&self.analysis, &self.peaks);
+                // **Also the nodes and the weight**, because `LOW` and `HIGH`
+                // are knobs: nothing emits `Sync` when one of them turns, and
+                // for one commit the curve simply did not follow them.
+                self.sync_nodes();
             }
             UiEvent::Sync => self.sync_nodes(),
             UiEvent::Hover(over) => {
