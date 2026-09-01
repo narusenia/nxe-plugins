@@ -385,9 +385,14 @@ fn split_row(cx: &mut Context) {
             // changes the plugin's latency — the thing a host has to be told
             // about. It belongs where its consequences are read.
             HStack::new(cx, |cx| {
+                // **`.subtle`, not `.ink-muted`.** `ink-*` is for the inverted
+                // surfaces (`nxe_ui::status`, the figure); on a `.panel`'s dark
+                // ground it resolves against the *inverted* palette and comes
+                // out dark on dark. It drew as a label-sized hole beside the
+                // control (`PUM-10d`, seen in a host).
                 Label::new(cx, "QUALITY")
                     .class("label")
-                    .class("ink-muted")
+                    .class("subtle")
                     .height(Pixels(theme::LINE_LABEL))
                     .top(Stretch(1.0))
                     .bottom(Stretch(1.0));
@@ -511,7 +516,9 @@ mod tests {
         // **Against the shared constant, not against a number.** Writing the
         // number here is how one window quietly stops matching the other five.
         assert_eq!(super::WIDTH, nxe_ui::theme::WINDOW_WIDTH);
-        assert_eq!(super::field::HEIGHT, 200.0, "the figure is the line's size");
+        // **Deliberately not the line's 200** (`super::field::HEIGHT` says
+        // why). Pinned so that changing it is a decision rather than a drift.
+        assert_eq!(super::field::HEIGHT, 320.0);
 
         let parts = nxe_ui::theme::SPACE_3 * 2.0
             + nxe_ui::header::HEIGHT

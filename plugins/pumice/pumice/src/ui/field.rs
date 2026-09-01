@@ -27,10 +27,24 @@ use nxe_ui::node::{NodeField, NodeFieldModifiers, NodeGesture};
 use nxe_ui::theme;
 use std::sync::Arc;
 
-/// **The same height as every other plugin's figure.** Two figures tuned
-/// separately are each right on their own and wrong beside each other
-/// (`.agents/rules/ui.md`).
-pub const HEIGHT: f32 = 200.0;
+/// **Taller than every other plugin's figure, and the only one that is.**
+///
+/// `.agents/rules/ui.md` keeps `field::HEIGHT` at one number across the line,
+/// because two figures tuned separately are each right on their own and wrong
+/// beside each other. This one is 320 anyway, for the reason the same rule
+/// gives for the shared width — the figures it is beside are *read*, and this
+/// one is **worked in**:
+///
+/// - it is the only figure in the line with a **numbered axis** on both sides,
+///   and four decibel marks over 200 px sit 50 px apart
+/// - it is the only figure whose contents are **placed by hand**, and a node
+///   has to be droppable at a height that means something
+/// - the spectrum behind them is the reason the plugin is open at all
+///
+/// A window that differs in one dimension for a stated reason is not the thing
+/// the rule was written against; five figures that drifted apart with no reason
+/// is.
+pub const HEIGHT: f32 = 320.0;
 
 /// The axis labels' own line, under the plot.
 pub const MARKS_HEIGHT: f32 = theme::LINE_VALUE;
