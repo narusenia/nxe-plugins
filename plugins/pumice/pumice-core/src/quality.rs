@@ -81,16 +81,22 @@ impl Quality {
         self.block(sample_rate) / OVERLAP
     }
 
-    /// What the plugin reports to the host, in samples.
+    /// What the plugin reports to the host, in samples: **one whole block.**
     ///
-    /// **`block − hop`, not `block`.** An overlap-add that hands back the
-    /// finished part of the ring as soon as it is finished owes the host three
-    /// quarters of a window, not a whole one. `nih_plug`'s `StftHelper` reports
-    /// the whole one; writing the buffering here rather than borrowing it
-    /// (`REQ-PUM-015`) is worth 10 ms because of this line.
+    /// **This was specified as `block − hop` and that was wrong**
+    /// (2026-09-01). Overlap does not buy latency back. An output sample `m` is
+    /// only final once every frame whose support covers it has been added, and
+    /// the last such frame *ends* at `m + block − 1` — so `m` cannot leave
+    /// before then however often frames are taken. More overlap adds more
+    /// contributions to the same sample; it does not make the last one arrive
+    /// sooner.
+    ///
+    /// `nih_plug`'s `StftHelper` reports its ring length for exactly this
+    /// reason, and it was right. The case for writing the buffering here
+    /// instead (`REQ-PUM-015`) is licensing and the AU door, and never was
+    /// this.
     pub fn latency(self, sample_rate: f32) -> usize {
-        let block = self.block(sample_rate);
-        block - block / OVERLAP
+        self.block(sample_rate)
     }
 }
 
@@ -145,11 +151,20 @@ mod tests {
         }
     }
 
+    /// **A regression test for a specification error, not for a formula.**
+    /// This was `3N/4` until 2026-09-01, which would have under-reported the
+    /// delay by a quarter of a window in every host.
     #[test]
-    fn latency_is_three_quarters_of_the_block() {
-        assert_eq!(Quality::Normal.latency(48_000.0), 1536);
-        assert_eq!(Quality::Low.latency(48_000.0), 768);
-        assert_eq!(Quality::High.latency(48_000.0), 3072);
+    fn latency_is_one_whole_block() {
+        assert_eq!(Quality::Low.latency(48_000.0), 1024);
+        assert_eq!(Quality::Normal.latency(48_000.0), 2048);
+        assert_eq!(Quality::High.latency(48_000.0), 4096);
+
+        for rate in [44_100.0, 48_000.0, 96_000.0, 192_000.0] {
+            for quality in Quality::ALL {
+                assert_eq!(quality.latency(rate), quality.block(rate));
+            }
+        }
     }
 
     /// Nothing may ask for a buffer bigger than the one that gets allocated.

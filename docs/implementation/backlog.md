@@ -424,7 +424,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | — | **Advanced の偏差**（Diorama、`REQ-DIO-009`）。**前に `dsp.md`** | `diorama-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（**耳が要る**） | `doubler-plan.md` |
 | PUM-2 | **Pumice の OLA バッファと窓。** ゲートは通った（Ableton VST3 / Studio One CLAP） | `pumice-plan.md` |
-| — | **再生中の `QUALITY` 切り替え**（**人が要る**）。落ちても方式は無事で、消えるのは `QUALITY` の実行時可変性だけ。**`PUM-2` の前に知りたい** | `pumice-plan.md` |
+| — | **Bitwig と Reaper で PDC を見る**（**人が要る**）。方式の判断には影響しない — 落ちてもホスト固有の問題 | `pumice-plan.md` |
 
 **`v0.2.0` のタグを打つ前に人が要るもの**: `DIO-14` の聴き直しと `DIO-13` の
 既定値。**それだけ**——5 本の窓の見た目・Hard・PUNCH は 2026-08-31 に実機で
@@ -674,7 +674,7 @@ AU の道が閉じる（`REQ-PUM-015`）。答え合わせの相手としては�
 
 | ID | 単位 | 状態 |
 |---|---|---|
-| PUM-1 | **空のラッパで PDC を通す**（**ゲート**）。2 クレート・`bundler.toml`・`QUALITY` 1 個だけ。N は `pumice_core::quality`（当初「core は空」としていたのを直した） | 🟡 **ゲートは通過** — Ableton（VST3）/ Studio One Pro（CLAP）で反転して無音。**FFT で進めてよい**。残り: Bitwig / Reaper と、**再生中の `QUALITY` 切り替え** |
+| PUM-1 | **空のラッパで PDC を通す**（**ゲート**）。2 クレート・`bundler.toml`・`QUALITY` 1 個だけ。N は `pumice_core::quality`。**申告レイテンシが `N − hop` ではなく `N` だと分かった**のもここ | ✅ **ゲート通過** — Ableton（VST3）/ Studio One Pro（CLAP）で反転して無音、`QUALITY` の実行時切り替えも復帰。Bitwig / Reaper は並行 |
 | PUM-2 | OLA バッファと窓（`pumice-core` に自作） | ⬜ |
 | PUM-3 | 参照とゲイン計算（`STATIC`）＋ ラッパ（**ここで音が出る**） | ⬜ |
 | PUM-4 | **適応 WHERE と `MODE`**（**ゲート**） | ⬜ |

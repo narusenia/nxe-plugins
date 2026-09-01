@@ -10,7 +10,7 @@
 //! running — cannot be answered by a test. It can only be answered by opening
 //! them.
 //!
-//! So this build reports `3N/4` and then **delays by exactly that much**. If
+//! So this build reports `N` and then **delays by exactly that much**. If
 //! compensation works, the track stays in time with an untouched one; if it
 //! does not, it slides by a known amount. The plugin is its own instrument.
 //!
