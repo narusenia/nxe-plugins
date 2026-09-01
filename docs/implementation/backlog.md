@@ -423,7 +423,8 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | DIO-13 | **既定値と耳**（**耳が要る**）。**聴き直しのあと** | `diorama-plan.md` |
 | — | **Advanced の偏差**（Diorama、`REQ-DIO-009`）。**前に `dsp.md`** | `diorama-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（**耳が要る**） | `doubler-plan.md` |
-| PUM-10 | **Pumice の窓**。図は全幅、下を左右分割 | `pumice-plan.md` |
+| PUM-11 | **Pumice の既定値と耳**（**耳が要る**）。`dsp.md` の「耳で詰める定数」 | `pumice-plan.md` |
+| — | **Pumice の窓を実機で見る**（**目が要る**）。`mise run install pumice` | `pumice-plan.md` |
 | — | **`mise run gallery` で `NodeField` を見る**（**目が要る**）。6 本置いて掴んで消せるか、幅のグリップが引けるか、アイドルで CPU を食わないか（`ps -o %cpu`） | `nxe-ui-plan.md` |
 | — | **Pumice をもう一度実機で聴く**（**耳が要る**）。`PUM-4b` で効きが 2.4 倍になった。`mise run install pumice` | `pumice-plan.md` |
 | — | **Bitwig と Reaper で PDC を見る**（**人が要る**）。方式の判断には影響しない — 落ちてもホスト固有の問題 | `pumice-plan.md` |
@@ -491,6 +492,7 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | UI-20 | **幅と、窓の高さの計算**（720 → 880 の共通定数。高さは既に部品の合計だった） | ✅ ❓ **実機で 4 ホスト見るのが未了** |
 | UI-21 | **勾配を外す**（塗りは全部フラット。`wash` と `.accent-up` も落とした） | ✅ `8fcebf3` |
 | UI-22 | **`NodeField`** — 自由な x 配置・追加・削除を持つ図。3 層（信号 / 削減 / 重み）+ 幅のグリップ。`CurveView` は x 固定、`BandField` は領域の端しか動かない | 🟡 **コードは通った**（テスト 6 本、gallery に追加）。**`mise run gallery` で見るのが未了** |
+| UI-23 | **`HintEvent::Dynamic`** — 値を運ぶ 1 行。名前を持たない図の点のために。他は全部 `&'static str` のまま | ✅ |
 
 ### Doubler — `../../plugins/doubler/docs/implementation/doubler-plan.md`
 
@@ -686,7 +688,7 @@ AU の道が閉じる（`REQ-PUM-015`）。答え合わせの相手としては�
 | PUM-7 | レート・ブロックサイズ非依存 | ✅ 4 レート × 3 段、ブロック 1/7/64/256/257/512/4096 で一致、時定数が 3 レートで 20 ms 以内。テスト 4 本 |
 | PUM-8 | CPU 予算（criterion）。**512 サンプル単位では `HIGH` が hop 境界を越えず測定が壊れる**ので 8 ブロック単位 | ✅ **30.6 µs / 予算 533**（見積り 50〜80 より安い）。**ラインで 2 番目に安い**。3 段のコストがほぼ同じ＝`QUALITY` は CPU の取引ではない |
 | PUM-9 | 解析の受け渡し。**`nxe_dsp::Spectrum` を回さない**（STFT からそのまま）。渡すのはビンではなく対数格子 128 点で、高域は平均する | ✅ 3 秒で減衰、図と音が同じ配列から出る。テスト 7 本 |
-| PUM-10 | 窓 | ⬜ |
+| PUM-10 | 窓。**図は全幅、下を左右分割**（罫線で、反転面は増やさない）。色相 118（モス）を追加。ノードのパラメータを「軸上の位置」にした | 🟡 **コードは通った**（テスト 5 本、バンドルも）。**実機で見るのが未了** |
 | PUM-11 | 既定値と耳。**`DEPTH` という名前を使えるかもここで決着**（`REQ-PUM-010`） | ⬜ |
 
 **要件・DSP 仕様・UI 仕様・計画は書けた**（2026-09-01）。**数字は 1 つも

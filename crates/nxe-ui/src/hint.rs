@@ -38,6 +38,19 @@ pub enum HintEvent {
     /// clear wipes the sentence that just arrived, and the header goes empty
     /// while the mouse is sitting on a control.
     Clear(&'static str),
+    /// A sentence that is **not fixed at build time** — `Some` shows it,
+    /// `None` clears it.
+    ///
+    /// **Added for a figure whose points have no names** (Pumice's
+    /// `NodeField`): a node's frequency, width and depth are the one thing that
+    /// figure cannot draw, because `draw_text` renders only a view's own text.
+    /// Everything else in the line describes itself with a `&'static str`, and
+    /// that stays the normal case — this is for values.
+    ///
+    /// **No pairing on the way out**, unlike [`HintEvent::Clear`]: a widget
+    /// that reports what the pointer is over reports `None` when it leaves, so
+    /// there is no overlap to protect against.
+    Dynamic(Option<String>),
 }
 
 impl Hint {
@@ -52,6 +65,10 @@ impl Hint {
                     self.text.clear();
                 }
             }
+            HintEvent::Dynamic(text) => match text {
+                Some(text) => self.text = text.clone(),
+                None => self.text.clear(),
+            },
         }
     }
 }
@@ -101,5 +118,15 @@ mod tests {
         hint.apply(&HintEvent::Show("the second"));
         hint.apply(&HintEvent::Clear("the first"));
         assert_eq!(hint.text, "the second");
+    }
+
+    /// A value-carrying sentence sets and clears without pairing.
+    #[test]
+    fn a_dynamic_hint_sets_and_clears() {
+        let mut hint = Hint::default();
+        hint.apply(&HintEvent::Dynamic(Some("2.4 kHz".to_owned())));
+        assert_eq!(hint.text, "2.4 kHz");
+        hint.apply(&HintEvent::Dynamic(None));
+        assert!(hint.text.is_empty());
     }
 }

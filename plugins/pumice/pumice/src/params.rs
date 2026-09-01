@@ -6,6 +6,7 @@
 //! project file that do nothing, and a parameter id is as final as `CLAP_ID`.
 
 use nih_plug::prelude::*;
+use std::sync::Arc;
 
 /// How long a control takes to travel to a new value.
 ///
@@ -92,6 +93,53 @@ pub struct NodeParams {
     pub depth: FloatParam,
 }
 
+/// The bottom and the top of the figure's frequency axis.
+pub const LOW_HZ: f32 = 20.0;
+pub const HIGH_HZ: f32 = 20_000.0;
+
+/// The narrowest and widest a node may be, in octaves.
+pub const NARROWEST_OCTAVES: f32 = 0.1;
+pub const WIDEST_OCTAVES: f32 = 4.0;
+
+/// `freq` and `width` are **positions**, not quantities.
+///
+/// **Every node control is a plain `0..=1`**, and what it means is applied
+/// here. The alternative was a skewed range, and it does not survive contact
+/// with the figure: a node is dragged to a *place on the axis*, so the window
+/// would have to invert the skew to write the value it just read a position
+/// from — and a skew that is only approximately logarithmic makes that
+/// inversion approximate too. A normalized parameter **is** the figure's own
+/// coordinate, so there is nothing to invert (`ui.md`).
+///
+/// A host's generic UI still reads in Hz and octaves, because
+/// `with_value_to_string` says so.
+pub fn position_to_hz(position: f32) -> f32 {
+    LOW_HZ * (HIGH_HZ / LOW_HZ).powf(position.clamp(0.0, 1.0))
+}
+
+pub fn hz_to_position(hz: f32) -> f32 {
+    ((hz / LOW_HZ).log2() / (HIGH_HZ / LOW_HZ).log2()).clamp(0.0, 1.0)
+}
+
+pub fn position_to_octaves(position: f32) -> f32 {
+    NARROWEST_OCTAVES * (WIDEST_OCTAVES / NARROWEST_OCTAVES).powf(position.clamp(0.0, 1.0))
+}
+
+pub fn octaves_to_position(octaves: f32) -> f32 {
+    ((octaves / NARROWEST_OCTAVES).log2() / (WIDEST_OCTAVES / NARROWEST_OCTAVES).log2())
+        .clamp(0.0, 1.0)
+}
+
+/// A position printed the way a person reads a frequency.
+fn hz_text(position: f32) -> String {
+    let hz = position_to_hz(position);
+    if hz >= 1_000.0 {
+        format!("{:.2} kHz", hz / 1_000.0)
+    } else {
+        format!("{hz:.0} Hz")
+    }
+}
+
 impl NodeParams {
     /// **No smoothers, on purpose.** These are read once per block and compared
     /// against what the weight curve was last built from; a smoother would make
@@ -103,27 +151,18 @@ impl NodeParams {
             enabled: BoolParam::new(format!("Node {ordinal}"), false),
             freq: FloatParam::new(
                 format!("Node {ordinal} Frequency"),
-                freq_hz,
-                FloatRange::Skewed {
-                    min: 20.0,
-                    max: 20_000.0,
-                    factor: FloatRange::skew_factor(-2.0),
-                },
+                hz_to_position(freq_hz),
+                FloatRange::Linear { min: 0.0, max: 1.0 },
             )
-            .with_unit(" Hz")
-            .with_value_to_string(formatters::v2s_f32_hz_then_khz(0))
-            .with_string_to_value(formatters::s2v_f32_hz_then_khz()),
+            .with_value_to_string(Arc::new(hz_text)),
             width: FloatParam::new(
                 format!("Node {ordinal} Width"),
-                0.5,
-                FloatRange::Skewed {
-                    min: 0.1,
-                    max: 4.0,
-                    factor: FloatRange::skew_factor(-1.0),
-                },
+                octaves_to_position(0.5),
+                FloatRange::Linear { min: 0.0, max: 1.0 },
             )
-            .with_unit(" oct")
-            .with_value_to_string(formatters::v2s_f32_rounded(2)),
+            .with_value_to_string(Arc::new(|position| {
+                format!("{:.2} oct", position_to_octaves(position))
+            })),
             depth: FloatParam::new(
                 format!("Node {ordinal} Depth"),
                 0.5,
@@ -141,8 +180,8 @@ impl NodeParams {
     fn resolve(&self) -> pumice_core::Node {
         pumice_core::Node {
             enabled: self.enabled.value(),
-            freq_hz: self.freq.value(),
-            width_octaves: self.width.value(),
+            freq_hz: position_to_hz(self.freq.value()),
+            width_octaves: position_to_octaves(self.width.value()),
             depth: self.depth.value(),
         }
     }
@@ -278,8 +317,8 @@ impl PumiceParams {
             quality: self.quality.value().into(),
             nodes: std::array::from_fn(|index| self.nodes[index].resolve()),
             range: pumice_core::Range {
-                low_hz: self.low.value(),
-                high_hz: self.high.value(),
+                low_hz: position_to_hz(self.low.value()),
+                high_hz: position_to_hz(self.high.value()),
             },
         }
     }
@@ -292,16 +331,10 @@ impl PumiceParams {
 fn edge(name: &str, default_hz: f32) -> FloatParam {
     FloatParam::new(
         name,
-        default_hz,
-        FloatRange::Skewed {
-            min: 20.0,
-            max: 20_000.0,
-            factor: FloatRange::skew_factor(-2.0),
-        },
+        hz_to_position(default_hz),
+        FloatRange::Linear { min: 0.0, max: 1.0 },
     )
-    .with_unit(" Hz")
-    .with_value_to_string(formatters::v2s_f32_hz_then_khz(0))
-    .with_string_to_value(formatters::s2v_f32_hz_then_khz())
+    .with_value_to_string(Arc::new(hz_text))
 }
 
 /// A plain `0..=1` macro with a percentage readout.
@@ -316,6 +349,35 @@ fn unit(name: &str, default: f32) -> FloatParam {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A position and a frequency have to be the same thing read two ways, or
+    /// the figure writes a node somewhere other than where it was dropped.
+    #[test]
+    fn positions_and_frequencies_round_trip() {
+        for hz in [20.0_f32, 100.0, 440.0, 2_500.0, 12_000.0, 20_000.0] {
+            let back = position_to_hz(hz_to_position(hz));
+            assert!(
+                (back / hz).log2().abs() < 1e-4,
+                "{hz} Hz came back as {back}"
+            );
+        }
+        for octaves in [0.1_f32, 0.5, 1.0, 4.0] {
+            let back = position_to_octaves(octaves_to_position(octaves));
+            assert!(
+                (back / octaves).log2().abs() < 1e-4,
+                "{octaves} oct came back as {back}"
+            );
+        }
+    }
+
+    /// The ends of the axis are the ends of the parameter.
+    #[test]
+    fn the_axis_ends_line_up() {
+        assert_eq!(hz_to_position(LOW_HZ), 0.0);
+        assert!((hz_to_position(HIGH_HZ) - 1.0).abs() < 1e-6);
+        assert!((position_to_hz(0.0) - LOW_HZ).abs() < 0.01);
+        assert!((position_to_hz(1.0) - HIGH_HZ).abs() < 1.0);
+    }
 
     /// A parameter id is as final as `CLAP_ID`: a host stores it in the project
     /// file. This is here so that renaming one is a failing test rather than a

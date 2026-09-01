@@ -18,3 +18,6 @@ crate-type = ["cdylib", "rlib"]
 pumice-core = { workspace = true }
 nxe-dsp = { workspace = true }
 nih_plug = { workspace = true }
+nih_plug_vizia = { workspace = true }
+nxe-plug-ui = { workspace = true }
+nxe-ui = { workspace = true }

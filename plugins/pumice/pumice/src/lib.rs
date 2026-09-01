@@ -11,7 +11,7 @@
 //! runs. Bitwig and Reaper are still to be checked; a failure there would be
 //! that host's, not the method's.
 //!
-//! The window is `PUM-10`; there is no editor yet.
+//! The window is `ui`. **One screen, no tabs** (`REQ-PUM-013`).
 
 use analysis::{Analysis, METERS};
 use nih_plug::prelude::*;
@@ -21,6 +21,7 @@ use std::sync::Arc;
 
 mod analysis;
 mod params;
+mod ui;
 
 use params::PumiceParams;
 
@@ -30,6 +31,8 @@ const FALLBACK_SAMPLE_RATE: f32 = 48_000.0;
 
 struct Pumice {
     params: Arc<PumiceParams>,
+    /// The window's size and position, which the host saves with the project.
+    editor_state: Arc<nih_plug_vizia::ViziaState>,
     /// What the editor reads. **The audio thread writes; nothing else touches
     /// the analysers below** (`analysis.rs`).
     analysis: Arc<Analysis>,
@@ -52,6 +55,7 @@ impl Default for Pumice {
     fn default() -> Self {
         Self {
             params: Arc::new(PumiceParams::default()),
+            editor_state: ui::default_state(),
             analysis: Arc::new(Analysis::default()),
             meters: std::array::from_fn(|_| Level::new(FALLBACK_SAMPLE_RATE)),
             curves: Curves::default(),
@@ -91,6 +95,14 @@ impl Plugin for Pumice {
 
     fn params(&self) -> Arc<dyn Params> {
         self.params.clone()
+    }
+
+    fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
+        ui::create(
+            self.params.clone(),
+            self.editor_state.clone(),
+            self.analysis.clone(),
+        )
     }
 
     /// The only place that allocates. Every transform size is planned here so

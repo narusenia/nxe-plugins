@@ -2580,7 +2580,10 @@ name = "pumice"
 version = "0.2.0"
 dependencies = [
  "nih_plug",
+ "nih_plug_vizia",
  "nxe-dsp",
+ "nxe-plug-ui",
+ "nxe-ui",
  "pumice-core",
 ]
 
