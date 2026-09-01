@@ -11,8 +11,12 @@
 //! way out when the adaptive path is wrong for a piece of material.
 
 use crate::gain::{Computer, Follower, range_into, smooth_into};
+
+/// `10·log10(x)` is `10/log2(10)` times `log2(x)`, so a power ratio in dB is
+/// `2^(dB / 3.0103)` — the constant `nxe_audio::guard` keeps.
+const DECIBELS_PER_OCTAVE_POWER: f32 = 3.010_3;
 use crate::quality::Quality;
-use crate::reference::{excess_db_into, power_into};
+use crate::reference::{Scratch, Widths, excess_db_into, power_into};
 use crate::smoothing::Prefix;
 use crate::stft::{MAX_BINS, MAX_CHANNELS, Stft};
 
@@ -22,26 +26,72 @@ use crate::stft::{MAX_BINS, MAX_CHANNELS, Stft};
 /// block (`nxe_audio::guard::Settings` is the same shape for the same reason).
 #[derive(Clone, Copy, Debug)]
 pub struct Settings {
-    /// A **band-to-reference ratio**, not a level. Zero says "this bin carries
-    /// as much power as its neighbourhood", which spectrally ordinary material
-    /// sits at — so zero takes nothing out of it (`SPK-18`).
+    /// A **band-to-reference ratio**, not a level.
+    ///
+    /// **Measured, not guessed** (`SPK-18` is the same procedure). It was zero,
+    /// on the reasoning that ordinary material carries as much power as its
+    /// neighbourhood and so reads no excess. Ordinary material does not: a
+    /// single bin of a noise-like signal deviates from its own mean, and an
+    /// asymmetric follower rectifies the positive half of that into a standing
+    /// excess. What things actually read, at `SHARPNESS` and `SPEED` centred:
+    ///
+    /// | | worst | mean |
+    /// |---|---|---|
+    /// | white noise | 5.0 dB | 1.0 dB |
+    /// | a sung sawtooth's partials | 5.3 dB | 0.1 dB |
+    /// | **an 18 dB resonance, Q 4** | **13 dB** | |
+    ///
+    /// 4.5 puts ordinary material at exactly nothing and still takes 7.8 dB off
+    /// the resonance. Zero took 0.71 dB out of plain noise — which is the
+    /// defect `SPK-18` shipped and this number exists to prevent.
     pub threshold_db: f32,
-    /// How many dB of reduction per dB of excess. One would flatten the bin
-    /// onto its reference exactly.
+    /// How many dB of reduction per dB of excess.
+    ///
+    /// **One, so that `DEPTH` at maximum flattens the bin onto its reference.**
+    /// It was 0.7 — a design-time guess that put a ceiling inside a control
+    /// that already has one, since `DEPTH` scales this. Anything below one is
+    /// reachable by turning `DEPTH` down; nothing above the old 0.7 was
+    /// reachable at all.
     pub slope: f32,
     /// The widest any bin may be pulled. Past this a vocal is not protected,
     /// it is missing (`REQ-PUM-023`).
     pub ceiling_db: f32,
-    /// What `SHARPNESS` interpolates between, in octaves. Wide catches broad
-    /// humps, narrow only spikes.
-    pub reference_wide_octaves: f32,
-    pub reference_narrow_octaves: f32,
+    /// How much of a bin's neighbourhood is averaged before it is compared to
+    /// anything.
+    ///
+    /// **Not a resolution setting — a variance one** (`reference`). One bin of
+    /// a noise-like signal deviates by 5.6 dB from its own mean, and an
+    /// asymmetric follower turns that into a standing excess out of nothing.
+    pub detail_octaves: f32,
+    /// What `SHARPNESS` interpolates between, in octaves: **how wide a thing
+    /// counts as one feature**. Wide catches broad humps, narrow only spikes.
+    pub feature_wide_octaves: f32,
+    pub feature_narrow_octaves: f32,
+    /// How thick the reference ring outside the feature is.
+    ///
+    /// **The hole in the middle is what makes the excess honest**
+    /// (`reference::excess_db_into`); this is how much spectrum is left to
+    /// judge against once the hole is cut.
+    pub reference_margin_octaves: f32,
     /// What `SPEED` interpolates between. The fast end is bounded by the hop
     /// whatever is asked for (`REQ-PUM-020`).
     pub attack_slow_seconds: f32,
     pub attack_fast_seconds: f32,
     pub release_slow_seconds: f32,
     pub release_fast_seconds: f32,
+    /// How far below the loudest recent frame a frame may sit and still teach
+    /// the map anything.
+    ///
+    /// **Silence must not be averaged in** (`PUM-4`). Measured without this:
+    /// a resonance present half the time was cut 3.69 dB where the same
+    /// resonance sounding continuously was cut 6.34 — the map read the gaps as
+    /// evidence that nothing was there, and a sung line is full of gaps. The
+    /// map holds instead of decaying, so a phrase picks up where the last one
+    /// left off.
+    pub map_gate_db: f32,
+    /// How fast the loudest-recent-frame reference decays. Long enough to span
+    /// a breath, short enough to follow a fade.
+    pub map_peak_seconds: f32,
     /// How long the map of *where* resonance lives takes to form
     /// (`REQ-PUM-003`).
     ///
@@ -64,15 +114,19 @@ impl Settings {
     /// listened to** — they are the design-time values, and `PUM-11` replaces
     /// them.
     pub const DEFAULT: Settings = Settings {
-        threshold_db: 0.0,
-        slope: 0.7,
+        threshold_db: 4.5,
+        slope: 1.0,
         ceiling_db: 18.0,
-        reference_wide_octaves: 1.0,
-        reference_narrow_octaves: 0.17,
+        detail_octaves: 1.0 / 12.0,
+        feature_wide_octaves: 1.5,
+        feature_narrow_octaves: 0.15,
+        reference_margin_octaves: 1.0,
         attack_slow_seconds: 0.040,
         attack_fast_seconds: 0.005,
         release_slow_seconds: 0.400,
         release_fast_seconds: 0.040,
+        map_gate_db: -30.0,
+        map_peak_seconds: 2.0,
         where_seconds: 6.0,
         gain_smoothing_octaves: 1.0 / 12.0,
         low_hz: 100.0,
@@ -119,6 +173,8 @@ pub enum Mode {
 struct Detector {
     prefix: Prefix,
     power: Vec<f32>,
+    /// [`Detector::power`] averaged over [`Settings::detail_octaves`].
+    detail: Vec<f32>,
     reference: Vec<f32>,
     excess_db: Vec<f32>,
     /// The long-term map: how far this bin **usually** sits above its
@@ -138,8 +194,15 @@ struct Detector {
     computer: Computer,
     settings: Settings,
     depth: f32,
-    reference_octaves: f32,
+    feature_octaves: f32,
     mode: Mode,
+    /// The loudest frame lately, as total power — what [`Settings::map_gate_db`]
+    /// is measured against.
+    loudest: f32,
+    /// `10^(map_gate_db/10)`, resolved once per block.
+    gate: f32,
+    /// One frame's decay for [`Detector::loudest`], resolved once per block.
+    peak_decay: f32,
     bins: usize,
     /// Scratch for handing the channels' spectra to [`power_into`] without
     /// borrowing them mutably.
@@ -151,6 +214,7 @@ impl Detector {
         Self {
             prefix: Prefix::new(MAX_BINS),
             power: vec![0.0; MAX_BINS],
+            detail: vec![0.0; MAX_BINS],
             reference: vec![0.0; MAX_BINS],
             excess_db: vec![0.0; MAX_BINS],
             where_db: vec![0.0; MAX_BINS],
@@ -168,8 +232,11 @@ impl Detector {
             },
             settings,
             depth: 0.0,
-            reference_octaves: settings.reference_wide_octaves,
+            feature_octaves: settings.feature_wide_octaves,
             mode: Mode::default(),
+            loudest: 0.0,
+            gate: 0.0,
+            peak_decay: 0.0,
             bins: 0,
             channels: 0,
         }
@@ -192,9 +259,16 @@ impl Detector {
 
         excess_db_into(
             &self.power[..bins],
-            &mut self.prefix,
-            &mut self.reference[..bins],
-            self.reference_octaves,
+            Scratch {
+                prefix: &mut self.prefix,
+                detail: &mut self.detail[..bins],
+                reference: &mut self.reference[..bins],
+            },
+            Widths {
+                detail_octaves: self.settings.detail_octaves,
+                feature_octaves: self.feature_octaves,
+                margin_octaves: self.settings.reference_margin_octaves,
+            },
             &mut self.excess_db[..bins],
         );
 
@@ -202,12 +276,25 @@ impl Detector {
         self.follower
             .follow(&self.excess_db[..bins], &mut self.drive_db[..bins]);
 
+        // **Is there anything here to learn from.** A held peak rather than an
+        // absolute level, so the gate does not move with input gain.
+        let total: f32 = self.power[..bins].iter().sum();
+        self.loudest = (self.loudest * self.peak_decay).max(total);
+        let sounding = total > self.loudest * self.gate;
+
         if self.mode == Mode::Adaptive {
             // **WHERE**: is this bin *usually* hot. A partial moves with the
             // pitch and passes through a bin, so its long-term average stays
             // low; a resonance does not move, so its does not.
-            self.map
-                .follow(&self.excess_db[..bins], &mut self.where_db[..bins]);
+            //
+            // **Held through the gaps.** Updating during silence would average
+            // "nothing is here" into the map, and a sung line is more gap than
+            // it looks — measured, half a duty cycle cost 2.65 dB of the
+            // reduction on the same resonance.
+            if sounding {
+                self.map
+                    .follow(&self.excess_db[..bins], &mut self.where_db[..bins]);
+            }
 
             // **The map is not smoothed across frequency, and the
             // specification said it should be** (`PUM-4`, 2026-09-01).
@@ -287,6 +374,7 @@ impl Engine {
         self.stft.reset();
         self.detector.follower.reset();
         self.detector.map.reset();
+        self.detector.loudest = 0.0;
     }
 
     /// What is being taken out, per bin, in dB — the figure's subject
@@ -318,8 +406,8 @@ impl Engine {
         // Interpolated **in the log domain**: the octave width is a ratio, so
         // half a turn should land on the geometric middle.
         let sharpness = controls.sharpness.clamp(0.0, 1.0);
-        self.detector.reference_octaves = settings.reference_wide_octaves
-            * (settings.reference_narrow_octaves / settings.reference_wide_octaves).powf(sharpness);
+        self.detector.feature_octaves = settings.feature_wide_octaves
+            * (settings.feature_narrow_octaves / settings.feature_wide_octaves).powf(sharpness);
 
         let speed = controls.speed.clamp(0.0, 1.0);
         let attack = settings.attack_slow_seconds
@@ -333,6 +421,10 @@ impl Engine {
         self.detector
             .map
             .set_symmetric(settings.where_seconds, frame_rate);
+        // `10^(dB/10)` as a power ratio, through the exp2 the hardware has.
+        self.detector.gate = (settings.map_gate_db / DECIBELS_PER_OCTAVE_POWER).exp2();
+        self.detector.peak_decay =
+            1.0 - nxe_audio::envelope::coefficient(settings.map_peak_seconds, frame_rate);
 
         // **Clearing the map on the way in, not on the way out.** `STATIC` does
         // not run the map, so a return to `ADAPTIVE` would otherwise start from
@@ -404,6 +496,21 @@ mod tests {
         output
     }
 
+    /// A settled `ADAPTIVE` engine on this material, for a second reading.
+    fn engine_for_mean(rate: f32, input: &[f32]) -> Engine {
+        let mut engine = Engine::new(rate, Settings::DEFAULT);
+        engine.set(with_mode(1.0, Mode::Adaptive));
+        run(&mut engine, input);
+        engine
+    }
+
+    /// The average reduction across the band, in dB (negative).
+    fn mean_reduction_db(engine: &Engine, low_hz: f32, high_hz: f32) -> f32 {
+        let curve = engine.reduction_curve();
+        let (low, high) = (engine.bin_of(low_hz), engine.bin_of(high_hz));
+        curve[low..high].iter().sum::<f32>() / (high - low) as f32
+    }
+
     /// The deepest reduction anywhere in the band, in dB (negative).
     fn deepest_reduction_db(engine: &Engine, low_hz: f32, high_hz: f32) -> f32 {
         let curve = engine.reduction_curve();
@@ -437,16 +544,29 @@ mod tests {
         }
     }
 
-    /// A sawtooth whose fundamental sweeps across an octave.
+    /// A sawtooth on a **sung line**: the pitch steps to a new scale degree
+    /// every `note_seconds`, over an octave.
     ///
-    /// **Every partial moves**, which is the whole point: this is the signal
-    /// `ADAPTIVE` must leave alone and `STATIC` cannot tell from resonance.
-    fn swept_saw(length: usize, rate: f32, low_hz: f32, high_hz: f32) -> Vec<f32> {
+    /// **Every partial moves, and moves the way a voice moves.** A glissando
+    /// would not do: one that crosses an octave in half a minute holds a low
+    /// partial inside a narrow band for seconds at a time, which is longer than
+    /// the map's own time constant — so it *is* a standing resonance as far as
+    /// `ADAPTIVE` can tell, and treating it as one is correct rather than a
+    /// failure (`REQ-PUM-003` records it as a limit).
+    fn sung_saw(length: usize, rate: f32, low_hz: f32, note_seconds: f32) -> Vec<f32> {
+        // A pentatonic walk, so consecutive notes are never a bin apart.
+        const STEPS: [f32; 5] = [0.0, 2.0, 4.0, 7.0, 9.0];
+        let per_note = (rate * note_seconds) as usize;
         let mut phase = 0.0_f32;
+        let mut walk = 0_usize;
+
         (0..length)
             .map(|n| {
-                let position = n as f32 / length as f32;
-                let hz = low_hz * (high_hz / low_hz).powf(position);
+                let note = n / per_note.max(1);
+                // Deterministic, and not a repeating cycle of five.
+                walk = (note * 7 + note * note * 3) % 15;
+                let semitones = STEPS[walk % 5] + 12.0 * (walk / 5) as f32;
+                let hz = low_hz * (semitones / 12.0).exp2();
                 phase += hz / rate;
                 phase -= phase.floor();
                 (phase * 2.0 - 1.0) * 0.3
@@ -492,7 +612,7 @@ mod tests {
         let change_db = 20.0 * (after / before).log10();
 
         assert!(
-            change_db.abs() < 1.0,
+            change_db.abs() < 0.1,
             "flat noise lost {change_db:.2} dB — the threshold is pulling on ordinary material"
         );
     }
@@ -608,7 +728,7 @@ mod tests {
     fn adaptive_leaves_moving_partials_alone() {
         let rate = 48_000.0;
         // Long enough for the map to form several times over.
-        let input = swept_saw(rate as usize * 30, rate, 100.0, 200.0);
+        let input = sung_saw(rate as usize * 30, rate, 110.0, 0.35);
 
         // **The reduction the engine applies, not the change in level.**
         // Overall RMS is dominated by the fundamental, which nothing touches,
@@ -623,12 +743,16 @@ mod tests {
 
         let (static_db, adaptive_db) = (deepest[0], deepest[1]);
         assert!(
-            static_db >= 2.0,
+            static_db >= 10.0,
             "STATIC only pulled {static_db:.2} dB — this material does not test anything"
         );
         assert!(
-            adaptive_db <= 0.5,
+            adaptive_db <= 1.0,
             "ADAPTIVE pulled {adaptive_db:.2} dB out of moving partials"
+        );
+        assert!(
+            mean_reduction_db(&engine_for_mean(rate, &input), 200.0, 10_000.0) > -0.1,
+            "ADAPTIVE's average pull across the band is too high"
         );
     }
 
@@ -640,7 +764,7 @@ mod tests {
         let length = rate as usize * 30;
         let resonance_hz = 2_500.0;
 
-        let mut input = swept_saw(length, rate, 100.0, 200.0);
+        let mut input = sung_saw(length, rate, 110.0, 0.35);
         for (sample, extra) in input.iter_mut().zip(tone(length, resonance_hz, rate, 0.25)) {
             *sample += extra;
         }

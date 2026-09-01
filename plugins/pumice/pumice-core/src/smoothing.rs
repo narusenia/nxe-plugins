@@ -81,6 +81,53 @@ impl Prefix {
             *value = interval(sums, low, high);
         }
     }
+
+    /// The mean of a **ring** around each bin: everything between
+    /// `inner_octaves` and `outer_octaves` away, on both sides, and nothing
+    /// closer.
+    ///
+    /// **The hole is the point** (`PUM-4`). A reference that includes the bin
+    /// it judges is inflated by whatever it is supposed to be measuring —
+    /// `SPK-18` is the same mistake, where lifting a band by 10 dB lifted its
+    /// own reference by 6, and ten decibels of harshness read as two. Measured
+    /// here before the hole existed: an 18 dB resonance read as 8.2 dB of
+    /// excess at the narrow end of `SHARPNESS`, and **narrowing made it
+    /// worse** — a narrower window is more completely filled by the peak, so
+    /// the control that should have made detection sharper made it blunter.
+    ///
+    /// A bin whose ring runs off the end of the spectrum keeps the side it
+    /// has; a bin with no ring at all takes its own value, which reads as no
+    /// excess rather than as a division by nothing.
+    pub fn ring_average_into(&self, inner_octaves: f32, outer_octaves: f32, out: &mut [f32]) {
+        let bins = self.bins.min(out.len());
+        if bins == 0 {
+            return;
+        }
+
+        let inner_low = (-0.5 * inner_octaves).exp2();
+        let inner_high = (0.5 * inner_octaves).exp2();
+        let outer_low = (-0.5 * outer_octaves).exp2();
+        let outer_high = (0.5 * outer_octaves).exp2();
+
+        let sums = &self.sums;
+        out[0] = interval(sums, 0, 1);
+        for (bin, value) in out.iter_mut().enumerate().take(bins).skip(1) {
+            let position = bin as f32;
+            let below_start = ((position * outer_low) as usize).min(bins);
+            let below_end = ((position * inner_low) as usize).clamp(below_start, bins);
+            let above_start = ((position * inner_high).ceil() as usize).min(bins);
+            let above_end = ((position * outer_high).ceil() as usize).clamp(above_start, bins);
+
+            let count = (below_end - below_start) + (above_end - above_start);
+            *value = if count == 0 {
+                interval(sums, bin, bin + 1)
+            } else {
+                let total =
+                    (sums[below_end] - sums[below_start]) + (sums[above_end] - sums[above_start]);
+                (total / count as f64) as f32
+            };
+        }
+    }
 }
 
 /// **The subtraction stays in `f64`.** Narrowing either sum first is exactly
