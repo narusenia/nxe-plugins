@@ -20,6 +20,21 @@ use crate::quality::Quality;
 use crate::reference::{Scratch, Widths, excess_db_into, power_into};
 use crate::smoothing::Prefix;
 use crate::stft::{MAX_BINS, MAX_CHANNELS, Stft};
+use nxe_audio::DelayLine;
+
+/// How many samples the dry path is carried through at a time.
+///
+/// **The buffer a host hands over is replaced in place by the transform**, so
+/// the dry copy has to be taken first and read back afterwards at an offset
+/// that depends on where in the buffer it was. Working a fixed chunk at a time
+/// bounds that offset — and therefore the delay line — without asking the host
+/// how big its buffers get. The transform is sample-exact whatever it is fed
+/// (`REQ-PUM-017`), so chunking changes nothing about the output.
+const CHUNK: usize = 256;
+
+/// `DelayLine::at(1)` is the most recently written sample, so a delay of `L`
+/// samples is read at `L + 1`.
+const READ_OFFSET: usize = 1;
 
 /// The product's tuning: everything an ear decides rather than a requirement.
 ///
@@ -168,6 +183,12 @@ pub struct Controls {
     pub sharpness: f32,
     /// `0..=1`. Zero is the slow end.
     pub speed: f32,
+    /// `0..=1`. Zero is the dry path alone (`REQ-PUM-012`).
+    pub mix: f32,
+    /// A **linear** gain, applied last.
+    pub output: f32,
+    /// Listen to what is being taken out, and nothing else (`REQ-PUM-019`).
+    pub delta: bool,
     pub mode: Mode,
     pub quality: Quality,
     /// Where the reduction is allowed to go (`REQ-PUM-004`).
@@ -386,6 +407,14 @@ impl Detector {
 pub struct Engine {
     stft: Stft,
     detector: Detector,
+    /// The untouched input, held back to line up with the transform's output.
+    ///
+    /// **Not for transparency — for `MIX`** (`REQ-PUM-001`). Without it the dry
+    /// and the wet are a whole window apart and the crossfade combs.
+    dry: [DelayLine; MAX_CHANNELS],
+    mix: f32,
+    output: f32,
+    delta: bool,
     sample_rate: f32,
     /// What [`Detector::weight`] was last built for, so a rebuild only happens
     /// when something actually moved.
@@ -397,9 +426,14 @@ pub struct Engine {
 impl Engine {
     /// **The only place that allocates** (`REQ-PUM-016`).
     pub fn new(sample_rate: f32, settings: Settings) -> Self {
+        let longest = crate::quality::max_latency(sample_rate) + CHUNK + READ_OFFSET + 1;
         let mut engine = Self {
             stft: Stft::new(sample_rate, Quality::default()),
             detector: Detector::new(settings),
+            dry: std::array::from_fn(|_| DelayLine::new(sample_rate, longest as f32 / sample_rate)),
+            mix: 1.0,
+            output: 1.0,
+            delta: false,
             sample_rate,
             weight_bins: 0,
             weight_nodes: [Node::default(); NODES],
@@ -429,6 +463,9 @@ impl Engine {
     pub fn reset(&mut self) {
         self.stft.reset();
         self.detector.follower.reset();
+        for line in &mut self.dry {
+            line.reset();
+        }
     }
 
     /// What is being taken out, per bin, in dB — the figure's subject
@@ -461,6 +498,9 @@ impl Engine {
         }
 
         self.detector.depth = controls.depth.clamp(0.0, 1.0);
+        self.mix = controls.mix.clamp(0.0, 1.0);
+        self.output = controls.output;
+        self.delta = controls.delta;
 
         // Interpolated **in the log domain**: the octave width is a ratio, so
         // half a turn should land on the geometric middle.
@@ -498,8 +538,54 @@ impl Engine {
     }
 
     pub fn process(&mut self, channels: &mut [&mut [f32]]) {
-        let Self { stft, detector, .. } = self;
-        stft.process(channels, |frame| detector.run(frame));
+        let used = channels.len().min(MAX_CHANNELS);
+        let Some(samples) = channels[..used].iter().map(|c| c.len()).min() else {
+            return;
+        };
+        let latency = self.stft.latency();
+
+        let mut start = 0;
+        while start < samples {
+            let length = CHUNK.min(samples - start);
+
+            // The dry copy has to be taken before the transform overwrites it.
+            for (line, buffer) in self.dry.iter_mut().zip(channels[..used].iter()) {
+                for sample in &buffer[start..start + length] {
+                    line.write(*sample);
+                }
+            }
+
+            {
+                let Self { stft, detector, .. } = self;
+                let mut chunk: [&mut [f32]; MAX_CHANNELS] = [&mut [], &mut []];
+                for (slot, buffer) in chunk.iter_mut().zip(channels[..used].iter_mut()) {
+                    *slot = &mut buffer[start..start + length];
+                }
+                stft.process(&mut chunk[..used], |frame| detector.run(frame));
+            }
+
+            let (mix, output, delta) = (self.mix, self.output, self.delta);
+            for (line, buffer) in self.dry.iter().zip(channels[..used].iter_mut()) {
+                for (offset, sample) in buffer[start..start + length].iter_mut().enumerate() {
+                    // The input at this position is `length − offset` writes
+                    // back from the head; the one `latency` before it is that
+                    // much further.
+                    let dry = line.read_whole(latency + length - offset);
+                    let wet = *sample;
+
+                    // **`DELTA` is before `MIX`** (`REQ-PUM-019`): the point is
+                    // to hear what is being taken out, and `MIX` would dilute
+                    // exactly that.
+                    *sample = if delta {
+                        wet - dry
+                    } else {
+                        dry + (wet - dry) * mix
+                    } * output;
+                }
+            }
+
+            start += length;
+        }
     }
 
     /// The largest reduction any bin is taking, in dB, for the readout
@@ -602,6 +688,9 @@ mod tests {
             speed: 0.5,
             mode,
             quality: Quality::Normal,
+            mix: 1.0,
+            output: 1.0,
+            delta: false,
             nodes: [Node::default(); NODES],
             range: Range::default(),
         }
@@ -1053,6 +1142,185 @@ mod tests {
         }
         let error = 20.0 * worst.max(f32::MIN_POSITIVE).log10();
         assert!(error <= -120.0, "DEPTH zero with nodes moved {error:.1} dB");
+    }
+
+    fn run_with(engine: &mut Engine, controls: Controls, input: &[f32]) -> Vec<f32> {
+        engine.set(controls);
+        let mut output = input.to_vec();
+        for piece in output.chunks_mut(512) {
+            let mut channels = [piece];
+            engine.process(&mut channels);
+        }
+        output
+    }
+
+    fn difference_db(output: &[f32], reference: &[f32], skip: usize) -> f32 {
+        let mut worst: f32 = 0.0;
+        for index in skip..reference.len() {
+            worst = worst.max((output[index] - reference[index]).abs());
+        }
+        20.0 * worst.max(f32::MIN_POSITIVE).log10()
+    }
+
+    /// `REQ-PUM-012`: at `MIX` zero the output is the input, held back by the
+    /// reported latency and nothing else.
+    #[test]
+    fn mix_zero_is_the_delayed_input() {
+        let rate = 48_000.0;
+        let input = noise(2048 * 8);
+        let mut engine = Engine::new(rate, Settings::DEFAULT);
+        let output = run_with(
+            &mut engine,
+            Controls {
+                mix: 0.0,
+                ..with_mode(1.0, Mode::Adaptive)
+            },
+            &input,
+        );
+
+        let latency = engine.latency();
+        let delayed: Vec<f32> = std::iter::repeat_n(0.0, latency)
+            .chain(input.iter().copied())
+            .take(input.len())
+            .collect();
+        let error = difference_db(&output, &delayed, latency);
+        assert!(error <= -120.0, "MIX zero differs by {error:.1} dB");
+    }
+
+    /// The dry path is aligned to the sample, not approximately — an impulse
+    /// must arrive exactly where the host was told it would (`REQ-PUM-001`).
+    #[test]
+    fn the_dry_path_is_delayed_by_the_reported_latency() {
+        let rate = 48_000.0;
+        for quality in Quality::ALL {
+            let block = quality.block(rate);
+            let mut input = vec![0.0; block * 4];
+            input[block] = 1.0;
+
+            let mut engine = Engine::new(rate, Settings::DEFAULT);
+            let output = run_with(
+                &mut engine,
+                Controls {
+                    mix: 0.0,
+                    quality,
+                    ..with_mode(1.0, Mode::Adaptive)
+                },
+                &input,
+            );
+
+            let peak = output
+                .iter()
+                .position(|sample| sample.abs() > 0.5)
+                .expect("the impulse came out");
+            assert_eq!(peak, block + quality.latency(rate), "{quality:?}");
+        }
+    }
+
+    /// `REQ-PUM-019`: what `DELTA` plays plus what the plugin plays is the wet
+    /// path, so nothing is hidden in either.
+    #[test]
+    fn delta_and_the_output_add_back_to_the_wet_path() {
+        let rate = 48_000.0;
+        let input = noise(2048 * 8);
+        let base = with_mode(1.0, Mode::Adaptive);
+
+        let wet = run_with(&mut Engine::new(rate, Settings::DEFAULT), base, &input);
+        let dry = run_with(
+            &mut Engine::new(rate, Settings::DEFAULT),
+            Controls { mix: 0.0, ..base },
+            &input,
+        );
+        let delta = run_with(
+            &mut Engine::new(rate, Settings::DEFAULT),
+            Controls {
+                delta: true,
+                ..base
+            },
+            &input,
+        );
+
+        let sum: Vec<f32> = dry.iter().zip(&delta).map(|(a, b)| a + b).collect();
+        let error = difference_db(&sum, &wet, 2048 * 3);
+        assert!(
+            error <= -110.0,
+            "dry + delta differs from wet by {error:.1} dB"
+        );
+    }
+
+    /// `REQ-PUM-019`: nothing is being taken out, so there is nothing to hear.
+    #[test]
+    fn delta_is_silent_at_depth_zero() {
+        let rate = 48_000.0;
+        let input = noise(2048 * 8);
+        let output = run_with(
+            &mut Engine::new(rate, Settings::DEFAULT),
+            Controls {
+                delta: true,
+                ..with_mode(0.0, Mode::Adaptive)
+            },
+            &input,
+        );
+
+        let worst = output[2048 * 3..]
+            .iter()
+            .fold(0.0_f32, |a, b| a.max(b.abs()));
+        let level = 20.0 * worst.max(f32::MIN_POSITIVE).log10();
+        assert!(level <= -120.0, "DELTA at DEPTH zero plays {level:.1} dB");
+    }
+
+    /// `OUTPUT` is the last thing in the chain and unity means unity.
+    #[test]
+    fn output_scales_everything_and_unity_is_exact() {
+        let rate = 48_000.0;
+        let input = noise(2048 * 6);
+        let base = Controls {
+            mix: 0.0,
+            ..with_mode(1.0, Mode::Adaptive)
+        };
+
+        let unity = run_with(&mut Engine::new(rate, Settings::DEFAULT), base, &input);
+        let halved = run_with(
+            &mut Engine::new(rate, Settings::DEFAULT),
+            Controls {
+                output: 0.5,
+                ..base
+            },
+            &input,
+        );
+
+        for (index, sample) in halved.iter().enumerate().skip(2048 * 2) {
+            assert!((sample - unity[index] * 0.5).abs() < 1e-6, "sample {index}");
+        }
+    }
+
+    /// `REQ-PUM-012`: sweeping `MIX` must not step.
+    #[test]
+    fn sweeping_mix_does_not_step() {
+        let rate = 48_000.0;
+        let input = noise(2048 * 8);
+
+        let mut engine = Engine::new(rate, Settings::DEFAULT);
+        let mut output = input.clone();
+        let blocks = output.len() / 512;
+        for (index, piece) in output.chunks_mut(512).enumerate() {
+            engine.set(Controls {
+                mix: index as f32 / blocks as f32,
+                ..with_mode(1.0, Mode::Adaptive)
+            });
+            let mut channels = [piece];
+            engine.process(&mut channels);
+        }
+
+        let steady = worst_step(&run_with(
+            &mut Engine::new(rate, Settings::DEFAULT),
+            with_mode(1.0, Mode::Adaptive),
+            &input,
+        ));
+        let swept = worst_step(&output);
+        assert!(
+            swept <= steady * 1.2,
+            "sweeping MIX raised the worst step from {steady} to {swept}"
+        );
     }
 
     #[test]

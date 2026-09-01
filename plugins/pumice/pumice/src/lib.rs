@@ -11,10 +11,6 @@
 //! runs. Bitwig and Reaper are still to be checked; a failure there would be
 //! that host's, not the method's.
 //!
-//! **No `MIX` yet** (`PUM-6`). The output is the wet path; the dry delay line
-//! and `MIX` arrive together, because the only reason to hold a dry copy is to
-//! have something aligned to mix against.
-//!
 //! The window is `PUM-10`; there is no editor yet.
 
 use nih_plug::prelude::*;
@@ -208,6 +204,9 @@ mod tests {
                     speed: 0.5,
                     mode: pumice_core::Mode::Adaptive,
                     quality,
+                    mix: 1.0,
+                    output: 1.0,
+                    delta: false,
                     nodes: [pumice_core::Node::default(); pumice_core::NODES],
                     range: pumice_core::Range::default(),
                 });

@@ -174,6 +174,22 @@ pub struct PumiceParams {
     #[id = "mode"]
     pub mode: EnumParam<ModeParam>,
 
+    /// Dry against wet (`REQ-PUM-012`).
+    #[id = "mix"]
+    pub mix: FloatParam,
+
+    /// The last gain in the chain.
+    #[id = "output"]
+    pub output: FloatParam,
+
+    /// Listen to what is being taken out, and nothing else (`REQ-PUM-019`).
+    ///
+    /// **A parameter rather than a view-only toggle**, the way Sparkleur's
+    /// per-band solos are: being able to automate it makes a before-and-after
+    /// comparison something a host can do rather than something a hand has to.
+    #[id = "delta"]
+    pub delta: BoolParam,
+
     /// The band the plugin works in at all (`REQ-PUM-004`).
     ///
     /// **Not on the main row.** The edges and the nodes are the same kind of
@@ -212,6 +228,19 @@ impl Default for PumiceParams {
             sharpness: unit("Sharpness", 0.5),
             speed: unit("Speed", 0.5),
             mode: EnumParam::new("Mode", ModeParam::Adaptive),
+            mix: unit("Mix", 1.0),
+            output: FloatParam::new(
+                "Output",
+                0.0,
+                FloatRange::Linear {
+                    min: -12.0,
+                    max: 12.0,
+                },
+            )
+            .with_unit(" dB")
+            .with_value_to_string(formatters::v2s_f32_rounded(1))
+            .with_smoother(SmoothingStyle::Linear(SMOOTHING_MS)),
+            delta: BoolParam::new("Delta", false),
             low: edge("Low", 100.0),
             high: edge("High", 18_000.0),
             // **Spread across the band**, so a node switched on from a host's
@@ -240,6 +269,11 @@ impl PumiceParams {
             depth: self.depth.smoothed.next_step(samples),
             sharpness: self.sharpness.smoothed.next_step(samples),
             speed: self.speed.smoothed.next_step(samples),
+            mix: self.mix.smoothed.next_step(samples),
+            // **0 dB has to come out exactly 1.0**, or `OUTPUT` at rest is a
+            // rounding error away from unity.
+            output: util::db_to_gain(self.output.smoothed.next_step(samples)),
+            delta: self.delta.value(),
             mode: self.mode.value().into(),
             quality: self.quality.value().into(),
             nodes: std::array::from_fn(|index| self.nodes[index].resolve()),
@@ -251,6 +285,9 @@ impl PumiceParams {
     }
 }
 
+/// `OUTPUT` at rest must be exactly unity, which is why the parameter is in dB
+/// and the conversion happens once per block rather than being stored linear.
+///
 /// One end of the operating range.
 fn edge(name: &str, default_hz: f32) -> FloatParam {
     FloatParam::new(
@@ -296,6 +333,9 @@ mod tests {
             "sharpness".to_string(),
             "speed".to_string(),
             "mode".to_string(),
+            "mix".to_string(),
+            "output".to_string(),
+            "delta".to_string(),
             "low".to_string(),
             "high".to_string(),
         ];
