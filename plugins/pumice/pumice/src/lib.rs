@@ -1,50 +1,37 @@
-//! The NXE Pumice nih-plug wrapper.
+//! The NXE Pumice nih-plug wrapper: parameter declarations, and the wiring
+//! between them and `pumice_core`.
 //!
-//! **This build does not process audio. It is a gate** (`PUM-1`,
-//! `REQ-PUM-007`).
+//! No DSP lives here (`.agents/rules/rust.md`).
 //!
-//! Pumice is the first plugin in the line to report latency; the other five
-//! each decided on zero for their own reasons, and none of them ever asked a
-//! host for delay compensation. Whether four DAWs honour it — in CLAP and in
-//! VST3, and across a change of the reported value while the transport is
-//! running — cannot be answered by a test. It can only be answered by opening
-//! them.
+//! **The gate has passed** (`PUM-1`, 2026-09-01). Pumice is the first plugin in
+//! the line to report latency — the other five each decided on zero for their
+//! own reasons — and whether a host honours it could only be answered by
+//! opening one. Ableton Live in VST3 and Studio One Pro in CLAP both
+//! compensate, and both recover from a `QUALITY` change while the transport
+//! runs. Bitwig and Reaper are still to be checked; a failure there would be
+//! that host's, not the method's.
 //!
-//! So this build reports `N` and then **delays by exactly that much**. If
-//! compensation works, the track stays in time with an untouched one; if it
-//! does not, it slides by a known amount. The plugin is its own instrument.
+//! **`STATIC` only, and no `MIX` yet** (`PUM-3`). The output is the wet path.
+//! The dry delay line and `MIX` arrive together in `PUM-6`, because the only
+//! reason to hold a dry copy is to have something aligned to mix against.
 //!
-//! **Nothing is built on top of this until it passes**
-//! (`docs/implementation/roadmap.md`, criterion 0). If it fails, the fallback
-//! is a subtractive band-pass bank at zero latency — the mechanism is already
-//! specified as Vocal Glue's `Spectral Cohesion` (`REQ-GLU-003`).
-//!
-//! No DSP lives here (`.agents/rules/rust.md`); the transform size is
-//! `pumice_core::quality`.
+//! The window is `PUM-10`; there is no editor yet.
 
 use nih_plug::prelude::*;
-use nxe_audio::DelayLine;
-use pumice_core::{Quality, quality};
+use pumice_core::{Engine, Settings};
 use std::sync::Arc;
 
 mod params;
 
 use params::PumiceParams;
 
-/// The sample rate the delay line is built for before a host says otherwise.
-/// `initialize` replaces it when the real rate differs.
+/// The sample rate the engine is built for before a host says otherwise.
+/// `initialize` replaces the engine when the real rate differs.
 const FALLBACK_SAMPLE_RATE: f32 = 48_000.0;
-
-/// `DelayLine::at(1)` is the most recently written sample, so a delay of `L`
-/// samples is read at `L + 1`.
-const READ_OFFSET: usize = 1;
 
 struct Pumice {
     params: Arc<PumiceParams>,
-    /// One per channel. Sized for the **largest** latency any `QUALITY` can
-    /// ask for at this rate, so switching steps never allocates
-    /// (`REQ-PUM-008`).
-    dry: [DelayLine; 2],
+    engine: Engine,
     sample_rate: f32,
     /// What was last reported to the host. Compared each block so that
     /// `set_latency_samples` is called on a change and not every block.
@@ -54,31 +41,15 @@ struct Pumice {
     input_channels: usize,
 }
 
-/// A line long enough for the deepest step, plus the read offset and a sample
-/// of slack.
-fn dry_line(sample_rate: f32) -> DelayLine {
-    let samples = quality::max_latency(sample_rate) + READ_OFFSET + 1;
-    DelayLine::new(sample_rate, samples as f32 / sample_rate)
-}
-
 impl Default for Pumice {
     fn default() -> Self {
         Self {
             params: Arc::new(PumiceParams::default()),
-            dry: [
-                dry_line(FALLBACK_SAMPLE_RATE),
-                dry_line(FALLBACK_SAMPLE_RATE),
-            ],
+            engine: Engine::new(FALLBACK_SAMPLE_RATE, Settings::DEFAULT),
             sample_rate: FALLBACK_SAMPLE_RATE,
             reported_latency: usize::MAX,
             input_channels: 2,
         }
-    }
-}
-
-impl Pumice {
-    fn latency(&self) -> usize {
-        Quality::from(self.params.quality.value()).latency(self.sample_rate)
     }
 }
 
@@ -112,7 +83,8 @@ impl Plugin for Pumice {
         self.params.clone()
     }
 
-    /// The only place that allocates.
+    /// The only place that allocates. Every transform size is planned here so
+    /// that a `QUALITY` change later is an index (`REQ-PUM-008`).
     ///
     /// **The latency is reported from here as well as from `process`.** A host
     /// reads it when it activates the plugin, and `QUALITY` may already differ
@@ -129,18 +101,17 @@ impl Plugin for Pumice {
 
         if buffer_config.sample_rate != self.sample_rate {
             self.sample_rate = buffer_config.sample_rate;
-            self.dry = [dry_line(self.sample_rate), dry_line(self.sample_rate)];
+            self.engine = Engine::new(self.sample_rate, Settings::DEFAULT);
         }
 
-        self.reported_latency = self.latency();
+        self.engine.set(self.params.controls(1));
+        self.reported_latency = self.engine.latency();
         context.set_latency_samples(self.reported_latency as u32);
         true
     }
 
     fn reset(&mut self) {
-        for line in &mut self.dry {
-            line.reset();
-        }
+        self.engine.reset();
     }
 
     fn process(
@@ -149,37 +120,35 @@ impl Plugin for Pumice {
         _aux: &mut AuxiliaryBuffers,
         context: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
-        // **Once per block, and only on a change.** Telling a host its delay
-        // compensation is stale is expensive — most of them rebuild the graph —
-        // so saying it every block would be a permanent dropout rather than a
-        // one-off one (`REQ-PUM-008`).
-        let latency = self.latency();
+        let samples = buffer.samples();
+
+        // Once per block: this is what resolves the reference width, the
+        // follower coefficients and the transform size (`pumice_core::Engine`).
+        self.engine.set(self.params.controls(samples as u32));
+
+        // **Only on a change.** Telling a host its delay compensation is stale
+        // is expensive — most rebuild the graph — so saying it every block
+        // would be a permanent dropout rather than a one-off one.
+        let latency = self.engine.latency();
         if latency != self.reported_latency {
             self.reported_latency = latency;
             context.set_latency_samples(latency as u32);
-            for line in &mut self.dry {
-                line.reset();
-            }
         }
 
-        let read_at = latency + READ_OFFSET;
-        let stereo = self.input_channels >= 2;
-
-        for (index, channel) in buffer.as_slice().iter_mut().enumerate() {
-            // Under the mono layout there is one line in use; a second output
-            // channel does not exist, so this never runs past `dry`.
-            let Some(line) = self.dry.get_mut(index) else {
-                continue;
-            };
-            if index > 0 && !stereo {
-                continue;
+        // A mono layout hands back one channel; taking more would read
+        // undefined data (`REQ-PUM-011`).
+        let used = self.input_channels.min(buffer.channels()).max(1);
+        let mut channels: [&mut [f32]; 2] = [&mut [], &mut []];
+        let mut count = 0;
+        for (slot, channel) in channels.iter_mut().zip(buffer.as_slice().iter_mut()) {
+            if count == used {
+                break;
             }
-
-            for sample in channel.iter_mut() {
-                line.write(*sample);
-                *sample = line.read_whole(read_at);
-            }
+            *slot = channel;
+            count += 1;
         }
+
+        self.engine.process(&mut channels[..count]);
 
         ProcessStatus::Normal
     }
@@ -226,44 +195,20 @@ mod tests {
         assert_eq!(Pumice::VST3_CLASS_ID.len(), 16);
     }
 
-    /// The gate's own claim: the line can serve the deepest read any `QUALITY`
-    /// asks for. If this were false the delay would silently clamp and the
-    /// host's compensation would be right while the audio was not.
+    /// The plugin reports what the engine actually delays by. This is what the
+    /// four hosts are being asked to agree with (`PUM-1`).
     #[test]
-    fn the_line_reaches_the_deepest_read() {
+    fn the_reported_latency_is_the_engines() {
         for rate in [44_100.0, 48_000.0, 96_000.0, 192_000.0] {
-            let line = dry_line(rate);
-            let deepest = quality::max_latency(rate) + READ_OFFSET;
-            assert!(
-                line.max_delay_samples() >= deepest as f32,
-                "{rate} Hz: line reaches {} but needs {deepest}",
-                line.max_delay_samples()
-            );
-        }
-    }
-
-    /// **What the four DAWs are being asked to agree with.** An impulse in must
-    /// come out exactly `latency` samples later, or the reported number is a
-    /// lie and the gate cannot distinguish a broken host from a broken plugin.
-    #[test]
-    fn the_delay_matches_what_is_reported() {
-        for rate in [44_100.0, 48_000.0, 96_000.0, 192_000.0] {
-            for quality in Quality::ALL {
-                let latency = quality.latency(rate);
-                let mut line = dry_line(rate);
-                let mut output = vec![0.0; latency * 2];
-
-                for (index, out) in output.iter_mut().enumerate() {
-                    line.write(if index == 0 { 1.0 } else { 0.0 });
-                    *out = line.read_whole(latency + READ_OFFSET);
-                }
-
-                let found = output.iter().position(|sample| *sample != 0.0);
-                assert_eq!(
-                    found,
-                    Some(latency),
-                    "{quality:?} at {rate} Hz reports {latency}"
-                );
+            for quality in pumice_core::Quality::ALL {
+                let mut engine = Engine::new(rate, Settings::DEFAULT);
+                engine.set(pumice_core::Controls {
+                    depth: 0.5,
+                    sharpness: 0.5,
+                    speed: 0.5,
+                    quality,
+                });
+                assert_eq!(engine.latency(), quality.block(rate));
             }
         }
     }

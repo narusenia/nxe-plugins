@@ -12,13 +12,22 @@
 //!
 //! - [`quality`] — how big the transform is, and therefore how much latency
 //! - [`stft`] — the overlap-add buffering the transform runs inside
+//! - [`smoothing`] — averaging a spectrum over a width in octaves
+//! - [`reference`] — what a bin is judged against, and by how much it exceeds it
+//! - [`gain`] — from that excess to a gain, and the floor that stops warbling
+//! - [`engine`] — the whole of it, and **every ear-tuned constant in one block**
 //!
-//! **No detection and no gain yet** (`PUM-3` onward). [`Stft`] hands a caller
-//! a frame of bins and puts back whatever it finds there, so the reconstruction
-//! can be measured before anything is asked to change it.
+//! **`STATIC` only** (`PUM-3`). The long-term map that decides *where*
+//! resonance lives — the half that makes this "the vocal soothe" rather than
+//! "a soothe" — is `PUM-4`.
 
+pub mod engine;
+pub mod gain;
 pub mod quality;
+pub mod reference;
+pub mod smoothing;
 pub mod stft;
 
+pub use engine::{Controls, Engine, Settings};
 pub use quality::Quality;
 pub use stft::{Frame, Stft};

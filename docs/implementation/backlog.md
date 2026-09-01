@@ -423,7 +423,8 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | DIO-13 | **既定値と耳**（**耳が要る**）。**聴き直しのあと** | `diorama-plan.md` |
 | — | **Advanced の偏差**（Diorama、`REQ-DIO-009`）。**前に `dsp.md`** | `diorama-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（**耳が要る**） | `doubler-plan.md` |
-| PUM-3 | **Pumice の参照とゲイン計算（`STATIC`）＋ ラッパ。** ここで音が出る | `pumice-plan.md` |
+| PUM-4 | **Pumice の適応 WHERE と `MODE`**（**2 つ目のゲート**） | `pumice-plan.md` |
+| — | **Pumice を実機で聴く**（**耳が要る**）。`mise run install pumice`。`DEPTH` を回して共鳴が引くか。`STATIC` だけなので soothe 相当 | `pumice-plan.md` |
 | — | **Bitwig と Reaper で PDC を見る**（**人が要る**）。方式の判断には影響しない — 落ちてもホスト固有の問題 | `pumice-plan.md` |
 
 **`v0.2.0` のタグを打つ前に人が要るもの**: `DIO-14` の聴き直しと `DIO-13` の
@@ -676,7 +677,7 @@ AU の道が閉じる（`REQ-PUM-015`）。答え合わせの相手としては�
 |---|---|---|
 | PUM-1 | **空のラッパで PDC を通す**（**ゲート**）。2 クレート・`bundler.toml`・`QUALITY` 1 個だけ。N は `pumice_core::quality`。**申告レイテンシが `N − hop` ではなく `N` だと分かった**のもここ | ✅ **ゲート通過** — Ableton（VST3）/ Studio One Pro（CLAP）で反転して無音、`QUALITY` の実行時切り替えも復帰。Bitwig / Reaper は並行 |
 | PUM-2 | OLA バッファと窓（`pumice-core` に自作）。`realfft` の `process()` が確保する罠を踏んだ | ✅ **再構成 −120 dB 以下**（3 レート × 3 段）、ブロックサイズ 1/64/512/4096 で一致、テスト 8 本 |
-| PUM-3 | 参照とゲイン計算（`STATIC`）＋ ラッパ（**ここで音が出る**） | ⬜ |
+| PUM-3 | 参照とゲイン計算（`STATIC`）＋ ラッパ（**ここで音が出る**）。`smoothing` / `reference` / `gain` / `engine` の 4 モジュール | 🟡 **測って通った**（入力ゲイン ±12 dB で 0.2 dB 以内、普通の素材で 1 dB 未満、テスト 26 本）。**ホストで聴くのが未了** |
 | PUM-4 | **適応 WHERE と `MODE`**（**ゲート**） | ⬜ |
 | PUM-5 | ノード曲線（6 本、双極 `depth`） | ⬜ |
 | PUM-6 | dry / `MIX` / `OUTPUT` / `DELTA` | ⬜ |
