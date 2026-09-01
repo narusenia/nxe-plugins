@@ -10,7 +10,8 @@
 //! header
 //! readout strip
 //! ┌─ the figure, full width, on the accent ──────────┐
-//! ┌─ DEPTH ──────────┬─ everything else ─────────────┐
+//! ┌─ DEPTH ──┬─ seven knobs on one even row ─────────┐
+//! │  DELTA   │  QUALITY  [ LOW │ NORMAL │ HIGH ]      │
 //! status
 //! ```
 //!
@@ -60,11 +61,20 @@ const HEIGHT: u32 = (theme::SPACE_3 * 2.0
 const FIGURE_HEIGHT: f32 = field::HEIGHT + theme::SPACE_4 * 2.0;
 
 /// The split row: a column of controls, the taller of the two sides.
-const SPLIT_HEIGHT: f32 = knob_block_height(MAIN_KNOB)
-    + theme::SPACE_3
-    + theme::LINE_LABEL
-    + theme::SPACE_2
-    + theme::LINE_LABEL;
+/// A row holding a pill or a segmented control, either side of the split.
+///
+/// **One constant for both**, so the two panels come out the same height
+/// without either being padded to match the other by hand.
+const CONTROL_ROW: f32 = theme::SEGMENT + theme::SPACE_2 * 2.0;
+
+/// The split row: whichever column is taller, plus the panels' own padding.
+///
+/// **The left one is taller**, because `DEPTH`'s knob is bigger.
+const SPLIT_HEIGHT: f32 =
+    theme::SPACE_3 * 2.0 + knob_block_height(MAIN_KNOB) + theme::SPACE_3 + CONTROL_ROW;
+
+/// Wide enough for `DEPTH` and the `DELTA` pill under it.
+const DEPTH_PANEL_WIDTH: f32 = 148.0;
 
 /// `DEPTH` is the one you reach for first, so it is the one that is bigger.
 const MAIN_KNOB: f32 = 60.0;
@@ -247,10 +257,11 @@ pub fn create(
 
         VStack::new(cx, |cx| {
             VStack::new(cx, |cx| {
-                nxe_ui::header::header(cx, "Pumice", "resonance, only when", |cx| {
-                    nxe_plug_ui::segmented(cx, Ui::params, |p| &p.quality, &["L", "N", "H"])
-                        .describe("How fine the transform is, and how much latency");
-                });
+                // **Nothing in the header's control slot.** `L N H` lived
+                // there and nobody could read it — three letters over a
+                // parameter that changes the plugin's latency. It is spelled
+                // out with the controls now (`PUM-10d`).
+                nxe_ui::header::header(cx, "Pumice", "resonance, only when", |_| {});
                 figure_row(cx);
                 split_row(cx);
             })
@@ -289,6 +300,10 @@ fn figure_row(cx: &mut Context) {
 /// division says is "this is the one you reach for, and these are the rest".
 fn split_row(cx: &mut Context) {
     HStack::new(cx, |cx| {
+        // **`DEPTH` and `DELTA` together.** `DELTA` is how you hear what
+        // `DEPTH` is doing, and it was hanging in the corner of the other panel
+        // with nothing to belong to (`PUM-10d`). The panel had one knob in it
+        // and a lot of air.
         VStack::new(cx, |cx| {
             knob_block(
                 cx,
@@ -297,13 +312,21 @@ fn split_row(cx: &mut Context) {
                 MAIN_KNOB,
                 |p| &p.depth,
             );
+            HStack::new(cx, |cx| {
+                nxe_plug_ui::toggle(cx, Ui::params, |p| &p.delta, "DELTA")
+                    .describe("Hear only what is being taken out");
+            })
+            .height(Pixels(CONTROL_ROW))
+            .width(Stretch(1.0))
+            .child_left(Stretch(1.0))
+            .child_right(Stretch(1.0))
+            .child_top(Stretch(1.0))
+            .child_bottom(Stretch(1.0));
         })
         .class("panel")
-        .width(Pixels(196.0))
+        .width(Pixels(DEPTH_PANEL_WIDTH))
         .height(Stretch(1.0))
-        .row_between(Pixels(theme::SPACE_3))
-        .child_left(Stretch(1.0))
-        .child_right(Stretch(1.0));
+        .row_between(Pixels(theme::SPACE_3));
 
         Element::new(cx)
             .class("rule-vertical")
@@ -357,13 +380,25 @@ fn split_row(cx: &mut Context) {
             .height(Auto)
             .width(Stretch(1.0));
 
+            // **`QUALITY` spelled out, with the controls.** Three letters in
+            // the header read as nothing, and this is the one control that
+            // changes the plugin's latency — the thing a host has to be told
+            // about. It belongs where its consequences are read.
             HStack::new(cx, |cx| {
-                nxe_plug_ui::toggle(cx, Ui::params, |p| &p.delta, "DELTA")
-                    .describe("Hear only what is being taken out");
+                Label::new(cx, "QUALITY")
+                    .class("label")
+                    .class("ink-muted")
+                    .height(Pixels(theme::LINE_LABEL))
+                    .top(Stretch(1.0))
+                    .bottom(Stretch(1.0));
+                nxe_plug_ui::segmented(cx, Ui::params, |p| &p.quality, &["LOW", "NORMAL", "HIGH"])
+                    .describe("How fine the transform is, and how much latency it costs");
             })
-            .height(Auto)
+            .height(Pixels(CONTROL_ROW))
             .width(Stretch(1.0))
-            .col_between(Pixels(theme::SPACE_2));
+            .col_between(Pixels(theme::SPACE_2))
+            .child_top(Stretch(1.0))
+            .child_bottom(Stretch(1.0));
         })
         .class("panel")
         .width(Stretch(1.0))
@@ -406,7 +441,11 @@ pub(crate) fn knob_block<P, F>(
         .height(Pixels(theme::LINE_VALUE));
     })
     .height(Pixels(knob_block_height(size)))
-    .width(Auto)
+    // **The row divides evenly, and that is the whole fix** (`PUM-10d`). It
+    // was `Auto`, so each block was as wide as its own label — `THRESHOLD`
+    // took half again what `MIX` did and the knobs sat at seven unrelated
+    // pitches. Diorama's row has always been `Stretch(1.0)`.
+    .width(Stretch(1.0))
     .row_between(Pixels(theme::SPACE_1))
     .child_left(Stretch(1.0))
     .child_right(Stretch(1.0));
@@ -482,6 +521,19 @@ mod tests {
             + super::SPLIT_HEIGHT
             + nxe_ui::status::HEIGHT;
         assert_eq!(super::HEIGHT, parts as u32);
+
+        // **The two sides of the split are one height**, so neither panel is
+        // padded by hand to match the other (`PUM-10d`).
+        let left = nxe_ui::theme::SPACE_3 * 2.0
+            + super::knob_block_height(super::MAIN_KNOB)
+            + nxe_ui::theme::SPACE_3
+            + super::CONTROL_ROW;
+        let right = nxe_ui::theme::SPACE_3 * 2.0
+            + super::knob_block_height(super::SIDE_KNOB)
+            + nxe_ui::theme::SPACE_3
+            + super::CONTROL_ROW;
+        assert_eq!(super::SPLIT_HEIGHT, left);
+        assert!(right <= super::SPLIT_HEIGHT, "the right column is taller");
     }
 
     /// The figure's reduction fill is scaled to what the engine can actually
