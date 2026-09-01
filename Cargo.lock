@@ -2549,6 +2549,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "pumice"
+version = "0.2.0"
+dependencies = [
+ "nih_plug",
+ "nxe-audio",
+ "pumice-core",
+]
+
+[[package]]
+name = "pumice-core"
+version = "0.2.0"
+dependencies = [
+ "criterion",
+ "nxe-audio",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"

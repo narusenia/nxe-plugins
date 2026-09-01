@@ -19,3 +19,6 @@ name = "NXE Sparkleur"
 # `CLAP_ID` cannot change once a host has stored it (`REQ-DIO-014`).
 [diorama]
 name = "NXE Diorama"
+
+[pumice]
+name = "NXE Pumice"

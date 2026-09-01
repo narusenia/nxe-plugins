@@ -81,7 +81,12 @@ FFT 方式ごと選び直す**ことになり、`PUM-2` 以降が全部無駄に
 ### PUM-1 — 空のラッパで PDC を通す（**ゲート**）
 
 `pumice` / `pumice-core` の 2 クレートを作り、ワークスペースと
-`bundler.toml` に登録する。**`pumice-core` は空**（`lib.rs` だけ）。
+`bundler.toml` に登録する。
+
+**`pumice-core` は空ではなくなった。** 当初「`lib.rs` だけ」と書いていたが、
+ラッパがレイテンシを申告するには **N が要る**。N の決め方は変換の性質で
+あってラッパの都合ではないので、`.agents/rules/rust.md`（ラッパに DSP を
+置かない）に従って `pumice_core::quality` に置いた。DSP はまだ 1 行も無い。
 
 ラッパがやること:
 
@@ -94,12 +99,20 @@ FFT 方式ごと選び直す**ことになり、`PUM-2` 以降が全部無駄に
 **UI は持たない。** ホストの既定パラメータ UI で足りる。
 
 - **完了条件**:
-  - [ ] `cargo xtask bundle pumice --release` が通る
+  - [x] `cargo xtask bundle pumice --release` が通る
+  - [x] `mise run check` が通る（**610 本**、うち Pumice が 9 本）
+  - [x] 申告値と実際の遅れがサンプル単位で一致する
+        （`the_delay_matches_what_is_reported`、4 レート × 3 段）
   - [ ] **Bitwig / Ableton Live / Reaper / Studio One で、CLAP と VST3 の
         両方が読み込まれる**
   - [ ] **4 ホストで、無処理のトラックと位相が合う**（PDC が効いている）
   - [ ] **再生中に `QUALITY` を変えて音が復帰する**
-  - [ ] `mise run check` が通る
+
+**残っているのは人が 4 つの DAW を開くことだけ。** `mise run install pumice`。
+確かめ方: 同じ素材のトラックを 2 本並べ、片方にだけ Pumice を挿す。
+**PDC が効いていれば位相が合ったまま**（この版は音を変えないので、
+片方の位相を反転すると無音になる）。ずれていれば、ずれた量が申告値
+（48 kHz `NORMAL` で 1536 サンプル）と一致するはず。
 - **依存**: なし
 - **これが駄目だったら**: `REQ-PUM-007` に戻る。`QUALITY` を殺して
   レイテンシを固定にするのが第一手、それでも駄目なら**減算型

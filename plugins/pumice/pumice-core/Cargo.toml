@@ -1,0 +1,21 @@
+[package]
+name = "pumice-core"
+# **The plugin owns its version, not the workspace** (`velour/Cargo.toml`).
+# `pumice-core` moves with it: they are one shipping unit. Nothing has shipped
+# yet, so it starts at the workspace version.
+version = "0.2.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The Pumice DSP, independent of any plugin host"
+
+# nih-plug, Vizia and any host API stay out (`.agents/rules/rust.md`,
+# `REQ-PUM-015`). That rule is why `nih_plug::util::stft::StftHelper` is not
+# used even though it does exactly what `PUM-2` will write: depending on
+# `nih_plug` moves this crate to the GPL side and closes the AU door
+# (`LICENSING.md`).
+[dependencies]
+nxe-audio.workspace = true
+
+[dev-dependencies]
+criterion = { version = "0.5", default-features = false }
