@@ -31,13 +31,6 @@ pub struct Follower {
     state: Vec<f32>,
     attack: f32,
     release: f32,
-    /// How much of an average started from zero is still missing.
-    ///
-    /// **A one-pole started at zero is a biased estimator**, and the bias is
-    /// exactly `(1 − coefficient)^n` after `n` updates. Tracking it costs one
-    /// multiplication for every bin at once, because it does not depend on the
-    /// signal.
-    bias: f32,
 }
 
 impl Follower {
@@ -46,17 +39,7 @@ impl Follower {
             state: vec![0.0; max_bins],
             attack: 1.0,
             release: 1.0,
-            bias: 1.0,
         }
-    }
-
-    /// The same time constant both ways — what a long-term average wants.
-    ///
-    /// **Reusing this rather than writing a mean.** A symmetric one-pole *is*
-    /// an exponential moving average, and a second type holding the same state
-    /// for the same arithmetic is the thing `protect.rs` warns about.
-    pub fn set_symmetric(&mut self, seconds: f32, frame_rate: f32) {
-        self.set(seconds, seconds, frame_rate);
     }
 
     /// `frame_rate` is `sample_rate / hop`, not the sample rate.
@@ -67,47 +50,6 @@ impl Follower {
 
     pub fn reset(&mut self) {
         self.state.fill(0.0);
-        self.bias = 1.0;
-    }
-
-    /// An **unbiased** running average, symmetric, corrected for the fact that
-    /// it started at zero.
-    ///
-    /// **Without the correction the map is useless for the first ten seconds**
-    /// (`PUM-4b`). A six-second average started from nothing is at 28 % after
-    /// two seconds, and the threshold it feeds swallows the rest — measured on
-    /// a standing resonance, the reduction was **exactly zero for the first
-    /// three seconds and half strength at eight**. On material with breaths in
-    /// it, where the map only learns while something is sounding, it was zero
-    /// for five. Dropping the plugin on a track and playing a phrase produced
-    /// nothing at all, which is what "it does not feel like it is doing
-    /// anything" was.
-    ///
-    /// Dividing by `1 − bias` makes the first update return the first value and
-    /// every later one the true mean so far, converging on the same average the
-    /// uncorrected one reaches eventually.
-    ///
-    /// **The cost is that early frames read like the instant**, so `ADAPTIVE`
-    /// behaves like `STATIC` for the first moment and separates as it learns.
-    /// That is the right way round: doing something immediately and refining
-    /// beats doing nothing accurately.
-    pub fn average(&mut self, input: &[f32], out: &mut [f32]) {
-        let coefficient = self.attack;
-        self.bias *= 1.0 - coefficient;
-        // At the first update this is `coefficient`, so the division returns
-        // the input itself rather than a fraction of it.
-        let correction = 1.0 / (1.0 - self.bias).max(f32::MIN_POSITIVE);
-
-        for (bin, value) in input.iter().enumerate().take(out.len()) {
-            let previous = self.state[bin];
-            let next = if value.is_finite() {
-                previous + coefficient * (value - previous)
-            } else {
-                previous
-            };
-            self.state[bin] = next;
-            out[bin] = next * correction;
-        }
     }
 
     /// Rises at `attack`, falls at `release`, in place.
@@ -147,20 +89,11 @@ impl Computer {
     /// **`DEPTH` multiplies last**, which is what makes `DEPTH` = 0 exactly
     /// nothing however the nodes are set (`REQ-PUM-002`).
     ///
-    /// `gate` is the adaptive map's answer to *is a cut allowed here*, `0..=1`,
-    /// and one everywhere in `STATIC` (`engine::Settings::map_gate_range_db`).
-    pub fn reduction_db_into(
-        &self,
-        drive_db: &[f32],
-        weight: &[f32],
-        gate: &[f32],
-        depth: f32,
-        out: &mut [f32],
-    ) {
+    pub fn reduction_db_into(&self, drive_db: &[f32], weight: &[f32], depth: f32, out: &mut [f32]) {
         for (bin, value) in out.iter_mut().enumerate() {
             let excess = (drive_db[bin] - self.threshold_db).max(0.0);
             let reduction = (self.slope * excess).min(self.ceiling_db);
-            *value = -reduction * weight[bin] * gate[bin] * depth;
+            *value = -reduction * weight[bin] * depth;
         }
     }
 }
@@ -242,7 +175,7 @@ mod tests {
         let drive = vec![30.0; 64];
         let weight = vec![1.0; 64];
         let mut out = vec![9.9; 64];
-        COMPUTER.reduction_db_into(&drive, &weight, &[1.0; 64], 0.0, &mut out);
+        COMPUTER.reduction_db_into(&drive, &weight, 0.0, &mut out);
         assert!(out.iter().all(|value| *value == 0.0));
     }
 
@@ -252,7 +185,7 @@ mod tests {
         let drive = vec![120.0; 64];
         let weight = vec![2.0; 64];
         let mut out = vec![0.0; 64];
-        COMPUTER.reduction_db_into(&drive, &weight, &[1.0; 64], 1.0, &mut out);
+        COMPUTER.reduction_db_into(&drive, &weight, 1.0, &mut out);
         for value in &out {
             // Weight may double it — that is `REQ-PUM-004`'s node range — but
             // the per-band reduction before weighting cannot pass the ceiling.
@@ -267,7 +200,7 @@ mod tests {
         let drive = vec![-3.0; 64];
         let weight = vec![1.0; 64];
         let mut out = vec![9.9; 64];
-        COMPUTER.reduction_db_into(&drive, &weight, &[1.0; 64], 1.0, &mut out);
+        COMPUTER.reduction_db_into(&drive, &weight, 1.0, &mut out);
         assert!(out.iter().all(|value| *value == 0.0));
     }
 
@@ -275,7 +208,7 @@ mod tests {
     fn a_negative_weight_gives_back_reduction() {
         let drive = vec![10.0; 4];
         let mut out = vec![0.0; 4];
-        COMPUTER.reduction_db_into(&drive, &[1.0, 0.5, 0.0, -1.0], &[1.0; 4], 1.0, &mut out);
+        COMPUTER.reduction_db_into(&drive, &[1.0, 0.5, 0.0, -1.0], 1.0, &mut out);
         assert!(out[0] < out[1] && out[1] < out[2]);
         assert_eq!(out[2], 0.0);
         assert!(

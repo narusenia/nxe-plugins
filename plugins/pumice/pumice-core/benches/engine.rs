@@ -34,7 +34,7 @@
 //! no second `nxe_dsp::Spectrum` to pay for.
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use pumice_core::{Controls, Engine, Mode, NODES, Node, Quality, Range, Settings};
+use pumice_core::{Controls, Engine, NODES, Node, Quality, Range, Settings};
 use std::hint::black_box;
 
 const SAMPLE_RATE: f32 = 48_000.0;
@@ -79,7 +79,6 @@ fn working(quality: Quality) -> Controls {
         mix: 0.9,
         output: 1.0,
         delta: false,
-        mode: Mode::Adaptive,
         quality,
         // **All six on**, which is what the weight curve costs to rebuild.
         nodes: std::array::from_fn(|index| Node {

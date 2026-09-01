@@ -10,7 +10,7 @@
 //! header
 //! readout strip
 //! ┌─ the figure, full width, on the accent ──────────┐
-//! ┌─ DEPTH and MODE ─┬─ everything else ─────────────┐
+//! ┌─ DEPTH ──────────┬─ everything else ─────────────┐
 //! status
 //! ```
 //!
@@ -297,8 +297,6 @@ fn split_row(cx: &mut Context) {
                 MAIN_KNOB,
                 |p| &p.depth,
             );
-            nxe_plug_ui::segmented(cx, Ui::params, |p| &p.mode, &["ADAPTIVE", "STATIC"])
-                .describe("Whether a long-term map decides where, or only the moment");
         })
         .class("panel")
         .width(Pixels(196.0))
@@ -438,7 +436,7 @@ mod tests {
         /// has one and so does `PumiceParams`. Their ids are `d_1`..`d_6` and
         /// `depth`, so the parameter map is unambiguous even though the field
         /// names are not.
-        const COUNT: usize = 15;
+        const COUNT: usize = 14;
         const SOURCES: [&str; 3] = [
             include_str!("mod.rs"),
             include_str!("field.rs"),

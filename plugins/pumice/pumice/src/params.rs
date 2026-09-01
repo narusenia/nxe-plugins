@@ -40,30 +40,6 @@ pub enum QualityParam {
     High,
 }
 
-/// What decides that a bin is resonance rather than a note (`REQ-PUM-003`).
-///
-/// A separate type from `pumice_core::Mode` for the same reason
-/// [`QualityParam`] is separate from `Quality`.
-#[derive(Enum, Debug, PartialEq, Eq, Clone, Copy, Default)]
-pub enum ModeParam {
-    #[id = "adaptive"]
-    #[name = "Adaptive"]
-    #[default]
-    Adaptive,
-    #[id = "static"]
-    #[name = "Static"]
-    Static,
-}
-
-impl From<ModeParam> for pumice_core::Mode {
-    fn from(value: ModeParam) -> Self {
-        match value {
-            ModeParam::Adaptive => pumice_core::Mode::Adaptive,
-            ModeParam::Static => pumice_core::Mode::Static,
-        }
-    }
-}
-
 impl From<QualityParam> for pumice_core::Quality {
     fn from(value: QualityParam) -> Self {
         match value {
@@ -215,15 +191,6 @@ pub struct PumiceParams {
     #[id = "thresh"]
     pub threshold: FloatParam,
 
-    /// What counts as resonance (`REQ-PUM-003`).
-    ///
-    /// **`Adaptive` is the default and this is the first release**, so the
-    /// discipline that pinned Sparkleur's `MODE` to `Soft` — a session saved
-    /// before the parameter existed loads with the default — does not bind
-    /// here. It binds from now on.
-    #[id = "mode"]
-    pub mode: EnumParam<ModeParam>,
-
     /// Dry against wet (`REQ-PUM-012`).
     #[id = "mix"]
     pub mix: FloatParam,
@@ -288,7 +255,6 @@ impl Default for PumiceParams {
             .with_unit(" dB")
             .with_value_to_string(formatters::v2s_f32_rounded(1))
             .with_smoother(SmoothingStyle::Linear(SMOOTHING_MS)),
-            mode: EnumParam::new("Mode", ModeParam::Adaptive),
             mix: unit("Mix", 1.0),
             output: FloatParam::new(
                 "Output",
@@ -336,7 +302,6 @@ impl PumiceParams {
             // rounding error away from unity.
             output: util::db_to_gain(self.output.smoothed.next_step(samples)),
             delta: self.delta.value(),
-            mode: self.mode.value().into(),
             quality: self.quality.value().into(),
             nodes: std::array::from_fn(|index| self.nodes[index].resolve()),
             range: pumice_core::Range {
@@ -418,7 +383,6 @@ mod tests {
             "sharpness".to_string(),
             "speed".to_string(),
             "thresh".to_string(),
-            "mode".to_string(),
             "mix".to_string(),
             "output".to_string(),
             "delta".to_string(),

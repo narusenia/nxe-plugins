@@ -19,11 +19,13 @@
 //! - [`display`] — the same curves on the figure's own logarithmic axis
 //! - [`engine`] — the whole of it, and **every ear-tuned constant in one block**
 //!
-//! **Both halves of the detection are here** (`PUM-4`). A long-term map decides
-//! *where* resonance lives, a short-term follower decides *when* it is
-//! sounding, and a bin is only pulled where both agree — which is what leaves a
-//! singer's partials alone. `Mode::Static` turns the map off and is what soothe
-//! does.
+//! **The adaptive map is gone** (`PUM-10c`). It was the product's claim — a
+//! long-term average deciding *where* resonance lives, so a singer's partials
+//! would be left alone — and it does not work. Three statistics were measured
+//! and none separates an intermittently-excited resonance from persistent
+//! partials; the mean even puts them in the **wrong order**. The reasoning and
+//! the numbers are in `REQ-PUM-003`, kept so that the next person to have the
+//! idea starts from the measurements rather than from the idea.
 
 pub mod display;
 pub mod engine;
@@ -35,7 +37,7 @@ pub mod smoothing;
 pub mod stft;
 
 pub use display::CURVE_POINTS;
-pub use engine::{Controls, Curves, Engine, Mode, Settings};
+pub use engine::{Controls, Curves, Engine, Settings};
 pub use nodes::{NODES, Node, Range};
 pub use quality::Quality;
 pub use stft::{Frame, Stft};
