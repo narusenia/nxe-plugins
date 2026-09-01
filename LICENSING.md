@@ -15,6 +15,7 @@
 | `plugins/sparkleur/sparkleur` | **GPL-3.0-only** | 出荷するプラグイン |
 | `plugins/air/air` | **GPL-3.0-only** | 出荷するプラグイン |
 | `plugins/diorama/diorama` | **GPL-3.0-only** | 出荷するプラグイン |
+| `plugins/pumice/pumice` | **GPL-3.0-only** | 出荷するプラグイン |
 
 境界は 1 つだけ。**`vst3-sys` をリンクするか、しないか。**
 
@@ -42,7 +43,32 @@ nxe-audio    依存ゼロ
 nxe-dsp      criterion（dev）のみ
 nxe-ui       vizia のみ
 *-core       nxe-audio と、dev の criterion / nxe-dsp のみ
+             （`pumice-core` だけ `realfft` を足す。MIT なので側は動かない）
 ```
+
+**`realfft` はこの表を壊さない**（2026-09-01、`REQ-PUM-015`）。**寛容側に
+実行時依存が入る初めての例**なので、推移的な依存まで数えてある:
+
+```text
+realfft          MIT
+rustfft          MIT OR Apache-2.0
+num-complex      MIT OR Apache-2.0
+num-integer      MIT OR Apache-2.0
+num-traits       MIT OR Apache-2.0
+primal-check     MIT OR Apache-2.0
+strength_reduce  MIT OR Apache-2.0
+transpose        MIT OR Apache-2.0
+version_check    MIT/Apache-2.0
+```
+
+**判断の基準は「MIT かどうか」ではなく「`vst3-sys` に到達するか」。**
+この 9 つはどれも到達しない。
+
+**逆に、GPL 側にあるものを寛容側で使いたくなる圧力が実際に来た。**
+nih-plug は `util::stft::StftHelper` で OLA のリングバッファを持っていて、
+Pumice はそれをそのまま使えた。**使わない** — `nih_plug` に依存した時点で
+`pumice-core` が GPL 側に移り、`<plugin>-core` の存在理由（別フレームワークの
+AU ラッパから同じコードを呼べる）が消える。**150 行を書き直すほうが安い。**
 
 これは**設計の帰結**で、偶然ではない。`docs/specifications/architecture.md` が
 「`<plugin>-core` はホストフレームワークにも UI ツールキットにも依存しない」

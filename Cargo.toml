@@ -15,6 +15,8 @@ members = [
     "plugins/velour/velour",
     "plugins/diorama/diorama-core",
     "plugins/diorama/diorama",
+    "plugins/pumice/pumice-core",
+    "plugins/pumice/pumice",
     "xtask",
 ]
 
@@ -35,6 +37,7 @@ doubler-core = { path = "plugins/doubler/doubler-core" }
 sparkleur-core = { path = "plugins/sparkleur/sparkleur-core" }
 velour-core = { path = "plugins/velour/velour-core" }
 diorama-core = { path = "plugins/diorama/diorama-core" }
+pumice-core = { path = "plugins/pumice/pumice-core" }
 
 # nih-plug is not on crates.io. All three crates come from one repository, so
 # they must stay on the same revision — `nih_plug_vizia` and `nih_plug_xtask`
@@ -163,4 +166,10 @@ opt-level = 2
 opt-level = 2
 
 [profile.dev.package.velour]
+opt-level = 2
+
+[profile.dev.package.pumice-core]
+opt-level = 2
+
+[profile.dev.package.pumice]
 opt-level = 2

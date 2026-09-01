@@ -1,0 +1,23 @@
+[package]
+name = "pumice"
+# **The plugin owns its version, not the workspace** (`velour/Cargo.toml`).
+# `pumice-core` moves with it: they are one shipping unit.
+version = "0.2.0"
+edition.workspace = true
+# Links `vst3-sys` through `nih_plug`, which is GPLv3. See `LICENSING.md`.
+license = "GPL-3.0-only"
+repository.workspace = true
+description = "Dynamic resonance suppression for a single vocal"
+
+[lib]
+# `rlib` alongside `cdylib` so the crate's own tests can link it. The plugin
+# formats only ever load the `cdylib`.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pumice-core = { workspace = true }
+nxe-dsp = { workspace = true }
+nih_plug = { workspace = true }
+nih_plug_vizia = { workspace = true }
+nxe-plug-ui = { workspace = true }
+nxe-ui = { workspace = true }

@@ -52,6 +52,7 @@
 | Sparkleur | マルチバンドダイナミクス + 動的な倍音生成（分割 5 帯域） | [要件](../plugins/sparkleur/docs/requirements/REQ-SPK.md) / [DSP 仕様](../plugins/sparkleur/docs/specifications/dsp.md) / [UI 仕様](../plugins/sparkleur/docs/specifications/ui.md) / [計画](../plugins/sparkleur/docs/implementation/sparkleur-plan.md) |
 | Air | 信号駆動の高域テクスチャ生成器（加算 2 系統） | [要件](../plugins/air/docs/requirements/REQ-AIR.md) / [DSP 仕様](../plugins/air/docs/specifications/dsp.md) / [UI 仕様](../plugins/air/docs/specifications/ui.md) / [計画](../plugins/air/docs/implementation/air-plan.md) |
 | Diorama | 声の前後位置を作る（初期反射 + 直接音）**`DIO-12` まで実装済み** | [要件](../plugins/diorama/docs/requirements/REQ-DIO.md) / [DSP](../plugins/diorama/docs/specifications/dsp.md) / [UI](../plugins/diorama/docs/specifications/ui.md) / [計画](../plugins/diorama/docs/implementation/diorama-plan.md) |
+| Pumice | 単体ボーカルの動的共鳴抑制（STFT）**`PUM-10` まで実装済み** | [要件](../plugins/pumice/docs/requirements/REQ-PUM.md) / [DSP](../plugins/pumice/docs/specifications/dsp.md) / [UI](../plugins/pumice/docs/specifications/ui.md) / [計画](../plugins/pumice/docs/implementation/pumice-plan.md) |
 | Vocal Glue | ボーカルバスの結束（直列 5 段）**要件のみ** | [要件](../plugins/vocal-glue/docs/requirements/REQ-GLU.md) |
 
 ## 構想
