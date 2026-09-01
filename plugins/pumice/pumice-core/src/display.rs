@@ -39,34 +39,58 @@ pub fn point_hz(index: usize) -> f32 {
     LOW_HZ * (HIGH_HZ / LOW_HZ).powf(position)
 }
 
-/// Averages a per-bin curve onto the grid.
+/// Puts a per-bin curve onto the grid.
 ///
-/// `bin_hz` is the spacing. Points below the first bin or above the last take
-/// the nearest bin rather than nothing, so the ends of the axis are drawn
-/// rather than left as a gap.
+/// **Two behaviours, and the axis needs both.** A logarithmic grid over a
+/// linear transform is coarser than the bins at the top and finer than them at
+/// the bottom:
+///
+/// - **Above** the crossover a grid step spans many bins, so the point is their
+///   **average**. Reading one of them would alias — the drawn spectrum would
+///   flicker between neighbouring partials as the pitch moved.
+/// - **Below** it several grid points fall inside one bin, so the point is
+///   **interpolated** between the two nearest. Averaging there returns the same
+///   bin to each of them and the curve climbs in **visible stairs** — which is
+///   what it did (`PUM-10e`, seen in a host; at 100 Hz the grid steps 5.6 Hz
+///   against a bin every 23.4).
+///
+/// The weight curve had the same stairs for the same reason and was fixed a
+/// different way — it is a formula, so the window samples it directly
+/// (`nodes::weight_at`). A spectrum is a measurement and has nothing to sample.
+///
+/// `bin_hz` is the spacing. Points past either end take the nearest bin rather
+/// than nothing, so the axis is drawn to its edges.
 pub fn resample_into(values: &[f32], bin_hz: f32, out: &mut [f32; CURVE_POINTS]) {
     if values.is_empty() || bin_hz <= 0.0 {
         out.fill(0.0);
         return;
     }
     let last = values.len() - 1;
+    // Half a step either side, so consecutive points tile the axis without
+    // overlapping or leaving holes.
+    let step = (HIGH_HZ / LOW_HZ).powf(0.5 / (CURVE_POINTS - 1) as f32);
 
     for (index, slot) in out.iter_mut().enumerate() {
-        // Half a step either side, so consecutive points tile the axis without
-        // overlapping or leaving holes.
         let centre = point_hz(index);
-        let step = (HIGH_HZ / LOW_HZ).powf(0.5 / (CURVE_POINTS - 1) as f32);
         let low = ((centre / step) / bin_hz).floor().max(0.0) as usize;
         let high = (((centre * step) / bin_hz).ceil() as usize).min(last);
-
         let (low, high) = if low > high {
             (high, high)
         } else {
             (low, high)
         };
-        let count = high - low + 1;
-        let total: f32 = values[low..=high].iter().sum();
-        *slot = total / count as f32;
+
+        *slot = if high - low >= 2 {
+            let total: f32 = values[low..=high].iter().sum();
+            total / (high - low + 1) as f32
+        } else {
+            // The grid is finer than the bins here: read between them.
+            let position = (centre / bin_hz).clamp(0.0, last as f32);
+            let left = position.floor() as usize;
+            let right = (left + 1).min(last);
+            let fraction = position - left as f32;
+            values[left] + (values[right] - values[left]) * fraction
+        };
     }
 }
 
@@ -126,6 +150,27 @@ mod tests {
         resample_into(&values, 23.437_5, &mut out);
         for (index, value) in out.iter().enumerate() {
             assert!((value - 0.25).abs() < 1e-5, "point {index}: {value}");
+        }
+    }
+
+    /// **No stairs at the bottom of the axis** (`PUM-10e`). Below about 300 Hz
+    /// several grid points fall inside one bin, and averaging handed each of
+    /// them the same value.
+    #[test]
+    fn the_bottom_of_the_axis_does_not_step() {
+        // A ramp across the bins: whatever the grid does to it has to stay
+        // strictly rising, with no point sitting still beside its neighbour.
+        let values: Vec<f32> = (0..1025).map(|bin| bin as f32).collect();
+        let mut out = [0.0; CURVE_POINTS];
+        resample_into(&values, 23.437_5, &mut out);
+
+        for index in 1..CURVE_POINTS {
+            assert!(
+                out[index] > out[index - 1],
+                "point {index} sits at {} beside {}",
+                out[index],
+                out[index - 1]
+            );
         }
     }
 
