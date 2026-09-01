@@ -3,14 +3,22 @@
 //! Host-agnostic by construction — no nih-plug, no Vizia, no host API
 //! (`REQ-PUM-015`). Everything on the audio path is allocation-free once built.
 //!
-//! **Nothing here processes audio yet.** `PUM-1` is a gate: the plugin reports
-//! latency and delays by exactly that much, and four DAWs have to compensate
-//! for it before a single line of the engine is worth writing
-//! (`../docs/implementation/pumice-plan.md`). What lives here now is the
-//! arithmetic that decides *how much* latency — the transform size — because
-//! that is a property of the engine rather than of the wrapper, and
-//! `.agents/rules/rust.md` keeps DSP out of the wrapper.
+//! **The gate has passed** (`PUM-1`, 2026-09-01): Ableton Live in VST3 and
+//! Studio One Pro in CLAP both compensate for the reported latency, and both
+//! recover from a `QUALITY` change while the transport runs. The FFT approach
+//! is settled.
+//!
+//! What is here:
+//!
+//! - [`quality`] — how big the transform is, and therefore how much latency
+//! - [`stft`] — the overlap-add buffering the transform runs inside
+//!
+//! **No detection and no gain yet** (`PUM-3` onward). [`Stft`] hands a caller
+//! a frame of bins and puts back whatever it finds there, so the reconstruction
+//! can be measured before anything is asked to change it.
 
 pub mod quality;
+pub mod stft;
 
 pub use quality::Quality;
+pub use stft::{Frame, Stft};

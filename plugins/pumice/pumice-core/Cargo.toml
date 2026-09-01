@@ -16,6 +16,7 @@ description = "The Pumice DSP, independent of any plugin host"
 # (`LICENSING.md`).
 [dependencies]
 nxe-audio.workspace = true
+realfft = "3.5"
 
 [dev-dependencies]
 criterion = { version = "0.5", default-features = false }

@@ -52,6 +52,17 @@ pub enum Quality {
 impl Quality {
     pub const ALL: [Quality; 3] = [Quality::Low, Quality::Normal, Quality::High];
 
+    /// Position in [`Quality::ALL`], so a caller can hold one prepared thing
+    /// per step in a fixed array and switch between them without allocating
+    /// (`REQ-PUM-008`).
+    pub const fn index(self) -> usize {
+        match self {
+            Quality::Low => 0,
+            Quality::Normal => 1,
+            Quality::High => 2,
+        }
+    }
+
     /// The bin width this step aims for, in Hz.
     pub const fn target_bin_hz(self) -> f32 {
         match self {

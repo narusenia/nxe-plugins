@@ -46,10 +46,23 @@ nxe-ui       vizia のみ
              （`pumice-core` だけ `realfft` を足す。MIT なので側は動かない）
 ```
 
-**`realfft` はこの表を壊さない**（2026-09-01、`REQ-PUM-015`）。`realfft` は
-MIT、その下の `rustfft` は MIT OR Apache-2.0 で、どちらも `vst3-sys` を
-引かない。**寛容側に実行時依存が入る初めての例**なので書いておくと、
-判断の基準は「MIT かどうか」ではなく**「`vst3-sys` に到達するか」**。
+**`realfft` はこの表を壊さない**（2026-09-01、`REQ-PUM-015`）。**寛容側に
+実行時依存が入る初めての例**なので、推移的な依存まで数えてある:
+
+```text
+realfft          MIT
+rustfft          MIT OR Apache-2.0
+num-complex      MIT OR Apache-2.0
+num-integer      MIT OR Apache-2.0
+num-traits       MIT OR Apache-2.0
+primal-check     MIT OR Apache-2.0
+strength_reduce  MIT OR Apache-2.0
+transpose        MIT OR Apache-2.0
+version_check    MIT/Apache-2.0
+```
+
+**判断の基準は「MIT かどうか」ではなく「`vst3-sys` に到達するか」。**
+この 9 つはどれも到達しない。
 
 **逆に、GPL 側にあるものを寛容側で使いたくなる圧力が実際に来た。**
 nih-plug は `util::stft::StftHelper` で OLA のリングバッファを持っていて、
