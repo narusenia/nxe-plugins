@@ -253,9 +253,6 @@ out[n]   = (DELTA ? delta[n] : lerp(dry[n], wet[n], MIX)) · OUTPUT
 
 ## まだ答えの無い問い
 
-- **`DEPTH` という名前が使えるか。** Diorama の `DEPTH` は距離で、
-  意味が違う（`REQ-PUM-010`）。ラインの規則では新しい側が譲る。
-  **`PUM-11` までに決める。**
 - **`SLOPE` をユーザーに出すか。** soothe は出していない。Advanced に置くか、
   `DEPTH` に畳むかは `PUM-3` で音を聴いてから。
 - **44.1 kHz の 8.1% のずれを許すか。** 受入条件には入るが端が近い。

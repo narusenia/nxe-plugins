@@ -423,7 +423,8 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 | DIO-13 | **既定値と耳**（**耳が要る**）。**聴き直しのあと** | `diorama-plan.md` |
 | — | **Advanced の偏差**（Diorama、`REQ-DIO-009`）。**前に `dsp.md`** | `diorama-plan.md` |
 | DBL-13 | 既定値の詰めと実機確認（**耳が要る**） | `doubler-plan.md` |
-| PUM-1 | **Pumice のゲート — PDC を 4 ホストで見る**（**人が要る**）。コードは通っている。`mise run install pumice` で、同じ素材の 2 トラックの片方に挿して位相を見る。ここが駄目なら FFT 方式ごと選び直す | `pumice-plan.md` |
+| PUM-2 | **Pumice の OLA バッファと窓。** ゲートは通った（Ableton VST3 / Studio One CLAP） | `pumice-plan.md` |
+| — | **再生中の `QUALITY` 切り替え**（**人が要る**）。落ちても方式は無事で、消えるのは `QUALITY` の実行時可変性だけ。**`PUM-2` の前に知りたい** | `pumice-plan.md` |
 
 **`v0.2.0` のタグを打つ前に人が要るもの**: `DIO-14` の聴き直しと `DIO-13` の
 既定値。**それだけ**——5 本の窓の見た目・Hard・PUNCH は 2026-08-31 に実機で
@@ -673,7 +674,7 @@ AU の道が閉じる（`REQ-PUM-015`）。答え合わせの相手としては�
 
 | ID | 単位 | 状態 |
 |---|---|---|
-| PUM-1 | **空のラッパで PDC を通す**（**ゲート**）。2 クレート・`bundler.toml`・`QUALITY` 1 個だけ。N は `pumice_core::quality`（当初「core は空」としていたのを直した） | 🟡 **コードは通った**（テスト 9 本、バンドルも）。**4 ホストで見るのが未了** |
+| PUM-1 | **空のラッパで PDC を通す**（**ゲート**）。2 クレート・`bundler.toml`・`QUALITY` 1 個だけ。N は `pumice_core::quality`（当初「core は空」としていたのを直した） | 🟡 **ゲートは通過** — Ableton（VST3）/ Studio One Pro（CLAP）で反転して無音。**FFT で進めてよい**。残り: Bitwig / Reaper と、**再生中の `QUALITY` 切り替え** |
 | PUM-2 | OLA バッファと窓（`pumice-core` に自作） | ⬜ |
 | PUM-3 | 参照とゲイン計算（`STATIC`）＋ ラッパ（**ここで音が出る**） | ⬜ |
 | PUM-4 | **適応 WHERE と `MODE`**（**ゲート**） | ⬜ |
