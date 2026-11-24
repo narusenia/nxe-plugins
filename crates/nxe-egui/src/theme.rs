@@ -84,6 +84,11 @@ pub const FOREGROUND: Token = Token::rgb(0xFA, 0xFA, 0xFA);
 pub const MUTED: Token = Token::rgb(0xA3, 0xA3, 0xA3);
 pub const SUBTLE: Token = Token::rgb(0x73, 0x73, 0x73);
 
+/// **The one second colour**, for a reading past where it should be: over
+/// 0 VU, a true peak over full scale, a loudness over its target. Only the
+/// Peek meters use it — the exception `design-system.md` records (PEEK-2).
+pub const WARN: Token = Token::rgb(0xFF, 0x7A, 0x45);
+
 /// One accent, and no other hue anywhere **inside a window**.
 ///
 /// **The hue is the only thing that changes between plugins.** Every stop is
@@ -229,6 +234,18 @@ impl Palette {
         Token::rgb(0xC0, 0xD0, 0x83),
         Token::rgb(0xA7, 0xBA, 0x4B),
         Token::rgb(0x5E, 0x6C, 0x00),
+    );
+
+    /// No hue: the Peek meters (`peek-plan.md`, decision 4). A meter sits
+    /// beside other plugins and must not compete with their colour.
+    ///
+    /// **Not in [`Palette::ALL`]**, which is the Basic family the hue tests
+    /// hold to one lightness and 40° apart; an achromatic ramp has no hue to
+    /// test.
+    pub const PEEK: Self = Self::ramp(
+        Token::rgb(0xFA, 0xFA, 0xFA),
+        Token::rgb(0xE5, 0xE5, 0xE5),
+        Token::rgb(0x73, 0x73, 0x73),
     );
 
     /// Every palette with the name of the plugin that wears it. For the gallery

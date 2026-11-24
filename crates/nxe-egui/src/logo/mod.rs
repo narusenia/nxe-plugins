@@ -57,6 +57,26 @@ pub fn mark(painter: &Painter, rect: Rect, colour: Color32) {
     painter.add(Shape::mesh(mesh));
 }
 
+/// The mark turned a quarter to read upwards, `height` tall across the turn,
+/// centred across `rect` and set against its foot. For the Kit window's strip.
+pub fn mark_upward(painter: &Painter, rect: Rect, height: f32, colour: Color32) {
+    let scale = height / VIEWBOX.1;
+    let left = rect.center().x - height * 0.5;
+    let mut mesh = Mesh::default();
+    for triangle in triangles() {
+        let base = mesh.vertices.len() as u32;
+        for point in triangle {
+            // Turned −90°: the mark's x runs up the strip, its y across it.
+            mesh.colored_vertex(
+                pos2(left + point.y * scale, rect.bottom() - point.x * scale),
+                colour,
+            );
+        }
+        mesh.add_triangle(base, base + 1, base + 2);
+    }
+    painter.add(Shape::mesh(mesh));
+}
+
 /// The mark as triangles in viewbox coordinates, cut once.
 fn triangles() -> &'static [[Pos2; 3]] {
     static TRIANGLES: OnceLock<Vec<[Pos2; 3]>> = OnceLock::new();

@@ -12,6 +12,7 @@ pub mod curve;
 pub mod entry;
 pub mod font;
 pub mod input;
+pub mod kit;
 pub mod knob;
 pub mod logo;
 pub mod meter;

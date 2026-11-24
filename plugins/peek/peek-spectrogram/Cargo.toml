@@ -1,0 +1,56 @@
+[package]
+name = "peek-spectrogram"
+# **The plugin owns its version, not the workspace** (`velour/Cargo.toml`).
+# `peek-core` is shared by the whole series, so it versions on its own.
+version = "1.0.0"
+edition.workspace = true
+# No `vst3-sys` any more, so the permissive side. See `LICENSING.md`.
+license = "MIT OR Apache-2.0"
+repository.workspace = true
+description = "A scrolling spectrogram"
+
+[lib]
+# `staticlib` because `cargo truce` links the macOS bundles from `lib<name>.a`.
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+# The window and the sound as a desktop app, no DAW: `cargo truce run -p
+# peek-spectrogram`. For looking at the window and measuring what it costs (`V2-3`);
+# never shipped.
+[[bin]]
+name = "peek-spectrogram-standalone"
+path = "src/main.rs"
+required-features = ["standalone"]
+
+# `cargo truce build` turns on one format per build. `au` is macOS only, so it
+# is not a default: a Windows `cargo test` must not try to build the AU shim.
+[features]
+default = ["clap", "vst3"]
+clap = ["dep:truce-clap", "dep:clap-sys"]
+vst3 = ["dep:truce-vst3"]
+au = ["dep:truce-au"]
+standalone = ["dep:truce-standalone"]
+
+[dependencies]
+peek-core = { workspace = true }
+peek-ui = { workspace = true }
+nxe-dsp = { workspace = true }
+nxe-egui = { workspace = true }
+truce = { workspace = true }
+truce-core = { workspace = true }
+truce-params = { workspace = true }
+truce-loader = { workspace = true }
+truce-egui = { workspace = true }
+truce-utils = { workspace = true }
+egui = { workspace = true }
+truce-clap = { workspace = true, optional = true }
+clap-sys = { workspace = true, optional = true }
+truce-vst3 = { workspace = true, optional = true }
+truce-au = { workspace = true, optional = true }
+truce-standalone = { workspace = true, features = ["gui"], optional = true }
+
+# `rt-paranoid` panics on a heap allocation inside `process()` — the rule
+# `.agents/rules/rust.md` states, checked by the tests rather than by review.
+# A dev-dependency feature, so the shipped binary does not carry the checker.
+[dev-dependencies]
+truce = { workspace = true, features = ["rt-paranoid"] }
+truce-test = { workspace = true }

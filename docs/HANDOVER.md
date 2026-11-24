@@ -51,7 +51,8 @@ draft release に乗る（プラグインごとの zip と、全部入りの zip
 **上流（truce）に送るもの**は backlog の「まだ単位にしていないもの」に 3 つ
 （CLAP の state 読込後の rescan、AU v2 の名前、truce-egui の書体の口）と、
 CLAP の `latency.changed` を `activate` の中だけで呼ぶ修正。
-`patches/` に truce-clap と truce-egui の 2 つを当てている。cargo-truce の Windows の
+`patches/` に truce-clap、truce-egui、baseview-truce の 3 つを当てている（baseview は
+描画タイマーを common modes に入れる 1 行。default mode だけだとリサイズ中に描画が止まる）。cargo-truce の Windows の
 clap-validator 引数のずれ（`release.yml` に回避あり）も一緒に。**出す前に確認**。
 
 - `release/v0` は切ってある。v0.2 系のバグ修正はそちら

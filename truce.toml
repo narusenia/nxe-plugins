@@ -84,3 +84,77 @@ category = "effect"
 fourcc = "Pumi"
 description = "Dynamic resonance suppression for a single vocal"
 vst3_subcategory = "Restoration"
+
+# The Peek series (`plugins/peek/docs/implementation/peek-plan.md`). Every
+# Peek plugin's codes are decided there at once, as Basic's were here.
+[[plugin]]
+name = "Peek Level"
+bundle_id = "peeklevel"
+crate = "peek-level"
+category = "effect"
+fourcc = "PkLv"
+description = "Peak, true peak and RMS, per channel"
+vst3_subcategory = "Analyzer"
+
+[[plugin]]
+name = "Peek VU"
+bundle_id = "peekvu"
+crate = "peek-vu"
+category = "effect"
+fourcc = "PkVu"
+description = "A VU meter, as a needle or as bars"
+vst3_subcategory = "Analyzer"
+
+[[plugin]]
+name = "Peek Stereo"
+bundle_id = "peekstereo"
+crate = "peek-stereo"
+category = "effect"
+fourcc = "PkSt"
+description = "A goniometer, with correlation and balance"
+vst3_subcategory = "Analyzer"
+
+[[plugin]]
+name = "Peek Spectrum"
+bundle_id = "peekspectrum"
+crate = "peek-spectrum"
+category = "effect"
+fourcc = "PkSp"
+description = "A spectrum analyser"
+vst3_subcategory = "Analyzer"
+
+[[plugin]]
+name = "Peek Spectrogram"
+bundle_id = "peekspectrogram"
+crate = "peek-spectrogram"
+category = "effect"
+fourcc = "PkSg"
+description = "A scrolling spectrogram"
+vst3_subcategory = "Analyzer"
+
+[[plugin]]
+name = "Peek Loudness"
+bundle_id = "peekloudness"
+crate = "peek-loudness"
+category = "effect"
+fourcc = "PkLd"
+description = "Loudness after BS.1770 and EBU R 128"
+vst3_subcategory = "Analyzer"
+
+[[plugin]]
+name = "Peek Scope"
+bundle_id = "peekscope"
+crate = "peek-scope"
+category = "effect"
+fourcc = "PkSc"
+description = "An oscilloscope"
+vst3_subcategory = "Analyzer"
+
+[[plugin]]
+name = "Peek"
+bundle_id = "peek"
+crate = "peek"
+category = "effect"
+fourcc = "Peek"
+description = "Every Peek meter in one resizable window"
+vst3_subcategory = "Analyzer"
