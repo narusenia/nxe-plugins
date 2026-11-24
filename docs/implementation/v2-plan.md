@@ -193,9 +193,11 @@ nih-plug のまま残っている 4 本のタグも壊さないよう、移行�
 が両 OS で通らなければ落ちる。
 
 **決めたこと**: truce 版は Linux を出さない（決定 7 のとおり）。nih-plug に
-残っている間のタグは今までどおり 3 OS。macOS はアーキテクチャごとに
-`cargo truce build` して lipo する（`cargo truce build` はホストのアーキテクチャ
-しか作らず、universal は installer を作る `package` の側にしか無い）。
+残っている間のタグは今までどおり 3 OS。macOS は `cargo truce package` で
+universal（Apple Silicon + Intel）を作り、installer 用に stage された bundle を
+zip にする（installer 自体は配らない）。`cargo truce build` はホストの
+アーキテクチャしか作らず、`--target` を付けると 6.3.0 は AU の dylib を
+見失う。
 `release.yml` を触る PR では、Doubler を release せずにビルドと validate だけ回す。
 
 ### V2-14 — 5 本の 2.0.0 と Pumice 1.0.0
