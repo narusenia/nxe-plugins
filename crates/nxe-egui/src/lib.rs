@@ -19,6 +19,7 @@ pub mod preset;
 pub mod readout;
 pub mod segment;
 pub mod sidebar;
+pub mod smooth;
 pub mod status;
 pub mod surface;
 pub mod theme;

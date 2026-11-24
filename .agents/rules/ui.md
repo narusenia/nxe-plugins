@@ -115,6 +115,10 @@ what vizia could not do in the first place.
 - **v2: light is for signals that move.** A spectrum, a transfer curve, a
   meter's head may glow (`nxe_egui::surface::glow`); a static mark that glows
   is decoration. Fills stay flat — the glow is a line's, not an area's.
+- **v2: a signal is drawn from smoothed values** (`nxe_egui::smooth`), never
+  straight from the handoff. Read at 30 Hz and drawn at 60, a raw meter moves
+  on every other frame, which reads as judder. The smoothing is the
+  display's; the DSP is not touched.
 - **v2: only signals are curved** (`nxe_egui::curve`, a monotone cubic, so it
   never shows energy above its own peaks). Marks and layout stay straight.
 - **`bright` and `deep` are for telling kinds apart, not for filling.** Where

@@ -43,6 +43,7 @@ next pass.
 | `sidebar` | the H4 left column: wordmark, subject figure, scale, macros, `NXE` |
 | `preset` | the preset bar; knows names, not presets |
 | `status` | the hint strip |
+| `smooth` | display-side smoothing for signals read from a handoff (decision 10) |
 
 The palettes are copied from `nxe-ui` value for value. Until that crate goes
 (`V2-16`), **change a palette in both or in neither**.

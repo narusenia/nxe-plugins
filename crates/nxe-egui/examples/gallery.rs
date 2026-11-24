@@ -13,7 +13,7 @@ use nxe_egui::preset::{PresetAction, preset_bar, step};
 use nxe_egui::readout::{figure, readout};
 use nxe_egui::sidebar::{Subject, sidebar};
 use nxe_egui::theme::{Palette, SIDEBAR_WIDTH, SPACE_2, SPACE_3, SPACE_4, WINDOW_WIDTH};
-use nxe_egui::{bar, font, meter, segment, status, surface, window};
+use nxe_egui::{bar, font, meter, segment, smooth, status, surface, window};
 
 const FIGURE_HEIGHT: f32 = 200.0;
 const ROW_HEIGHT: f32 = 160.0;
@@ -24,6 +24,7 @@ struct Gallery {
     macros: [f32; 4],
     bars: [f32; 4],
     mode: usize,
+    raw: usize,
     presets: Vec<String>,
     current: Option<usize>,
     modified: bool,
@@ -38,6 +39,7 @@ impl Default for Gallery {
             macros: [0.3, 0.5, 0.7, 0.4],
             bars: [0.5, 0.25, 0.75, 0.6],
             mode: 0,
+            raw: 0,
             presets: ["Default", "Wide", "Tight", "Chorus"]
                 .map(String::from)
                 .to_vec(),
@@ -144,20 +146,37 @@ impl eframe::App for Gallery {
                     });
                 }
             });
+            // The signals are read at 30 Hz, the way a handoff is, and drawn
+            // every frame; "Raw" shows the stair-step that smoothing removes.
+            let reading = (time * 30.0).floor() / 30.0;
+            let spectrum: Vec<f32> = (0..=24)
+                .map(|i| {
+                    let x = i as f32 / 24.0;
+                    0.45 + 0.3 * (x * 9.0 + reading * 1.3).sin() * (1.0 - x)
+                        + 0.1 * (x * 23.0 - reading).sin()
+                })
+                .collect();
+            let levels: Vec<f32> = (0..2)
+                .map(|channel| 0.55 + 0.35 * (reading * (2.0 + channel as f32)).sin().abs())
+                .collect();
+            let (spectrum, levels) = if self.raw == 0 {
+                (
+                    smooth::smoothed(ui, egui::Id::new("spectrum"), &spectrum, smooth::TAU),
+                    smooth::smoothed(ui, egui::Id::new("levels"), &levels, smooth::TAU),
+                )
+            } else {
+                (spectrum, levels)
+            };
             ui.vertical(|ui| {
                 surface::figure(
                     ui,
                     palette,
                     vec2(width - SIDEBAR_WIDTH, FIGURE_HEIGHT),
                     |painter, rect, ink| {
-                        let points: Vec<(f32, f32)> = (0..=24)
-                            .map(|i| {
-                                let x = i as f32 / 24.0;
-                                let y = 0.45
-                                    + 0.3 * (x * 9.0 + time * 1.3).sin() * (1.0 - x)
-                                    + 0.1 * (x * 23.0 - time).sin();
-                                (x, y)
-                            })
+                        let points: Vec<(f32, f32)> = spectrum
+                            .iter()
+                            .enumerate()
+                            .map(|(i, y)| (i as f32 / 24.0, *y))
                             .collect();
                         let inner = rect.shrink(SPACE_4);
                         curve(
@@ -200,8 +219,7 @@ impl eframe::App for Gallery {
                     ui.add_space(SPACE_4);
                     let (meters, _) =
                         ui.allocate_exact_size(vec2(40.0, 100.0), egui::Sense::hover());
-                    for channel in 0..2 {
-                        let level = 0.55 + 0.35 * (time * (2.0 + channel as f32)).sin().abs();
+                    for (channel, level) in levels.iter().copied().enumerate() {
                         let rect = Rect::from_min_size(
                             pos2(meters.left() + channel as f32 * 14.0, meters.top()),
                             vec2(8.0, meters.height()),
@@ -246,6 +264,12 @@ impl eframe::App for Gallery {
                 {
                     self.mode = mode;
                     changed = true;
+                }
+                ui.add_space(SPACE_3);
+                if let Some(raw) =
+                    segment::segment(ui, palette, &["Smoothed", "Raw"], self.raw, 240.0)
+                {
+                    self.raw = raw;
                 }
                 ui.add_space(SPACE_3);
                 let (rect, _) =
