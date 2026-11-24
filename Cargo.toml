@@ -18,6 +18,14 @@ members = [
     "plugins/pumice/pumice",
     "plugins/peek/peek-core",
     "plugins/peek/peek-level",
+    "plugins/peek/peek-ui",
+    "plugins/peek/peek-vu",
+    "plugins/peek/peek-stereo",
+    "plugins/peek/peek-spectrum",
+    "plugins/peek/peek-spectrogram",
+    "plugins/peek/peek-loudness",
+    "plugins/peek/peek-scope",
+    "plugins/peek/peek",
 ]
 
 [workspace.package]
@@ -38,6 +46,7 @@ velour-core = { path = "plugins/velour/velour-core" }
 diorama-core = { path = "plugins/diorama/diorama-core" }
 pumice-core = { path = "plugins/pumice/pumice-core" }
 peek-core = { path = "plugins/peek/peek-core" }
+peek-ui = { path = "plugins/peek/peek-ui" }
 
 # truce (v2). Every truce crate is versioned in lock-step, so they are pinned
 # together; a mismatch would put two copies of `truce-core` in the tree.

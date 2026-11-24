@@ -2566,6 +2566,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "peek"
+version = "1.0.0"
+dependencies = [
+ "clap-sys",
+ "egui",
+ "nxe-dsp",
+ "nxe-egui",
+ "peek-core",
+ "peek-ui",
+ "truce",
+ "truce-au",
+ "truce-clap",
+ "truce-core",
+ "truce-egui",
+ "truce-loader",
+ "truce-params",
+ "truce-standalone",
+ "truce-test",
+ "truce-utils",
+ "truce-vst3",
+]
+
+[[package]]
 name = "peek-core"
 version = "0.1.0"
 dependencies = [
@@ -2582,6 +2605,156 @@ dependencies = [
  "nxe-dsp",
  "nxe-egui",
  "peek-core",
+ "peek-ui",
+ "truce",
+ "truce-au",
+ "truce-clap",
+ "truce-core",
+ "truce-egui",
+ "truce-loader",
+ "truce-params",
+ "truce-standalone",
+ "truce-test",
+ "truce-utils",
+ "truce-vst3",
+]
+
+[[package]]
+name = "peek-loudness"
+version = "1.0.0"
+dependencies = [
+ "clap-sys",
+ "egui",
+ "nxe-dsp",
+ "nxe-egui",
+ "peek-core",
+ "peek-ui",
+ "truce",
+ "truce-au",
+ "truce-clap",
+ "truce-core",
+ "truce-egui",
+ "truce-loader",
+ "truce-params",
+ "truce-standalone",
+ "truce-test",
+ "truce-utils",
+ "truce-vst3",
+]
+
+[[package]]
+name = "peek-scope"
+version = "1.0.0"
+dependencies = [
+ "clap-sys",
+ "egui",
+ "nxe-dsp",
+ "nxe-egui",
+ "peek-core",
+ "peek-ui",
+ "truce",
+ "truce-au",
+ "truce-clap",
+ "truce-core",
+ "truce-egui",
+ "truce-loader",
+ "truce-params",
+ "truce-standalone",
+ "truce-test",
+ "truce-utils",
+ "truce-vst3",
+]
+
+[[package]]
+name = "peek-spectrogram"
+version = "1.0.0"
+dependencies = [
+ "clap-sys",
+ "egui",
+ "nxe-dsp",
+ "nxe-egui",
+ "peek-core",
+ "peek-ui",
+ "truce",
+ "truce-au",
+ "truce-clap",
+ "truce-core",
+ "truce-egui",
+ "truce-loader",
+ "truce-params",
+ "truce-standalone",
+ "truce-test",
+ "truce-utils",
+ "truce-vst3",
+]
+
+[[package]]
+name = "peek-spectrum"
+version = "1.0.0"
+dependencies = [
+ "clap-sys",
+ "egui",
+ "nxe-dsp",
+ "nxe-egui",
+ "peek-core",
+ "peek-ui",
+ "truce",
+ "truce-au",
+ "truce-clap",
+ "truce-core",
+ "truce-egui",
+ "truce-loader",
+ "truce-params",
+ "truce-standalone",
+ "truce-test",
+ "truce-utils",
+ "truce-vst3",
+]
+
+[[package]]
+name = "peek-stereo"
+version = "1.0.0"
+dependencies = [
+ "clap-sys",
+ "egui",
+ "nxe-dsp",
+ "nxe-egui",
+ "peek-core",
+ "peek-ui",
+ "truce",
+ "truce-au",
+ "truce-clap",
+ "truce-core",
+ "truce-egui",
+ "truce-loader",
+ "truce-params",
+ "truce-standalone",
+ "truce-test",
+ "truce-utils",
+ "truce-vst3",
+]
+
+[[package]]
+name = "peek-ui"
+version = "0.1.0"
+dependencies = [
+ "egui",
+ "nxe-egui",
+ "peek-core",
+ "truce-core",
+ "truce-params",
+]
+
+[[package]]
+name = "peek-vu"
+version = "1.0.0"
+dependencies = [
+ "clap-sys",
+ "egui",
+ "nxe-dsp",
+ "nxe-egui",
+ "peek-core",
+ "peek-ui",
  "truce",
  "truce-au",
  "truce-clap",

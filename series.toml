@@ -14,4 +14,13 @@ plugins = ["doubler", "sparkleur", "velour", "air", "diorama", "pumice"]
 
 [peek]
 name = "Peek"
-plugins = ["peek-level"]
+plugins = [
+    "peek-level",
+    "peek-vu",
+    "peek-stereo",
+    "peek-spectrum",
+    "peek-spectrogram",
+    "peek-loudness",
+    "peek-scope",
+    "peek",
+]

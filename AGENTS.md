@@ -84,8 +84,14 @@ with the code, and fix the document in the same change.
   crate for the whole series**, not one per plugin: a single meter and `Peek`
   read the same implementation, so they cannot disagree. No meter touches the
   signal
-- `plugins/peek/peek-level`: Peek Level — peak, true peak and RMS per channel,
-  on the Kit window (`nxe_egui::kit`). No parameters
+- `plugins/peek/peek-ui`: the Peek figures, one per measurement, drawn into
+  whatever rect they are given — so a single meter and a cell of `Peek` are
+  the same picture. Its `bind` is the only part that knows truce
+- `plugins/peek/peek-<measurement>`: one meter per plugin (Level, VU, Stereo,
+  Spectrum, Spectrogram, Loudness, Scope) on the Kit window
+  (`nxe_egui::kit`). Thin: declarations, and a window that calls `peek-ui`
+- `plugins/peek/peek`: every meter at once. **The one window in the line the
+  host may resize**; it never asks the host to resize it
 - `docs/`: monorepo-wide documents (architecture, cross-plugin backlog and
   roadmap). Indexed by `docs/README.md`
 - `plugins/<name>/docs/`: that plugin's own requirements, specifications, and

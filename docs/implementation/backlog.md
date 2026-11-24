@@ -65,14 +65,14 @@ V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実
 
 | ID | 単位 | 依存 | 状態 |
 |---|---|---|---|
-| PEEK-1 | Kit の窓の型（`nxe-egui::kit`）、`peek-core`、Peek Level | — | 🟡 コードは済み。基準画像（CI で焼く）、validate、実機で見ることが残り |
-| PEEK-2 | Peek VU（弧と針の見た目を含む） | PEEK-1 | ⬜ |
-| PEEK-3 | Peek Stereo | PEEK-1 | ⬜ |
-| PEEK-4 | Peek Spectrum | PEEK-1 | ⬜ |
-| PEEK-5 | Peek Spectrogram（`nxe-spectral` を切り出す） | PEEK-4 | ⬜ |
-| PEEK-6 | Peek Loudness | PEEK-1 | ⬜ |
-| PEEK-7 | Peek Scope | PEEK-1 | ⬜ |
-| PEEK-8 | Peek（まとめ） | PEEK-2〜7 | ⬜ |
+| PEEK-1 | Kit の窓の型（`nxe-egui::kit`）、`peek-core`、Peek Level | — | 🟡 コードと validate は済み（#35）。基準画像（CI で焼く）と実機で見ることが残り |
+| PEEK-2 | Peek VU（弧と針の見た目を含む） | PEEK-1 | 🟡 コードは済み（#35）。実機で見ることが残り |
+| PEEK-3 | Peek Stereo | PEEK-1 | 🟡 同上 |
+| PEEK-4 | Peek Spectrum | PEEK-1 | 🟡 同上 |
+| PEEK-5 | Peek Spectrogram | PEEK-4 | 🟡 同上。`nxe-spectral` への切り出しは後回し（`peek-plan.md`） |
+| PEEK-6 | Peek Loudness | PEEK-1 | 🟡 同上。EBU の試験条件 3 つは試験で確認済み |
+| PEEK-7 | Peek Scope | PEEK-1 | 🟡 同上 |
+| PEEK-8 | Peek（まとめ、ホストでリサイズ可） | PEEK-2〜7 | 🟡 同上 |
 | PEEK-9 | 最初の beta（`peek-<YYYY.MM>-beta.N`） | PEEK-1 | ⬜ |
 
 ### v0 から持ち越したもの
