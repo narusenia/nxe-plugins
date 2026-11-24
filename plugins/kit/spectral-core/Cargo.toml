@@ -1,0 +1,13 @@
+[package]
+name = "spectral-core"
+# Shared by Invert, Shear and Afterimage, and by Singularity and Dislocate
+# when they come, so it versions on its own. Nothing has shipped yet.
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The spectral engines behind the Spectral Kits, independent of any plugin host"
+
+# No host API and no UI toolkit (`.agents/rules/rust.md`).
+[dependencies]
+nxe-spectral.workspace = true

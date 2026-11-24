@@ -187,3 +187,31 @@ category = "effect"
 fourcc = "Bckl"
 description = "A waveform that turns over past a threshold"
 vst3_subcategory = "Distortion"
+
+# The Spectral Kits (`plugins/kit/docs/implementation/spectral-kit-plan.md`).
+[[plugin]]
+name = "Invert"
+bundle_id = "invert"
+crate = "invert"
+category = "effect"
+fourcc = "Invt"
+description = "The spectrum turned upside down between two frequencies"
+vst3_subcategory = "Spectral"
+
+[[plugin]]
+name = "Shear"
+bundle_id = "shear"
+crate = "shear"
+category = "effect"
+fourcc = "Shea"
+description = "Each frequency delayed by its own amount"
+vst3_subcategory = "Spectral"
+
+[[plugin]]
+name = "Afterimage"
+bundle_id = "afterimage"
+crate = "afterimage"
+category = "effect"
+fourcc = "Aftr"
+description = "What was loud stays on as a fading trace"
+vst3_subcategory = "Spectral"
