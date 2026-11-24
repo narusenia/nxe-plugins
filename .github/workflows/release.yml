@@ -5,7 +5,8 @@
 # one of them is built, validated and zipped, and all the zips go to one draft
 # release named `NXE <Series> <version>`. Releasing one plugin at a time put a
 # row per plugin on the releases page; a drop is one row. Each plugin keeps its
-# own version in its `Cargo.toml`, and the notes list them.
+# own version in its `Cargo.toml`, and the notes list them. Besides a zip per
+# plugin and platform there is one per platform holding the whole series.
 #
 # Every plugin is on truce: macOS (universal; CLAP, VST3, AU v2) and Windows
 # (CLAP, VST3). Linux is not built — decision 7 names macOS and Windows.
@@ -199,6 +200,12 @@ jobs:
             plugin="${name%.name}"
             (cd "$plugin" && zip -qr "../../../$(cat "../$name").zip" .)
           done
+          # The whole series in one zip: every bundle side by side, the
+          # licenses once.
+          mkdir ../series
+          for name in *.name; do cp -R "${name%.name}"/* ../series/; done
+          cd ../series
+          zip -qr "../../nxe-${{ needs.plan.outputs.series }}-${{ needs.plan.outputs.version }}-${{ matrix.name }}.zip" .
 
       - name: Zip
         if: matrix.name == 'windows'
@@ -208,7 +215,9 @@ jobs:
             $plugin = $_.BaseName
             $archive = (Get-Content $_.FullName).Trim()
             Compress-Archive -Path "target/bundled/$plugin/*" -DestinationPath "$archive.zip"
+            Copy-Item -Recurse -Force "target/bundled/$plugin/*" (New-Item -ItemType Directory -Force target/series)
           }
+          Compress-Archive -Path "target/series/*" -DestinationPath "nxe-${{ needs.plan.outputs.series }}-${{ needs.plan.outputs.version }}-${{ matrix.name }}.zip"
 
       - uses: actions/upload-artifact@v4
         with:

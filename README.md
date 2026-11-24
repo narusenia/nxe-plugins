@@ -56,7 +56,8 @@ touching the interface.
 
 Plugins are released a series at a time: one release per drop, tagged
 `<series>-<YYYY.MM>` (`basic-2026.12`), with a zip per plugin and platform
-(`nxe-doubler-2.0.0-macos.zip`). The 0.x releases before it were one per
+(`nxe-doubler-2.0.0-macos.zip`), plus one zip per platform holding the
+whole series (`nxe-basic-2026.12-macos.zip`). The 0.x releases before it were one per
 plugin, tagged `<plugin>-v<version>`. Unpack it and copy the bundles
 into:
 
