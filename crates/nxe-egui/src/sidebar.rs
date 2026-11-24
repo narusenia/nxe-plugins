@@ -29,6 +29,8 @@ pub const HEAD: f32 =
 const SCALE: f32 = 12.0;
 /// The height under the macros: the `NXE` mark and its margins.
 pub const FOOT: f32 = SPACE_4 + LINE_EYEBROW + SPACE_4;
+/// The mark's height, inside the eyebrow's line.
+const MARK_HEIGHT: f32 = 10.0;
 
 /// Draws the column at the left of `ui`, `height` tall, and lays out `macros`
 /// in the space under the subject with the inverted palette.
@@ -86,13 +88,15 @@ pub fn sidebar(
         &ink,
     );
 
-    let corner = pos2(inner.left(), rect.bottom() - SPACE_4);
-    font::tracked(
+    // The drawn mark, not three letters (`logo`). As tall as the eyebrow's
+    // line less its leading, so `FOOT` stays what it was.
+    let height = MARK_HEIGHT;
+    crate::logo::mark(
         &painter,
-        corner,
-        Align2::LEFT_BOTTOM,
-        "NXE",
-        FONT_EYEBROW,
+        Rect::from_min_size(
+            pos2(inner.left(), rect.bottom() - SPACE_4 - height),
+            vec2(crate::logo::width_at(height), height),
+        ),
         ink.muted.color(),
     );
 

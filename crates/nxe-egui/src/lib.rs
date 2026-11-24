@@ -14,6 +14,7 @@ pub mod entry;
 pub mod font;
 pub mod input;
 pub mod knob;
+pub mod logo;
 pub mod meter;
 pub mod preset;
 pub mod readout;

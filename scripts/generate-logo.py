@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Turn the NXE logotype into femtovg path commands.
+"""Turn the NXE logotype into path commands for femtovg and egui.
 
 **The SVG is the source; the Rust is generated.** femtovg has no SVG reader, and
 pulling one in to draw one shape would cost a dependency and a licence for
@@ -14,7 +14,12 @@ import re
 from pathlib import Path
 
 SVG = Path("crates/nxe-ui/assets/nxe/logo.svg")
-OUT = Path("crates/nxe-ui/src/logo/generated.rs")
+# Both window crates draw the mark until `nxe-ui` goes with the last vizia
+# plugin (`V2-16`); the file is the same in each.
+OUTS = [
+    Path("crates/nxe-egui/src/logo/generated.rs"),
+    Path("crates/nxe-ui/src/logo/generated.rs"),
+]
 
 NUMBER = re.compile(r"-?\d*\.?\d+(?:e-?\d+)?")
 
@@ -82,7 +87,7 @@ def main():
         "//! `scripts/generate-logo.py` — do not edit.** Regenerate with",
         "//! `mise run logo:generate`.",
         "//!",
-        "//! Coordinates are in the SVG's own viewbox; [`super::draw`] scales them.",
+        "//! Coordinates are in the SVG's own viewbox; the `logo` module scales them.",
         "",
         "use super::Segment::{self, Close, Cubic, Line, Move};",
         "",
@@ -95,9 +100,10 @@ def main():
         for segment in segments(path):
             lines.append(f"    {segment},")
     lines.append("];")
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text("\n".join(lines) + "\n")
-    print(f"{OUT}: {sum(len(segments(p)) for p in paths)} segments")
+    for out in OUTS:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text("\n".join(lines) + "\n")
+        print(f"{out}: {sum(len(segments(p)) for p in paths)} segments")
 
 
 if __name__ == "__main__":

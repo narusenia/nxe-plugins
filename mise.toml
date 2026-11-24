@@ -23,7 +23,9 @@ run = "cargo clippy --workspace --all-targets -- -D warnings"
 
 [tasks.test]
 description = "Workspace test suite"
-run = "cargo test --workspace"
+# `--no-fail-fast` so one failing crate does not hide another: a run that
+# re-bakes several window baselines needs every render.
+run = "cargo test --workspace --no-fail-fast"
 
 [tasks.check]
 description = "Full verification (fmt + clippy + test)"
