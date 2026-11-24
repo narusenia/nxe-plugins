@@ -1,0 +1,13 @@
+# Which plugins a release carries. A release is cut per series, not per plugin
+# (`release.yml`): one tag `<series>-<YYYY.MM>[.N][-beta.N]` builds every
+# plugin listed here and attaches one zip per plugin and platform to a single
+# release, so the releases page shows one entry per drop.
+#
+# A plugin keeps its own version in its `Cargo.toml`; the release notes list
+# them. A plugin that did not change since the last drop ships again as is.
+#
+# Every plugin listed must be in `truce.toml`.
+
+[basic]
+name = "Basic"
+plugins = ["doubler", "sparkleur", "velour", "air", "diorama", "pumice"]

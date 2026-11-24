@@ -54,8 +54,10 @@ touching the interface.
 
 ## Installing a release build
 
-Each plugin is released on its own, tagged `<plugin>-v<version>`, and attaches a
-zip per platform (`nxe-doubler-0.2.0-macos.zip`). Unpack it and copy the bundles
+Plugins are released a series at a time: one release per drop, tagged
+`<series>-<YYYY.MM>` (`basic-2026.12`), with a zip per plugin and platform
+(`nxe-doubler-2.0.0-macos.zip`). The 0.x releases before it were one per
+plugin, tagged `<plugin>-v<version>`. Unpack it and copy the bundles
 into:
 
 | | CLAP | VST3 |
