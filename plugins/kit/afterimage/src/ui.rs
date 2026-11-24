@@ -144,14 +144,14 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
     let ghosts = ghosts(ui, &present, p);
     plot.fill(ui, PALETTE.accent.at(0.12), |hz| height(&trace, hz));
     for (age, ghost) in ghosts.iter().rev().enumerate().rev() {
-        // Oldest first, so the newer ones lie on top; fainter and greyer with age.
+        // Oldest first, so the newer ones lie on top; fainter with age.
         let fade = 1.0 - age as f32 / GHOSTS as f32;
-        let colour = PALETTE
-            .muted
-            .mix(PALETTE.accent, fade)
-            .at(0.6 * fade * fade);
+        let colour = PALETTE.accent.at(0.55 * fade * fade);
         plot.curve(ui, colour, 1.0, |hz| height(ghost, hz));
     }
-    plot.fill(ui, PALETTE.line, |hz| height(&present, hz));
+    // The accent darkened, not grey: the window stays in one hue.
+    plot.fill(ui, PALETTE.ground.mix(PALETTE.deep, 0.45), |hz| {
+        height(&present, hz)
+    });
     plot.curve(ui, PALETTE.accent, 2.0, |hz| height(&trace, hz));
 }
