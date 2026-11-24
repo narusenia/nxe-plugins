@@ -6,7 +6,8 @@
 
 ```
 Cargo.toml                        ワークスペース（依存のピンはここに一元化）
-bundler.toml                      バンドルの表示名（パッケージ名でセクション分け）
+truce.toml                        truce に移ったプラグインの名前・ID・AU コード
+bundler.toml                      nih-plug に残るプラグインのバンドル表示名
 .cargo/config.toml                `cargo xtask` のエイリアス
 crates/
   nxe-audio/                      共通の音声処理（カーブ・オーバーサンプラ・
@@ -18,10 +19,27 @@ crates/
 plugins/
   doubler/
     doubler-core/                 DSP のみ（ホスト非依存）
-    doubler/                      nih-plug ラッパ（パラメータ + UI）
+    doubler/                      truce ラッパ（パラメータ + egui の窓）
     docs/                         このプラグインの要件・仕様・計画
-xtask/                            nih_plug_xtask のバンドラ
+xtask/                            nih_plug_xtask のバンドラ（nih-plug 側だけ）
 ```
+
+**v2 の移行中は 2 つのフレームワークが同じワークスペースに並ぶ**
+（`docs/implementation/v2-plan.md`）。truce に移ったのは Doubler だけで、
+残り 4 本のラッパと `nxe-ui` / `nxe-plug-ui` は nih-plug + vizia のまま。
+依存は衝突しない: truce の窓は `baseview-truce` という別名のクレートを使うので、
+下の `[patch]` で差し替えている baseview とは別物として解決される。
+
+**truce-clap は patch を 1 つ当てて使っている**（`patches/truce-clap`、ルートの
+`Cargo.toml` の `[patch.crates-io]`）。6.3.0 は state / preset の読込で値を
+変えたあとホストに `rescan(VALUES)` を送らず、clap-validator 0.4 の
+`state-reproducibility-*` が落ちる。変更箇所は `nxe-plugins patch` で検索できる。
+上流に入ったら patch ごと消す。
+
+`truce.toml` も**ワークスペース直下に 1 つ**。`truce::plugin!` がコンパイル時に
+クレート名で自分の `[[plugin]]` を探す。`au_manufacturer` と 5 本の `fourcc` は
+`V2-1` でまとめて決めてあり、まだ移っていない 4 本の分もこのファイルの
+コメントにある。
 
 `bundler.toml` は**ワークスペースの直下に 1 つ**。バンドラがそこを読むので、
 プラグインごとに置くことはできない。
@@ -190,11 +208,22 @@ doubler ──→ doubler-core      （DSP。nih-plug も Vizia も知らない�
 
 ## ビルドと配布
 
-バンドルは nih-plug の xtask が行う。
+truce に移ったプラグインは `cargo truce` でビルド・インストール・検証する。
 
 ```bash
-mise run bundle doubler     # cargo xtask bundle doubler --release
-mise run install doubler    # バンドルして ~/Library/Audio/Plug-Ins へコピー（macOS）
+cargo truce install --user --clap --vst3 --au2 -p doubler
+cargo truce validate --clap --pluginval --auval -p doubler
+```
+
+CI（`check.yml` の `validate`）が macOS で同じ 2 行を回す。**リリースの CI は
+まだ nih-plug の経路だけ**で、truce への置き換えは `V2-13`。それまで
+`doubler-v*` のタグは打たない。
+
+nih-plug に残っているプラグインのバンドルは nih-plug の xtask が行う。
+
+```bash
+mise run bundle velour      # cargo xtask bundle velour --release
+mise run install velour     # バンドルして ~/Library/Audio/Plug-Ins へコピー（macOS）
 mise run gallery            # 共通ウィジェットの gallery
 mise run check              # fmt + clippy + test
 ```

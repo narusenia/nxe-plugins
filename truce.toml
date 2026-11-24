@@ -1,0 +1,36 @@
+# truce project configuration (v2). `truce::plugin!` reads this at compile
+# time, keyed by crate name, and `cargo truce` reads it to build and install.
+#
+# **`bundle_id`, `au_manufacturer` and `fourcc` can never change once shipped.**
+# `bundle_id` is what truce derives the CLAP id, the VST3 class id and the state
+# hash from; the AU codes are what Logic stores in a project. All five plugins'
+# codes are decided here at once (`V2-1`), including the four not on truce yet,
+# so none of them is picked in a hurry later.
+#
+#   Doubler 2    bundle_id = "doubler2"    fourcc = "Dbl2"
+#   Velour 2     bundle_id = "velour2"     fourcc = "Vlr2"
+#   Sparkleur 2  bundle_id = "sparkleur2"  fourcc = "Spk2"
+#   Air 2        bundle_id = "air2"        fourcc = "Air2"
+#   Diorama 2    bundle_id = "diorama2"    fourcc = "Dio2"
+#
+# The "2" is in the ids on purpose: v2 drops compatibility with v0 sessions,
+# and a new id lets both versions be installed side by side
+# (`docs/implementation/v2-plan.md`, decision 4).
+
+[vendor]
+name = "NXE"
+id = "com.nxe"
+url = "https://github.com/narusenia/nxe-plugins"
+# Apple reserves all-lowercase manufacturer codes, so this has capitals.
+au_manufacturer = "Nxeu"
+
+[[plugin]]
+name = "NXE Doubler 2"
+bundle_id = "doubler2"
+crate = "doubler"
+category = "effect"
+fourcc = "Dbl2"
+description = "Multi-voice doubler"
+vst3_subcategory = "Modulation"
+# AU lists a plugin as "<manufacturer>: <name>", so the vendor is already there.
+au_name = "Doubler 2"

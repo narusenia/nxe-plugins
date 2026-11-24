@@ -40,3 +40,66 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - run: mise run check
+
+  # **The v2 plugins against the industry validators**: auval (AU v2),
+  # pluginval (VST3) and clap-validator (CLAP), through `cargo truce validate`
+  # (`docs/implementation/v2-plan.md`, decision 8). One `-p` per plugin that
+  # is on truce; the others join as they move.
+  #
+  # A validator that is missing or a bundle that is not installed is reported
+  # as SKIP rather than as a failure, so the log is grepped for it: a validate
+  # step that checked nothing must not pass.
+  validate:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Cache tools
+        id: cache-tools
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/clap-validator
+            /Applications/pluginval.app
+          key: validate-tools-macos-pluginval-1.0.4-clapval-2026-11-24
+
+      # `cargo-truce` itself comes from `mise.toml`, through mise-action above.
+      - name: Install validators
+        if: steps.cache-tools.outputs.cache-hit != 'true'
+        run: |
+          cargo install --locked --git https://github.com/free-audio/clap-validator clap-validator
+          curl -fsSL -o "$RUNNER_TEMP/pluginval.zip" \
+            https://github.com/Tracktion/pluginval/releases/download/v1.0.4/pluginval_macOS.zip
+          unzip -oq "$RUNNER_TEMP/pluginval.zip" -d /Applications/
+
+      - name: Install the plugins
+        run: cargo truce install --user --clap --vst3 --au2 -p doubler
+
+      # **auval did not find a component installed for the user** — on the
+      # runner, and on a development Mac where the DAWs listed it fine. The AU
+      # registrar is what auval asks, and it did not pick up
+      # `~/Library/Audio/Plug-Ins/Components`. A copy in the system folder and a
+      # restarted registrar is what an installer would leave behind anyway.
+      - name: Register the AU for auval
+        run: |
+          sudo mkdir -p /Library/Audio/Plug-Ins/Components
+          for bundle in ~/Library/Audio/Plug-Ins/Components/NXE*.component; do
+            sudo cp -R "$bundle" /Library/Audio/Plug-Ins/Components/
+          done
+          killall -9 AudioComponentRegistrar || true
+          for _ in $(seq 1 30); do
+            auval -a | grep -q Nxeu && break
+            sleep 2
+          done
+          auval -a | grep Nxeu
+
+      - name: Validate
+        run: |
+          set -e -o pipefail
+          cargo truce validate --clap --pluginval --auval -p doubler 2>&1 | tee validate.log
+          if grep -E "SKIP|not found" validate.log >/dev/null; then
+            echo "::error::validate skipped a step"
+            exit 1
+          fi

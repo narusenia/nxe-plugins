@@ -1,7 +1,7 @@
 //! Parameter declarations and the mapping to `doubler_core`'s plain values.
 //!
 //! This is the adapter the architecture calls for: `doubler-core` knows nothing
-//! about nih-plug, so the translation lives here
+//! about truce, so the translation lives here
 //! (`docs/specifications/architecture.md`).
 //!
 //! The layer split is the one `REQ-DBL-007` describes — macros in their natural
@@ -12,26 +12,24 @@
 //! `plugins/doubler/docs/specifications/dsp.md`. They differ per parameter
 //! because the path from the value to the sound differs: a gain can move in
 //! 20 ms, but a read position moving that fast is an audible pitch transient.
+//!
+//! **Ids are truce's hash of the field name**, so renaming a field is renaming
+//! a parameter for every saved session. The display `name` is free to change.
 
-use doubler_core::{DEFAULT_SHAPE, MAX_VOICES, Macros, Source, VoiceShape, Voices};
-use nih_plug::prelude::*;
-use nih_plug_vizia::ViziaState;
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use crate::analysis::Analysis;
+use doubler_core::{MAX_VOICES, Macros, Source, VoiceShape, Voices};
+use truce::prelude::*;
 
 /// How many voices are live.
 ///
-/// A separate type from `doubler_core::Voices` on purpose: deriving nih-plug's
-/// `Enum` on the core type would make the core depend on nih-plug.
-#[derive(Enum, Debug, PartialEq, Eq, Clone, Copy)]
+/// A separate type from `doubler_core::Voices` on purpose: deriving truce's
+/// `ParamEnum` on the core type would make the core depend on truce.
+#[derive(ParamEnum, Debug)]
 pub enum VoicesParam {
-    #[id = "2"]
     #[name = "2"]
     Two,
-    #[id = "4"]
     #[name = "4"]
     Four,
-    #[id = "8"]
     #[name = "8"]
     Eight,
 }
@@ -46,16 +44,12 @@ impl From<VoicesParam> for Voices {
     }
 }
 
-/// Where the voices take their input from.
-///
-/// A separate type from `doubler_core::Source` for the same reason as
-/// `VoicesParam`.
-#[derive(Enum, Debug, PartialEq, Eq, Clone, Copy)]
+/// Where the voices take their input from. Separate from
+/// `doubler_core::Source` for the same reason as `VoicesParam`.
+#[derive(ParamEnum, Debug)]
 pub enum SourceParam {
-    #[id = "mono"]
     #[name = "Mono Sum"]
     MonoSum,
-    #[id = "stereo"]
     #[name = "True Stereo"]
     TrueStereo,
 }
@@ -71,253 +65,261 @@ impl From<SourceParam> for Source {
 
 #[derive(Params)]
 pub struct DoublerParams {
-    /// The editor's size. Persisted with the parameters so a project reopens
-    /// looking the way it was left.
-    #[persist = "editor-state"]
-    pub editor_state: Arc<ViziaState>,
+    /// What the editor is shown about the sound. Not a parameter: the audio
+    /// thread writes it and the editor reads it, and the params `Arc` is the
+    /// one thing both are handed (`analysis.rs`).
+    #[skip]
+    pub analysis: Analysis,
 
-    /// Whether the Detail tab is the one showing. Not a parameter: it does not
-    /// affect the sound and automating it would be meaningless
-    /// (`REQ-DBL-008`). The editor's model is what the display binds to; this
-    /// is the copy that survives closing the project.
-    #[persist = "detail-tab"]
-    pub detail_tab: Arc<AtomicBool>,
-
-    /// Whether editing one of a voice's shape axes writes its partner too
-    /// (`REQ-DBL-014`). One flag per axis: a single switch plus a per-axis
-    /// exception would mean two pieces of state deciding one write.
-    ///
-    /// Not parameters, and deliberately so: they change what an edit does, not
-    /// what the plugin sounds like, so automating them would automate the user
-    /// interface. Persisted for the same reason `detail_tab` is.
-    #[persist = "mirror-pan"]
-    pub mirror_pan: Arc<AtomicBool>,
-    #[persist = "mirror-detune"]
-    pub mirror_detune: Arc<AtomicBool>,
-    #[persist = "mirror-delay"]
-    pub mirror_delay: Arc<AtomicBool>,
-    #[persist = "mirror-gain"]
-    pub mirror_gain: Arc<AtomicBool>,
-
-    #[id = "voices"]
+    /// `Four` by default.
+    #[param(name = "Voices", default = 1)]
     pub voices: EnumParam<VoicesParam>,
-    #[id = "source"]
+    #[param(name = "Source")]
     pub source: EnumParam<SourceParam>,
-    #[id = "detune"]
+    #[param(
+        name = "Detune",
+        range = "linear(0, 50)",
+        default = 12.0,
+        format = "cents",
+        smooth = "linear(30)"
+    )]
     pub detune: FloatParam,
-    #[id = "delay"]
+    /// Slower than the rest: moving a read position *is* a pitch change, so a
+    /// fast ramp is heard as a glide rather than as a delay edit.
+    #[param(
+        name = "Delay",
+        range = "linear(0, 80)",
+        default = 22.0,
+        unit = "ms",
+        smooth = "linear(100)"
+    )]
     pub delay: FloatParam,
-    #[id = "spread"]
+    #[param(
+        name = "Spread",
+        range = "linear(0, 1)",
+        default = 0.7,
+        unit = "%",
+        smooth = "linear(20)"
+    )]
     pub spread: FloatParam,
-    #[id = "human"]
+    #[param(
+        name = "Humanize",
+        range = "linear(0, 1)",
+        default = 0.35,
+        unit = "%",
+        smooth = "linear(20)"
+    )]
     pub humanize: FloatParam,
-    #[id = "tonelo"]
+    #[param(
+        name = "Tone Lo",
+        range = "linear(-12, 12)",
+        unit = "dB",
+        smooth = "linear(20)"
+    )]
     pub tone_lo: FloatParam,
-    #[id = "tonehi"]
+    #[param(
+        name = "Tone Hi",
+        range = "linear(-12, 12)",
+        unit = "dB",
+        smooth = "linear(20)"
+    )]
     pub tone_hi: FloatParam,
-    #[id = "tonespr"]
+    #[param(
+        name = "Tone Spread",
+        range = "linear(0, 1)",
+        unit = "%",
+        smooth = "linear(20)"
+    )]
     pub tone_spread: FloatParam,
-    #[id = "mix"]
+    #[param(
+        name = "Mix",
+        range = "linear(0, 1)",
+        default = 0.4,
+        unit = "%",
+        smooth = "linear(20)"
+    )]
     pub mix: FloatParam,
-    #[id = "output"]
+    #[param(
+        name = "Output",
+        range = "linear(-12, 12)",
+        unit = "dB",
+        smooth = "linear(20)"
+    )]
     pub output: FloatParam,
 
-    /// The shape layer. Ids get a `_1`..`_8` suffix.
-    ///
-    /// All eight exist whatever `voices` says: nih-plug declares parameters
-    /// once at startup and cannot add them later (`REQ-DBL-001`).
-    #[nested(array, group = "Voice")]
-    pub shape: [VoiceParams; MAX_VOICES],
+    /// The shape layer. All eight exist whatever `voices` says: a plugin
+    /// declares its parameters once and cannot add them later (`REQ-DBL-001`).
+    #[nested]
+    pub voice1: Voice1,
+    #[nested]
+    pub voice2: Voice2,
+    #[nested]
+    pub voice3: Voice3,
+    #[nested]
+    pub voice4: Voice4,
+    #[nested]
+    pub voice5: Voice5,
+    #[nested]
+    pub voice6: Voice6,
+    #[nested]
+    pub voice7: Voice7,
+    #[nested]
+    pub voice8: Voice8,
+}
+
+impl DoublerParams {
+    fn cents(&self, value: f64) -> String {
+        format!("{value:.1} ct")
+    }
 }
 
 /// One voice's shape. Normalized, except `gain` which has no macro.
-#[derive(Params)]
-pub struct VoiceParams {
-    #[id = "vdly"]
-    pub delay: FloatParam,
-    #[id = "vdet"]
-    pub detune: FloatParam,
-    #[id = "vpan"]
-    pub pan: FloatParam,
-    #[id = "vgain"]
-    pub gain: FloatParam,
-}
-
-impl Default for DoublerParams {
-    fn default() -> Self {
-        let defaults = Macros::default();
-
-        Self {
-            editor_state: crate::ui::default_state(),
-            detail_tab: Arc::new(AtomicBool::new(false)),
-            // On for the two axes the figure is read as symmetric on — angle
-            // and radius — so dragging a dot cannot lean the image by accident.
-            // Off for the two that are not in the picture: an asymmetric delay
-            // and a detune that is not quite its partner's opposite are where a
-            // doubler's thickness comes from, so those start free.
-            mirror_pan: Arc::new(AtomicBool::new(true)),
-            mirror_gain: Arc::new(AtomicBool::new(true)),
-            mirror_detune: Arc::new(AtomicBool::new(false)),
-            mirror_delay: Arc::new(AtomicBool::new(false)),
-
-            voices: EnumParam::new("Voices", VoicesParam::Four),
-            source: EnumParam::new("Source", SourceParam::MonoSum),
-
-            detune: FloatParam::new(
-                "Detune",
-                defaults.detune,
-                FloatRange::Linear {
-                    min: 0.0,
-                    max: 50.0,
-                },
-            )
-            .with_unit(" ct")
-            .with_smoother(SmoothingStyle::Linear(30.0))
-            .with_value_to_string(formatters::v2s_f32_rounded(1)),
-
-            delay: FloatParam::new(
-                "Delay",
-                defaults.delay,
-                FloatRange::Linear {
-                    min: 0.0,
-                    max: 80.0,
-                },
-            )
-            .with_unit(" ms")
-            // Slower than the rest: moving a read position *is* a pitch change,
-            // so a fast ramp is heard as a glide rather than as a delay edit.
-            .with_smoother(SmoothingStyle::Linear(100.0))
-            .with_value_to_string(formatters::v2s_f32_rounded(1)),
-
-            spread: FloatParam::new(
-                "Spread",
-                defaults.spread,
-                FloatRange::Linear { min: 0.0, max: 1.0 },
-            )
-            .with_unit(" %")
-            .with_smoother(SmoothingStyle::Linear(20.0))
-            .with_value_to_string(formatters::v2s_f32_percentage(0))
-            .with_string_to_value(formatters::s2v_f32_percentage()),
-
-            humanize: FloatParam::new(
-                "Humanize",
-                defaults.humanize,
-                FloatRange::Linear { min: 0.0, max: 1.0 },
-            )
-            .with_unit(" %")
-            .with_smoother(SmoothingStyle::Linear(20.0))
-            .with_value_to_string(formatters::v2s_f32_percentage(0))
-            .with_string_to_value(formatters::s2v_f32_percentage()),
-
-            tone_lo: FloatParam::new(
-                "Tone Lo",
-                defaults.tone_lo,
-                FloatRange::Linear {
-                    min: -12.0,
-                    max: 12.0,
-                },
-            )
-            .with_unit(" dB")
-            .with_smoother(SmoothingStyle::Linear(20.0))
-            .with_value_to_string(formatters::v2s_f32_rounded(1)),
-
-            tone_hi: FloatParam::new(
-                "Tone Hi",
-                defaults.tone_hi,
-                FloatRange::Linear {
-                    min: -12.0,
-                    max: 12.0,
-                },
-            )
-            .with_unit(" dB")
-            .with_smoother(SmoothingStyle::Linear(20.0))
-            .with_value_to_string(formatters::v2s_f32_rounded(1)),
-
-            tone_spread: FloatParam::new(
-                "Tone Spread",
-                defaults.tone_spread,
-                FloatRange::Linear { min: 0.0, max: 1.0 },
-            )
-            .with_unit(" %")
-            .with_smoother(SmoothingStyle::Linear(20.0))
-            .with_value_to_string(formatters::v2s_f32_percentage(0))
-            .with_string_to_value(formatters::s2v_f32_percentage()),
-
-            mix: FloatParam::new("Mix", 0.4, FloatRange::Linear { min: 0.0, max: 1.0 })
-                .with_unit(" %")
-                .with_smoother(SmoothingStyle::Linear(20.0))
-                .with_value_to_string(formatters::v2s_f32_percentage(0))
-                .with_string_to_value(formatters::s2v_f32_percentage()),
-
-            output: FloatParam::new(
-                "Output",
-                0.0,
-                FloatRange::Linear {
-                    min: -12.0,
-                    max: 12.0,
-                },
-            )
-            .with_unit(" dB")
-            .with_smoother(SmoothingStyle::Linear(20.0))
-            .with_value_to_string(formatters::v2s_f32_rounded(1)),
-
-            shape: std::array::from_fn(VoiceParams::new),
+///
+/// **Eight types, not one.** truce fixes a parameter's default on its type, and
+/// each voice's default is its row of `doubler_core::DEFAULT_SHAPE`. The test
+/// `voice_defaults_are_the_core_table` keeps the literals here equal to that
+/// table, so it is still the one place to change them.
+macro_rules! voice {
+    ($ty:ident, $group:tt, $delay_name:tt, $detune_name:tt, $pan_name:tt, $gain_name:tt,
+     delay = $delay:tt, detune = [$($detune:tt)+], pan = [$($pan:tt)+]) => {
+        #[derive(Params)]
+        pub struct $ty {
+            #[param(
+                name = $delay_name,
+                group = $group,
+                range = "linear(0, 1)",
+                default = $delay,
+                smooth = "linear(100)"
+            )]
+            pub delay: FloatParam,
+            #[param(
+                name = $detune_name,
+                group = $group,
+                range = "linear(-1, 1)",
+                default = $($detune)+,
+                smooth = "linear(30)"
+            )]
+            pub detune: FloatParam,
+            #[param(
+                name = $pan_name,
+                group = $group,
+                range = "linear(-1, 1)",
+                default = $($pan)+,
+                unit = "pan",
+                smooth = "linear(20)"
+            )]
+            pub pan: FloatParam,
+            #[param(
+                name = $gain_name,
+                group = $group,
+                range = "linear(-24, 6)",
+                unit = "dB",
+                smooth = "linear(20)"
+            )]
+            pub gain: FloatParam,
         }
-    }
-}
 
-impl VoiceParams {
-    /// Defaults come from the core's shape table, so the sound out of the box
-    /// is the one `dsp.md` describes and there is one place to change it.
-    fn new(index: usize) -> Self {
-        let default = DEFAULT_SHAPE[index];
-
-        Self {
-            delay: FloatParam::new(
-                "Delay",
-                default.delay,
-                FloatRange::Linear { min: 0.0, max: 1.0 },
-            )
-            .with_smoother(SmoothingStyle::Linear(100.0))
-            .with_value_to_string(formatters::v2s_f32_rounded(2)),
-
-            detune: FloatParam::new(
-                "Detune",
-                default.detune,
-                FloatRange::Linear {
-                    min: -1.0,
-                    max: 1.0,
-                },
-            )
-            .with_smoother(SmoothingStyle::Linear(30.0))
-            .with_value_to_string(formatters::v2s_f32_rounded(2)),
-
-            pan: FloatParam::new(
-                "Pan",
-                default.pan,
-                FloatRange::Linear {
-                    min: -1.0,
-                    max: 1.0,
-                },
-            )
-            .with_smoother(SmoothingStyle::Linear(20.0))
-            .with_value_to_string(formatters::v2s_f32_panning())
-            .with_string_to_value(formatters::s2v_f32_panning()),
-
-            gain: FloatParam::new(
-                "Gain",
-                default.gain_db,
-                FloatRange::Linear {
-                    min: -24.0,
-                    max: 6.0,
-                },
-            )
-            .with_unit(" dB")
-            .with_smoother(SmoothingStyle::Linear(20.0))
-            .with_value_to_string(formatters::v2s_f32_rounded(1)),
+        impl $ty {
+            fn shape(&self) -> VoiceShape {
+                VoiceShape {
+                    delay: self.delay.read(),
+                    detune: self.detune.read(),
+                    pan: self.pan.read(),
+                    gain_db: self.gain.read(),
+                }
+            }
         }
-    }
+    };
 }
+
+voice!(
+    Voice1,
+    "Voice 1",
+    "V1 Delay",
+    "V1 Detune",
+    "V1 Pan",
+    "V1 Gain",
+    delay = 1.0,
+    detune = [-1.0],
+    pan = [-1.0]
+);
+voice!(
+    Voice2,
+    "Voice 2",
+    "V2 Delay",
+    "V2 Detune",
+    "V2 Pan",
+    "V2 Gain",
+    delay = 0.72,
+    detune = [1.0],
+    pan = [1.0]
+);
+voice!(
+    Voice3,
+    "Voice 3",
+    "V3 Delay",
+    "V3 Detune",
+    "V3 Pan",
+    "V3 Gain",
+    delay = 0.84,
+    detune = [-0.40],
+    pan = [-0.45]
+);
+voice!(
+    Voice4,
+    "Voice 4",
+    "V4 Delay",
+    "V4 Detune",
+    "V4 Pan",
+    "V4 Gain",
+    delay = 0.44,
+    detune = [0.40],
+    pan = [0.45]
+);
+voice!(
+    Voice5,
+    "Voice 5",
+    "V5 Delay",
+    "V5 Detune",
+    "V5 Pan",
+    "V5 Gain",
+    delay = 0.92,
+    detune = [-0.70],
+    pan = [-0.75]
+);
+voice!(
+    Voice6,
+    "Voice 6",
+    "V6 Delay",
+    "V6 Detune",
+    "V6 Pan",
+    "V6 Gain",
+    delay = 0.30,
+    detune = [0.70],
+    pan = [0.75]
+);
+voice!(
+    Voice7,
+    "Voice 7",
+    "V7 Delay",
+    "V7 Detune",
+    "V7 Pan",
+    "V7 Gain",
+    delay = 0.52,
+    detune = [-0.25],
+    pan = [-0.20]
+);
+voice!(
+    Voice8,
+    "Voice 8",
+    "V8 Delay",
+    "V8 Detune",
+    "V8 Pan",
+    "V8 Gain",
+    delay = 0.62,
+    detune = [0.25],
+    pan = [0.20]
+);
 
 impl DoublerParams {
     /// The macro layer for this sample.
@@ -325,13 +327,13 @@ impl DoublerParams {
         Macros {
             voices: self.voices.value().into(),
             source: self.source.value().into(),
-            detune: self.detune.smoothed.next(),
-            delay: self.delay.smoothed.next(),
-            spread: self.spread.smoothed.next(),
-            humanize: self.humanize.smoothed.next(),
-            tone_lo: self.tone_lo.smoothed.next(),
-            tone_hi: self.tone_hi.smoothed.next(),
-            tone_spread: self.tone_spread.smoothed.next(),
+            detune: self.detune.read(),
+            delay: self.delay.read(),
+            spread: self.spread.read(),
+            humanize: self.humanize.read(),
+            tone_lo: self.tone_lo.read(),
+            tone_hi: self.tone_hi.read(),
+            tone_spread: self.tone_spread.read(),
         }
     }
 
@@ -341,14 +343,101 @@ impl DoublerParams {
     /// is polled, so skipping the inactive ones would leave them holding a
     /// stale value to jump from when `Voices` goes back up.
     pub fn shape(&self) -> [VoiceShape; MAX_VOICES] {
-        std::array::from_fn(|i| {
-            let params = &self.shape[i];
-            VoiceShape {
-                delay: params.delay.smoothed.next(),
-                detune: params.detune.smoothed.next(),
-                pan: params.pan.smoothed.next(),
-                gain_db: params.gain.smoothed.next(),
-            }
-        })
+        [
+            self.voice1.shape(),
+            self.voice2.shape(),
+            self.voice3.shape(),
+            self.voice4.shape(),
+            self.voice5.shape(),
+            self.voice6.shape(),
+            self.voice7.shape(),
+            self.voice8.shape(),
+        ]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use doubler_core::DEFAULT_SHAPE;
+
+    /// The literals in `voice!` are a copy of the core's table, because a
+    /// truce default has to be a literal. This is what keeps the copy honest.
+    #[test]
+    fn voice_defaults_are_the_core_table() {
+        let params = DoublerParams::new();
+        let shape = [
+            (
+                &params.voice1.delay,
+                &params.voice1.detune,
+                &params.voice1.pan,
+                &params.voice1.gain,
+            ),
+            (
+                &params.voice2.delay,
+                &params.voice2.detune,
+                &params.voice2.pan,
+                &params.voice2.gain,
+            ),
+            (
+                &params.voice3.delay,
+                &params.voice3.detune,
+                &params.voice3.pan,
+                &params.voice3.gain,
+            ),
+            (
+                &params.voice4.delay,
+                &params.voice4.detune,
+                &params.voice4.pan,
+                &params.voice4.gain,
+            ),
+            (
+                &params.voice5.delay,
+                &params.voice5.detune,
+                &params.voice5.pan,
+                &params.voice5.gain,
+            ),
+            (
+                &params.voice6.delay,
+                &params.voice6.detune,
+                &params.voice6.pan,
+                &params.voice6.gain,
+            ),
+            (
+                &params.voice7.delay,
+                &params.voice7.detune,
+                &params.voice7.pan,
+                &params.voice7.gain,
+            ),
+            (
+                &params.voice8.delay,
+                &params.voice8.detune,
+                &params.voice8.pan,
+                &params.voice8.gain,
+            ),
+        ];
+        for (index, (delay, detune, pan, gain)) in shape.into_iter().enumerate() {
+            let core = DEFAULT_SHAPE[index];
+            assert_eq!(delay.value(), core.delay, "voice {} delay", index + 1);
+            assert_eq!(detune.value(), core.detune, "voice {} detune", index + 1);
+            assert_eq!(pan.value(), core.pan, "voice {} pan", index + 1);
+            assert_eq!(gain.value(), core.gain_db, "voice {} gain", index + 1);
+        }
+    }
+
+    /// The same for the macros, whose defaults live in `Macros::default()`.
+    #[test]
+    fn macro_defaults_are_the_core_defaults() {
+        let params = DoublerParams::new();
+        let core = Macros::default();
+        assert_eq!(Voices::from(params.voices.value()), core.voices);
+        assert_eq!(Source::from(params.source.value()), core.source);
+        assert_eq!(params.detune.value(), core.detune);
+        assert_eq!(params.delay.value(), core.delay);
+        assert_eq!(params.spread.value(), core.spread);
+        assert_eq!(params.humanize.value(), core.humanize);
+        assert_eq!(params.tone_lo.value(), core.tone_lo);
+        assert_eq!(params.tone_hi.value(), core.tone_hi);
+        assert_eq!(params.tone_spread.value(), core.tone_spread);
     }
 }

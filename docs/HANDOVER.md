@@ -1,7 +1,7 @@
 # 引き継ぎ
 
 **2026-11-24 時点。** v0.2.0 は 5 本とも出荷済み（2026-08-31）。いまは **v2 の
-計画が済み、実装は未着手**。v0.x の引き継ぎ（測定の経緯、各プラグインで踏んだ罠、
+実装中**。Doubler が truce に載った（`V2-1` のコード、#7）。v0.x の引き継ぎ（測定の経緯、各プラグインで踏んだ罠、
 vizia の重さ問題）は [`archive/v0-handover.md`](archive/v0-handover.md)。
 
 ## いま作っているもの — v2
@@ -17,15 +17,19 @@ vizia の重さ問題）は [`archive/v0-handover.md`](archive/v0-handover.md)�
 
 ## 次の一手
 
-**`V2-1`** — truce の骨格と Doubler 2 の起動。着手の前に:
+**`V2-1` の実機確認**（Ableton Live・Studio One・Logic で保存→再読込、自動化）
+は人の手が要る。`cargo truce install --user --clap --vst3 --au2 -p doubler`
+で入る。
 
-1. main から `release/v0` を切る（v0.2 系のバグ修正の置き場）
-2. `au_manufacturer` と 5 本の `fourcc` を決める。**出荷後は変えられない**
+コードの側は `V2-2`〜`V2-4` と `V2-13` が着手できる（`backlog.md`）。
+
+- `release/v0` は切ってある。v0.2 系のバグ修正はそちら
+- `au_manufacturer` と 5 本の `fourcc` は `truce.toml` で決めた。**出荷後は変えられない**
 
 ## 5 分で状況を掴む順番
 
-1. [`../AGENTS.md`](../AGENTS.md) — リポジトリの地図と規約。**フレームワークと
-   ライセンスの記述は v0 のまま**で、`V2-1` で書き換える
+1. [`../AGENTS.md`](../AGENTS.md) — リポジトリの地図と規約。移行中の
+   2 フレームワークの並び方もここ
 2. [`implementation/v2-plan.md`](implementation/v2-plan.md) の「決めたこと」
 3. [`implementation/backlog.md`](implementation/backlog.md) の「今すぐ着手できるもの」
 4. UI を触るなら [`specifications/design-system.md`](specifications/design-system.md)

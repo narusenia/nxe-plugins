@@ -60,6 +60,11 @@ UI は egui の空の窓でよい。`doubler-core` は触らない。
   書く。truce 自身のライセンスの但し書きが配布物に影響しないことも確かめて書く）、
   `docs/specifications/architecture.md`
 
+**決めたこと**: `au_manufacturer = "Nxeu"`、`fourcc` は `Dbl2` / `Vlr2` /
+`Spk2` / `Air2` / `Dio2`、`bundle_id` は `<name>2`。`truce.toml` が正。
+パラメータ ID は truce の既定（フィールド名のハッシュ）にした。並べ替えに強く、
+フィールド名を変えたときだけ壊れる。
+
 **完了条件**: macOS で CLAP / VST3 / AUv2 が `cargo truce validate` を通る。
 Ableton Live・Studio One・Logic で読み込め、保存 → 再読込で全パラメータが戻り、
 自動化を書いて再生すると追従する。
@@ -172,5 +177,4 @@ nih-plug のまま残っている 4 本のタグも壊さないよう、移行�
 | **Mix 系の書体。** Inter + letter-spacing で進める。Host Grotesk や allo に替えるなら、バイナリへの埋め込みが許されるライセンスかを先に確かめる | V2-9 で型を確定するとき |
 | **ステータスバー（ポインタの説明）を残すか、どこに置くか。** H4 の案には描いていない | V2-9 |
 | **Colour / Design シリーズの型。** 候補は Colour が H1 系、Design が G 系 | 各シリーズに着手するとき |
-| `au_manufacturer` と 5 本の `fourcc` | V2-1 |
 | v0 から持ち越した耳の単位（`DBL-13` の既定値、`DIO-13` の既定値、Sparkleur の主観サインオフ `SPK-18`、Diorama の Advanced の偏差 `REQ-DIO-009`） | 各プラグインを型に載せる単位の中で。DSP は `<plugin>-core` にあるので、移行とは独立に進められる |

@@ -9,18 +9,26 @@
 //! test running beside it would have its allocations counted here.
 
 use std::alloc::{GlobalAlloc, Layout, System};
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::cell::Cell;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use air_core::engine::{Engine, Shape};
 
 struct Counting;
 
-static WATCHING: AtomicBool = AtomicBool::new(false);
+// **Per thread.** The test harness has threads of its own, and an allocation
+// one of them makes while this test is watching is not the audio path's —
+// counted globally, it failed CI once with nothing wrong. A `const` thread-local
+// needs no lazy initialisation, so reading it inside the allocator cannot
+// itself allocate.
+thread_local! {
+    static WATCHING: Cell<bool> = const { Cell::new(false) };
+}
 static ALLOCATIONS: AtomicUsize = AtomicUsize::new(0);
 
 unsafe impl GlobalAlloc for Counting {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        if WATCHING.load(Ordering::Relaxed) {
+        if WATCHING.with(Cell::get) {
             ALLOCATIONS.fetch_add(1, Ordering::Relaxed);
         }
         unsafe { System.alloc(layout) }
@@ -31,7 +39,7 @@ unsafe impl GlobalAlloc for Counting {
     }
 
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-        if WATCHING.load(Ordering::Relaxed) {
+        if WATCHING.with(Cell::get) {
             ALLOCATIONS.fetch_add(1, Ordering::Relaxed);
         }
         unsafe { System.realloc(ptr, layout, new_size) }
@@ -54,7 +62,7 @@ fn neither_processing_nor_setting_the_shape_allocates() {
         .map(|index| (index as f32 * 0.01).sin() * 0.4)
         .collect();
 
-    WATCHING.store(true, Ordering::Relaxed);
+    WATCHING.with(|watching| watching.set(true));
     for (block, chunk) in input.chunks(BLOCK).enumerate() {
         // Moved every block, so the paths that rebuild coefficients are the
         // ones being watched rather than the early returns.
@@ -71,17 +79,17 @@ fn neither_processing_nor_setting_the_shape_allocates() {
         }
     }
     let counted = ALLOCATIONS.load(Ordering::Relaxed);
-    WATCHING.store(false, Ordering::Relaxed);
+    WATCHING.with(|watching| watching.set(false));
 
     assert_eq!(counted, 0, "the audio path allocated {counted} times");
 
     // **And the counter can count.** A watcher that never fires would pass the
     // assertion above without looking at anything (`VEL-10`).
-    WATCHING.store(true, Ordering::Relaxed);
+    WATCHING.with(|watching| watching.set(true));
     let before = ALLOCATIONS.load(Ordering::Relaxed);
     std::hint::black_box(vec![0.0f32; 16]);
     let after = ALLOCATIONS.load(Ordering::Relaxed);
-    WATCHING.store(false, Ordering::Relaxed);
+    WATCHING.with(|watching| watching.set(false));
     assert!(
         after > before,
         "the counter never counted, so the test proves nothing"

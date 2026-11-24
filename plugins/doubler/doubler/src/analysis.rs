@@ -2,7 +2,9 @@
 //!
 //! `Handoff`s shared between the audio thread and the editor: the audio
 //! thread publishes a frame per block, the editor reads whatever is there when
-//! it redraws. Held in an `Arc` so closing the window disturbs nothing
+//! it redraws. Held on the params as a `#[skip]` field, because the params
+//! `Arc` is the one thing truce hands both, so closing the window disturbs
+//! nothing
 //! (`docs/specifications/architecture.md`).
 //!
 //! **The analysers themselves live on the plugin**, not here — they are audio
