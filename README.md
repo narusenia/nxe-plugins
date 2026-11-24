@@ -54,22 +54,26 @@ touching the interface.
 
 ## Installing a release build
 
-Each plugin is released on its own, tagged `<plugin>-v<version>`, and attaches a
-zip per platform (`nxe-doubler-0.2.0-macos.zip`). Unpack it and copy the bundles
+Plugins are released a series at a time: one release per drop, tagged
+`<series>-<YYYY.MM>` (`basic-2026.12`), with a zip per plugin and platform
+(`nxe-doubler-2.0.0-macos.zip`), plus one zip per platform holding the
+whole series (`nxe-basic-2026.12-macos.zip`). The 0.x releases before it were one per
+plugin, tagged `<plugin>-v<version>`. Unpack it and copy the bundles
 into:
 
-| | CLAP | VST3 |
-|---|---|---|
-| macOS | `~/Library/Audio/Plug-Ins/CLAP` | `~/Library/Audio/Plug-Ins/VST3` |
-| Windows | `%COMMONPROGRAMFILES%\CLAP` | `%COMMONPROGRAMFILES%\VST3` |
-| Linux | `~/.clap` | `~/.vst3` |
+| | CLAP | VST3 | AU |
+|---|---|---|---|
+| macOS | `~/Library/Audio/Plug-Ins/CLAP` | `~/Library/Audio/Plug-Ins/VST3` | `~/Library/Audio/Plug-Ins/Components` |
+| Windows | `%COMMONPROGRAMFILES%\CLAP` | `%COMMONPROGRAMFILES%\VST3` | — |
 
 **macOS builds are not signed or notarized.** The first time you load one,
-Gatekeeper will refuse it. Clear the quarantine attribute:
+Gatekeeper will refuse it. Clear the quarantine attribute from every NXE
+bundle you installed:
 
 ```bash
-xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/CLAP/'NXE Doubler.clap'
-xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/'NXE Velour.vst3'
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/CLAP/NXE\ *.clap \
+  ~/Library/Audio/Plug-Ins/VST3/NXE\ *.vst3 \
+  ~/Library/Audio/Plug-Ins/Components/NXE\ *.component
 ```
 
 ## License

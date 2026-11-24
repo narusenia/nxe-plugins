@@ -286,12 +286,14 @@ cargo truce install --user --clap --vst3 --au2 -p doubler
 cargo truce validate --clap --pluginval --auval -p doubler
 ```
 
-CI（`check.yml` の `validate`）が macOS で同じ 2 行を回す。**リリースの CI
-（`release.yml`）は 2 経路**: `truce.toml` にあるプラグインのタグは、macOS を
+CI（`check.yml` の `validate`）が macOS で同じ 2 行を回す。**リリースはシリーズ単位**
+（`release.yml`）: タグ `<series>-<YYYY.MM>[.N][-beta.N]`（`basic-2026.12`）で、
+`series.toml` にあるそのシリーズの全プラグインを、macOS は
 `cargo truce package`（universal、CLAP / VST3 / AU v2。stage された bundle を
-使い、installer は配らない）、Windows を `cargo truce build`（CLAP / VST3）で
-作り、validate を通してから zip にする。Linux は出さない。
-残りは今までどおり nih-plug の xtask で 3 OS。
+使い、installer は配らない）、Windows は `cargo truce build`（CLAP / VST3）で
+作り、validate を通してからプラグインごとに zip にする。zip は全部 1 つの
+draft release（`NXE <Series> <version>`）に付く。Linux は出さない。
+プラグインのバージョンは各 `Cargo.toml` が持ち、リリースノートに並ぶ。
 
 nih-plug に残っているプラグインのバンドルは nih-plug の xtask が行う。
 

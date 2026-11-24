@@ -1,13 +1,15 @@
 # Cuts a release from a tag.
 #
-# **One plugin per tag: `<plugin>-v<version>`**, matching the crate directory
-# (`doubler-v0.1.0`). Each plugin ships on its own schedule, so fixing one does
-# not re-release the others — which is the same reason a plugin is self-contained
-# enough to be split into its own repository (`AGENTS.md`).
+# **One release per series and drop: `<series>-<YYYY.MM>[.N][-beta.N]`**
+# (`basic-2026.12`). `series.toml` says which plugins a series carries; every
+# one of them is built, validated and zipped, and all the zips go to one draft
+# release named `NXE <Series> <version>`. Releasing one plugin at a time put a
+# row per plugin on the releases page; a drop is one row. Each plugin keeps its
+# own version in its `Cargo.toml`, and the notes list them. Besides a zip per
+# plugin and platform there is one per platform holding the whole series.
 #
-# Builds on each platform's own runner: the plugins link a native UI stack, so
-# there is no cross-compiling here beyond macOS's two architectures. One zip per
-# platform is attached to a **draft** release.
+# Every plugin is on truce: macOS (universal; CLAP, VST3, AU v2) and Windows
+# (CLAP, VST3). Linux is not built — decision 7 names macOS and Windows.
 #
 # **Nothing is signed or notarized.** Until there is an Apple Developer Program
 # membership, macOS users clear the quarantine attribute by hand; the README says
@@ -15,37 +17,73 @@
 
 name: release
 
-# **Push one tag at a time.** GitHub creates no workflow runs at all when a
-# single push carries more than three tags — four went up together once and
-# nothing built, with no error anywhere to say so. `workflow_dispatch` is the
-# way back from that without deleting and re-pushing a tag.
-#
-# **Two paths while v2 is under way** (`docs/implementation/v2-plan.md`,
-# `V2-13`). A plugin listed in `truce.toml` is built by `cargo truce` for macOS
-# (CLAP, VST3, AU v2) and Windows (CLAP, VST3) and validated before it is
-# zipped; the rest still go through nih-plug's xtask on all three platforms.
-# Linux is not built for a truce plugin: decision 7 names macOS and Windows.
-#
-# A pull request that touches this file builds Doubler without releasing it, so
-# a change here is exercised before a tag depends on it.
+# A pull request that touches this file or `series.toml` builds Doubler
+# without releasing it, so a change here is exercised before a tag depends on
+# it. `workflow_dispatch` rebuilds a tag that is already pushed.
 on:
   pull_request:
-    paths: [.github/workflows/release.yml]
+    paths: [.github/workflows/release.yml, series.toml]
   push:
-    tags: ["*-v*"]
+    tags: ["*-20[0-9][0-9].*"]
   workflow_dispatch:
     inputs:
       tag:
-        description: "The tag to build, e.g. air-v0.1.1"
+        description: "The tag to build, e.g. basic-2026.12"
         required: true
 
 permissions:
   contents: write
 
 jobs:
+  # Reads the tag and `series.toml` once, so every later job builds the same
+  # list. A plugin missing from `truce.toml` fails here, before any build.
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      series: ${{ steps.plan.outputs.series }}
+      title: ${{ steps.plan.outputs.title }}
+      version: ${{ steps.plan.outputs.version }}
+      plugins: ${{ steps.plan.outputs.plugins }}
+      prerelease: ${{ steps.plan.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - id: plan
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import os, re, sys, tomllib
+          series = tomllib.load(open("series.toml", "rb"))
+          truce = {p["crate"]: p for p in tomllib.load(open("truce.toml", "rb"))["plugin"]}
+          # Every series, every time: a typo in series.toml fails the pull
+          # request rather than the tag.
+          missing = sorted({p for v in series.values() for p in v["plugins"]} - truce.keys())
+          if missing:
+              sys.exit(f"::error::series.toml names plugins not in truce.toml: {' '.join(missing)}")
+          if os.environ["EVENT"] == "pull_request":
+              key, version, plugins = "basic", "pr", ["doubler"]
+          else:
+              m = re.fullmatch(r"([a-z]+)-(\d{4}\.\d{2}(?:\.\d+)?(?:-beta\.\d+)?)", os.environ["TAG"])
+              if not m or m[1] not in series:
+                  sys.exit(f"::error::{os.environ['TAG']} is not <series>-<YYYY.MM>[.N][-beta.N] for a series in series.toml")
+              key, version = m[1], m[2]
+              plugins = series[key]["plugins"]
+          print(f"series={key}")
+          print(f"title=NXE {series[key]['name']} {version}")
+          print(f"version={version}")
+          entries = " ".join(p + ":" + truce[p]["fourcc"] for p in plugins)
+          print(f"plugins={entries}")
+          print(f"prerelease={'true' if '-beta.' in version else 'false'}")
+          PY
+
   bundle:
+    needs: plan
     strategy:
-      # One platform failing should not throw away the other two builds: it is
+      # One platform failing should not throw away the other build: it is
       # easier to look at what did build than to guess from a cancelled run.
       fail-fast: false
       matrix:
@@ -54,8 +92,6 @@ jobs:
             name: macos
           - os: windows-latest
             name: windows
-          - os: ubuntu-latest
-            name: linux
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -63,126 +99,21 @@ jobs:
         with:
           ref: ${{ inputs.tag || github.ref }}
 
-      # `doubler-v0.1.0` names both what to build and what to call it. Split
-      # once, in bash, so every later step reads the same values. A pull
-      # request has no tag, so it builds Doubler at whatever version it is.
-      #
-      # `skip` is a truce plugin on Linux: every later step checks it, which is
-      # how a matrix entry is dropped for one tag and not another.
-      - name: Read the tag
-        id: tag
-        shell: bash
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            plugin=doubler
-            version=$(grep -m1 '^version = ' plugins/doubler/doubler/Cargo.toml | cut -d'"' -f2)
-          else
-            tag="${{ inputs.tag || github.ref_name }}"
-            plugin="${tag%-v*}"
-            version="${tag##*-v}"
-          fi
-          truce=false
-          if grep -q "^crate = \"$plugin\"$" truce.toml; then truce=true; fi
-          skip=false
-          if [ "$truce" = true ] && [ "${{ matrix.name }}" = linux ]; then skip=true; fi
-          echo "plugin=$plugin" >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "truce=$truce" >> "$GITHUB_OUTPUT"
-          echo "skip=$skip" >> "$GITHUB_OUTPUT"
-          echo "archive=nxe-$plugin-$version-${{ matrix.name }}" >> "$GITHUB_OUTPUT"
-
-      # A tag that disagrees with the crate would ship the wrong thing under the
-      # right name, and the artefacts would look correct while being wrong.
-      - name: Check the tag against the crate version
-        if: steps.tag.outputs.skip != 'true'
-        shell: bash
-        run: |
-          plugin="${{ steps.tag.outputs.plugin }}"
-          manifest="plugins/$plugin/$plugin/Cargo.toml"
-          crate=$(grep -m1 '^version = ' "$manifest" | cut -d'"' -f2)
-          if [ "$crate" != "${{ steps.tag.outputs.version }}" ]; then
-            echo "::error::$manifest says $crate but the tag says ${{ steps.tag.outputs.version }}"
-            exit 1
-          fi
-
-      # The list comes from nih-plug's own CI. Without them the baseview window
-      # and the audio backends do not build.
-      - name: Install Linux build dependencies
-        if: matrix.name == 'linux' && steps.tag.outputs.skip != 'true'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libasound2-dev libgl-dev libjack-dev \
-            libx11-xcb-dev libxcb1-dev libxcb-dri2-0-dev libxcb-icccm4-dev \
-            libxcursor-dev libxkbcommon-dev libxcb-shape0-dev libxcb-xfixes0-dev
-
       # Same toolchain as `mise run check` and as a laptop: the version lives in
       # `mise.toml` and nowhere else.
       - uses: jdx/mise-action@v2
-        if: steps.tag.outputs.skip != 'true'
 
       - uses: Swatinem/rust-cache@v2
-        if: steps.tag.outputs.skip != 'true'
         with:
           key: ${{ matrix.name }}
 
       # Both macOS architectures, lipo'd into one bundle that runs on Apple
       # Silicon and Intel.
       - name: Add the second macOS architecture
-        if: matrix.name == 'macos' && steps.tag.outputs.skip != 'true'
+        if: matrix.name == 'macos'
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
-      # ---- nih-plug ----------------------------------------------------------
-
-      - name: Bundle (nih-plug)
-        if: matrix.name == 'macos' && steps.tag.outputs.truce != 'true'
-        run: cargo xtask bundle-universal ${{ steps.tag.outputs.plugin }} --release
-
-      - name: Bundle (nih-plug)
-        if: matrix.name != 'macos' && steps.tag.outputs.truce != 'true'
-        run: cargo xtask bundle ${{ steps.tag.outputs.plugin }} --release
-
-      # The bundles link `vst3-sys` (GPLv3), so the binary is conveyed under
-      # the GPL and the license text travels with it (`LICENSING.md`). The
-      # corresponding source is this repository.
-      - name: Put the license in the archive (nih-plug)
-        if: steps.tag.outputs.truce != 'true'
-        shell: bash
-        run: cp LICENSE-GPL-3.0 target/bundled/LICENSE
-
-      # ---- truce -------------------------------------------------------------
-
-      # Universal (Apple Silicon + Intel) through `cargo truce package`, which
-      # is the only cargo-truce command that builds both: `build` makes the
-      # host architecture only, and with `--target` 6.3.0 loses the AU dylib.
-      # The installer it also writes is not shipped (decision 7 says zip); the
-      # bundles it staged for it are.
-      - name: Bundle (truce, macOS)
-        if: matrix.name == 'macos' && steps.tag.outputs.truce == 'true'
-        run: |
-          set -euo pipefail
-          cargo truce package -p "${{ steps.tag.outputs.plugin }}" \
-            --formats clap,vst3,au2 --no-notarize --no-sign
-          mkdir -p target/bundled
-          for bundle in target/package/macos/plugin/*/*.clap \
-                        target/package/macos/plugin/*/*.vst3 \
-                        target/package/macos/plugin/*/*.component; do
-            cp -R "$bundle" target/bundled/
-            lipo -archs "$bundle"/Contents/MacOS/*
-          done
-
-      - name: Bundle (truce, Windows)
-        if: matrix.name == 'windows' && steps.tag.outputs.truce == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          cargo truce build --clap --vst3 -p "${{ steps.tag.outputs.plugin }}"
-          mkdir -p target/bundled
-          cp -R target/bundles/*.clap target/bundles/*.vst3 target/bundled/
-
-      # **A bundle that fails the validators does not ship** (`V2-13`). The
-      # same validators as `check.yml`, against the lipo'd bundles on macOS.
-      - name: Install validators (truce)
-        if: steps.tag.outputs.truce == 'true' && steps.tag.outputs.skip != 'true'
+      - name: Install validators
         shell: bash
         run: |
           set -euo pipefail
@@ -199,85 +130,139 @@ jobs:
             echo "$RUNNER_TEMP/pluginval" >> "$GITHUB_PATH"
           fi
 
+      # One plugin at a time into `target/bundled/<plugin>/`, so each zip holds
+      # one plugin and the validators see exactly what goes in it.
+      #
+      # macOS is universal through `cargo truce package`, the only cargo-truce
+      # command that builds both architectures: `build` makes the host's only,
+      # and with `--target` 6.3.0 loses the AU dylib. The installer it also
+      # writes is not shipped (decision 7 says zip); the bundles it staged are.
+      #
+      # **A bundle that fails the validators does not ship** (`V2-13`).
       # `cargo truce validate` reads installed bundles, so the shipped ones are
-      # installed first: what is validated is what goes in the zip. The AU also
-      # goes to the system folder, where the registrar finds it (`check.yml`).
-      - name: Validate (truce)
-        if: steps.tag.outputs.truce == 'true' && steps.tag.outputs.skip != 'true'
+      # installed first. The AU also goes to the system folder, where the
+      # registrar finds it, and the wait is for this plugin's own fourcc.
+      - name: Bundle and validate
         shell: bash
         run: |
           set -euo pipefail
-          plugin="${{ steps.tag.outputs.plugin }}"
-          if [ "${{ matrix.name }}" = macos ]; then
-            mkdir -p ~/Library/Audio/Plug-Ins/CLAP ~/Library/Audio/Plug-Ins/VST3
-            cp -R target/bundled/*.clap ~/Library/Audio/Plug-Ins/CLAP/
-            cp -R target/bundled/*.vst3 ~/Library/Audio/Plug-Ins/VST3/
-            sudo mkdir -p /Library/Audio/Plug-Ins/Components
-            sudo cp -R target/bundled/*.component /Library/Audio/Plug-Ins/Components/
-            killall -9 AudioComponentRegistrar || true
-            for _ in $(seq 1 30); do auval -a | grep -q Nxeu && break; sleep 2; done
-            cargo truce validate --clap --pluginval --auval -p "$plugin" 2>&1 | tee validate.log
-          else
-            cargo truce install --user --clap --vst3 -p "$plugin"
-            cargo truce validate --pluginval -p "$plugin" 2>&1 | tee validate.log
-            # CLAP directly: cargo-truce 6.3.0 passes `--test-filter` here, which
-            # clap-validator replaced with `--exclude` in 2026-03. The exclusion
-            # is the one truce makes on Windows — clap-validator rejects
-            # Windows-style preset locations, so its preset-discovery tests
-            # cannot pass on any plugin there.
-            # Its own log: clap-validator marks individual tests SKIPPED as a
-            # matter of course, which the cargo-truce check below would read
-            # as a validator that never ran. It fails by exit status.
-            clap-validator validate --exclude preset-discovery target/bundled/*.clap 2>&1 | tee clap-validator.log
-          fi
-          if grep -E "SKIP|not found" validate.log >/dev/null; then
-            echo "::error::validate skipped a step"
-            exit 1
-          fi
-
-      # Permissive (`LICENSING.md`): both texts, the user picks.
-      - name: Put the license in the archive (truce)
-        if: steps.tag.outputs.truce == 'true' && steps.tag.outputs.skip != 'true'
-        shell: bash
-        run: |
-          cp LICENSE-MIT target/bundled/LICENSE-MIT
-          cp LICENSE-APACHE target/bundled/LICENSE-APACHE
+          for entry in ${{ needs.plan.outputs.plugins }}; do
+            plugin="${entry%%:*}"
+            fourcc="${entry##*:}"
+            out="target/bundled/$plugin"
+            mkdir -p "$out"
+            if [ "${{ matrix.name }}" = macos ]; then
+              rm -rf target/package
+              cargo truce package -p "$plugin" --formats clap,vst3,au2 --no-notarize --no-sign
+              for bundle in target/package/macos/plugin/*/*.clap \
+                            target/package/macos/plugin/*/*.vst3 \
+                            target/package/macos/plugin/*/*.component; do
+                cp -R "$bundle" "$out/"
+                lipo -archs "$bundle"/Contents/MacOS/*
+              done
+              mkdir -p ~/Library/Audio/Plug-Ins/CLAP ~/Library/Audio/Plug-Ins/VST3
+              cp -R "$out"/*.clap ~/Library/Audio/Plug-Ins/CLAP/
+              cp -R "$out"/*.vst3 ~/Library/Audio/Plug-Ins/VST3/
+              sudo mkdir -p /Library/Audio/Plug-Ins/Components
+              sudo cp -R "$out"/*.component /Library/Audio/Plug-Ins/Components/
+              killall -9 AudioComponentRegistrar || true
+              for _ in $(seq 1 30); do auval -a | grep -q "$fourcc" && break; sleep 2; done
+              cargo truce validate --clap --pluginval --auval -p "$plugin" 2>&1 | tee validate.log
+            else
+              rm -rf target/bundles
+              cargo truce build --clap --vst3 -p "$plugin"
+              cp -R target/bundles/*.clap target/bundles/*.vst3 "$out/"
+              cargo truce install --user --clap --vst3 -p "$plugin"
+              cargo truce validate --pluginval -p "$plugin" 2>&1 | tee validate.log
+              # CLAP directly: cargo-truce 6.3.0 passes `--test-filter` here,
+              # which clap-validator replaced with `--exclude` in 2026-03. The
+              # exclusion is the one truce makes on Windows — clap-validator
+              # rejects Windows-style preset locations, so its preset-discovery
+              # tests cannot pass on any plugin there. Its own log, because it
+              # marks tests SKIPPED as a matter of course; it fails by status.
+              clap-validator validate --exclude preset-discovery "$out"/*.clap 2>&1 | tee clap-validator.log
+            fi
+            if grep -E "SKIP|not found" validate.log >/dev/null; then
+              echo "::error::validate skipped a step for $plugin"
+              exit 1
+            fi
+            # Permissive (`LICENSING.md`): both texts, the user picks.
+            cp LICENSE-MIT LICENSE-APACHE "$out/"
+            version=$(grep -m1 '^version = ' "plugins/$plugin/$plugin/Cargo.toml" | cut -d'"' -f2)
+            echo "nxe-$plugin-$version-${{ matrix.name }}" > "$out.name"
+          done
 
       # `zip` is not on the Windows runners and `Compress-Archive` is not
       # anywhere else, so this is two steps rather than one clever one.
       - name: Zip
-        if: matrix.name != 'windows' && steps.tag.outputs.skip != 'true'
+        if: matrix.name != 'windows'
         run: |
           cd target/bundled
-          zip -r "../../${{ steps.tag.outputs.archive }}.zip" .
+          for name in *.name; do
+            plugin="${name%.name}"
+            (cd "$plugin" && zip -qr "../../../$(cat "../$name").zip" .)
+          done
+          # The whole series in one zip: every bundle side by side, the
+          # licenses once.
+          mkdir ../series
+          for name in *.name; do cp -R "${name%.name}"/* ../series/; done
+          cd ../series
+          zip -qr "../../nxe-${{ needs.plan.outputs.series }}-${{ needs.plan.outputs.version }}-${{ matrix.name }}.zip" .
 
       - name: Zip
         if: matrix.name == 'windows'
         shell: pwsh
         run: |
-          Compress-Archive -Path target/bundled/* -DestinationPath "${{ steps.tag.outputs.archive }}.zip"
+          Get-ChildItem target/bundled -Filter *.name | ForEach-Object {
+            $plugin = $_.BaseName
+            $archive = (Get-Content $_.FullName).Trim()
+            Compress-Archive -Path "target/bundled/$plugin/*" -DestinationPath "$archive.zip"
+            Copy-Item -Recurse -Force "target/bundled/$plugin/*" (New-Item -ItemType Directory -Force target/series)
+          }
+          Compress-Archive -Path "target/series/*" -DestinationPath "nxe-${{ needs.plan.outputs.series }}-${{ needs.plan.outputs.version }}-${{ matrix.name }}.zip"
 
       - uses: actions/upload-artifact@v4
-        if: steps.tag.outputs.skip != 'true'
         with:
           name: ${{ matrix.name }}
           path: nxe-*.zip
           if-no-files-found: error
 
   release:
-    needs: bundle
+    needs: [plan, bundle]
     # A pull request only proves the build; it never makes a release.
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
 
+      # The plugins and their versions, then GitHub's generated notes.
+      - name: Write the notes
+        shell: bash
+        run: |
+          {
+            echo "| Plugin | Version |"
+            echo "|---|---|"
+            for entry in ${{ needs.plan.outputs.plugins }}; do
+              plugin="${entry%%:*}"
+              name=$(python3 -c "import tomllib,sys; print(next(p['name'] for p in tomllib.load(open('truce.toml','rb'))['plugin'] if p['crate']==sys.argv[1]))" "$plugin")
+              version=$(grep -m1 '^version = ' "plugins/$plugin/$plugin/Cargo.toml" | cut -d'"' -f2)
+              echo "| $name | $version |"
+            done
+          } > notes.md
+
       - uses: softprops/action-gh-release@v2
         with:
+          name: ${{ needs.plan.outputs.title }}
+          body_path: notes.md
           files: artifacts/*.zip
+          prerelease: ${{ needs.plan.outputs.prerelease }}
           # A draft, not a published release: the macOS bundle is unsigned, so
           # someone has to say the notes are right and press the button.
           draft: true

@@ -219,10 +219,10 @@ V2-1 の仮の窓を、V2-5 の部品と H4 の型で置き換える。
 
 ### V2-8 — Doubler 2 beta
 
-Doubler 2 だけを beta として出し（タグは `doubler-v2.0.0-beta.N`）、制作で数週間使う。
-タグは `release.yml` の `*-v*` に当たるので、**beta は V2-13 で truce に置き換えた
-リリースの CI で作る**（今の `cargo xtask bundle` の経路では作れない）。配布は
-draft release の zip。
+Basic の 6 本を beta として出し（タグは `basic-<YYYY.MM>-beta.N`、V2-13 の
+シリーズ単位のリリース）、制作で数週間使う。当初は Doubler 2 だけの予定だったが、
+リリースをシリーズ単位にしたので 1 本だけの beta は作らない。配布は
+draft release（プレリリース）の zip。
 
 **完了条件**: 使って見つかった問題が、単位か積み残しとして backlog に載っている。
 
@@ -392,10 +392,19 @@ zip にする（installer 自体は配らない）。`cargo truce build` はホ�
 見失う。
 `release.yml` を触る PR では、Doubler を release せずにビルドと validate だけ回す。
 
+**決めたこと（2026-11-24、6 本が truce に載った後）**: **リリースはシリーズ単位**。
+1 プラグイン 1 タグだと 6 本出すたびにリリースのページに 6 行並ぶので、
+タグを `<series>-<YYYY.MM>[.N][-beta.N]`（`basic-2026.12`）にして、
+`series.toml` にあるそのシリーズの全プラグインを 1 つの draft release に
+まとめる。zip はプラグインごと・OS ごとのものに加えて、シリーズ全部入りを OS ごとに 1 つ（`nxe-basic-2026.12-macos.zip`）。プラグインのバージョンは
+各 `Cargo.toml` が持ち、リリースノートに並べる。1 本だけ直した時も次の回
+（`.1`）として出し、変わっていないものはそのまま載る。nih-plug の経路と
+Linux はここで消した（6 本とも truce に載ったので）。
+
 ### V2-14 — 5 本の 2.0.0 と Pumice 1.0.0
 
 5 本を実機で並べて見て、聴いて、`2.0.0` を出す。Pumice は同じ型の窓なので
-同じ回に `1.0.0` で出す。README の表を差し替える。
+同じ回に `1.0.0` で出す。タグは `basic-<YYYY.MM>` 1 つ（V2-13）。README の表を差し替える。
 
 ## まだ決めていないこと
 

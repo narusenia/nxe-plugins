@@ -60,7 +60,8 @@ GitHub Actions で `mise run check`（fmt + clippy + test）。macOS で回す�
 - **決めたこと**: 各プラットフォームは**自分のランナーでビルドする**。
   ネイティブの UI スタックをリンクするのでクロスコンパイルしない。macOS の
   2 アーキテクチャだけは `cargo xtask bundle-universal` が lipo でまとめる
-- **決めたこと**: **タグは `<plugin>-v<version>`**（`doubler-v0.1.0`）。
+- **決めたこと**（v0。v2 でシリーズ単位のタグに変えた、`v2-plan.md` の
+  `V2-13`）: **タグは `<plugin>-v<version>`**（`doubler-v0.1.0`）。
   プラグインごとに独立して出す — 1 個直しただけで全部のバージョンが上がり、
   変わっていないものまで再リリースされるのを避ける。`AGENTS.md` の
   「プラグインは単体リポジトリに切り出せる」とも一致する。したがって
