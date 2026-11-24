@@ -54,13 +54,19 @@ UI は egui の空の窓でよい。`doubler-core` は触らない。
 - vizia 版の 5 本は、この単位の**前**に `release/v0` ブランチを main から切って残す
   （v0.2 系のバグ修正はそちらで行う）
 - 書き換える文書: `AGENTS.md`（フレームワーク、AU の範囲、ID 規則）、
-  `LICENSING.md`（`vst3-sys` が外れるので全 crate が MIT OR Apache-2.0 になる。
-  truce 自身のライセンスの但し書きが配布物に影響しないことを確かめて書く）、
+  `LICENSING.md`（**この単位の時点では混在**: Doubler 2 は `vst3-sys` が外れて
+  MIT OR Apache-2.0 になるが、まだ nih-plug に乗っている Velour / Sparkleur / Air /
+  Diorama のラッパと `nxe-plug-ui` は GPL-3.0-only のまま。どれが残るかと理由を
+  書く。truce 自身のライセンスの但し書きが配布物に影響しないことも確かめて書く）、
   `docs/specifications/architecture.md`
 
 **完了条件**: macOS で CLAP / VST3 / AUv2 が `cargo truce validate` を通る。
 Ableton Live・Studio One・Logic で読み込め、保存 → 再読込で全パラメータが戻り、
 自動化を書いて再生すると追従する。
+
+移行中は nih-plug 版と truce 版が同じワークスペースに並ぶ。**全 crate が
+MIT OR Apache-2.0 になったと `LICENSING.md` に書くのは、最後の `nih_plug` 依存を
+外す単位**（V2-10〜V2-12 のうち最後に終わったもの）で行う。
 
 ### V2-2 — マウス合成の修正を引き継ぐ
 
