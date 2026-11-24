@@ -4,6 +4,7 @@ members = [
     "crates/nxe-audio",
     "crates/nxe-dsp",
     "crates/nxe-egui",
+    "crates/nxe-spectral",
     "plugins/air/air",
     "plugins/air/air-core",
     "plugins/doubler/doubler-core",
@@ -27,10 +28,14 @@ members = [
     "plugins/peek/peek-scope",
     "plugins/peek/peek",
     "plugins/kit/nonlinear-core",
+    "plugins/kit/spectral-core",
     "plugins/kit/kit-ui",
     "plugins/kit/fold",
     "plugins/kit/fever",
     "plugins/kit/buckle",
+    "plugins/kit/invert",
+    "plugins/kit/shear",
+    "plugins/kit/afterimage",
 ]
 
 [workspace.package]
@@ -43,6 +48,7 @@ repository = "https://github.com/narusenia/nxe-plugins"
 nxe-audio = { path = "crates/nxe-audio" }
 nxe-dsp = { path = "crates/nxe-dsp" }
 nxe-egui = { path = "crates/nxe-egui" }
+nxe-spectral = { path = "crates/nxe-spectral" }
 air = { path = "plugins/air/air" }
 air-core = { path = "plugins/air/air-core" }
 doubler-core = { path = "plugins/doubler/doubler-core" }
@@ -53,6 +59,7 @@ pumice-core = { path = "plugins/pumice/pumice-core" }
 peek-core = { path = "plugins/peek/peek-core" }
 peek-ui = { path = "plugins/peek/peek-ui" }
 nonlinear-core = { path = "plugins/kit/nonlinear-core" }
+spectral-core = { path = "plugins/kit/spectral-core" }
 kit-ui = { path = "plugins/kit/kit-ui" }
 
 # truce (v2). Every truce crate is versioned in lock-step, so they are pinned

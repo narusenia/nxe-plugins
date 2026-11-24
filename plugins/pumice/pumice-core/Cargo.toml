@@ -15,6 +15,7 @@ description = "The Pumice DSP, independent of any plugin host"
 # moves this crate to the GPL side and closes the AU door (`LICENSING.md`).
 [dependencies]
 nxe-audio.workspace = true
+nxe-spectral.workspace = true
 realfft = "3.5"
 
 [dev-dependencies]

@@ -27,6 +27,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
+name = "afterimage"
+version = "1.0.0"
+dependencies = [
+ "clap-sys",
+ "egui",
+ "kit-ui",
+ "nxe-egui",
+ "spectral-core",
+ "truce",
+ "truce-au",
+ "truce-clap",
+ "truce-core",
+ "truce-egui",
+ "truce-loader",
+ "truce-params",
+ "truce-standalone",
+ "truce-test",
+ "truce-utils",
+ "truce-vst3",
+]
+
+[[package]]
 name = "ahash"
 version = "0.8.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1618,6 +1640,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "invert"
+version = "1.0.0"
+dependencies = [
+ "clap-sys",
+ "egui",
+ "kit-ui",
+ "nxe-egui",
+ "spectral-core",
+ "truce",
+ "truce-au",
+ "truce-clap",
+ "truce-core",
+ "truce-egui",
+ "truce-loader",
+ "truce-params",
+ "truce-standalone",
+ "truce-test",
+ "truce-utils",
+ "truce-vst3",
+]
+
+[[package]]
 name = "is-terminal"
 version = "0.4.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2116,6 +2160,13 @@ version = "0.1.0"
 dependencies = [
  "eframe",
  "egui",
+]
+
+[[package]]
+name = "nxe-spectral"
+version = "0.1.0"
+dependencies = [
+ "realfft",
 ]
 
 [[package]]
@@ -3047,6 +3098,7 @@ version = "0.2.0"
 dependencies = [
  "criterion",
  "nxe-audio",
+ "nxe-spectral",
  "realfft",
 ]
 
@@ -3399,6 +3451,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "shear"
+version = "1.0.0"
+dependencies = [
+ "clap-sys",
+ "egui",
+ "kit-ui",
+ "nxe-egui",
+ "spectral-core",
+ "truce",
+ "truce-au",
+ "truce-clap",
+ "truce-core",
+ "truce-egui",
+ "truce-loader",
+ "truce-params",
+ "truce-standalone",
+ "truce-test",
+ "truce-utils",
+ "truce-vst3",
+]
+
+[[package]]
 name = "shlex"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3568,6 +3642,13 @@ version = "0.2.0"
 dependencies = [
  "criterion",
  "nxe-audio",
+]
+
+[[package]]
+name = "spectral-core"
+version = "0.1.0"
+dependencies = [
+ "nxe-spectral",
 ]
 
 [[package]]

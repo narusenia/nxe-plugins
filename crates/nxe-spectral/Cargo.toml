@@ -1,0 +1,13 @@
+[package]
+name = "nxe-spectral"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Overlap-add STFT shared by every NXE plugin that works on a spectrum"
+
+# Written for Pumice and moved out when the Spectral Kit asked for it: the
+# second caller creates the shared crate (`docs/specifications/architecture.md`).
+# No host API, no UI toolkit, and not nih-plug's `StftHelper` (`stft.rs`).
+[dependencies]
+realfft = "3.5"
