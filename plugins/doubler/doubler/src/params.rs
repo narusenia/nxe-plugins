@@ -18,6 +18,7 @@
 
 use crate::analysis::Analysis;
 use doubler_core::{MAX_VOICES, Macros, Source, VoiceShape, Voices};
+use nxe_egui::text;
 use truce::prelude::*;
 
 /// How many voices are live.
@@ -72,12 +73,13 @@ pub struct DoublerParams {
     pub analysis: Analysis,
 
     /// `Four` by default.
-    #[param(name = "Voices", default = 1)]
+    #[param(name = "Voices", default = 1, parse = "voices")]
     pub voices: EnumParam<VoicesParam>,
-    #[param(name = "Source")]
+    #[param(name = "Source", parse = "source")]
     pub source: EnumParam<SourceParam>,
     #[param(
         name = "Detune",
+        parse = "number",
         range = "linear(0, 50)",
         default = 12.0,
         format = "cents",
@@ -88,6 +90,7 @@ pub struct DoublerParams {
     /// fast ramp is heard as a glide rather than as a delay edit.
     #[param(
         name = "Delay",
+        parse = "number",
         range = "linear(0, 80)",
         default = 22.0,
         unit = "ms",
@@ -96,6 +99,7 @@ pub struct DoublerParams {
     pub delay: FloatParam,
     #[param(
         name = "Spread",
+        parse = "percent",
         range = "linear(0, 1)",
         default = 0.7,
         unit = "%",
@@ -104,6 +108,7 @@ pub struct DoublerParams {
     pub spread: FloatParam,
     #[param(
         name = "Humanize",
+        parse = "percent",
         range = "linear(0, 1)",
         default = 0.35,
         unit = "%",
@@ -112,6 +117,7 @@ pub struct DoublerParams {
     pub humanize: FloatParam,
     #[param(
         name = "Tone Lo",
+        parse = "number",
         range = "linear(-12, 12)",
         unit = "dB",
         smooth = "linear(20)"
@@ -119,6 +125,7 @@ pub struct DoublerParams {
     pub tone_lo: FloatParam,
     #[param(
         name = "Tone Hi",
+        parse = "number",
         range = "linear(-12, 12)",
         unit = "dB",
         smooth = "linear(20)"
@@ -126,6 +133,7 @@ pub struct DoublerParams {
     pub tone_hi: FloatParam,
     #[param(
         name = "Tone Spread",
+        parse = "percent",
         range = "linear(0, 1)",
         unit = "%",
         smooth = "linear(20)"
@@ -133,6 +141,7 @@ pub struct DoublerParams {
     pub tone_spread: FloatParam,
     #[param(
         name = "Mix",
+        parse = "percent",
         range = "linear(0, 1)",
         default = 0.4,
         unit = "%",
@@ -141,6 +150,7 @@ pub struct DoublerParams {
     pub mix: FloatParam,
     #[param(
         name = "Output",
+        parse = "number",
         range = "linear(-12, 12)",
         unit = "dB",
         smooth = "linear(20)"
@@ -171,6 +181,24 @@ impl DoublerParams {
     fn cents(&self, value: f64) -> String {
         format!("{value:.1} ct")
     }
+
+    // **Every parameter reads its own text back** (`nxe_egui::text`): a typed
+    // value goes through these, and so does a host's text entry.
+    fn number(&self, text: &str) -> Option<f64> {
+        text::number(text)
+    }
+
+    fn percent(&self, text: &str) -> Option<f64> {
+        text::percent(text)
+    }
+
+    fn voices(&self, text: &str) -> Option<f64> {
+        text::choice(&["2", "4", "8"], text)
+    }
+
+    fn source(&self, text: &str) -> Option<f64> {
+        text::choice(&["Mono Sum", "True Stereo"], text)
+    }
 }
 
 /// One voice's shape. Normalized, except `gain` which has no macro.
@@ -186,6 +214,7 @@ macro_rules! voice {
         pub struct $ty {
             #[param(
                 name = $delay_name,
+                parse = "number",
                 group = $group,
                 range = "linear(0, 1)",
                 default = $delay,
@@ -194,6 +223,7 @@ macro_rules! voice {
             pub delay: FloatParam,
             #[param(
                 name = $detune_name,
+                parse = "number",
                 group = $group,
                 range = "linear(-1, 1)",
                 default = $($detune)+,
@@ -202,6 +232,7 @@ macro_rules! voice {
             pub detune: FloatParam,
             #[param(
                 name = $pan_name,
+                parse = "pan",
                 group = $group,
                 range = "linear(-1, 1)",
                 default = $($pan)+,
@@ -211,6 +242,7 @@ macro_rules! voice {
             pub pan: FloatParam,
             #[param(
                 name = $gain_name,
+                parse = "number",
                 group = $group,
                 range = "linear(-24, 6)",
                 unit = "dB",
@@ -220,6 +252,14 @@ macro_rules! voice {
         }
 
         impl $ty {
+            fn number(&self, text: &str) -> Option<f64> {
+                text::number(text)
+            }
+
+            fn pan(&self, text: &str) -> Option<f64> {
+                text::pan(text)
+            }
+
             fn shape(&self) -> VoiceShape {
                 VoiceShape {
                     delay: self.delay.read(),
@@ -464,5 +504,24 @@ mod tests {
         assert_eq!(params.tone_lo.value(), core.tone_lo);
         assert_eq!(params.tone_hi.value(), core.tone_hi);
         assert_eq!(params.tone_spread.value(), core.tone_spread);
+    }
+
+    /// **Every parameter reads back its own text** — a typed value in the
+    /// window, and clap-validator's `param-conversions`.
+    #[test]
+    fn every_parameter_reads_back_its_own_text() {
+        use truce::params::Params;
+        let params = DoublerParams::new();
+        for info in params.param_infos() {
+            for plain in [info.range.min(), info.range.max()] {
+                let text = params.format_value(info.id, plain).unwrap();
+                let back = params.parse_value(info.id, &text);
+                assert!(
+                    back.is_some_and(|back| (back - plain).abs() < 0.01),
+                    "{} printed {plain} as {text:?} and read back {back:?}",
+                    info.name
+                );
+            }
+        }
     }
 }
