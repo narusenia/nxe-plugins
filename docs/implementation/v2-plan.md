@@ -192,6 +192,14 @@ nih-plug のまま残っている 4 本のタグも壊さないよう、移行�
 **完了条件**: macOS と Windows の zip が draft release に付く。`cargo truce validate`
 が両 OS で通らなければ落ちる。
 
+**決めたこと**: truce 版は Linux を出さない（決定 7 のとおり）。nih-plug に
+残っている間のタグは今までどおり 3 OS。macOS は `cargo truce package` で
+universal（Apple Silicon + Intel）を作り、installer 用に stage された bundle を
+zip にする（installer 自体は配らない）。`cargo truce build` はホストの
+アーキテクチャしか作らず、`--target` を付けると 6.3.0 は AU の dylib を
+見失う。
+`release.yml` を触る PR では、Doubler を release せずにビルドと validate だけ回す。
+
 ### V2-14 — 5 本の 2.0.0 と Pumice 1.0.0
 
 5 本を実機で並べて見て、聴いて、`2.0.0` を出す。Pumice は同じ型の窓なので
@@ -201,7 +209,6 @@ nih-plug のまま残っている 4 本のタグも壊さないよう、移行�
 
 | 何 | いつ決めるか |
 |---|---|
-| **Linux を 2.0.0 に入れるか。** 今の `release.yml` は Linux も出している。決定 7 は macOS と Windows だけを挙げたので、落とすか、CI のビルドと validate だけで出すかを決める | V2-13 の前 |
 | **Mix 系の書体。** Inter + letter-spacing で進める。Host Grotesk や allo に替えるなら、バイナリへの埋め込みが許されるライセンスかを先に確かめる | V2-9 で型を確定するとき |
 | **ステータスバー（ポインタの説明）を残すか、どこに置くか。** H4 の案には描いていない | V2-9 |
 | **Colour / Design シリーズの型。** 候補は Colour が H1 系、Design が G 系 | 各シリーズに着手するとき |
