@@ -44,6 +44,8 @@ const FIGURE: f32 = 220.0;
 const RIGHT: f32 = WINDOW_WIDTH as f32 - SIDEBAR_WIDTH;
 const VOICES_WIDTH: f32 = 96.0;
 const SOURCE_WIDTH: f32 = 140.0;
+/// How often a silent window checks whether the audio has started.
+const ANALYSIS_POLL: std::time::Duration = std::time::Duration::from_millis(100);
 
 /// **The window's height, added up** (`.agents/rules/ui.md`): whichever
 /// column is taller, the sidebar with its three rows of macros or the right
@@ -76,6 +78,23 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
     }
     let palette = &PALETTE;
     let time = ui.input(|input| input.time) as f32;
+    // **truce-egui only paints when input or a parameter changes**, and the
+    // analysis handoffs are neither: a window opened on a silent track would
+    // never notice the playback start. So the window looks again every
+    // `ANALYSIS_POLL`; while there is sound it runs at the smoothing's 30 Hz,
+    // which is also what keeps `Humanize`'s drift moving.
+    let sounding = ctx
+        .params()
+        .analysis
+        .peaks
+        .read()
+        .iter()
+        .any(|peak| *peak > 1e-4);
+    ui.ctx().request_repaint_after(if sounding {
+        smooth::FRAME
+    } else {
+        ANALYSIS_POLL
+    });
     ui.spacing_mut().item_spacing = vec2(0.0, 0.0);
     let full = ui.max_rect();
 

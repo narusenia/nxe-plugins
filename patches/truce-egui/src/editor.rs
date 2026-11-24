@@ -790,7 +790,12 @@ impl<P: Params + ?Sized> EguiWindowHandler<P> {
             || !self.pending_events.is_empty()
             || params_moved
             || scale_moved
-            || self.egui_ctx.has_requested_repaint()
+            // nxe-plugins patch: not `egui_ctx.has_requested_repaint()`. It
+            // is true for a *delayed* request too (`repaint_delay < MAX`), so
+            // `request_repaint_after(100 ms)` painted on every tick and no
+            // delay was ever honoured. `next_paint_at` below already carries
+            // egui's delay, `ZERO` included, so an immediate request still
+            // paints on the next tick.
             || self
                 .next_paint_at
                 .is_some_and(|t| std::time::Instant::now() >= t)

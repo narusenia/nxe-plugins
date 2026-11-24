@@ -42,7 +42,9 @@ xtask/                            nih_plug_xtask のバンドラ（nih-plug 側�
 `EguiEditor::with_font_definitions` を足し、複数の書体（Inter 2 ウェイトと
 Geist Mono）を最初のパスの前に入れる。上流の `with_font` は 1 書体だけで、窓の
 中から入れた書体は次のパスからしか効かないため、1 パスしか描かない
-`screenshot!` の基準画像に自前の書体が写らなかった。
+`screenshot!` の基準画像に自前の書体が写らなかった。もう 1 つ、描画の判定から
+`has_requested_repaint()` を外した。遅延付きの再描画要求も「今すぐ」と扱われ、
+窓が毎ティック描いていた（`docs/investigations/v2-frame-cost.md`）。
 
 `truce.toml` も**ワークスペース直下に 1 つ**。`truce::plugin!` がコンパイル時に
 クレート名で自分の `[[plugin]]` を探す。`au_manufacturer` と 5 本の `fourcc` は

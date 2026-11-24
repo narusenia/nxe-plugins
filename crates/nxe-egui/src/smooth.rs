@@ -18,11 +18,12 @@ use egui::{Id, Ui};
 /// reading, short enough that a transient still reads as one.
 pub const TAU: f32 = 0.04;
 
-/// The fastest a moving signal asks to be redrawn. **Not the display's rate**:
-/// on a 120 Hz panel "every frame" is twice the work for motion the eye
-/// already reads as continuous at 60, and the window's budget is one core's
-/// 10 % (`v2-plan.md`, decision 9).
-pub const FRAME: std::time::Duration = std::time::Duration::from_micros(16_667);
+/// The fastest a moving signal asks to be redrawn: **30 Hz, not the
+/// display's rate.** Measured in Doubler 2's window with sound, 60 Hz cost
+/// about 18 % of a core and 30 Hz about 10 %, against a budget of 10 %
+/// (`v2-plan.md`, decision 9; `docs/investigations/v2-frame-cost.md`). The
+/// smoothing is what keeps 30 Hz from reading as a stair-step.
+pub const FRAME: std::time::Duration = std::time::Duration::from_micros(33_333);
 
 /// Below this the shown value is taken to have arrived, and repaints stop.
 const SETTLED: f32 = 1e-4;
