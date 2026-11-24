@@ -57,6 +57,9 @@ impl PluginLogic for Afterimage {
             };
             *output = state.engine.process(*input, &settings);
         });
+        // Reading, never writing: nothing here goes back into the engine.
+        params.present.write(state.engine.present());
+        params.trace.write(state.engine.trace());
         ProcessStatus::Normal
     }
 

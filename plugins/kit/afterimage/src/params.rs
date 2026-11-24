@@ -1,11 +1,20 @@
 //! Persistence, Damping and Mix. **The field names are the parameter ids**
 //! (`spectral-kit-plan.md`, the table): never rename them.
 
+use nxe_dsp::Handoff;
 use nxe_egui::text;
+use spectral_core::BANDS;
 use truce::prelude::*;
 
 #[derive(Params)]
 pub struct AfterimageParams {
+    /// The input and the trace over it, in bands, for the figure. Not
+    /// parameters.
+    #[skip]
+    pub present: Handoff<BANDS>,
+    #[skip]
+    pub trace: Handoff<BANDS>,
+
     /// How long a trace lasts at the bottom of the spectrum, in seconds.
     #[param(
         name = "Persistence",

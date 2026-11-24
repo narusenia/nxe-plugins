@@ -32,6 +32,8 @@ standalone = ["dep:truce-standalone"]
 
 [dependencies]
 spectral-core = { workspace = true }
+nxe-dsp = { workspace = true }
+peek-ui = { workspace = true }
 kit-ui = { workspace = true }
 nxe-egui = { workspace = true }
 truce = { workspace = true }

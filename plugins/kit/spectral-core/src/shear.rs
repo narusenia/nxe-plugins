@@ -7,7 +7,7 @@
 //! frames is exact — overlap-add rebuilds the band as it was, later — so this
 //! is a ring of past spectra and nothing else.
 
-use crate::{Shell, mix, position};
+use crate::{BANDS, Bands, Shell, mix, position};
 use nxe_spectral::Complex;
 use nxe_spectral::stft::MAX_CHANNELS;
 
@@ -36,8 +36,11 @@ pub struct Shear {
     history: [Vec<Complex<f32>>; MAX_CHANNELS],
     frames: usize,
     write: usize,
-    /// Each bin's place on the log axis, worked out once.
+    /// Each bin's frequency, worked out once.
     positions: Vec<f32>,
+    bands: Bands,
+    /// What came out of the last frame, in bands, for the window.
+    levels: [f32; BANDS],
 }
 
 impl Shear {
@@ -50,6 +53,8 @@ impl Shear {
             frames,
             write: 0,
             positions: (0..bins).map(|bin| bin as f32 * shell.bin_hz).collect(),
+            bands: shell.bands(),
+            levels: [0.0; BANDS],
             shell,
         }
     }
@@ -59,6 +64,12 @@ impl Shear {
         self.shell.latency()
     }
 
+    /// The output of the last frame, in [`BANDS`] log-spaced bands, as peak
+    /// amplitudes.
+    pub fn levels(&self) -> &[f32; BANDS] {
+        &self.levels
+    }
+
     pub fn process(&mut self, input: [f32; 2], settings: &Settings) -> [f32; 2] {
         let Self {
             shell,
@@ -66,11 +77,14 @@ impl Shear {
             frames,
             write,
             positions,
+            bands,
+            levels,
         } = self;
         let (frames, hop) = (*frames, shell.hop_seconds);
         let bins = shell.bins;
         let settings = *settings;
         shell.process(input, |frame| {
+            levels.fill(0.0);
             for (index, history) in history.iter_mut().enumerate().take(frame.channels()) {
                 let spectrum = frame.channel(index);
                 history[*write * bins..(*write + 1) * bins].copy_from_slice(spectrum);
@@ -80,6 +94,7 @@ impl Shear {
                     let read = (*write + frames - back) % frames;
                     *value = mix(*value, history[read * bins + bin], settings.mix);
                 }
+                bands.fold(|bin| spectrum[bin].norm(), levels);
             }
             *write = (*write + 1) % frames;
         })

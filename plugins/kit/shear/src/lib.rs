@@ -57,6 +57,8 @@ impl PluginLogic for Shear {
             };
             *output = state.engine.process(*input, &settings);
         });
+        // Reading, never writing: nothing here goes back into the engine.
+        params.levels.write(state.engine.levels());
         ProcessStatus::Normal
     }
 

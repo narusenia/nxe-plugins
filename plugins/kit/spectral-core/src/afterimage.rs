@@ -8,7 +8,7 @@
 //! never doubled**: only what the trace has above it is added, so `mix` 0 is
 //! the input and a steady tone comes out as it went in.
 
-use crate::{Analysis, Shell, expected_advance, position, wrap};
+use crate::{Analysis, BANDS, Bands, Shell, expected_advance, position, wrap};
 use nxe_spectral::Complex;
 use nxe_spectral::stft::MAX_CHANNELS;
 
@@ -37,12 +37,18 @@ struct Channel {
     trace: Vec<f32>,
     frequency: Vec<f32>,
     phase: Vec<f32>,
+    /// The last frame's input magnitudes, for the window.
+    present: Vec<f32>,
 }
 
 pub struct Afterimage {
     shell: Shell,
     channels: [Channel; MAX_CHANNELS],
     hz: Vec<f32>,
+    bands: Bands,
+    /// The last frame's input and its trace, in bands, for the window.
+    present: [f32; BANDS],
+    trace: [f32; BANDS],
 }
 
 impl Afterimage {
@@ -55,8 +61,12 @@ impl Afterimage {
                 trace: vec![0.0; bins],
                 frequency: vec![0.0; bins],
                 phase: vec![0.0; bins],
+                present: vec![0.0; bins],
             }),
             hz: (0..bins).map(|bin| bin as f32 * shell.bin_hz).collect(),
+            bands: shell.bands(),
+            present: [0.0; BANDS],
+            trace: [0.0; BANDS],
             shell,
         }
     }
@@ -66,19 +76,36 @@ impl Afterimage {
         self.shell.latency()
     }
 
+    /// The input of the last frame, in [`BANDS`] log-spaced bands, as peak
+    /// amplitudes.
+    pub fn present(&self) -> &[f32; BANDS] {
+        &self.present
+    }
+
+    /// The trace held over it, the same way.
+    pub fn trace(&self) -> &[f32; BANDS] {
+        &self.trace
+    }
+
     pub fn process(&mut self, input: [f32; 2], settings: &Settings) -> [f32; 2] {
         let Self {
             shell,
             channels,
             hz,
+            bands,
+            present,
+            trace,
         } = self;
         let hop = shell.hop_seconds;
         let settings = *settings;
         shell.process(input, |frame| {
+            present.fill(0.0);
+            trace.fill(0.0);
             for (index, channel) in channels.iter_mut().enumerate().take(frame.channels()) {
                 let bins = frame.channel(index);
                 for (bin, value) in bins.iter_mut().enumerate() {
                     let (magnitude, frequency) = channel.analysis.read(bin, *value);
+                    channel.present[bin] = magnitude;
                     let tau = persistence_at(hz[bin], settings.persistence, settings.damping);
                     let held = channel.trace[bin] * (-hop / tau).exp();
                     if magnitude >= held {
@@ -93,6 +120,8 @@ impl Afterimage {
                     let left = Complex::from_polar(held - magnitude, channel.phase[bin]);
                     *value += left * settings.mix;
                 }
+                bands.fold(|bin| channel.present[bin], present);
+                bands.fold(|bin| channel.trace[bin], trace);
             }
         })
     }

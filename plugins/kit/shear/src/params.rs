@@ -1,11 +1,17 @@
 //! Shear, Length and Mix. **The field names are the parameter ids**
 //! (`spectral-kit-plan.md`, the table): never rename them.
 
+use nxe_dsp::Handoff;
 use nxe_egui::text;
+use spectral_core::BANDS;
 use truce::prelude::*;
 
 #[derive(Params)]
 pub struct ShearParams {
+    /// What comes out, in bands, for the spectrogram. Not a parameter.
+    #[skip]
+    pub levels: Handoff<BANDS>,
+
     /// Which end is late, and how much of `Length` the lean uses.
     #[param(
         name = "Shear",

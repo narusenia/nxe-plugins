@@ -30,6 +30,47 @@ pub fn position(hz: f32) -> f32 {
     ((hz / LOW_HZ).ln() / (HIGH_HZ / LOW_HZ).ln()).clamp(0.0, 1.0)
 }
 
+/// How many log-spaced bands the figures are handed, low first.
+pub const BANDS: usize = 96;
+
+/// Folds a spectrum into [`BANDS`] log-spaced bands for the window: each band
+/// the loudest bin in it, as a sine's peak amplitude. A band narrower than a
+/// bin reads the bin under its centre, so the bottom is not left empty.
+struct Bands {
+    ranges: [(usize, usize); BANDS],
+    /// A Hann-windowed sine of amplitude `A` peaks at `A·N/4` in its bin.
+    scale: f32,
+}
+
+impl Bands {
+    fn new(bins: usize, bin_hz: f32) -> Self {
+        let edge = |band: usize| LOW_HZ * (HIGH_HZ / LOW_HZ).powf(band as f32 / BANDS as f32);
+        let last = bins - 1;
+        Self {
+            ranges: std::array::from_fn(|band| {
+                let centre = (edge(band) * edge(band + 1)).sqrt() / bin_hz;
+                let low = (edge(band) / bin_hz).ceil() as usize;
+                let high = (edge(band + 1) / bin_hz).floor() as usize;
+                if low > high {
+                    let at = (centre.round() as usize).min(last);
+                    (at, at)
+                } else {
+                    (low.min(last), high.min(last))
+                }
+            }),
+            scale: 2.0 / (bins - 1) as f32,
+        }
+    }
+
+    /// `magnitude(bin)` folded into `out`, keeping whichever is louder.
+    fn fold(&self, magnitude: impl Fn(usize) -> f32, out: &mut [f32; BANDS]) {
+        for (band, (low, high)) in out.iter_mut().zip(&self.ranges) {
+            let loudest = (*low..=*high).map(&magnitude).fold(0.0f32, f32::max);
+            *band = band.max(loudest * self.scale);
+        }
+    }
+}
+
 /// The STFT, fed a sample at a time.
 struct Shell {
     stft: Stft,
@@ -48,6 +89,11 @@ impl Shell {
             bin_hz: sample_rate / block as f32,
             hop_seconds: (block / OVERLAP) as f32 / sample_rate,
         }
+    }
+
+    /// The band folding for this transform.
+    fn bands(&self) -> Bands {
+        Bands::new(self.bins, self.bin_hz)
     }
 
     fn latency(&self) -> usize {
@@ -167,5 +213,32 @@ mod tests {
             assert!((-PI..=PI).contains(&wrapped), "{phase} → {wrapped}");
             assert!(((phase - wrapped) / TAU).fract().abs() < 1e-3);
         }
+    }
+}
+
+#[cfg(test)]
+mod band_tests {
+    use super::test_signal::*;
+    use super::*;
+
+    /// A sine's band reads its amplitude, and the bottom bands are not empty
+    /// though they are narrower than a bin.
+    #[test]
+    fn a_sine_reads_its_amplitude_in_its_band() {
+        let mut shear = Shear::new(RATE);
+        let settings = shear::Settings {
+            shear: 0.0,
+            length: 0.1,
+            mix: 1.0,
+        };
+        for index in 0..RATE as usize / 2 {
+            let x = sine(index, 1_000.0);
+            shear.process([x, x], &settings);
+        }
+        let band = (position(1_000.0) * BANDS as f32) as usize;
+        let level = shear.levels()[band];
+        assert!((level - 0.5).abs() < 0.1, "{level}");
+        let bands = Bands::new(1025, 23.4375);
+        assert!(bands.ranges.iter().all(|(low, high)| low <= high));
     }
 }

@@ -490,3 +490,25 @@ impl Frequency {
         ));
     }
 }
+
+impl Frequency {
+    /// Fills under `f` across the whole frequency range.
+    pub fn fill(&self, ui: &Ui, colour: nxe_egui::theme::Token, f: impl Fn(f32) -> f32) {
+        const STEPS: usize = 160;
+        let painter = ui.painter_at(self.rect);
+        let width = self.rect.width() / STEPS as f32;
+        for step in 0..STEPS {
+            let at = (step as f32 + 0.5) / STEPS as f32;
+            let hz = LOW_HZ * (HIGH_HZ / LOW_HZ).powf(at);
+            let x = self.rect.left() + step as f32 * width;
+            painter.rect_filled(
+                Rect::from_min_max(
+                    pos2(x, self.y(f(hz))),
+                    pos2(x + width + 0.5, self.rect.bottom()),
+                ),
+                0.0,
+                colour.color(),
+            );
+        }
+    }
+}
