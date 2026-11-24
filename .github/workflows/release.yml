@@ -191,7 +191,7 @@ jobs:
             fi
             # Permissive (`LICENSING.md`): both texts, the user picks.
             cp LICENSE-MIT LICENSE-APACHE "$out/"
-            version=$(grep -m1 '^version = ' "plugins/$plugin/$plugin/Cargo.toml" | cut -d'"' -f2)
+            version=$(cargo pkgid -p "$plugin" | sed 's/.*[@#]//')
             echo "nxe-$plugin-$version-${{ matrix.name }}" > "$out.name"
           done
 
@@ -255,7 +255,8 @@ jobs:
             for entry in ${{ needs.plan.outputs.plugins }}; do
               plugin="${entry%%:*}"
               name=$(python3 -c "import tomllib,sys; print(next(p['name'] for p in tomllib.load(open('truce.toml','rb'))['plugin'] if p['crate']==sys.argv[1]))" "$plugin")
-              version=$(grep -m1 '^version = ' "plugins/$plugin/$plugin/Cargo.toml" | cut -d'"' -f2)
+              # Wherever the crate lives: the Kits and Peek sit a level deeper than Basic.
+              version=$(python3 -c "import glob,tomllib,sys; print(next(t['package']['version'] for t in (tomllib.load(open(f,'rb')) for f in glob.glob('plugins/**/Cargo.toml', recursive=True)) if t.get('package',{}).get('name')==sys.argv[1]))" "$plugin")
               echo "| $name | $version |"
             done
           } > notes.md
