@@ -7,13 +7,13 @@
 //! something, and a meter reporting its level is the one thing it honestly
 //! has.
 
-use crate::analysis::Analysis;
+use peek_core::meters::LevelReadings;
 use truce::prelude::*;
 
 #[derive(Params)]
 pub struct PeekLevelParams {
     #[skip]
-    pub analysis: Analysis,
+    pub readings: LevelReadings,
 
     /// The left and right peaks, on the window's scale (`0..=1`).
     #[meter]

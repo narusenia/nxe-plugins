@@ -5,13 +5,10 @@
 //! output is the input, bit for bit, with no latency. The measurement lives in
 //! `peek_core`.
 
-use analysis::CHANNELS;
-use peek_core::ChannelLevel;
+use peek_core::meters::LevelMeter;
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
 use truce::prelude::*;
 
-mod analysis;
 mod params;
 mod ui;
 
@@ -22,23 +19,14 @@ const FALLBACK_SAMPLE_RATE: f32 = 48_000.0;
 pub struct PeekLevel;
 
 pub struct PeekLevelState {
-    channels: [ChannelLevel; CHANNELS],
-    /// The window's clear count when the maxima were last cleared.
-    cleared: u32,
-}
-
-impl PeekLevelState {
-    fn new(sample_rate: f32, cleared: u32) -> Self {
-        Self {
-            channels: std::array::from_fn(|_| ChannelLevel::new(sample_rate)),
-            cleared,
-        }
-    }
+    meter: LevelMeter,
 }
 
 impl Default for PeekLevelState {
     fn default() -> Self {
-        Self::new(FALLBACK_SAMPLE_RATE, 0)
+        Self {
+            meter: LevelMeter::new(FALLBACK_SAMPLE_RATE),
+        }
     }
 }
 
@@ -50,9 +38,10 @@ impl PluginLogic for PeekLevel {
         BusLayout::stereo_and_mono()
     }
 
+    /// A new meter forgets the maxima, which a rate change makes stale anyway.
     #[allow(clippy::cast_possible_truncation)]
     fn reset(state: &mut PeekLevelState, _params: &PeekLevelParams, config: &AudioConfig) {
-        *state = PeekLevelState::new(config.sample_rate as f32, state.cleared);
+        state.meter = LevelMeter::new(config.sample_rate as f32);
     }
 
     fn process(
@@ -62,37 +51,15 @@ impl PluginLogic for PeekLevel {
         _events: &EventList,
         context: &mut ProcessContext,
     ) -> ProcessStatus {
-        let analysis = &params.analysis;
-        let clears = analysis.clears.load(Ordering::Relaxed);
-        if clears != state.cleared {
-            state.cleared = clears;
-            state.channels.iter_mut().for_each(ChannelLevel::clear);
-        }
-
         // The output is the input: written back exactly as it was read.
         buffer.for_each_stereo_frame(|input, output| {
             *output = *input;
-            state.channels[0].push(input[0]);
-            state.channels[1].push(input[1]);
+            state.meter.push(input[0], input[1]);
         });
-
-        let [left, right] = &state.channels;
-        analysis
-            .peaks
-            .write(&[left.level().peak(), right.level().peak()]);
-        analysis
-            .holds
-            .write(&[left.level().hold(), right.level().hold()]);
-        analysis
-            .rms
-            .write(&[left.level().rms(), right.level().rms()]);
-        analysis.maxima.write(&[
-            left.max_peak().max(right.max_peak()),
-            left.max_true_peak().max(right.max_true_peak()),
-            left.max_rms().max(right.max_rms()),
-        ]);
-        context.set_meter(params.left.id(), ui::position(left.level().peak()));
-        context.set_meter(params.right.id(), ui::position(right.level().peak()));
+        state.meter.publish(&params.readings);
+        let peaks = params.readings.peaks.read();
+        context.set_meter(params.left.id(), peek_ui::level::position(peaks[0]));
+        context.set_meter(params.right.id(), peek_ui::level::position(peaks[1]));
         ProcessStatus::Normal
     }
 

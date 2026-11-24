@@ -32,6 +32,7 @@ standalone = ["dep:truce-standalone"]
 
 [dependencies]
 peek-core = { workspace = true }
+peek-ui = { workspace = true }
 nxe-dsp = { workspace = true }
 nxe-egui = { workspace = true }
 truce = { workspace = true }
