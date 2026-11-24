@@ -15,6 +15,8 @@ members = [
     "plugins/velour/velour",
     "plugins/diorama/diorama-core",
     "plugins/diorama/diorama",
+    "plugins/pumice/pumice-core",
+    "plugins/pumice/pumice",
     "xtask",
 ]
 
@@ -35,6 +37,7 @@ doubler-core = { path = "plugins/doubler/doubler-core" }
 sparkleur-core = { path = "plugins/sparkleur/sparkleur-core" }
 velour-core = { path = "plugins/velour/velour-core" }
 diorama-core = { path = "plugins/diorama/diorama-core" }
+pumice-core = { path = "plugins/pumice/pumice-core" }
 
 # truce (v2). Every truce crate is versioned in lock-step, so they are pinned
 # together; a mismatch would put two copies of `truce-core` in the tree.
@@ -186,4 +189,10 @@ opt-level = 2
 opt-level = 2
 
 [profile.dev.package.velour]
+opt-level = 2
+
+[profile.dev.package.pumice-core]
+opt-level = 2
+
+[profile.dev.package.pumice]
 opt-level = 2

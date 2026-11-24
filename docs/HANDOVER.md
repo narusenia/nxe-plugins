@@ -3,6 +3,8 @@
 **2026-11-24 時点。** v0.2.0 は 5 本とも出荷済み（2026-08-31）。いまは **v2 の
 実装中**。Doubler が truce に載った（`V2-1` のコード、#7）。v0.x の引き継ぎ（測定の経緯、各プラグインで踏んだ罠、
 vizia の重さ問題）は [`archive/v0-handover.md`](archive/v0-handover.md)。
+Pumice の v0 期の経緯（`ADAPTIVE` を落とした理由、PDC のゲート）は
+[`archive/pumice-handover.md`](archive/pumice-handover.md)。
 
 ## いま作っているもの — v2
 

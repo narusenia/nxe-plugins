@@ -250,14 +250,30 @@ impl Palette {
         Token::rgb(0x91, 0x44, 0x73),
     );
 
+    /// Moss. Hue 118.
+    ///
+    /// **The hue was chosen by what was left.** Every accent has to sit 40°
+    /// from every other, and the five already placed — 35, 158, 232.7, 300,
+    /// 345 — leave exactly one gap wide enough: the 123° between Sparkleur and
+    /// Doubler. That admits 75 to 118, and **118 is the end of it that gets
+    /// out of the brown band** at the `deep` stop, which is the trap
+    /// `SPARKLEUR` above records. At 96 the deep stop is olive-brown; at 118 it
+    /// is a dark moss, and its chroma lands on the family's without clipping.
+    pub const PUMICE: Self = Self::ramp(
+        Token::rgb(0xC0, 0xD0, 0x83),
+        Token::rgb(0xA7, 0xBA, 0x4B),
+        Token::rgb(0x5E, 0x6C, 0x00),
+    );
+
     /// Every palette with the name of the plugin that wears it. For the gallery
     /// and for the test that keeps them one family.
-    pub const ALL: [(&'static str, Self); 5] = [
+    pub const ALL: [(&'static str, Self); 6] = [
         ("Doubler", Self::DOUBLER),
         ("Velour", Self::VELOUR),
         ("Sparkleur", Self::SPARKLEUR),
         ("Air", Self::AIR),
         ("Diorama", Self::PARALLAX),
+        ("Pumice", Self::PUMICE),
     ];
 }
 
@@ -792,10 +808,10 @@ mod tests {
         ("deep", |p| p.deep),
     ];
 
-    /// **The five palettes differ in hue and in nothing else.** Same lightness,
+    /// **The palettes differ in hue and in nothing else.** Same lightness,
     /// same chroma, stop for stop — that is what lets a bar at half fill carry
-    /// the same weight in all five windows, and it is the whole reason five
-    /// accents do not read as five different designs.
+    /// the same weight in every window, and it is the whole reason six accents
+    /// do not read as six different designs.
     ///
     /// `deep` gets a looser bound on chroma: at that lightness the blue and the
     /// green run out of sRGB before the others do, so they are clipped into
