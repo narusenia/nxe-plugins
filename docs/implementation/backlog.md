@@ -10,7 +10,7 @@
   ロードマップは「どの順でやるか、なぜその順か」
 - v0.x の全単位は [`../archive/v0-backlog.md`](../archive/v0-backlog.md)
 
-最終更新: 2026-11-24
+最終更新: 2026-11-25
 
 ## 凡例
 
@@ -50,7 +50,7 @@ V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実
 | V2-5 | `nxe-ui` の egui 版とギャラリー | V2-2, V2-3 | ✅ `crates/nxe-egui`。全部品がギャラリーにあり、パレットのテストを引き継いだ |
 | V2-6 | 信号表示の平滑化 | V2-5 | ✅ `nxe_egui::smooth`。30 Hz の読みを 60 Hz で描いて毎フレーム動くことをテストで確認 |
 | V2-7 | Doubler 2 を型に載せる | V2-5, V2-6 | 🟡 コードと基準画像（macOS / Windows、CI で焼いたもの）は済み。残りは実機で見ること、描画予算の測定、付属プリセットの中身を耳で決めること |
-| V2-8 | Basic の beta（6 本まとめて、`basic-<YYYY.MM>-beta.N`） | V2-4, V2-7, V2-13 | ⬜ |
+| V2-8 | Basic の beta（6 本まとめて、`basic-<YYYY.MM>-beta.N`） | V2-4, V2-7, V2-13 | ✅ `basic-2026.11-beta.1`（2026-11-25、プリセットと Pumice の PDC は未確認のまま β として出した） |
 | V2-9 | Sparkleur 2（型を確定する） | V2-7 | 🟡 コード、寸法の書き戻し、基準画像（macOS / Windows、CI で焼いたもの）は済み。残りは実機で見ること、付属プリセットの中身を耳で決めること |
 | V2-10 | Velour 2 | V2-9 | 🟡 コード、基準画像（CI で焼いたもの）は済み（#20）。残りは実機で見ること、付属プリセットの中身を耳で決めること |
 | V2-11 | Air 2 | V2-9 | 🟡 コード、基準画像（CI で焼いたもの）は済み（#21）。残りは実機で見ること、付属プリセットの中身を耳で決めること |
@@ -60,6 +60,20 @@ V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実
 | V2-16 | Pumice 1.0（truce、`NXE Pumice` / `Pumi`） | V2-9, V2-15 | 🟡 コード、基準画像（CI で焼いたもの）は済み（#26）。残りは 3 ホストでの反転試験、付属プリセットの中身を耳で決めること |
 | V2-17 | nih-plug と vizia の側を消す（`nxe-ui`、`nxe-plug-ui`、xtask、`bundler.toml`、フォークへの patch） | V2-16 | ✅ |
 | V2-14 | 5 本の 2.0.0 と Pumice 1.0.0 | V2-8, V2-10〜V2-13, V2-16 | ⬜ |
+
+### Peek — [`peek-plan.md`](../../plugins/peek/docs/implementation/peek-plan.md)
+
+| ID | 単位 | 依存 | 状態 |
+|---|---|---|---|
+| PEEK-1 | Kit の窓の型（`nxe-egui::kit`）、`peek-core`、Peek Level | — | 🟡 コードは済み。基準画像（CI で焼く）、validate、実機で見ることが残り |
+| PEEK-2 | Peek VU（弧と針の見た目を含む） | PEEK-1 | ⬜ |
+| PEEK-3 | Peek Stereo | PEEK-1 | ⬜ |
+| PEEK-4 | Peek Spectrum | PEEK-1 | ⬜ |
+| PEEK-5 | Peek Spectrogram（`nxe-spectral` を切り出す） | PEEK-4 | ⬜ |
+| PEEK-6 | Peek Loudness | PEEK-1 | ⬜ |
+| PEEK-7 | Peek Scope | PEEK-1 | ⬜ |
+| PEEK-8 | Peek（まとめ） | PEEK-2〜7 | ⬜ |
+| PEEK-9 | 最初の beta（`peek-<YYYY.MM>-beta.N`） | PEEK-1 | ⬜ |
 
 ### v0 から持ち越したもの
 
