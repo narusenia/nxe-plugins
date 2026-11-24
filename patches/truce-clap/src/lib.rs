@@ -251,6 +251,9 @@ struct ClapPluginData<P: PluginExport> {
     /// main thread, which notifies the host. Coalesces a burst of
     /// changes into one host notification per main-thread callback.
     latency_dirty: AtomicBool,
+    /// nxe-plugins patch: a latency change asked the host for a restart;
+    /// the next `activate` announces it with `latency.changed`.
+    latency_restart: AtomicBool,
     /// Queue of GUI-initiated parameter changes to emit as output events.
     gui_changes: Arc<GuiChangeQueue>,
     /// Bounded SPSC handoff for state loads. Host (`state_load`) and
@@ -678,9 +681,19 @@ unsafe extern "C" fn clap_plugin_activate<P: PluginExport>(
             // not the placeholder-rate value from create. No dirty flag:
             // this is the baseline the host reads at activate, not a
             // mid-session change needing changed() / request_restart.
-            data.latency_cache
-                .store(instance.latency(), Ordering::Relaxed);
+            let latency = instance.latency();
+            let previous = data.latency_cache.swap(latency, Ordering::Relaxed);
             data.tail_cache.store(instance.tail(), Ordering::Relaxed);
+            // nxe-plugins patch: CLAP allows `latency.changed` only inside
+            // `activate`, so a change that asked for a restart is announced here.
+            let restarted = data.latency_restart.swap(false, Ordering::Relaxed);
+            if (latency != previous || restarted)
+                && !data.host.is_null()
+                && !data.host_latency.is_null()
+                && let Some(changed) = (*data.host_latency).changed
+            {
+                changed(data.host);
+            }
         }
 
         // Pre-grow the widening / narrowing scratch so no host wire /
@@ -810,16 +823,19 @@ unsafe extern "C" fn clap_plugin_on_main_thread<P: PluginExport>(plugin: *const 
         // the audio thread. `changed()` re-reads our reported latency;
         // an active plugin additionally needs `request_restart` to apply
         // the new delay compensation.
+        // nxe-plugins patch: `changed` only while inactive. CLAP allows it
+        // only inside `activate`; an active plugin asks for a restart, and
+        // `activate` announces the new latency (clap-validator checks this).
         if data.latency_dirty.swap(false, Ordering::Relaxed) && !data.host.is_null() {
-            if !data.host_latency.is_null()
+            if data.active.load(Ordering::Relaxed) {
+                data.latency_restart.store(true, Ordering::Relaxed);
+                if let Some(req_restart) = (*data.host).request_restart {
+                    req_restart(data.host);
+                }
+            } else if !data.host_latency.is_null()
                 && let Some(changed) = (*data.host_latency).changed
             {
                 changed(data.host);
-            }
-            if data.active.load(Ordering::Relaxed)
-                && let Some(req_restart) = (*data.host).request_restart
-            {
-                req_restart(data.host);
             }
         }
     }
@@ -4171,6 +4187,7 @@ pub unsafe fn create_plugin_instance<P: PluginExport>(
             host_latency: ptr::null(),
             host_tail: ptr::null(),
             latency_dirty: AtomicBool::new(false),
+            latency_restart: AtomicBool::new(false),
             gui_changes: Arc::new(GuiChangeQueue::new(GUI_QUEUE_CAPACITY)),
             pending_state: Arc::new(StateLoadQueue::new(1)),
             active: AtomicBool::new(false),
