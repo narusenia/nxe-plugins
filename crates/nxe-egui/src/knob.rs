@@ -23,7 +23,7 @@ pub struct Control {
 }
 
 /// The height a knob of `size` takes with its name and figure.
-pub fn block_height(size: f32) -> f32 {
+pub const fn block_height(size: f32) -> f32 {
     LINE_LABEL + size + LINE_VALUE
 }
 

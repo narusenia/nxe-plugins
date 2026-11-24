@@ -561,6 +561,43 @@ impl SparkleurParams {
         }
     }
 
+    /// Band `index`'s parameter ids, as `[up, down, gain, solo]`. For the
+    /// editor, which addresses the five bands by number.
+    pub fn band_ids(&self, index: usize) -> [u32; 4] {
+        match index {
+            0 => [
+                self.up_sub.id(),
+                self.down_sub.id(),
+                self.gain_sub.id(),
+                self.solo_sub.id(),
+            ],
+            1 => [
+                self.up_body.id(),
+                self.down_body.id(),
+                self.gain_body.id(),
+                self.solo_body.id(),
+            ],
+            2 => [
+                self.up_mid.id(),
+                self.down_mid.id(),
+                self.gain_mid.id(),
+                self.solo_mid.id(),
+            ],
+            3 => [
+                self.up_pres.id(),
+                self.down_pres.id(),
+                self.gain_pres.id(),
+                self.solo_pres.id(),
+            ],
+            _ => [
+                self.up_air.id(),
+                self.down_air.id(),
+                self.gain_air.id(),
+                self.solo_air.id(),
+            ],
+        }
+    }
+
     /// The settled per-sample values, for the same reason.
     pub fn display_levels(&self) -> Levels {
         Levels {

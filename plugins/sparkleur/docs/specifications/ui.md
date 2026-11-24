@@ -7,6 +7,13 @@
 道具立ての使い方は
 [`../../../../crates/nxe-ui/README.md`](../../../../crates/nxe-ui/README.md)。
 
+> **v2（Sparkleur 2）の窓は作り直した。** 何を決めたかは
+> `docs/implementation/v2-plan.md` の V2-9、寸法は
+> `docs/specifications/design-system.md`、コードは
+> `plugins/sparkleur/sparkleur/src/ui/`。**下の本文は v0（vizia）の窓の仕様**で、
+> 設計方針（ゲインが見える、2 層、保護は偏差）は v2 も同じ。レイアウトと
+> ウィジェットの節は v0 のもの。
+
 ## 設計方針
 
 **ゲインが見える。** マルチバンドダイナミクスで一番読みたいのは「いま各帯域が

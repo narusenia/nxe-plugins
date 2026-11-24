@@ -233,9 +233,31 @@ draft release の zip。
 
 **完了条件**: V2-7 と同じ。加えて、型の寸法が `design-system.md` にある。
 
-**進み具合**: truce への移植は済み（`NXE Sparkleur 2` / `sparkleur2` /
-`Spk2`、MIT OR Apache-2.0）。窓はまだ仮で、H4 の窓とプリセットが残り。
-移植で変わったことが 1 つある。**Solo の 5 つは自動化できるようになった。**
+**決めたこと**（実装で）:
+
+- truce への移植（`NXE Sparkleur 2` / `sparkleur2` / `Spk2`、MIT OR
+  Apache-2.0）。**全パラメータに `parse` を付けた** — 一部にだけ付けると
+  clap-validator の `param-conversions` が、読み返せないもの（Solo の `Off`）で
+  落ちる
+- 窓は 880 × 430（サイドバーの 3 段で決まる）。サイドバーの主題は**一番大きく
+  動かされている帯の量**（符号付き dB）。マクロは 9 つを 3 × 3（Spark /
+  Character / Snap、Body / Air / Focus、Speed / Mix / Output）
+- 主図は Band Field。帯ごとに**届く範囲**（静かな信号と大きな信号に対して帯が
+  する量、`transfer_db` から）を薄い面で、**今の動き**を濃い棒で描く。決定 18
+  の「動かすと絵が変わる」は届く範囲が受け持つ: Spark・Character・Body・Air・
+  Lift・Mode・帯の重みとトリムが全部これを動かし、Focus は帯の境界を動かす。
+  帯をドラッグするとその帯の Gain（トリム）。Sparkle のゲートは Presence と
+  Air の上の線の明るさ、De-Harsh は Presence に数字で出す
+- 下の列は `Bands` / `Dynamics` のタブ。Bands は 5 帯 × Up / Down / Gain /
+  Solo の表。Dynamics は Lift / Punch / De-Harsh / Sub Protect のつまみ、
+  Sparkle と De-Harsh の読み値、選んだ帯の入出力曲線（今の位置の点つき）
+- **Mix と Output と Speed は主図を動かさない。** Mix と Output は帯の動きでは
+  なく、Speed は時間の量なので静止した図に出ない。つまみの値で読む
+- 付属プリセットは 6 つ（Default / Polish / Gloss / Vocal Air / Drum Snap /
+  Crush）でマクロだけを書く。**中身は仮**で、耳で決める
+- 型の寸法は `design-system.md` に書き戻した。ステータスバーは置かない
+
+移植で変わったことがもう 1 つある。**Solo の 5 つは自動化できるようになった。**
 truce の `flags` には「自動化しない」だけを指定する方法が無く、`readonly` は
 窓からの変更も止めてしまう。保存された Solo が付いたまま開くと壊れて聞こえる
 ので、窓で Solo の状態がはっきり見えるようにする。
@@ -288,7 +310,5 @@ zip にする（installer 自体は配らない）。`cargo truce build` はホ�
 
 | 何 | いつ決めるか |
 |---|---|
-| **Mix 系の書体。** Inter + letter-spacing で進める。Host Grotesk や allo に替えるなら、バイナリへの埋め込みが許されるライセンスかを先に確かめる | V2-9 で型を確定するとき |
-| **ステータスバー（ポインタの説明）を残すか、どこに置くか。** H4 の案には描いていない | V2-9 |
 | **Colour / Design シリーズの型。** 候補は Colour が H1 系、Design が G 系 | 各シリーズに着手するとき |
 | v0 から持ち越した耳の単位（`DBL-13` の既定値、`DIO-13` の既定値、Sparkleur の主観サインオフ `SPK-18`、Diorama の Advanced の偏差 `REQ-DIO-009`） | 各プラグインを型に載せる単位の中で。DSP は `<plugin>-core` にあるので、移行とは独立に進められる |
