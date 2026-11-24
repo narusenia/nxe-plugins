@@ -4,13 +4,8 @@
 # Every plugin ships as `NXE <name>` (`AGENTS.md`). The crate keeps the bare
 # name so paths stay short.
 
-# Doubler, Sparkleur, Velour and Air are on truce from 2.0; their names live
-# in `truce.toml`.
-
-# Settled in `DIO-15`, which is the last unit where it was free to move —
-# `CLAP_ID` cannot change once a host has stored it (`REQ-DIO-014`).
-[diorama]
-name = "NXE Diorama"
+# Doubler, Sparkleur, Velour, Air and Diorama are on truce from 2.0; their
+# names live in `truce.toml`.
 
 [pumice]
 name = "NXE Pumice"

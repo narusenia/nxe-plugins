@@ -15,6 +15,12 @@
 寸法は実機でしか settle しないし、UI の欠陥はテストが 1 本も落ちない
 （`.agents/rules/ui.md`）。**残っているのはそれ。**
 
+
+> **v2（Diorama 2）の窓は作り直した。** 何を決めたかは
+> `docs/implementation/v2-plan.md` の V2-12、寸法は
+> `docs/specifications/design-system.md`、コードは
+> `plugins/diorama/diorama/src/ui/`。**下の本文は v0（vizia）の窓の仕様**で、
+> 設計方針（1 本の軸が時間と距離、マクロから解いた図）は v2 も同じ。
 ## 設計方針
 
 **主役は「声がどこに居るか」** — `REQ-DIO-013` がそう書いている。距離は 1 本の

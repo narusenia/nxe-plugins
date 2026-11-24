@@ -310,6 +310,22 @@ V2-9 の型に載せる。完了条件は V2-7 と同じ。
 - 付属プリセット 6 つ（Default / Silk / Breath / Shimmer / Wide Air /
   Static）。マクロだけを書く。Default 以外の中身は仮
 
+**V2-12 で決めたこと**（実装で）:
+
+- truce への移植（`NXE Diorama 2` / `diorama2` / `Dio2`、MIT OR
+  Apache-2.0）。mono in / stereo out は残した（`REQ-DIO-011`）。v0 の
+  「パラメータ ID が出荷したものと同じ」テストは外した（Air と同じ理由）。
+  パレットの名前は `PARALLAX` のまま（`nxe-ui` と同時に替えるもの）
+- 窓は 880 × 430、**タブ無し**（`REQ-DIO-013` の 1 画面を残した）。マクロ
+  8 つをサイドバーに置き、下の列は測った値（Direct / Reflected / Clarity /
+  Room Corr.）だけ。主題は **D / R**（直接音と反射の比、dB）
+- 主図は到着の並び（時間 = 距離の 1 本の軸）。**窓が自分のエンジンを持って
+  マクロから解く**（`DIO-17` の「止まっていても設定できる」を、ホストが
+  `process` を呼ばない standalone でも守るため）。Mix と Output 以外の
+  マクロが全部図を動かす。ドラッグで Depth
+- 付属プリセット 6 つ（Default / Close / Behind / Far Back / Small Room /
+  Wide Room）。Output 以外のマクロを書く。Default 以外の中身は仮
+
 ### V2-15 — Pumice を main に入れる
 
 `pumice` ブランチ（nih-plug、`PUM-11` の耳の手前まで）を main に入れる。
