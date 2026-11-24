@@ -45,8 +45,8 @@ const STEREO_SPREAD_PAN: f32 = 0.3;
 const STEREO_SHAPE_PAN: f32 = 0.2;
 
 /// The wet-bus shelves. Ear-tuned (`dsp.md`).
-const SHELF_LOW_HZ: f32 = 200.0;
-const SHELF_HIGH_HZ: f32 = 4_000.0;
+pub const SHELF_LOW_HZ: f32 = 200.0;
+pub const SHELF_HIGH_HZ: f32 = 4_000.0;
 
 /// Tone Spread scatters each voice's highpass up from here and its lowpass down
 /// from there, by at most this many octaves at full depth. Ear-tuned

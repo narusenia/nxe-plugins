@@ -27,6 +27,8 @@ pub struct Subject<'a> {
 pub const HEAD: f32 =
     SPACE_4 + LINE_TITLE + SPACE_4 + LINE_EYEBROW + LINE_SUBJECT + SPACE_2 + SCALE + SPACE_4;
 const SCALE: f32 = 12.0;
+/// The height under the macros: the `NXE` mark and its margins.
+pub const FOOT: f32 = SPACE_4 + LINE_EYEBROW + SPACE_4;
 
 /// Draws the column at the left of `ui`, `height` tall, and lays out `macros`
 /// in the space under the subject with the inverted palette.

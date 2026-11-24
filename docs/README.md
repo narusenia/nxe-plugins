@@ -17,6 +17,7 @@
 | **今どの実装単位があって、どれが着手できるか** | [implementation/backlog.md](implementation/backlog.md) |
 | **引き継ぎ（今どこで、次に何を知るべきか）** | [HANDOVER.md](HANDOVER.md) |
 | **UI を開くと DAW が重くなる問題**（原因 2 つ、対策、外した仮説、測り方） | [investigations/ui-frame-cost.md](investigations/ui-frame-cost.md) |
+| v2 の窓の描画コスト（途中経過、判定はホストで） | [investigations/v2-frame-cost.md](investigations/v2-frame-cost.md) |
 | **v0.x の引き継ぎ・全単位・順序**（役目を終えた文書） | [archive/](archive/) |
 | **共通 UI コンポーネントの計画**（v0、vizia 版） | [implementation/nxe-ui-plan.md](implementation/nxe-ui-plan.md) |
 | **共通の解析（レベル・ステレオ像・スペクトラム）の計画** | [implementation/nxe-dsp-plan.md](implementation/nxe-dsp-plan.md) |

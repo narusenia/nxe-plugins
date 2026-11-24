@@ -18,6 +18,13 @@ use egui::{Id, Ui};
 /// reading, short enough that a transient still reads as one.
 pub const TAU: f32 = 0.04;
 
+/// The fastest a moving signal asks to be redrawn: **30 Hz, not the
+/// display's rate.** Measured in Doubler 2's window with sound, 60 Hz cost
+/// about 18 % of a core and 30 Hz about 10 %, against a budget of 10 %
+/// (`v2-plan.md`, decision 9; `docs/investigations/v2-frame-cost.md`). The
+/// smoothing is what keeps 30 Hz from reading as a stair-step.
+pub const FRAME: std::time::Duration = std::time::Duration::from_micros(33_333);
+
 /// Below this the shown value is taken to have arrived, and repaints stop.
 const SETTLED: f32 = 1e-4;
 
@@ -60,7 +67,7 @@ pub fn smoothed(ui: &Ui, id: Id, targets: &[f32], tau: f32) -> Vec<f32> {
     let dt = ui.input(|input| input.stable_dt);
     let mut smoother: Smoother = ui.data(|data| data.get_temp(id)).unwrap_or_default();
     if smoother.step(targets, dt, tau) {
-        ui.ctx().request_repaint();
+        ui.ctx().request_repaint_after(FRAME);
     }
     let values = smoother.values().to_vec();
     ui.data_mut(|data| data.insert_temp(id, smoother));
