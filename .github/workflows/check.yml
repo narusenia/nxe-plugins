@@ -77,6 +77,24 @@ jobs:
       - name: Install the plugins
         run: cargo truce install --user --clap --vst3 --au2 -p doubler
 
+      # **auval did not find a component installed for the user** — on the
+      # runner, and on a development Mac where the DAWs listed it fine. The AU
+      # registrar is what auval asks, and it did not pick up
+      # `~/Library/Audio/Plug-Ins/Components`. A copy in the system folder and a
+      # restarted registrar is what an installer would leave behind anyway.
+      - name: Register the AU for auval
+        run: |
+          sudo mkdir -p /Library/Audio/Plug-Ins/Components
+          for bundle in ~/Library/Audio/Plug-Ins/Components/NXE*.component; do
+            sudo cp -R "$bundle" /Library/Audio/Plug-Ins/Components/
+          done
+          killall -9 AudioComponentRegistrar || true
+          for _ in $(seq 1 30); do
+            auval -a | grep -q Nxeu && break
+            sleep 2
+          done
+          auval -a | grep Nxeu
+
       - name: Validate
         run: |
           set -e -o pipefail

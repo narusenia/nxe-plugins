@@ -168,9 +168,31 @@ mod tests {
 
     /// Every parameter comes back from a save — the half of "a project reopens
     /// as it was left" that does not need a host.
+    ///
+    /// **Away from the defaults.** truce's own `assert_state_round_trip` saves a
+    /// fresh instance, so a parameter that is never restored still passes it:
+    /// it comes back at its default, which is what it was saved at.
     #[test]
     fn state_round_trips() {
-        truce_test::assert_state_round_trip::<Plugin>();
+        use truce::params::Params;
+        use truce_core::export::PluginExport;
+        use truce_core::state;
+
+        let plugin = Plugin::create();
+        let infos = plugin.params().param_infos();
+        for info in &infos {
+            let (min, max) = (info.range.min(), info.range.max());
+            plugin.params().set_plain(info.id, min + (max - min) * 0.3);
+        }
+        let blob = state::snapshot_plugin(&plugin);
+        let mut restored = Plugin::create();
+        state::restore_plugin(&mut restored, &blob).expect("restore_plugin failed");
+
+        for info in &infos {
+            let saved = plugin.params().get_plain(info.id);
+            let loaded = restored.params().get_plain(info.id);
+            assert_eq!(saved, loaded, "{} did not come back", info.name);
+        }
     }
 
     #[test]
