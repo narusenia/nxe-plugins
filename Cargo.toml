@@ -55,6 +55,7 @@ truce-au = "=6.3.0"
 truce-egui = "=6.3.0"
 truce-test = "=6.3.0"
 truce-utils = "=6.3.0"
+truce-standalone = "=6.3.0"
 clap-sys = "0.5"
 egui = "0.34"
 

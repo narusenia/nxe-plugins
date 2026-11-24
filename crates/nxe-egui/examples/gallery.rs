@@ -39,7 +39,7 @@ impl Default for Gallery {
             macros: [0.3, 0.5, 0.7, 0.4],
             bars: [0.5, 0.25, 0.75, 0.6],
             mode: 0,
-            raw: 0,
+            raw: usize::from(std::env::var_os("NXE_GALLERY_RAW").is_some()),
             presets: ["Default", "Wide", "Tight", "Chorus"]
                 .map(String::from)
                 .to_vec(),
@@ -76,7 +76,14 @@ impl eframe::App for Gallery {
         if !window(ui) {
             return;
         }
-        ui.ctx().request_repaint();
+        // `NXE_GALLERY_HZ` sets how often the window redraws; the default is
+        // the 60 Hz a plugin window asks for (`smooth::FRAME`).
+        let hz: f32 = std::env::var("NXE_GALLERY_HZ")
+            .ok()
+            .and_then(|hz| hz.parse().ok())
+            .unwrap_or(60.0);
+        ui.ctx()
+            .request_repaint_after(std::time::Duration::from_secs_f32(1.0 / hz));
         let (name, palette) = Palette::ALL[self.palette];
         let palette = &palette;
         let time = self.started.elapsed().as_secs_f32();
