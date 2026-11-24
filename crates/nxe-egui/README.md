@@ -44,6 +44,7 @@ next pass.
 | `preset` | the preset bar; knows names, not presets |
 | `status` | the hint strip |
 | `smooth` | display-side smoothing for signals read from a handoff (decision 10) |
+| `text` | reading a typed value back: `number`, `percent`, `switch`, `choice`, `pan` — what a parameter's `parse` method calls |
 
 The palettes are copied from `nxe-ui` value for value. Until that crate goes
 (`V2-16`), **change a palette in both or in neither**.

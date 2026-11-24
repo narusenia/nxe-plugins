@@ -22,6 +22,7 @@ pub mod sidebar;
 pub mod smooth;
 pub mod status;
 pub mod surface;
+pub mod text;
 pub mod theme;
 
 /// Paints the whole window's ground and installs the faces. Call first, every
