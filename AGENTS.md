@@ -80,6 +80,12 @@ with the code, and fix the document in the same change.
   put anywhere, added and removed. **Its adaptive detection was dropped from
   v1** — the product's whole claim, measured and found not to work, with the
   three failed statistics recorded in `REQ-PUM-003` rather than deleted
+- `plugins/peek/peek-core`: the measurements behind every Peek meter. **One
+  crate for the whole series**, not one per plugin: a single meter and `Peek`
+  read the same implementation, so they cannot disagree. No meter touches the
+  signal
+- `plugins/peek/peek-level`: Peek Level — peak, true peak and RMS per channel,
+  on the Kit window (`nxe_egui::kit`). No parameters
 - `docs/`: monorepo-wide documents (architecture, cross-plugin backlog and
   roadmap). Indexed by `docs/README.md`
 - `plugins/<name>/docs/`: that plugin's own requirements, specifications, and

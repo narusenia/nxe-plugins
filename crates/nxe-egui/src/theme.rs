@@ -231,6 +231,18 @@ impl Palette {
         Token::rgb(0x5E, 0x6C, 0x00),
     );
 
+    /// No hue: the Peek meters (`peek-plan.md`, decision 4). A meter sits
+    /// beside other plugins and must not compete with their colour.
+    ///
+    /// **Not in [`Palette::ALL`]**, which is the Basic family the hue tests
+    /// hold to one lightness and 40° apart; an achromatic ramp has no hue to
+    /// test.
+    pub const PEEK: Self = Self::ramp(
+        Token::rgb(0xFA, 0xFA, 0xFA),
+        Token::rgb(0xE5, 0xE5, 0xE5),
+        Token::rgb(0x73, 0x73, 0x73),
+    );
+
     /// Every palette with the name of the plugin that wears it. For the gallery
     /// and for the test that keeps them one family.
     pub const ALL: [(&'static str, Self); 6] = [

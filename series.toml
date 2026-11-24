@@ -11,3 +11,7 @@
 [basic]
 name = "Basic"
 plugins = ["doubler", "sparkleur", "velour", "air", "diorama", "pumice"]
+
+[peek]
+name = "Peek"
+plugins = ["peek-level"]

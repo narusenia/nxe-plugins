@@ -2566,6 +2566,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "peek-core"
+version = "0.1.0"
+dependencies = [
+ "nxe-audio",
+ "nxe-dsp",
+]
+
+[[package]]
+name = "peek-level"
+version = "1.0.0"
+dependencies = [
+ "clap-sys",
+ "egui",
+ "nxe-dsp",
+ "nxe-egui",
+ "peek-core",
+ "truce",
+ "truce-au",
+ "truce-clap",
+ "truce-core",
+ "truce-egui",
+ "truce-loader",
+ "truce-params",
+ "truce-standalone",
+ "truce-test",
+ "truce-utils",
+ "truce-vst3",
+]
+
+[[package]]
 name = "peniko"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

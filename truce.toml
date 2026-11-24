@@ -84,3 +84,14 @@ category = "effect"
 fourcc = "Pumi"
 description = "Dynamic resonance suppression for a single vocal"
 vst3_subcategory = "Restoration"
+
+# The Peek series (`plugins/peek/docs/implementation/peek-plan.md`). Every
+# Peek plugin's codes are decided there at once, as Basic's were here.
+[[plugin]]
+name = "Peek Level"
+bundle_id = "peeklevel"
+crate = "peek-level"
+category = "effect"
+fourcc = "PkLv"
+description = "Peak, true peak and RMS, per channel"
+vst3_subcategory = "Analyzer"

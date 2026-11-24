@@ -290,6 +290,15 @@ impl eframe::App for Gallery {
                     palette.subtle.color(),
                 );
             });
+            // The Kit window (Kit 7), in the colour of whichever plugin is
+            // picked above.
+            ui.add_space(SPACE_4);
+            let (frame, _) = ui.allocate_exact_size(
+                vec2(nxe_egui::kit::WIDTH, nxe_egui::kit::HEIGHT),
+                egui::Sense::hover(),
+            );
+            let frame_ui = ui.new_child(egui::UiBuilder::new().max_rect(frame));
+            nxe_egui::kit::kit(&frame_ui, palette, "Fold", "Design Kit");
         });
         if changed && self.current.is_some() {
             self.modified = true;
