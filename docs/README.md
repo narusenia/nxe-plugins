@@ -2,7 +2,7 @@
 
 `nxe-plugins` は Rust の音声プラグインのモノレポ。出荷済みの v0.x は nih-plug 上に
 建て、CLAP と VST3 を出力し、UI は Vizia。**v2 で truce + egui に移す**
-（[implementation/v2-plan.md](implementation/v2-plan.md)、未着手）。
+（[implementation/v2-plan.md](implementation/v2-plan.md)、移行中）。
 
 リポジトリ全体の地図と規約は [`../AGENTS.md`](../AGENTS.md)。
 
@@ -23,6 +23,7 @@
 | **共通の解析（レベル・ステレオ像・スペクトラム）の計画** | [implementation/nxe-dsp-plan.md](implementation/nxe-dsp-plan.md) |
 | **ワークスペース骨格と CI の計画** | [implementation/infra-plan.md](implementation/infra-plan.md) |
 | **どの順でやるか、なぜその順か** | [implementation/roadmap.md](implementation/roadmap.md) |
+| **v2 の後のシリーズ（ラインナップ・Kit・順番）** | [implementation/series-plan.md](implementation/series-plan.md) |
 | **まだ書かれていないプラグインの構想** | [`../concepts/`](../concepts/) |
 | **共通ウィジェットの使い方**（契約・トークン・アイコン） | [`../crates/nxe-ui/README.md`](../crates/nxe-ui/README.md) |
 | **守るべき規約**（Rust / UI / 文書） | [`../.agents/rules/`](../.agents/rules/) |
