@@ -8,6 +8,7 @@
 | `crates/nxe-audio` | **MIT OR Apache-2.0** | 共通の音声処理 |
 | `crates/nxe-dsp` | **MIT OR Apache-2.0** | 共通の解析 |
 | `crates/nxe-ui` | **MIT OR Apache-2.0** | 共通の Vizia ウィジェットとテーマ |
+| `crates/nxe-egui` | **MIT OR Apache-2.0** | 共通の egui ウィジェットとテーマ（v2） |
 | `plugins/*/*-core` | **MIT OR Apache-2.0** | 各プラグインの DSP |
 | `crates/nxe-plug-ui` | **GPL-3.0-only** | nih-plug と `nxe-ui` の結線 |
 | `plugins/doubler/doubler` | **MIT OR Apache-2.0** | 出荷するプラグイン（Doubler 2、truce） |
@@ -138,11 +139,11 @@ Steinberg Media Technologies GmbH`）。`vst3-sys` が GPLv3 を選んだ理由 
 
 | フェイス | ライセンス | どこ | 何に使うか |
 |---|---|---|---|
-| Inter（Regular） | **SIL OFL 1.1** | `crates/nxe-ui/assets/inter/` | 語 |
+| Inter（Regular / Medium） | **SIL OFL 1.1** | `crates/nxe-ui/assets/inter/` | 語。Medium は v2（`nxe-egui`）だけ |
 | Geist Mono（Regular） | **SIL OFL 1.1** | `crates/nxe-ui/assets/geist/` | 数値 |
 
 **OFL はフォント自体の条件で、それをリンクしたソフトウェアには伝染しない。**
-`nxe-ui` が MIT OR Apache-2.0 のままでいられるのはこのため — 上の境界
+`nxe-ui` と `nxe-egui` が MIT OR Apache-2.0 のままでいられるのはこのため — 上の境界
 （`vst3-sys` をリンクするか）とは別の話。**フォントを改変して再配布する場合は
 別の条件が付く**（OFL の予約名条項）が、ここでは無改変で埋め込んでいる。
 

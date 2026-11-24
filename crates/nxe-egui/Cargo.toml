@@ -1,0 +1,16 @@
+[package]
+name = "nxe-egui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Shared egui widgets and theme for the nxe plugins (v2)"
+
+# No truce here, and there must never be one: a widget takes a value and hands
+# back what the pointer did, and each plugin binds that to its parameters. That
+# boundary is what lets `examples/gallery` run as a plain desktop app.
+[dependencies]
+egui = { workspace = true }
+
+[dev-dependencies]
+eframe = { version = "0.34", default-features = false, features = ["wgpu", "x11", "wayland"] }
