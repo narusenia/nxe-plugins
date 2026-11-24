@@ -105,7 +105,9 @@ pub fn resample_into(values: &[f32], bin_hz: f32, out: &mut [f32; CURVE_POINTS])
         *slot = if span <= NARROW_SPAN {
             interpolated
         } else {
-            let low = (((centre / step) / bin_hz).floor().max(0.0) as usize).max(first);
+            // Capped at `last` too: at a low sample rate the top of the axis
+            // is past Nyquist, and `low` past `last` panicked in `clamp`.
+            let low = (((centre / step) / bin_hz).floor().max(0.0) as usize).clamp(first, last);
             let high = (((centre * step) / bin_hz).ceil() as usize).clamp(low, last);
             let total: f32 = values[low..=high].iter().sum();
             let averaged = total / (high - low + 1) as f32;
@@ -350,5 +352,15 @@ mod tests {
         let mut out = [1.0; CURVE_POINTS];
         resample_into(&[], 23.437_5, &mut out);
         assert!(out.iter().all(|value| *value == 0.0));
+    }
+
+    /// clap-validator runs at 8 kHz, where the axis reaches past Nyquist.
+    #[test]
+    fn an_axis_past_nyquist_is_not_a_panic() {
+        // 8 kHz through a 256-point transform: 129 bins, 31.25 Hz apart.
+        let values = [1.0; 129];
+        let mut out = [0.0; CURVE_POINTS];
+        resample_into(&values, 31.25, &mut out);
+        assert!(out.iter().all(|value| *value == 1.0));
     }
 }

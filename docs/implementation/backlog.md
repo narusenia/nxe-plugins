@@ -57,7 +57,7 @@ V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実
 | V2-12 | Diorama 2 | V2-9 | 🟡 コードは済み。残りは基準画像（CI で焼く）、実機で見ること、付属プリセットの中身を耳で決めること |
 | V2-13 | リリースの CI（beta の前） | V2-1 | ✅ #11。PR の試運転で macOS（universal）/ Windows の zip と validate を確認。draft release を実際に作るのは V2-8 のタグが最初 |
 | V2-15 | Pumice を main に入れる（nih-plug のまま） | — | ✅ #9 |
-| V2-16 | Pumice 1.0（truce、`NXE Pumice` / `Pumi`） | V2-9, V2-15 | ⬜ |
+| V2-16 | Pumice 1.0（truce、`NXE Pumice` / `Pumi`） | V2-9, V2-15 | 🟡 コードは済み。残りは基準画像（CI で焼く）、3 ホストでの反転試験、付属プリセットの中身を耳で決めること |
 | V2-14 | 5 本の 2.0.0 と Pumice 1.0.0 | V2-8, V2-10〜V2-13, V2-16 | ⬜ |
 
 ### v0 から持ち越したもの

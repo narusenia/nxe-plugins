@@ -4,8 +4,4 @@
 # Every plugin ships as `NXE <name>` (`AGENTS.md`). The crate keeps the bare
 # name so paths stay short.
 
-# Doubler, Sparkleur, Velour, Air and Diorama are on truce from 2.0; their
-# names live in `truce.toml`.
-
-[pumice]
-name = "NXE Pumice"
+# Every plugin is on truce now; the names live in `truce.toml`.

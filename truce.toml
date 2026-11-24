@@ -75,3 +75,12 @@ category = "effect"
 fourcc = "Dio2"
 description = "A mix processor that moves a voice forward and back"
 vst3_subcategory = "Reverb"
+
+[[plugin]]
+name = "NXE Pumice"
+bundle_id = "pumice"
+crate = "pumice"
+category = "effect"
+fourcc = "Pumi"
+description = "Dynamic resonance suppression for a single vocal"
+vst3_subcategory = "Restoration"

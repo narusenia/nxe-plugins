@@ -16,14 +16,14 @@
 | `plugins/sparkleur/sparkleur` | **MIT OR Apache-2.0** | 出荷するプラグイン（Sparkleur 2、truce） |
 | `plugins/air/air` | **MIT OR Apache-2.0** | 出荷するプラグイン（Air 2、truce） |
 | `plugins/diorama/diorama` | **MIT OR Apache-2.0** | 出荷するプラグイン（Diorama 2、truce） |
-| `plugins/pumice/pumice` | **GPL-3.0-only** | 出荷するプラグイン |
+| `plugins/pumice/pumice` | **MIT OR Apache-2.0** | 出荷するプラグイン（Pumice 1.0、truce） |
 
 境界は 1 つだけ。**`vst3-sys` をリンクするか、しないか。**
 
 **v2 の移行中は混在している**（`docs/implementation/v2-plan.md`）。truce に
 移ったラッパは `vst3-sys` を引かないので上の側に移り、まだ nih-plug に乗って
-いる Air / Diorama / Pumice のラッパと、それらだけが使う
-`nxe-plug-ui` は GPL-3.0-only のまま残る。**最後の `nih_plug` 依存を外す単位で、
+いるラッパは無くなった。どのプラグインも使わなくなった
+`nxe-plug-ui` だけが GPL-3.0-only のまま残る。**最後の `nih_plug` 依存を外す単位で、
 全クレートが MIT OR Apache-2.0 になったとここに書く。**
 
 ## truce のライセンス

@@ -149,9 +149,11 @@ vizia = { git = "https://github.com/robbert-vdh/vizia.git", tag = "patched-2024-
 # All eight are worth sending upstream; none has been yet. **The first one is
 # a bug in baseview that affects every plugin built on it**, and is the one to
 # send first.
-# **truce-clap 6.3.0 with one change**: after a state or preset load it asks the
+# **truce-clap 6.3.0 with two changes**: after a state or preset load it asks the
 # host to rescan parameter values, which CLAP requires and clap-validator 0.4
-# checks. Upstream does not yet. The change is marked `nxe-plugins patch` in
+# checks; and a latency change asks for a restart (when active) and announces
+# the new value from `activate`, the only place CLAP allows `latency.changed`
+# (Pumice is the one plugin whose latency moves). Upstream does neither yet. The change is marked `nxe-plugins patch` in
 # `patches/truce-clap/src/lib.rs`; drop this entry once a truce release has it.
 #
 # **truce-egui 6.3.0 with one addition**: `EguiEditor::with_font_definitions`,
