@@ -1,12 +1,11 @@
 //! Parameter declarations, and the mapping to `air_core`'s plain values.
 //!
 //! The adapter the architecture calls for: `air-core` knows nothing about
-//! nih-plug, so the translation lives here
+//! truce, so the translation lives here
 //! (`docs/specifications/architecture.md`).
 //!
-//! **Adding a parameter later is safe** — nih-plug keys them by id, not by
-//! position — but **changing or removing an id is not**, so the ids below are
-//! as final as `CLAP_ID`.
+//! **Ids are truce's hash of the field name**, so renaming a field is renaming a
+//! parameter for every saved session. The display `name` is free to change.
 //!
 //! ## Two layers
 //!
@@ -18,22 +17,21 @@
 //! A control that rests on the macro is how two parameters avoid writing one
 //! value (`REQ-AIR-010`).
 
+use crate::analysis::Analysis;
 use air_core::Shape;
 use air_core::follow::{BRIGHTNESS, DETECTORS, ENVELOPE, TRANSIENT};
-use nih_plug::prelude::*;
 use nxe_audio::oversample::Factor;
-use nxe_audio::shaper::{BIAS_MAX, DRIVE_MAX, DRIVE_MIN};
+use nxe_egui::text;
+use truce::prelude::*;
 
 /// How hard the harmonic half runs internally.
 ///
-/// A separate type from `nxe_audio::Factor` on purpose: deriving nih-plug's
-/// `Enum` on the shared type would make it depend on nih-plug.
-#[derive(Enum, Debug, PartialEq, Eq, Clone, Copy)]
+/// A separate type from `nxe_audio::Factor` on purpose: deriving truce's
+/// `ParamEnum` on the shared type would make it depend on truce.
+#[derive(ParamEnum, Debug)]
 pub enum FactorParam {
-    #[id = "2x"]
     #[name = "2x"]
     Two,
-    #[id = "4x"]
     #[name = "4x"]
     Four,
 }
@@ -49,34 +47,68 @@ impl From<FactorParam> for Factor {
 
 #[derive(Params)]
 pub struct AirParams {
+    /// What the editor is shown about the sound. Not a parameter: the audio
+    /// thread writes it and the editor reads it, and the params `Arc` is the
+    /// one thing both are handed (`analysis.rs`).
+    #[skip]
+    pub analysis: Analysis,
+
     /// How much surface to make. **Zero is exactly nothing**, and one of the
     /// two ways out of the plugin (`REQ-AIR-001`).
     ///
     /// **Not named `AIR`.** Velour and Sparkleur both have a knob by that name
     /// already, and a plugin called Air with a knob called `AIR` would be the
     /// third (`REQ-AIR-010`).
-    #[id = "surface"]
+    #[param(
+        name = "Surface",
+        range = "linear(0, 1)",
+        default = 0.5,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub surface: FloatParam,
 
     /// Harmonic ↔ noise. A power-preserving crossfade, so the middle is not a
     /// dip (`REQ-AIR-005`).
-    #[id = "blend"]
+    #[param(
+        name = "Blend",
+        range = "linear(0, 1)",
+        default = 0.5,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub blend: FloatParam,
 
     /// The quality axis. **Its meaning moves with `BLEND`** — a knee on the
     /// harmonic side, grain on the noise side — which is why there is one of it
     /// rather than one per half (`REQ-AIR-005`).
-    #[id = "character"]
+    #[param(
+        name = "Character",
+        range = "linear(0, 1)",
+        default = 0.72,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub character: FloatParam,
 
     /// Where the layer sits. Moves both halves together (`REQ-AIR-006`).
-    #[id = "focus"]
+    #[param(name = "Focus", range = "linear(-1, 1)", default = -0.5, format = "octaves", parse = "number", smooth = "linear(50)")]
     pub focus: FloatParam,
 
     /// How far the layer spreads. **The noise half only** — the harmonic half
     /// is made from the input, and widening correlated material takes an
     /// all-pass, which is a comb in mono (`REQ-AIR-008`).
-    #[id = "width"]
+    #[param(
+        name = "Width",
+        range = "linear(0, 1)",
+        default = 0.6,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub width: FloatParam,
 
     /// How much of the layer to add. **It does not turn the original down**:
@@ -85,158 +117,141 @@ pub struct AirParams {
     /// How much of the input's movement the layer answers to. **This is what
     /// Air is** (`REQ-AIR-002`): at zero the layer is static, which is Velour;
     /// with only the transient deviation up it is Sparkleur's Sparkle.
-    #[id = "follow"]
+    #[param(
+        name = "Follow",
+        range = "linear(0, 1)",
+        default = 1.0,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub follow: FloatParam,
 
-    #[id = "mix"]
+    #[param(
+        name = "Mix",
+        range = "linear(0, 1)",
+        default = 1.0,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub mix: FloatParam,
 
-    #[id = "output"]
+    #[param(
+        name = "Output",
+        range = "linear(-12, 12)",
+        format = "decibels",
+        parse = "number",
+        smooth = "linear(20)"
+    )]
     pub output: FloatParam,
 
     /// Advanced: the curve's own numbers, which `CHARACTER` does not reach
     /// (`REQ-AIR-010`).
-    #[id = "drive"]
+    ///
+    /// The defaults are `air_core::harmonic::DRIVE` and `BIAS`, copied because a
+    /// truce default has to be a literal; `the_curve_defaults_are_the_core_ones`
+    /// keeps the copies honest. The ranges are `nxe_audio::shaper`'s.
+    #[param(
+        name = "Drive",
+        group = "Curve",
+        range = "linear(0.05, 8)",
+        default = 4.0,
+        format = "plain",
+        parse = "number",
+        smooth = "linear(30)"
+    )]
     pub drive: FloatParam,
-    #[id = "bias"]
+    #[param(
+        name = "Bias",
+        group = "Curve",
+        range = "linear(0, 0.8)",
+        default = 0.3,
+        format = "plain",
+        parse = "number",
+        smooth = "linear(30)"
+    )]
     pub bias: FloatParam,
 
     /// Advanced: each detector's depth **as a deviation from `FOLLOW`**
     /// (`REQ-AIR-010`). Zero is "as the macro says".
-    #[id = "fol_env"]
+    #[param(
+        name = "Follow Envelope",
+        group = "Follow",
+        range = "linear(-1, 1)",
+        format = "signed_percent",
+        parse = "percent",
+        smooth = "linear(30)"
+    )]
     pub follow_envelope: FloatParam,
-    #[id = "fol_brt"]
+    #[param(
+        name = "Follow Brightness",
+        group = "Follow",
+        range = "linear(-1, 1)",
+        format = "signed_percent",
+        parse = "percent",
+        smooth = "linear(30)"
+    )]
     pub follow_brightness: FloatParam,
-    #[id = "fol_trn"]
+    #[param(
+        name = "Follow Transient",
+        group = "Follow",
+        range = "linear(-1, 1)",
+        format = "signed_percent",
+        parse = "percent",
+        smooth = "linear(30)"
+    )]
     pub follow_transient: FloatParam,
 
     /// Advanced: the protection's bipolar deviation (`REQ-AIR-009`). Zero is
     /// the shipped threshold; **the bottom of the range is exactly off** and
     /// the top is stricter.
-    #[id = "guard"]
+    #[param(
+        name = "Guard",
+        range = "linear(-1, 1)",
+        format = "signed_percent",
+        parse = "percent",
+        smooth = "linear(30)"
+    )]
     pub guard: FloatParam,
 
-    #[id = "os"]
+    /// 4x by default: 2x is a cost saving, not an equal — it leaves aliasing
+    /// about 14 dB higher (`nxe_audio::oversample`).
+    #[param(name = "Oversample", default = 1, parse = "factor")]
     pub oversample: EnumParam<FactorParam>,
 }
 
-impl Default for AirParams {
-    fn default() -> Self {
-        Self {
-            // **Settled by ear** (`AIR-13`). The plugin has no presets
-            // (`REQ-AIR-022`), so these are the product's face: what it sounds
-            // like when someone drops it on a track and turns one knob.
-            //
-            // Half, so `SURFACE` has somewhere to go in both directions.
-            surface: percentage("Surface", 0.50),
-            // The middle, because the two halves are the product's two answers
-            // and shipping against one stop would hide the other.
-            blend: percentage("Blend", 0.5),
-            // **Toward the hard knee and the grain.** The soft end is close to
-            // what Velour already does; what is Air about the sound is nearer
-            // this end (`REQ-AIR-002`).
-            character: percentage("Character", 0.72),
-
-            // **Half an octave down**, so the layer starts around 2.1 kHz
-            // rather than 3. Up there it is only ever air; down here it reaches
-            // the region that makes a source read as *present*, and `FOCUS`
-            // still has a full octave of travel above it.
-            focus: FloatParam::new(
-                "Focus",
-                -0.50,
-                FloatRange::Linear {
-                    min: -1.0,
-                    max: 1.0,
-                },
-            )
-            .with_unit(" oct")
-            // Moving `FOCUS` rebuilds ten sets of filter coefficients per
-            // channel, so the smoothing is what keeps a drag from stepping.
-            // The corners themselves move once per block (`air_core::layer`).
-            .with_smoother(SmoothingStyle::Linear(50.0))
-            .with_value_to_string(formatters::v2s_f32_rounded(2)),
-
-            // Wide, because the layer sitting around the source rather than on
-            // it is what the product is for (`REQ-AIR-008`).
-            width: percentage("Width", 0.60),
-            // **All the way.** Following the input is what Air is
-            // (`REQ-AIR-002`), and a default that only half does it ships the
-            // half of the product that Velour already covers. The three
-            // deviations are how someone takes it back.
-            follow: percentage("Follow", 1.00),
-            mix: percentage("Mix", 1.0),
-            output: decibels("Output"),
-
-            drive: FloatParam::new(
-                "Drive",
-                air_core::harmonic::DRIVE,
-                FloatRange::Linear {
-                    min: DRIVE_MIN,
-                    max: DRIVE_MAX,
-                },
-            )
-            .with_smoother(SmoothingStyle::Linear(30.0))
-            .with_value_to_string(formatters::v2s_f32_rounded(2)),
-
-            bias: FloatParam::new(
-                "Bias",
-                air_core::harmonic::BIAS,
-                FloatRange::Linear {
-                    min: 0.0,
-                    max: BIAS_MAX,
-                },
-            )
-            .with_smoother(SmoothingStyle::Linear(30.0))
-            .with_value_to_string(formatters::v2s_f32_rounded(2)),
-
-            follow_envelope: bipolar("Follow Envelope"),
-            follow_brightness: bipolar("Follow Brightness"),
-            follow_transient: bipolar("Follow Transient"),
-            guard: bipolar("Guard"),
-
-            // 4x by default: 2x is a cost saving, not an equal — it leaves
-            // aliasing about 14 dB higher (`nxe_audio::oversample`).
-            oversample: EnumParam::new("Oversample", FactorParam::Four),
-        }
+impl AirParams {
+    /// **Signed, always.** A minus that appears the moment the knob crosses
+    /// centre makes the row twitch (`.agents/rules/ui.md`).
+    fn signed_percent(&self, value: f64) -> String {
+        format!("{:+.0} %", value * 100.0)
     }
-}
 
-/// A `-1..=1` control resting at zero, for a deviation from a macro.
-fn bipolar(name: &'static str) -> FloatParam {
-    FloatParam::new(
-        name,
-        0.0,
-        FloatRange::Linear {
-            min: -1.0,
-            max: 1.0,
-        },
-    )
-    .with_smoother(SmoothingStyle::Linear(30.0))
-    .with_value_to_string(formatters::v2s_f32_rounded(2))
-}
+    fn decibels(&self, value: f64) -> String {
+        format!("{value:+.1} dB")
+    }
 
-/// A `0..=100%` control.
-fn percentage(name: &'static str, default: f32) -> FloatParam {
-    FloatParam::new(name, default, FloatRange::Linear { min: 0.0, max: 1.0 })
-        .with_unit(" %")
-        .with_smoother(SmoothingStyle::Linear(20.0))
-        .with_value_to_string(formatters::v2s_f32_percentage(0))
-        .with_string_to_value(formatters::s2v_f32_percentage())
-}
+    fn octaves(&self, value: f64) -> String {
+        format!("{value:+.2} oct")
+    }
 
-/// A `±12 dB` trim resting at unity.
-fn decibels(name: &'static str) -> FloatParam {
-    FloatParam::new(
-        name,
-        0.0,
-        FloatRange::Linear {
-            min: -12.0,
-            max: 12.0,
-        },
-    )
-    .with_unit(" dB")
-    .with_smoother(SmoothingStyle::Linear(20.0))
-    .with_value_to_string(formatters::v2s_f32_rounded(1))
+    fn plain(&self, value: f64) -> String {
+        format!("{value:.2}")
+    }
+
+    // **Every parameter reads its own text back** (`nxe_egui::text`).
+    fn percent(&self, text: &str) -> Option<f64> {
+        text::percent(text)
+    }
+
+    fn number(&self, text: &str) -> Option<f64> {
+        text::number(text)
+    }
+
+    fn factor(&self, text: &str) -> Option<f64> {
+        text::choice(&["2x", "4x"], text)
+    }
 }
 
 impl AirParams {
@@ -245,16 +260,16 @@ impl AirParams {
     /// **`next_step(samples)`, not `next()`.** A smoother advances one sample
     /// per call, so reading it once per block would stretch every ramp by the
     /// block length — the trap `VEL-5` hit.
-    pub fn shape(&self, samples: u32) -> Shape {
+    pub fn shape(&self, samples: usize) -> Shape {
         Shape {
-            focus: self.focus.smoothed.next_step(samples),
-            character: self.character.smoothed.next_step(samples),
-            blend: self.blend.smoothed.next_step(samples),
-            width: self.width.smoothed.next_step(samples),
-            drive: self.drive.smoothed.next_step(samples),
-            bias: self.bias.smoothed.next_step(samples),
+            focus: self.focus.read_after(samples),
+            character: self.character.read_after(samples),
+            blend: self.blend.read_after(samples),
+            width: self.width.read_after(samples),
+            drive: self.drive.read_after(samples),
+            bias: self.bias.read_after(samples),
             depths: self.depths(samples),
-            guard: self.guard.smoothed.next_step(samples),
+            guard: self.guard.read_after(samples),
             factor: self.oversample.value().into(),
         }
     }
@@ -267,15 +282,65 @@ impl AirParams {
     ///
     /// **Order matters** — these go into an array the engine reads by position,
     /// and `the_detector_order_matches_the_engine` is what holds it in place.
-    fn depths(&self, samples: u32) -> [f32; DETECTORS] {
-        let follow = self.follow.smoothed.next_step(samples);
+    /// Each detector's depth, **without touching a smoother** — for the
+    /// window, which must not steal a step from the audio thread.
+    pub fn display_depths(&self) -> [f32; DETECTORS] {
+        let follow = self.follow.value();
         let mut depths = [0.0; DETECTORS];
-        depths[ENVELOPE] =
-            (follow + self.follow_envelope.smoothed.next_step(samples)).clamp(0.0, 1.0);
-        depths[BRIGHTNESS] =
-            (follow + self.follow_brightness.smoothed.next_step(samples)).clamp(0.0, 1.0);
-        depths[TRANSIENT] =
-            (follow + self.follow_transient.smoothed.next_step(samples)).clamp(0.0, 1.0);
+        depths[ENVELOPE] = (follow + self.follow_envelope.value()).clamp(0.0, 1.0);
+        depths[BRIGHTNESS] = (follow + self.follow_brightness.value()).clamp(0.0, 1.0);
+        depths[TRANSIENT] = (follow + self.follow_transient.value()).clamp(0.0, 1.0);
         depths
+    }
+
+    fn depths(&self, samples: usize) -> [f32; DETECTORS] {
+        let follow = self.follow.read_after(samples);
+        let mut depths = [0.0; DETECTORS];
+        depths[ENVELOPE] = (follow + self.follow_envelope.read_after(samples)).clamp(0.0, 1.0);
+        depths[BRIGHTNESS] = (follow + self.follow_brightness.read_after(samples)).clamp(0.0, 1.0);
+        depths[TRANSIENT] = (follow + self.follow_transient.read_after(samples)).clamp(0.0, 1.0);
+        depths
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_curve_defaults_are_the_core_ones() {
+        let params = AirParams::default();
+        assert_eq!(params.drive.value(), air_core::harmonic::DRIVE);
+        assert_eq!(params.bias.value(), air_core::harmonic::BIAS);
+        let infos = params.param_infos();
+        let drive = infos
+            .iter()
+            .find(|info| info.id == params.drive.id())
+            .unwrap();
+        let bias = infos
+            .iter()
+            .find(|info| info.id == params.bias.id())
+            .unwrap();
+        assert_eq!(drive.range.min() as f32, nxe_audio::shaper::DRIVE_MIN);
+        assert_eq!(drive.range.max() as f32, nxe_audio::shaper::DRIVE_MAX);
+        assert_eq!(bias.range.max() as f32, nxe_audio::shaper::BIAS_MAX);
+    }
+
+    /// **Every parameter reads back its own text** — a typed value in the
+    /// window, and clap-validator's `param-conversions`.
+    #[test]
+    fn every_parameter_reads_back_its_own_text() {
+        let params = AirParams::default();
+        for info in params.param_infos() {
+            for plain in [info.range.min(), info.range.max()] {
+                let text = params.format_value(info.id, plain).unwrap();
+                let back = params.parse_value(info.id, &text);
+                assert!(
+                    back.is_some_and(|back| (back - plain).abs() < 0.01),
+                    "{} printed {plain} as {text:?} and read back {back:?}",
+                    info.name
+                );
+            }
+        }
     }
 }

@@ -8,6 +8,12 @@
 道具立ての使い方は
 [`../../../../crates/nxe-ui/README.md`](../../../../crates/nxe-ui/README.md)。
 
+
+> **v2（Air 2）の窓は作り直した。** 何を決めたかは
+> `docs/implementation/v2-plan.md` の V2-11、寸法は
+> `docs/specifications/design-system.md`、コードは `plugins/air/air/src/ui/`。
+> **下の本文は v0（vizia）の窓の仕様**で、設計方針（足した層が見える）は
+> v2 も同じ。「タブ無し 1 画面」は H4 の型に合わせて崩した。
 ## 設計方針
 
 **足した層が見える。** これが Air の主張そのもの（`REQ-AIR-001`）で、

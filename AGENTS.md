@@ -11,9 +11,9 @@ Plugins move one at a time from [nih-plug](https://github.com/robbert-vdh/nih-pl
 [truce](https://github.com/truce-audio/truce) + egui, and ship again as
 `NXE <name> 2`:
 
-- **On truce**: Doubler, Sparkleur and Velour. Exports **CLAP, VST3 and AU v2** (AU on macOS only);
+- **On truce**: Doubler, Sparkleur, Velour and Air. Exports **CLAP, VST3 and AU v2** (AU on macOS only);
   `truce.toml` at the root declares them
-- **Still on nih-plug**: Air, Diorama, and Pumice. CLAP and
+- **Still on nih-plug**: Diorama and Pumice. CLAP and
   VST3 only — nih-plug has no AU wrapper. **Pumice was never released**, so it
   ships as `NXE Pumice` 1.0.0, not as a "2" (`v2-plan.md`, decision 16)
 
@@ -70,8 +70,8 @@ with the code, and fix the document in the same change.
   on the audio path. `noise` is the only block written for it, and it is
   written not to know what Air is: two more plugins want a noise generator, and
   the second to ask moves the file into `nxe-audio` unchanged
-- `plugins/air/air`: the Air nih-plug wrapper — parameter declarations, the
-  Vizia UI, and the binding between them
+- `plugins/air/air`: the Air 2 truce wrapper — parameter declarations, the
+  egui editor, and the binding between them
 - `plugins/diorama/diorama-core`: the Diorama DSP — a vocal's distance, built
   from early reflections and a direct path that is itself processed. **No
   reverb tail**: 10–120 ms only. Host-agnostic, allocation-free on the audio

@@ -14,7 +14,7 @@
 | `plugins/doubler/doubler` | **MIT OR Apache-2.0** | 出荷するプラグイン（Doubler 2、truce） |
 | `plugins/velour/velour` | **MIT OR Apache-2.0** | 出荷するプラグイン（Velour 2、truce） |
 | `plugins/sparkleur/sparkleur` | **MIT OR Apache-2.0** | 出荷するプラグイン（Sparkleur 2、truce） |
-| `plugins/air/air` | **GPL-3.0-only** | 出荷するプラグイン |
+| `plugins/air/air` | **MIT OR Apache-2.0** | 出荷するプラグイン（Air 2、truce） |
 | `plugins/diorama/diorama` | **GPL-3.0-only** | 出荷するプラグイン |
 | `plugins/pumice/pumice` | **GPL-3.0-only** | 出荷するプラグイン |
 

@@ -16,8 +16,8 @@
 
 use crate::params::AirParams;
 use air_core::engine::Engine;
-use nih_plug::prelude::Param;
 use nxe_audio::harmonics::{at_dbfs, db_ratio, noise, pink, rms, tone};
+use truce::params::FloatParamReadF32;
 
 const RATE: f32 = 48_000.0;
 const BLOCK: usize = 64;
@@ -68,36 +68,15 @@ struct Run {
     follow: [f32; 3],
 }
 
-/// **A freshly built parameter's smoother starts at zero**, not at the
-/// parameter's value — a host primes them through `initialize`, and a test that
+/// **A freshly built parameter's smoother may not sit at its value** — a host
+/// primes them before audio, and a test that
 /// does not is measuring a plugin with every macro at the bottom of its range.
 /// Measured before this: the layer came out at **−200 dB**, which reads as
 /// "the defaults add nothing" and is entirely an artefact of the harness.
 fn primed() -> AirParams {
+    use truce::params::Params;
     let params = AirParams::default();
-    params.surface.smoothed.reset(params.surface.value());
-    params.blend.smoothed.reset(params.blend.value());
-    params.character.smoothed.reset(params.character.value());
-    params.focus.smoothed.reset(params.focus.value());
-    params.width.smoothed.reset(params.width.value());
-    params.follow.smoothed.reset(params.follow.value());
-    params.mix.smoothed.reset(params.mix.value());
-    params.output.smoothed.reset(params.output.value());
-    params.drive.smoothed.reset(params.drive.value());
-    params.bias.smoothed.reset(params.bias.value());
-    params
-        .follow_envelope
-        .smoothed
-        .reset(params.follow_envelope.value());
-    params
-        .follow_brightness
-        .smoothed
-        .reset(params.follow_brightness.value());
-    params
-        .follow_transient
-        .smoothed
-        .reset(params.follow_transient.value());
-    params.guard.smoothed.reset(params.guard.value());
+    params.snap_smoothers();
     params
 }
 
@@ -112,10 +91,10 @@ fn run(input: &[f32]) -> Run {
         // **Set per block, the way a host drives it.** A shape read once before
         // the first sample leaves every detector looking at silence, which is
         // how Velour measured `EMOTION` backwards (`VEL-6`).
-        engine.set_shape(&params.shape(chunk.len() as u32));
+        engine.set_shape(&params.shape(chunk.len()));
         for (offset, sample) in chunk.iter().enumerate() {
-            let surface = params.surface.smoothed.next();
-            let mix = params.mix.smoothed.next();
+            let surface = params.surface.read();
+            let mix = params.mix.read();
             engine.process((*sample, *sample), surface, mix);
             if block * BLOCK + offset >= settle {
                 layer.push(engine.layer().0);
@@ -140,13 +119,13 @@ fn against_source(run: &Run, input: &[f32]) -> f32 {
 #[test]
 fn the_shipped_defaults_are_the_ones_that_were_chosen() {
     let params = AirParams::default();
-    assert_eq!(params.surface.default_plain_value(), 0.50);
-    assert_eq!(params.blend.default_plain_value(), 0.50);
-    assert_eq!(params.character.default_plain_value(), 0.72);
-    assert_eq!(params.focus.default_plain_value(), -0.50);
-    assert_eq!(params.width.default_plain_value(), 0.60);
-    assert_eq!(params.follow.default_plain_value(), 1.00);
-    assert_eq!(params.mix.default_plain_value(), 1.00);
+    assert_eq!(params.surface.value(), 0.50);
+    assert_eq!(params.blend.value(), 0.50);
+    assert_eq!(params.character.value(), 0.72);
+    assert_eq!(params.focus.value(), -0.50);
+    assert_eq!(params.width.value(), 0.60);
+    assert_eq!(params.follow.value(), 1.00);
+    assert_eq!(params.mix.value(), 1.00);
 }
 
 /// **Ordinary material is not held back** (`REQ-AIR-009`). The test Sparkleur
