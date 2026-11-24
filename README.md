@@ -61,18 +61,19 @@ whole series (`nxe-basic-2026.12-macos.zip`). The 0.x releases before it were on
 plugin, tagged `<plugin>-v<version>`. Unpack it and copy the bundles
 into:
 
-| | CLAP | VST3 |
-|---|---|---|
-| macOS | `~/Library/Audio/Plug-Ins/CLAP` | `~/Library/Audio/Plug-Ins/VST3` |
-| Windows | `%COMMONPROGRAMFILES%\CLAP` | `%COMMONPROGRAMFILES%\VST3` |
-| Linux | `~/.clap` | `~/.vst3` |
+| | CLAP | VST3 | AU |
+|---|---|---|---|
+| macOS | `~/Library/Audio/Plug-Ins/CLAP` | `~/Library/Audio/Plug-Ins/VST3` | `~/Library/Audio/Plug-Ins/Components` |
+| Windows | `%COMMONPROGRAMFILES%\CLAP` | `%COMMONPROGRAMFILES%\VST3` | — |
 
 **macOS builds are not signed or notarized.** The first time you load one,
-Gatekeeper will refuse it. Clear the quarantine attribute:
+Gatekeeper will refuse it. Clear the quarantine attribute from every NXE
+bundle you installed:
 
 ```bash
-xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/CLAP/'NXE Doubler.clap'
-xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/'NXE Velour.vst3'
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/CLAP/NXE\ *.clap \
+  ~/Library/Audio/Plug-Ins/VST3/NXE\ *.vst3 \
+  ~/Library/Audio/Plug-Ins/Components/NXE\ *.component
 ```
 
 ## License

@@ -59,6 +59,11 @@ jobs:
           import os, re, sys, tomllib
           series = tomllib.load(open("series.toml", "rb"))
           truce = {p["crate"]: p for p in tomllib.load(open("truce.toml", "rb"))["plugin"]}
+          # Every series, every time: a typo in series.toml fails the pull
+          # request rather than the tag.
+          missing = sorted({p for v in series.values() for p in v["plugins"]} - truce.keys())
+          if missing:
+              sys.exit(f"::error::series.toml names plugins not in truce.toml: {' '.join(missing)}")
           if os.environ["EVENT"] == "pull_request":
               key, version, plugins = "basic", "pr", ["doubler"]
           else:
@@ -67,9 +72,6 @@ jobs:
                   sys.exit(f"::error::{os.environ['TAG']} is not <series>-<YYYY.MM>[.N][-beta.N] for a series in series.toml")
               key, version = m[1], m[2]
               plugins = series[key]["plugins"]
-          missing = [p for p in plugins if p not in truce]
-          if missing:
-              sys.exit(f"::error::not in truce.toml: {' '.join(missing)}")
           print(f"series={key}")
           print(f"title=NXE {series[key]['name']} {version}")
           print(f"version={version}")
