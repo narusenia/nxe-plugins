@@ -79,7 +79,7 @@ pub fn matches(ctx: &Ctx, preset: &Factory) -> bool {
 /// The user library. `com.nxe.pumice` is the id the state hash comes from,
 /// so a preset saved by one format loads in another.
 pub fn store() -> PresetStore {
-    PresetStore::new("NXE", "NXE Pumice", hash_plugin_id("com.nxe.pumice"), None)
+    PresetStore::new("NXE", "Pumice", hash_plugin_id("com.nxe.pumice"), None)
 }
 
 pub fn user_presets(store: &PresetStore) -> Vec<PresetRef> {

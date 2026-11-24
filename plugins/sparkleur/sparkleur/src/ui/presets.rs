@@ -95,7 +95,7 @@ pub fn matches(ctx: &Ctx, preset: &Factory) -> bool {
 pub fn store() -> PresetStore {
     PresetStore::new(
         "NXE",
-        "NXE Sparkleur 2",
+        "Sparkleur 2",
         hash_plugin_id("com.nxe.sparkleur2"),
         None,
     )

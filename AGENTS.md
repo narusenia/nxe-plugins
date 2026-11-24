@@ -8,9 +8,9 @@ the author's handle `nxeu`.
 **v2 (`docs/implementation/v2-plan.md`) moved every plugin** from
 [nih-plug](https://github.com/robbert-vdh/nih-plug) + [Vizia](https://github.com/vizia/vizia)
 to [truce](https://github.com/truce-audio/truce) + egui; they ship again as
-`NXE <name> 2`. All six export **CLAP, VST3 and AU v2** (AU on macOS only),
+`<name> 2`. All six export **CLAP, VST3 and AU v2** (AU on macOS only),
 declared in `truce.toml` at the root. **Pumice was never released**, so it
-ships as `NXE Pumice` 1.0.0, not as a "2" (`v2-plan.md`, decision 16).
+ships as `Pumice` 1.0.0, not as a "2" (`v2-plan.md`, decision 16).
 Nothing in the workspace depends on nih-plug or vizia any more.
 
 v0.x (all five on nih-plug) is kept on the `release/v0` branch; fixes to the
@@ -98,9 +98,12 @@ Important references:
 
 ## Naming
 
-Plugins ship as **`NXE <name>`** — `NXE Doubler`, and so on for everything that
-follows; from v2 as **`NXE <name> 2`**. That string is the plugin's `name` in
-`truce.toml`, and how it appears in a host's plugin list. The **crate** keeps the bare name
+From v2 a plugin's name is **the bare name** — `Doubler 2`, `Pumice` — with
+no `NXE` in front (v0 shipped as `NXE Doubler`). The vendor is a field of its
+own (CLAP / VST3 vendor `NXE`, AU manufacturer `Nxeu`), and hosts group by it,
+so repeating it in the name only doubled it (`NXE: NXE Doubler 2` in Logic).
+That string is the plugin's `name` in `truce.toml`, and how it appears in a
+host's plugin list. The **crate** keeps the bare name
 (`doubler`, `doubler-core`) so paths stay short, and the documents use the bare
 name as shorthand.
 

@@ -29,7 +29,7 @@ url = "https://github.com/narusenia/nxe-plugins"
 au_manufacturer = "Nxeu"
 
 [[plugin]]
-name = "NXE Doubler 2"
+name = "Doubler 2"
 bundle_id = "doubler2"
 crate = "doubler"
 category = "effect"
@@ -41,7 +41,7 @@ vst3_subcategory = "Modulation"
 # left out rather than half-applied (backlog).
 
 [[plugin]]
-name = "NXE Sparkleur 2"
+name = "Sparkleur 2"
 bundle_id = "sparkleur2"
 crate = "sparkleur"
 category = "effect"
@@ -50,7 +50,7 @@ description = "Five-band up-and-down dynamics with a transient-gated harmonic ge
 vst3_subcategory = "Dynamics"
 
 [[plugin]]
-name = "NXE Velour 2"
+name = "Velour 2"
 bundle_id = "velour2"
 crate = "velour"
 category = "effect"
@@ -59,7 +59,7 @@ description = "Vocal presence saturator"
 vst3_subcategory = "Distortion"
 
 [[plugin]]
-name = "NXE Air 2"
+name = "Air 2"
 bundle_id = "air2"
 crate = "air"
 category = "effect"
@@ -68,7 +68,7 @@ description = "A signal-driven high-frequency texture generator"
 vst3_subcategory = "Distortion"
 
 [[plugin]]
-name = "NXE Diorama 2"
+name = "Diorama 2"
 bundle_id = "diorama2"
 crate = "diorama"
 category = "effect"
@@ -77,7 +77,7 @@ description = "A mix processor that moves a voice forward and back"
 vst3_subcategory = "Reverb"
 
 [[plugin]]
-name = "NXE Pumice"
+name = "Pumice"
 bundle_id = "pumice"
 crate = "pumice"
 category = "effect"

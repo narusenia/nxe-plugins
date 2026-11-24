@@ -90,12 +90,7 @@ pub fn matches(ctx: &Ctx, preset: &Factory) -> bool {
 /// The user library. `com.nxe.velour2` is the id the state hash comes from,
 /// so a preset saved by one format loads in another.
 pub fn store() -> PresetStore {
-    PresetStore::new(
-        "NXE",
-        "NXE Velour 2",
-        hash_plugin_id("com.nxe.velour2"),
-        None,
-    )
+    PresetStore::new("NXE", "Velour 2", hash_plugin_id("com.nxe.velour2"), None)
 }
 
 pub fn user_presets(store: &PresetStore) -> Vec<PresetRef> {
