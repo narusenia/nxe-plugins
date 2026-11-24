@@ -5,6 +5,12 @@
 要件は [`../requirements/REQ-DBL.md`](../requirements/REQ-DBL.md)、守るべき規約は
 [`../../../../.agents/rules/vizia.md`](../../../../.agents/rules/vizia.md)。
 
+> **v2（Doubler 2）の窓は作り直した。** 形は H4（`docs/specifications/design-system.md`）、
+> 何を決めたかは `docs/implementation/v2-plan.md` の V2-7、コードは
+> `plugins/doubler/doubler/src/ui/`。**下の本文は v0（vizia）の窓の仕様**で、
+> 図・表・Tone の考え方は v2 でもそのまま生きている。寸法・タブ・ミラーの
+> スイッチ・ウィジェットの節は v0 のもの。
+
 ## 設計方針
 
 **何が起きているかが図で分かる。** マルチボイスダブラーの状態は「どのボイスが

@@ -34,6 +34,7 @@ truce-core = { workspace = true }
 truce-params = { workspace = true }
 truce-loader = { workspace = true }
 truce-egui = { workspace = true }
+truce-utils = { workspace = true }
 egui = { workspace = true }
 truce-clap = { workspace = true, optional = true }
 clap-sys = { workspace = true, optional = true }

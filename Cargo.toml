@@ -54,6 +54,7 @@ truce-vst3 = "=6.3.0"
 truce-au = "=6.3.0"
 truce-egui = "=6.3.0"
 truce-test = "=6.3.0"
+truce-utils = "=6.3.0"
 clap-sys = "0.5"
 egui = "0.34"
 
@@ -151,8 +152,16 @@ vizia = { git = "https://github.com/robbert-vdh/vizia.git", tag = "patched-2024-
 # host to rescan parameter values, which CLAP requires and clap-validator 0.4
 # checks. Upstream does not yet. The change is marked `nxe-plugins patch` in
 # `patches/truce-clap/src/lib.rs`; drop this entry once a truce release has it.
+#
+# **truce-egui 6.3.0 with one addition**: `EguiEditor::with_font_definitions`,
+# which installs a whole `FontDefinitions` before the first pass. Upstream's
+# `with_font` takes one face, and fonts set from inside the UI only apply from
+# the next pass — which `screenshot!` (one pass) never reaches, so the window's
+# own faces would never be in a baseline. Marked `nxe-plugins patch` in
+# `patches/truce-egui/src/font.rs` and `editor.rs`.
 [patch.crates-io]
 truce-clap = { path = "patches/truce-clap" }
+truce-egui = { path = "patches/truce-egui" }
 
 [patch."https://github.com/RustAudio/baseview.git"]
 baseview = { git = "https://github.com/narusenia/baseview.git", tag = "nxe-2026-08-31c" }

@@ -1393,6 +1393,7 @@ dependencies = [
  "truce-loader",
  "truce-params",
  "truce-test",
+ "truce-utils",
  "truce-vst3",
 ]
 
@@ -5392,8 +5393,6 @@ dependencies = [
 [[package]]
 name = "truce-egui"
 version = "6.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "679ecc5a8cfae4884d0b9da56a3eab33cce11148a57e416755b0d1eb3758d9ff"
 dependencies = [
  "baseview-truce",
  "egui",

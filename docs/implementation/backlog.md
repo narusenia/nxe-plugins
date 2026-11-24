@@ -33,7 +33,6 @@
 | ID | 単位 |
 |---|---|
 | V2-3 | 描画予算を測る |
-| V2-7 | Doubler 2 を型に載せる（先に truce-egui の書体の口が要る） |
 
 V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実機の確認
 （下）には依存していない。
@@ -50,7 +49,7 @@ V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実
 | V2-4 | 窓の回帰を CI で検出する（`cargo truce screenshot --check`） | V2-1 | ✅ #10。macOS / Windows の基準画像、1 px ずらして両 OS で落ちることを確認（3174d9b） |
 | V2-5 | `nxe-ui` の egui 版とギャラリー | V2-2, V2-3 | ✅ `crates/nxe-egui`。全部品がギャラリーにあり、パレットのテストを引き継いだ |
 | V2-6 | 信号表示の平滑化 | V2-5 | ✅ `nxe_egui::smooth`。30 Hz の読みを 60 Hz で描いて毎フレーム動くことをテストで確認 |
-| V2-7 | Doubler 2 を型に載せる | V2-5, V2-6 | ⬜ |
+| V2-7 | Doubler 2 を型に載せる | V2-5, V2-6 | 🟡 コードと macOS の基準画像は済み。残りは Windows の基準画像、実機で見ること、描画予算の測定、付属プリセットの中身を耳で決めること |
 | V2-8 | Doubler 2 beta | V2-4, V2-7, V2-13 | ⬜ |
 | V2-9 | Sparkleur 2（型を確定する） | V2-7 | ⬜ |
 | V2-10 | Velour 2 | V2-9 | ⬜ |
@@ -82,6 +81,6 @@ v2 の移行とは独立に進められる。
 | Vocal Glue | 要件まで（[`REQ-GLU.md`](../../plugins/vocal-glue/docs/requirements/REQ-GLU.md)） |
 | Colour シリーズ / Design シリーズ | 構想のみ。型の候補は [`design-system.md`](../specifications/design-system.md) |
 | AU v2 の名前が `NXE: NXE Doubler 2` と二重になる | cargo-truce 6.3.0 の AU v2 の Info.plist は `au_name` を読まず `name` を使う。rescan と一緒に上流へ |
-| truce-egui に複数の書体を渡す口 | `with_font` は 1 書体だけ。`screenshot!` は 1 パスなので、窓の中で登録したフォントが写らない（`v2-plan.md` の V2-5）。`V2-7` の前に要る |
+| truce-egui の書体の口を上流へ送る | `patches/truce-egui` の `with_font_definitions`。上流に入れば patch を消せる。rescan と一緒に、出す前に確認 |
 | truce-clap の rescan を上流へ送る | `patches/truce-clap` の 1 か所。上流に入れば patch を消せる。外への PR なので出す前に確認する |
 | パワーフォロワの共通化 | 3 個目が来ているが形が 3 つとも違う。上げるなら何を共通にするかを先に決める |

@@ -38,6 +38,12 @@ xtask/                            nih_plug_xtask のバンドラ（nih-plug 側�
 `state-reproducibility-*` が落ちる。変更箇所は `nxe-plugins patch` で検索できる。
 上流に入ったら patch ごと消す。
 
+**truce-egui にも patch が 1 つある**（`patches/truce-egui`）。
+`EguiEditor::with_font_definitions` を足し、複数の書体（Inter 2 ウェイトと
+Geist Mono）を最初のパスの前に入れる。上流の `with_font` は 1 書体だけで、窓の
+中から入れた書体は次のパスからしか効かないため、1 パスしか描かない
+`screenshot!` の基準画像に自前の書体が写らなかった。
+
 `truce.toml` も**ワークスペース直下に 1 つ**。`truce::plugin!` がコンパイル時に
 クレート名で自分の `[[plugin]]` を探す。`au_manufacturer` と 5 本の `fourcc` は
 `V2-1` でまとめて決めてあり、まだ移っていない 4 本の分もこのファイルの

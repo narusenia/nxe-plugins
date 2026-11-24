@@ -354,6 +354,31 @@ impl DoublerParams {
             self.voice8.shape(),
         ]
     }
+
+    /// Voice `index`'s parameter ids, as `[delay, detune, pan, gain]`. For the
+    /// editor, which addresses the eight voices by number.
+    pub fn voice_ids(&self, index: usize) -> [u32; 4] {
+        macro_rules! ids {
+            ($voice:expr) => {
+                [
+                    $voice.delay.id(),
+                    $voice.detune.id(),
+                    $voice.pan.id(),
+                    $voice.gain.id(),
+                ]
+            };
+        }
+        match index {
+            0 => ids!(self.voice1),
+            1 => ids!(self.voice2),
+            2 => ids!(self.voice3),
+            3 => ids!(self.voice4),
+            4 => ids!(self.voice5),
+            5 => ids!(self.voice6),
+            6 => ids!(self.voice7),
+            _ => ids!(self.voice8),
+        }
+    }
 }
 
 #[cfg(test)]
