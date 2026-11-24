@@ -195,6 +195,23 @@ mod tests {
         }
     }
 
+    /// **The window against a committed picture** (`V2-4`). UI defects do not
+    /// show up in any other test (`.agents/rules/ui.md`), so this is the one
+    /// that sees them. One baseline per OS: the rasterisers differ, and truce
+    /// compares strictly. Baselines are baked on CI, never on a laptop — a
+    /// picture from a different GPU would fail on the runner for nothing.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn window_matches_its_screenshot_macos() {
+        truce_test::screenshot!(Plugin, "screenshots/default_macos.png").run();
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn window_matches_its_screenshot_windows() {
+        truce_test::screenshot!(Plugin, "screenshots/default_windows.png").run();
+    }
+
     #[test]
     fn makes_sound_without_allocating() {
         let result = truce_test::assert_no_audio_alloc(|| {

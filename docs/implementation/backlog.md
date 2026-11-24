@@ -34,7 +34,6 @@
 |---|---|
 | V2-2 | マウス合成の修正を引き継ぐ |
 | V2-3 | 描画予算を測る |
-| V2-4 | 窓の回帰を CI で検出する |
 | V2-13 | リリースの CI |
 
 この 4 つは V2-1 の**コード**に依存していて、V2-1 に残っている実機の確認
@@ -49,7 +48,7 @@
 | V2-1 | truce の骨格と Doubler 2 の起動（`au_manufacturer` / `fourcc` を 5 本分決める、`release/v0` を切る） | — | ❓ **実機が要る**。コードと validate は #7。Ableton / Studio One / Logic での保存→再読込と自動化が残り |
 | V2-2 | マウス合成の修正を引き継ぐ | V2-1 | 🟡 |
 | V2-3 | 描画予算を測る（1 コアの 10 %） | V2-1 | 🟡 |
-| V2-4 | 窓の回帰を CI で検出する（`cargo truce screenshot --check`） | V2-1 | 🟡 |
+| V2-4 | 窓の回帰を CI で検出する（`cargo truce screenshot --check`） | V2-1 | ✅ #10。macOS / Windows の基準画像、1 px ずらして両 OS で落ちることを確認（3174d9b） |
 | V2-5 | `nxe-ui` の egui 版とギャラリー | V2-2, V2-3 | ⬜ |
 | V2-6 | 信号表示の平滑化 | V2-5 | ⬜ |
 | V2-7 | Doubler 2 を型に載せる | V2-5, V2-6 | ⬜ |
