@@ -217,12 +217,12 @@ pub struct SparkleurParams {
     pub sub_protect: FloatParam,
 
     /// How far the macros reach (`REQ-SPK-022`). `Soft` by default.
-    #[param(name = "Mode")]
+    #[param(name = "Mode", parse = "mode")]
     pub mode: EnumParam<ModeParam>,
 
     /// 4x by default: 2x is a cost saving, not an equal — it leaves aliasing
     /// about 14 dB higher (`nxe_audio::oversample`).
-    #[param(name = "Oversample", default = 1)]
+    #[param(name = "Oversample", default = 1, parse = "factor")]
     pub oversample: EnumParam<FactorParam>,
 
     /// Per-band **weights**, not amounts: `SPARK` multiplies them, so raising
@@ -385,15 +385,15 @@ pub struct SparkleurParams {
     /// truce's `flags` has no "not automatable" short of `readonly`, which
     /// would also stop the window from setting it. A project reopening with a
     /// solo latched sounds broken, so the window has to make the state obvious.
-    #[param(name = "Sub Solo", group = "Solo")]
+    #[param(name = "Sub Solo", group = "Solo", parse = "switch")]
     pub solo_sub: BoolParam,
-    #[param(name = "Body Solo", group = "Solo")]
+    #[param(name = "Body Solo", group = "Solo", parse = "switch")]
     pub solo_body: BoolParam,
-    #[param(name = "Mid Solo", group = "Solo")]
+    #[param(name = "Mid Solo", group = "Solo", parse = "switch")]
     pub solo_mid: BoolParam,
-    #[param(name = "Presence Solo", group = "Solo")]
+    #[param(name = "Presence Solo", group = "Solo", parse = "switch")]
     pub solo_pres: BoolParam,
-    #[param(name = "Air Solo", group = "Solo")]
+    #[param(name = "Air Solo", group = "Solo", parse = "switch")]
     pub solo_air: BoolParam,
 }
 
@@ -417,10 +417,38 @@ impl SparkleurParams {
         number(text).map(|value| value / 100.0)
     }
 
+    /// "On" / "Off", as truce prints a switch. **Every parameter parses**:
+    /// once one does, a validator expects all of them to, and a switch that
+    /// cannot read back its own text fails `param-conversions`.
+    fn switch(&self, text: &str) -> Option<f64> {
+        match text.trim().to_ascii_lowercase().as_str() {
+            "on" | "1" | "true" => Some(1.0),
+            "off" | "0" | "false" => Some(0.0),
+            _ => None,
+        }
+    }
+
+    fn mode(&self, text: &str) -> Option<f64> {
+        choice(&["soft", "hard"], text)
+    }
+
+    fn factor(&self, text: &str) -> Option<f64> {
+        choice(&["2x", "4x"], text)
+    }
+
     /// "-3", "-3 dB", "+0.5 oct" → the number.
     fn number(&self, text: &str) -> Option<f64> {
         number(text)
     }
+}
+
+/// The index of `text` among `names`, ignoring case.
+fn choice(names: &[&str], text: &str) -> Option<f64> {
+    let text = text.trim().to_ascii_lowercase();
+    names
+        .iter()
+        .position(|name| *name == text)
+        .map(|index| index as f64)
 }
 
 /// The leading number of `text`, whatever unit follows it.
@@ -654,5 +682,24 @@ mod tests {
         assert_eq!(params.parse_value(params.output.id(), "-3 dB"), Some(-3.0));
         assert_eq!(params.parse_value(params.focus.id(), "0.5 oct"), Some(0.5));
         assert_eq!(params.parse_value(params.spark.id(), "loud"), None);
+    }
+
+    /// **Every parameter reads back its own text** — what clap-validator's
+    /// `param-conversions` checks, and what it failed on when only the
+    /// numbers parsed.
+    #[test]
+    fn every_parameter_reads_back_its_own_text() {
+        let params = SparkleurParams::default();
+        for info in params.param_infos() {
+            for plain in [info.range.min(), info.range.max()] {
+                let text = params.format_value(info.id, plain).unwrap();
+                let back = params.parse_value(info.id, &text);
+                assert!(
+                    back.is_some_and(|back| (back - plain).abs() < 0.01),
+                    "{} printed {plain} as {text:?} and read back {back:?}",
+                    info.name
+                );
+            }
+        }
     }
 }
