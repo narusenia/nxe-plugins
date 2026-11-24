@@ -32,3 +32,5 @@ category = "effect"
 fourcc = "Dbl2"
 description = "Multi-voice doubler"
 vst3_subcategory = "Modulation"
+# AU lists a plugin as "<manufacturer>: <name>", so the vendor is already there.
+au_name = "Doubler 2"

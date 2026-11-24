@@ -14,7 +14,8 @@ repository.workspace = true
 description = "Multi-voice doubler"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+# `staticlib` because `cargo truce` links the macOS bundles from `lib<name>.a`.
+crate-type = ["cdylib", "staticlib", "rlib"]
 
 # `cargo truce build` turns on one format per build. `au` is macOS only, so it
 # is not a default: a Windows `cargo test` must not try to build the AU shim.
