@@ -6,8 +6,7 @@
 [air]
 name = "NXE Air"
 
-[doubler]
-name = "NXE Doubler"
+# Doubler is on truce from 2.0; its name lives in `truce.toml`.
 
 [velour]
 name = "NXE Velour"
