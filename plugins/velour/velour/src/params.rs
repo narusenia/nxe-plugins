@@ -410,6 +410,31 @@ impl VelourParams {
         }
     }
 
+    /// Band `index`'s parameter ids, as `[level, texture, bias, solo]`. For
+    /// the editor, which addresses the three bands by number.
+    pub fn band_ids(&self, index: usize) -> [u32; 4] {
+        match index {
+            0 => [
+                self.body.id(),
+                self.texture_body.id(),
+                self.bias_body.id(),
+                self.solo_body.id(),
+            ],
+            1 => [
+                self.presence.id(),
+                self.texture_presence.id(),
+                self.bias_presence.id(),
+                self.solo_presence.id(),
+            ],
+            _ => [
+                self.air.id(),
+                self.texture_air.id(),
+                self.bias_air.id(),
+                self.solo_air.id(),
+            ],
+        }
+    }
+
     /// What the engine needs per sample.
     pub fn levels(&self) -> Levels {
         Levels {

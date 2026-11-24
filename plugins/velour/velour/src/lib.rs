@@ -176,6 +176,25 @@ mod tests {
         }
     }
 
+    /// **The window against a committed picture** (`V2-4`). One baseline per
+    /// OS, baked on CI, never on a laptop; a channel may be off by 2 for the
+    /// anti-aliasing the runner and a laptop disagree on.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn window_matches_its_screenshot_macos() {
+        truce_test::screenshot!(Plugin, "screenshots/default_macos.png")
+            .pixel_threshold(2)
+            .run();
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn window_matches_its_screenshot_windows() {
+        truce_test::screenshot!(Plugin, "screenshots/default_windows.png")
+            .pixel_threshold(2)
+            .run();
+    }
+
     #[test]
     fn makes_sound_without_allocating() {
         let result = truce_test::assert_no_audio_alloc(|| {
