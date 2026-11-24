@@ -2,7 +2,7 @@
 //! `scripts/generate-logo.py` — do not edit.** Regenerate with
 //! `mise run logo:generate`.
 //!
-//! Coordinates are in the SVG's own viewbox; [`super::draw`] scales them.
+//! Coordinates are in the SVG's own viewbox; the `logo` module scales them.
 
 use super::Segment::{self, Close, Cubic, Line, Move};
 
