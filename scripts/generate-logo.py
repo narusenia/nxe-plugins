@@ -1,24 +1,21 @@
 #!/usr/bin/env python3
-"""Turn the NXE logotype into path commands for femtovg and egui.
+"""Turn the NXE logotype into path commands for egui.
 
-**The SVG is the source; the Rust is generated.** femtovg has no SVG reader, and
+**The SVG is the source; the Rust is generated.** egui has no SVG reader, and
 pulling one in to draw one shape would cost a dependency and a licence for
 geometry that never changes. Run `mise run logo:generate` after editing the SVG.
 
 The colour in the file is ignored on purpose: the mark is painted with whatever
 token the window is using, so it inverts with the surface like everything else
-(`crates/nxe-ui/src/theme.rs`).
+(`crates/nxe-egui/src/theme.rs`).
 """
 
 import re
 from pathlib import Path
 
-SVG = Path("crates/nxe-ui/assets/nxe/logo.svg")
-# Both window crates draw the mark until `nxe-ui` goes with the last vizia
-# plugin (`V2-16`); the file is the same in each.
+SVG = Path("crates/nxe-egui/assets/nxe/logo.svg")
 OUTS = [
     Path("crates/nxe-egui/src/logo/generated.rs"),
-    Path("crates/nxe-ui/src/logo/generated.rs"),
 ]
 
 NUMBER = re.compile(r"-?\d*\.?\d+(?:e-?\d+)?")

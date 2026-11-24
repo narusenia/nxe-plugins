@@ -46,5 +46,5 @@ next pass.
 | `smooth` | display-side smoothing for signals read from a handoff (decision 10) |
 | `text` | reading a typed value back: `number`, `percent`, `switch`, `choice`, `pan` — what a parameter's `parse` method calls |
 
-The palettes are copied from `nxe-ui` value for value. Until that crate goes
-(`V2-16`), **change a palette in both or in neither**.
+The palettes came from the v0 vizia `nxe-ui` value for value, and the tests
+that keep them one family came with them.

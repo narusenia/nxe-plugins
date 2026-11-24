@@ -1,10 +1,7 @@
 //! The design tokens: colour, spacing, type sizes, the window width.
 //!
-//! **The palettes are the vizia `nxe-ui`'s, value for value**, and the tests
-//! that keep them one family came with them. The two copies live side by side
-//! only while plugins are still on vizia; the vizia one goes with the last of
-//! them (`V2-16`), and until then **a palette is changed in both or in
-//! neither**.
+//! **The palettes came from the v0 vizia `nxe-ui`, value for value**, and the
+//! tests that keep them one family came with them.
 //!
 //! **A widget takes its palette as an argument.** vizia found it by walking up
 //! the tree; egui has no tree, and an argument is the honest version of the

@@ -5,24 +5,19 @@
 `nxe-plugins` is a monorepo of audio plugins written in Rust. `nxe` comes from
 the author's handle `nxeu`.
 
-**The repository is mid-migration (v2, `docs/implementation/v2-plan.md`).**
-Plugins move one at a time from [nih-plug](https://github.com/robbert-vdh/nih-plug)
-+ [Vizia](https://github.com/vizia/vizia) to
-[truce](https://github.com/truce-audio/truce) + egui, and ship again as
-`NXE <name> 2`:
-
-- **On truce**: all six — Doubler, Sparkleur, Velour, Air, Diorama and Pumice. Exports **CLAP, VST3 and AU v2** (AU on macOS only);
-  `truce.toml` at the root declares them
-- **Pumice was never released**, so it ships as `NXE Pumice` 1.0.0, not as a
-  "2" (`v2-plan.md`, decision 16)
-- The nih-plug side (`nxe-ui`, `nxe-plug-ui`, xtask, `bundler.toml`) is no
-  longer used by any plugin and goes in its own change
+**v2 (`docs/implementation/v2-plan.md`) moved every plugin** from
+[nih-plug](https://github.com/robbert-vdh/nih-plug) + [Vizia](https://github.com/vizia/vizia)
+to [truce](https://github.com/truce-audio/truce) + egui; they ship again as
+`NXE <name> 2`. All six export **CLAP, VST3 and AU v2** (AU on macOS only),
+declared in `truce.toml` at the root. **Pumice was never released**, so it
+ships as `NXE Pumice` 1.0.0, not as a "2" (`v2-plan.md`, decision 16).
+Nothing in the workspace depends on nih-plug or vizia any more.
 
 v0.x (all five on nih-plug) is kept on the `release/v0` branch; fixes to the
 shipped 0.2 builds go there, not to `main`.
 
 Every plugin keeps its DSP in a separate host-agnostic crate (`<plugin>-core`)
-that depends on no plugin framework and no UI toolkit. That is what lets the
+that depends on no plugin framework and no UI toolkit. That is what let the
 migration replace a wrapper without touching the sound.
 
 Treat the implementation as authoritative when a planning document disagrees
@@ -35,21 +30,12 @@ with the code, and fix the document in the same change.
   harmonic measurement the tests are written against. Host-agnostic and
   interface-agnostic. **Separate from `nxe-dsp` on purpose**: a bug here
   breaks the sound, a bug there breaks a picture
-- `crates/nxe-plug-ui`: the adapter between nih-plug's parameters and the
-  `nxe-ui` widgets — **the only crate allowed to know both**. Separate from
-  `nxe-ui` so that `examples/gallery` never links nih-plug
-- `crates/nxe-ui`: shared Vizia widgets, theme tokens, and the plugins' own
-  drawn symbols. **Depends on Vizia only, never on nih-plug** — widgets take a
-  value plus a callback, and each plugin owns the thin adapter that binds them
-  to its own parameters. `examples/gallery.rs` runs every widget as a plain
-  desktop app, which is how UI work is iterated without launching a DAW.
-  Its `README.md` is the guide for building an interface with it
-- `crates/nxe-egui`: the v2 widgets and tokens, on egui. **Depends on egui
-  only, never on truce** — a widget takes a value and hands back what the
-  pointer did. `examples/gallery.rs` runs every widget in an eframe window.
-  The palettes are `nxe-ui`'s value for value; **change one in both or in
-  neither** until `nxe-ui` goes with the last vizia plugin. Its `README.md` is
-  the guide
+- `crates/nxe-egui`: the shared widgets, theme tokens, fonts and the NXE mark,
+  on egui. **Depends on egui only, never on truce** — a widget takes a value
+  and hands back what the pointer did, and each plugin owns the binding to its
+  own parameters. `examples/gallery.rs` runs every widget in an eframe window,
+  which is how UI work is iterated without launching a DAW (`mise run
+  gallery`). Its `README.md` is the guide
 - `plugins/doubler/doubler-core`: the Doubler DSP. Host-agnostic, allocation-free
   on the audio path
 - `plugins/doubler/doubler`: the Doubler 2 truce wrapper — parameter
@@ -114,8 +100,7 @@ Important references:
 
 Plugins ship as **`NXE <name>`** — `NXE Doubler`, and so on for everything that
 follows; from v2 as **`NXE <name> 2`**. That string is the plugin's `name` in
-`truce.toml` (or `NAME` and its `bundler.toml` entry while it is on nih-plug),
-and how it appears in a host's plugin list. The **crate** keeps the bare name
+`truce.toml`, and how it appears in a host's plugin list. The **crate** keeps the bare name
 (`doubler`, `doubler-core`) so paths stay short, and the documents use the bare
 name as shorthand.
 
@@ -123,7 +108,7 @@ name as shorthand.
 its own small mark (`UI-19`). The list has already been read by the time the
 window is open, so repeating the vendor inside it buys nothing.
 
-The vendor is `NXE`. On nih-plug, CLAP ids are `com.nxe.<name>`; on truce,
+The vendor is `NXE`. The v0 CLAP ids were `com.nxe.<name>`; on truce,
 `bundle_id = "<name>2"` gives `com.nxe.<name>2`, and truce derives the VST3
 class id and the state hash from the same key. The AU manufacturer is `Nxeu`,
 and every plugin's AU `fourcc` is fixed in `truce.toml`. **None of these may
@@ -134,23 +119,15 @@ kind of break; its display `name` is free.
 
 ## Licensing
 
-**Two licenses, and the boundary is whether the crate links `vst3-sys`.**
-[`LICENSING.md`](LICENSING.md) is the full map and the reasoning.
+**Everything is MIT OR Apache-2.0.** [`LICENSING.md`](LICENSING.md) is the
+full map and the reasoning. truce's own license is MIT / Apache-2.0 with a
+rider that only covers reselling truce as a framework, which shipping plugins
+is not.
 
-- `nxe-audio`, `nxe-dsp`, `nxe-ui`, `<plugin>-core`, and **every wrapper on
-  truce** — **MIT OR Apache-2.0**. truce's own license is MIT / Apache-2.0
-  with a rider that only covers reselling truce as a framework, which shipping
-  plugins is not
-- `nxe-plug-ui` and the wrappers still on nih-plug — **GPL-3.0-only**.
-  `nih_plug` depends on `vst3-sys` unconditionally, and `vst3-sys` is GPLv3
-
-**nih-plug itself is ISC.** The GPL comes from `vst3-sys` alone. Adding a
-dependency on `nih_plug` to a crate on the permissive side moves it to the GPL
-side; do not do it without saying so in `LICENSING.md`.
-
-**A nih-plug plugin's bundles are GPLv3, `.clap` included.** Each calls
-`nih_export_clap!` and `nih_export_vst3!` from one cdylib and the bundler copies
-that same binary into both, so "the CLAP build has no VST3 in it" is false here.
+**The v0 builds were GPLv3**, because nih-plug links `vst3-sys` (GPLv3)
+unconditionally. Do not add a dependency that links `vst3-sys` or anything
+else GPL without saying so in `LICENSING.md` — it would move the crate, and
+every bundle built from it, to the GPL.
 
 ## Verification
 
@@ -158,15 +135,9 @@ that same binary into both, so "the CLAP build has no VST3 in it" is false here.
 lefthook pre-commit hook runs the same tasks; install it once with
 `mise run hooks:install`.
 
-Local bundling and installation of a plugin still on nih-plug:
-
-```bash
-mise run bundle velour     # cargo xtask bundle velour --release
-mise run install velour    # bundle, then copy into ~/Library/Audio/Plug-Ins
-```
-
-A plugin on truce goes through `cargo truce`, which `mise.toml` pins to the
-same version as the crates:
+A plugin is built, installed and validated through `cargo truce`, which
+`mise.toml` pins to the same version as the crates (`mise run install doubler`
+is the first line):
 
 ```bash
 cargo truce install --user --clap --vst3 --au2 -p doubler
@@ -186,5 +157,4 @@ and the host, not a local `auval`, until the registrar recovers.
 - `git.md` — commit messages, branches, pull request titles
 - `rust.md` — Rust and real-time audio rules
 - `ui.md` — what the windows have to look like and how they have to read
-- `vizia.md` — what this vizia revision does, and what it silently does not
 - `documentation.md` — which document owns what, and what a change obliges

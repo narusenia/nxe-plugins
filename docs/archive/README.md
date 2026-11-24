@@ -9,6 +9,8 @@
 | [`v0-handover.md`](v0-handover.md) | v0.x の引き継ぎ。測定の経緯、各プラグインで踏んだ罠、vizia の重さ問題 | v0.2.0 の出荷（2026-08-31）まで |
 | [`v0-backlog.md`](v0-backlog.md) | v0.x の全実装単位（`INFRA-*` / `DSP-*` / `UI-*` / `DBL-*` / `VEL-*` / `SPK-*` / `AIR-*` / `DIO-*`） | 同上 |
 | [`v0-roadmap.md`](v0-roadmap.md) | v0.x の順序と、その根拠 | 同上 |
+| [`vizia-rules.md`](vizia-rules.md) | v0 の vizia の規則（何がパースされ、何が黙って効かないか） | vizia を外した `V2-17` まで |
+| [`vizia-pins.md`](vizia-pins.md) | v0 の nih-plug と vizia の依存のピン、自前のフォークで直したこと | 同上 |
 
 v0.x の単位 ID は、ここに残した行がそのまま正。v2 の文書から v0.x の単位を
 参照するときは、この表のファイルを指す。

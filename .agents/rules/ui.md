@@ -1,6 +1,5 @@
 ---
 paths:
-  - "crates/nxe-ui/**"
   - "crates/nxe-egui/**"
   - "plugins/**/src/ui/**"
   - "plugins/**/docs/specifications/ui.md"
@@ -9,16 +8,14 @@ paths:
 # Interface rules
 
 **What the windows have to look like and how they have to read.** How the
-toolkit behaves — what parses, what silently does nothing — is
-[`vizia.md`](vizia.md). How to build with the widgets is
-[`crates/nxe-ui/README.md`](../../crates/nxe-ui/README.md).
+toolkit behaves is in the widgets' own comments; how to build with them is
+[`crates/nxe-egui/README.md`](../../crates/nxe-egui/README.md). The v0 vizia
+traps are kept in [`docs/archive/vizia-rules.md`](../../docs/archive/vizia-rules.md).
 
 Every rule here was paid for. Where one has a scar, the scar is named.
 
-**Two toolkits during v2.** The plugins still on vizia use `nxe-ui`; the ones
-on truce use `nxe-egui` (`crates/nxe-egui/README.md`). The rules are the same
-for both except where a rule says **v2** — what `design-system.md` lifted, and
-what vizia could not do in the first place.
+**One toolkit from v2: egui, through `nxe-egui`.** A rule marked **v2** is
+what `design-system.md` lifted from v0, often because vizia could not do it.
 
 ## The window
 
@@ -83,7 +80,7 @@ what vizia could not do in the first place.
   `ACCENT*` constants to reach for — that is deliberate, because a constant is
   how five windows would quietly become one colour again.
 - **Two inverted surfaces, and no more.** The status bar along the bottom
-  (`nxe_ui::status`), which carries the line about whatever the pointer is on;
+  (`nxe_egui::status`), which carries the line about whatever the pointer is on;
   and **the window's figure**, which is what a glance should land on.
 - **The status bar is empty at rest.** What the window is for is already on the
   header's right, and a strip that is always talking stops being read.
@@ -131,16 +128,15 @@ what vizia could not do in the first place.
 
 ## Type
 
-- **Hierarchy comes from size, weight, colour and rules.** On vizia not from
-  tracking: `letter-spacing` and `line-height` do not exist in that revision.
-  **v2: tracked capitals** for a region's name and the `NXE` mark
+- **Hierarchy comes from size, weight, colour and rules.** **v2: tracked
+  capitals** for a region's name and the `NXE` mark
   (`nxe_egui::font::tracked`, `theme::TRACKING`) — tracking is the Swiss
   setter's main tool, and nothing else is tracked.
 - **Figures are set in the mono face** (`font::value`). A proportional face
   changes width between a `1` and an `8`, and a value that jitters under a drag
   is what fixing the decimal count was meant to prevent. **Inter's tabular
-  figures are not a way out**: `tnum` is an OpenType feature and this vizia
-  revision has no way to turn one on.
+  figures are not a way out**: `tnum` is an OpenType feature and egui has no
+  way to turn one on.
 - **v2: two weights, Regular and Medium.** Medium is for the wordmark, the
   sidebar's subject figure and the tracked capitals — places where size or
   tracking already says what the text is. **A weight still means nothing on
@@ -163,8 +159,8 @@ what vizia could not do in the first place.
 
 ## Marks
 
-- **A mark never replaces its word.** `nxe_ui::pictogram::heading` and
-  `::label` are the two ways one is placed, and both put the name beside it.
+- **A mark never replaces its word.** Wherever one is placed, the name
+  goes beside it.
   The symbol is what makes a column findable at a glance; the word is what
   makes it understandable the first time. A window of symbols alone buys the
   same unreadability the reference designs sell.
@@ -188,7 +184,7 @@ what vizia could not do in the first place.
 
 ## Readings
 
-- **Fixed width, right aligned** (`nxe_ui::readout`). A reading that changes
+- **Fixed width, right aligned** (`nxe_egui::readout`). A reading that changes
   length moves everything laid out after it, three ways: the sign appears
   crossing zero, a digit appears crossing ten, and a dash replaces the whole
   thing in silence. Always printing the sign fixes the first; only a fixed box
@@ -232,7 +228,7 @@ what vizia could not do in the first place.
 
 ## Judging it
 
-- **Every widget in `nxe-ui` or `nxe-egui` is in that crate's
+- **Every widget in `nxe-egui` is in that crate's
   `examples/gallery.rs` in the same change.** A
   widget not in the gallery cannot be reviewed without opening a DAW, so it will
   not be.

@@ -1,11 +1,7 @@
----
-paths:
-  - "crates/nxe-ui/**"
-  - "plugins/**/src/ui/**"
-  - "plugins/**/*.css"
----
+# vizia rules（v0）
 
-# vizia rules
+> v0 の `.agents/rules/vizia.md`。v2 で vizia をワークスペースから外したので、
+> 規則としてはもう効かない。記録としてここに移した。
 
 **What this toolkit does, and what it silently does not.** The design rules —
 what the windows have to look like and how they have to read — are
