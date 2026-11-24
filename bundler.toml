@@ -6,13 +6,10 @@
 [air]
 name = "NXE Air"
 
-# Doubler is on truce from 2.0; its name lives in `truce.toml`.
+# Doubler and Sparkleur are on truce from 2.0; their names live in `truce.toml`.
 
 [velour]
 name = "NXE Velour"
-
-[sparkleur]
-name = "NXE Sparkleur"
 
 # Settled in `DIO-15`, which is the last unit where it was free to move —
 # `CLAP_ID` cannot change once a host has stored it (`REQ-DIO-014`).

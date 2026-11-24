@@ -1,59 +1,46 @@
 //! Parameter declarations, and the mapping to `sparkleur_core`'s plain values.
 //!
 //! The adapter the architecture calls for: `sparkleur-core` knows nothing about
-//! nih-plug, so the translation lives here
+//! truce, so the translation lives here
 //! (`docs/specifications/architecture.md`).
 //!
-//! **Thirty-five parameters, seven of them everyday** (`ui.md`). Adding one
-//! later is safe — nih-plug keys them by id, not by position — but **changing
-//! or removing an id is not**, so the ids below are as final as `CLAP_ID`.
+//! **Thirty-five parameters, seven of them everyday** (`ui.md`). **Ids are
+//! truce's hash of the field name**, so renaming a field is renaming a
+//! parameter for every saved session. The display `name` is free to change.
 //!
 //! ## Two layers, and what rests at zero
 //!
 //! `SPARK` is the amount. `BODY` and `AIR` are **bipolar tilts** that rest at
 //! zero, meaning "leave this band on `SPARK`" (`REQ-SPK-009`). So are `SPEED`,
 //! `DE-HARSH` and `SUB PROT`, which rest at "as `CHARACTER` says" — a control
-//! that rests on the axis is how two things avoid writing one value
-//! (`.agents/rules/vizia.md`).
+//! that rests on the axis is how two things avoid writing one value.
 
-use nih_plug::prelude::*;
+use crate::analysis::Analysis;
 use nxe_audio::oversample::Factor;
-use sparkleur_core::character;
 use sparkleur_core::dynamics::Mode;
 use sparkleur_core::engine::{Levels, Shape};
-use std::sync::Arc;
+use truce::prelude::*;
 
 /// How hard the Sparkle bus runs internally.
 ///
-/// A separate type from `nxe_audio::Factor` on purpose: deriving nih-plug's
-/// `Enum` on the shared type would make it depend on nih-plug.
-#[derive(Enum, Debug, PartialEq, Eq, Clone, Copy)]
+/// A separate type from `nxe_audio::Factor` on purpose: deriving truce's
+/// `ParamEnum` on the shared type would make it depend on truce.
+#[derive(ParamEnum, Debug)]
 pub enum FactorParam {
-    #[id = "2x"]
     #[name = "2x"]
     Two,
-    #[id = "4x"]
     #[name = "4x"]
     Four,
 }
 
-/// How far the macros are allowed to reach (`REQ-SPK-022`).
+/// How far the macros are allowed to reach (`REQ-SPK-022`). Separate from
+/// `sparkleur_core::dynamics::Mode` for the same reason as [`FactorParam`].
 ///
-/// A separate type from `sparkleur_core::dynamics::Mode` for the same reason
-/// [`FactorParam`] is: deriving nih-plug's `Enum` on the shared type would make
-/// the core depend on nih-plug.
-///
-/// **The variants carry `#[id]`, and that is what makes this safe to extend.**
-/// nih-plug writes an enum with ids into saved state as its id string rather
-/// than as a number, so a third step can be added later without moving what an
-/// existing session means.
-#[derive(Enum, Debug, PartialEq, Eq, Clone, Copy, Default)]
+/// **Saved by index**, so a third step goes on the end or not at all.
+#[derive(ParamEnum, Debug)]
 pub enum ModeParam {
-    #[id = "soft"]
     #[name = "Soft"]
-    #[default]
     Soft,
-    #[id = "hard"]
     #[name = "Hard"]
     Hard,
 }
@@ -78,310 +65,411 @@ impl From<FactorParam> for Factor {
 
 #[derive(Params)]
 pub struct SparkleurParams {
+    /// What the editor is shown about the sound. Not a parameter: the audio
+    /// thread writes it and the editor reads it, and the params `Arc` is the
+    /// one thing both are handed (`analysis.rs`).
+    #[skip]
+    pub analysis: Analysis,
+
     /// The amount of everything (`REQ-SPK-009`). **Zero is exactly nothing.**
-    #[id = "spark"]
+    ///
+    /// **Provisional**, like every default here; `SPK-18` settles them by
+    /// ear. What is not provisional is which ones rest at zero: every control
+    /// that defers to `CHARACTER` does.
+    #[param(
+        name = "Spark",
+        range = "linear(0, 1)",
+        default = 0.35,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub spark: FloatParam,
 
-    /// POLISH ↔ CRUSH. One continuous axis, not two modes — "eight tenths of
-    /// POLISH" is where most material sits (`REQ-SPK-006`).
-    #[id = "character"]
+    /// POLISH ↔ CRUSH. One continuous axis, not two modes (`REQ-SPK-006`).
+    /// The default is `character::DEFAULT_POSITION`, copied because a truce
+    /// default has to be a literal; `the_character_default_is_the_core_one`
+    /// keeps the copy honest.
+    #[param(
+        name = "Character",
+        range = "linear(0, 1)",
+        default = 0.27,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub character: FloatParam,
 
     /// Where to lean. Bipolar, resting at zero (`REQ-SPK-009`).
-    #[id = "body"]
+    #[param(
+        name = "Body",
+        range = "linear(-1, 1)",
+        format = "signed_percent",
+        parse = "percent",
+        smooth = "linear(30)"
+    )]
     pub body: FloatParam,
-    #[id = "air"]
+    #[param(
+        name = "Air",
+        range = "linear(-1, 1)",
+        format = "signed_percent",
+        parse = "percent",
+        smooth = "linear(30)"
+    )]
     pub air: FloatParam,
 
     /// How fast, **as a deviation from what `CHARACTER` chose**. The per-band
     /// time constants are derived from each band's own centre and cannot be
     /// reached from here — that is the point (`REQ-SPK-005`).
-    #[id = "speed"]
+    #[param(
+        name = "Speed",
+        range = "linear(-1, 1)",
+        format = "signed_percent",
+        parse = "percent",
+        smooth = "linear(30)"
+    )]
     pub speed: FloatParam,
 
-    #[id = "mix"]
+    #[param(
+        name = "Mix",
+        range = "linear(0, 1)",
+        default = 1.0,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub mix: FloatParam,
-    #[id = "output"]
+    #[param(
+        name = "Output",
+        range = "linear(-12, 12)",
+        format = "decibels",
+        parse = "number",
+        smooth = "linear(20)"
+    )]
     pub output: FloatParam,
 
-    /// Slides all four boundaries together (`REQ-SPK-002`).
-    #[id = "focus"]
+    /// Slides all four boundaries together (`REQ-SPK-002`). Moving it
+    /// rebuilds forty sets of filter coefficients per channel, so the
+    /// smoothing is what keeps a drag from stepping.
+    #[param(
+        name = "Focus",
+        range = "linear(-1, 1)",
+        format = "octaves",
+        parse = "number",
+        smooth = "linear(50)"
+    )]
     pub focus: FloatParam,
 
     /// How much of the layer is handed to the transient. Zero is a static
-    /// generator, which is what Velour is — **being able to choose that is how
-    /// a user hears what the gate does** (`REQ-SPK-007`).
-    #[id = "snap"]
+    /// generator — **being able to choose that is how a user hears what the
+    /// gate does** (`REQ-SPK-007`). Middling-to-high by default: shipping
+    /// with the gate mostly shut would ship the wrong product.
+    #[param(
+        name = "Snap",
+        range = "linear(0, 1)",
+        default = 0.6,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub snap: FloatParam,
 
-    /// How far the upward compressor's floor opens. Right is where OTT's
-    /// breathing lives (`REQ-SPK-003`).
-    #[id = "lift"]
+    /// How far the upward compressor's floor opens. Closed by default: the
+    /// floor is what stops silence coming up (`REQ-SPK-003`).
+    #[param(
+        name = "Lift",
+        range = "linear(0, 1)",
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub lift: FloatParam,
 
-    /// How hard a transient is hit (`REQ-SPK-020`).
-    ///
-    /// **Zero by default.** It is measurable now — the attack stands further
-    /// above the body — but whether it is *wanted* is still an ear's call, and
-    /// a plugin that arrives already hitting has made that call for everyone
+    /// How hard a transient is hit (`REQ-SPK-020`). **Zero by default**: a
+    /// plugin that arrives already hitting has made that call for everyone
     /// (`SPK-22`).
-    #[id = "punch"]
+    #[param(
+        name = "Punch",
+        range = "linear(0, 1)",
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub punch: FloatParam,
 
     /// Deviations from what `CHARACTER` chose for the two protections
     /// (`REQ-SPK-008`).
-    #[id = "deharsh"]
+    #[param(
+        name = "De-Harsh",
+        range = "linear(-1, 1)",
+        format = "signed_percent",
+        parse = "percent",
+        smooth = "linear(30)"
+    )]
     pub de_harsh: FloatParam,
-    #[id = "subprot"]
+    #[param(
+        name = "Sub Protect",
+        range = "linear(-1, 1)",
+        format = "signed_percent",
+        parse = "percent",
+        smooth = "linear(30)"
+    )]
     pub sub_protect: FloatParam,
 
-    /// How far the macros reach (`REQ-SPK-022`).
-    ///
-    /// **The default is `Soft`, and it has to be.** A session saved before this
-    /// parameter existed has no value for it, so it loads with the default —
-    /// anything but `Soft` changes the sound of work that is already finished.
-    #[id = "mode"]
+    /// How far the macros reach (`REQ-SPK-022`). `Soft` by default.
+    #[param(name = "Mode")]
     pub mode: EnumParam<ModeParam>,
 
-    #[id = "os"]
+    /// 4x by default: 2x is a cost saving, not an equal — it leaves aliasing
+    /// about 14 dB higher (`nxe_audio::oversample`).
+    #[param(name = "Oversample", default = 1)]
     pub oversample: EnumParam<FactorParam>,
 
     /// Per-band **weights**, not amounts: `SPARK` multiplies them, so raising
     /// it deepens every band and leaves their proportions alone
-    /// (`REQ-SPK-009`).
+    /// (`REQ-SPK-009`). Full by default, so `SPARK` alone works every band.
     ///
-    /// **Twenty flat fields rather than four nested arrays.** A nested array
-    /// would name them "Band 1 Up" in a host's automation list; the bands have
-    /// names, and the list is where a user looks for them.
-    #[id = "up_sub"]
+    /// **Flat fields rather than nested groups.** The bands have names, and
+    /// the automation list is where a user looks for them.
+    #[param(
+        name = "Sub Up",
+        group = "Up",
+        range = "linear(0, 1)",
+        default = 1.0,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub up_sub: FloatParam,
-    #[id = "up_body"]
+    #[param(
+        name = "Body Up",
+        group = "Up",
+        range = "linear(0, 1)",
+        default = 1.0,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub up_body: FloatParam,
-    #[id = "up_mid"]
+    #[param(
+        name = "Mid Up",
+        group = "Up",
+        range = "linear(0, 1)",
+        default = 1.0,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub up_mid: FloatParam,
-    #[id = "up_pres"]
+    #[param(
+        name = "Presence Up",
+        group = "Up",
+        range = "linear(0, 1)",
+        default = 1.0,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub up_pres: FloatParam,
-    #[id = "up_air"]
+    #[param(
+        name = "Air Up",
+        group = "Up",
+        range = "linear(0, 1)",
+        default = 1.0,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub up_air: FloatParam,
 
-    #[id = "dn_sub"]
+    #[param(
+        name = "Sub Down",
+        group = "Down",
+        range = "linear(0, 1)",
+        default = 1.0,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub down_sub: FloatParam,
-    #[id = "dn_body"]
+    #[param(
+        name = "Body Down",
+        group = "Down",
+        range = "linear(0, 1)",
+        default = 1.0,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub down_body: FloatParam,
-    #[id = "dn_mid"]
+    #[param(
+        name = "Mid Down",
+        group = "Down",
+        range = "linear(0, 1)",
+        default = 1.0,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub down_mid: FloatParam,
-    #[id = "dn_pres"]
+    #[param(
+        name = "Presence Down",
+        group = "Down",
+        range = "linear(0, 1)",
+        default = 1.0,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub down_pres: FloatParam,
-    #[id = "dn_air"]
+    #[param(
+        name = "Air Down",
+        group = "Down",
+        range = "linear(0, 1)",
+        default = 1.0,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
     pub down_air: FloatParam,
 
     /// A static trim per band. **Outside `SPARK`**, because it is EQ rather
     /// than dynamics (`dsp.md`).
-    #[id = "gain_sub"]
+    #[param(
+        name = "Sub Gain",
+        group = "Gain",
+        range = "linear(-12, 12)",
+        format = "decibels",
+        parse = "number",
+        smooth = "linear(20)"
+    )]
     pub gain_sub: FloatParam,
-    #[id = "gain_body"]
+    #[param(
+        name = "Body Gain",
+        group = "Gain",
+        range = "linear(-12, 12)",
+        format = "decibels",
+        parse = "number",
+        smooth = "linear(20)"
+    )]
     pub gain_body: FloatParam,
-    #[id = "gain_mid"]
+    #[param(
+        name = "Mid Gain",
+        group = "Gain",
+        range = "linear(-12, 12)",
+        format = "decibels",
+        parse = "number",
+        smooth = "linear(20)"
+    )]
     pub gain_mid: FloatParam,
-    #[id = "gain_pres"]
+    #[param(
+        name = "Presence Gain",
+        group = "Gain",
+        range = "linear(-12, 12)",
+        format = "decibels",
+        parse = "number",
+        smooth = "linear(20)"
+    )]
     pub gain_pres: FloatParam,
-    #[id = "gain_air"]
+    #[param(
+        name = "Air Gain",
+        group = "Gain",
+        range = "linear(-12, 12)",
+        format = "decibels",
+        parse = "number",
+        smooth = "linear(20)"
+    )]
     pub gain_air: FloatParam,
 
-    /// Listening to one band. **Not automatable**, and nih-plug still saves it —
-    /// a project reopening with a solo latched sounds broken, so `SPK-15` has to
-    /// make the state obvious on screen (Velour hit the same wall).
-    #[id = "solo_sub"]
+    /// Listening to one band. **Automatable on truce**, unlike on nih-plug:
+    /// truce's `flags` has no "not automatable" short of `readonly`, which
+    /// would also stop the window from setting it. A project reopening with a
+    /// solo latched sounds broken, so the window has to make the state obvious.
+    #[param(name = "Sub Solo", group = "Solo")]
     pub solo_sub: BoolParam,
-    #[id = "solo_body"]
+    #[param(name = "Body Solo", group = "Solo")]
     pub solo_body: BoolParam,
-    #[id = "solo_mid"]
+    #[param(name = "Mid Solo", group = "Solo")]
     pub solo_mid: BoolParam,
-    #[id = "solo_pres"]
+    #[param(name = "Presence Solo", group = "Solo")]
     pub solo_pres: BoolParam,
-    #[id = "solo_air"]
+    #[param(name = "Air Solo", group = "Solo")]
     pub solo_air: BoolParam,
 }
 
-impl Default for SparkleurParams {
-    fn default() -> Self {
-        Self {
-            // **Provisional.** The plugin has no presets (`REQ-SPK-021`), so the
-            // defaults are the product's face and `SPK-18` settles them by ear.
-            // What is not provisional is which ones rest at zero: every control
-            // that defers to `CHARACTER` does.
-            spark: percentage("Spark", 0.35),
-            character: percentage("Character", character::DEFAULT_POSITION),
-            body: bipolar("Body"),
-            air: bipolar("Air"),
-            speed: bipolar("Speed"),
+impl SparkleurParams {
+    /// **Signed, always.** A minus that appears the moment the knob crosses
+    /// centre makes the row twitch (`.agents/rules/ui.md`).
+    fn signed_percent(&self, value: f64) -> String {
+        format!("{:+.0} %", value * 100.0)
+    }
 
-            mix: percentage("Mix", 1.0),
-            output: decibels("Output"),
+    fn decibels(&self, value: f64) -> String {
+        format!("{value:+.1} dB")
+    }
 
-            focus: FloatParam::new(
-                "Focus",
-                0.0,
-                FloatRange::Linear {
-                    min: -1.0,
-                    max: 1.0,
-                },
-            )
-            .with_unit(" oct")
-            // Moving `FOCUS` rebuilds forty sets of filter coefficients per
-            // channel, so the smoothing is what keeps a drag from stepping. The
-            // edges themselves move once per block
-            // (`sparkleur_core::Crossover`).
-            .with_smoother(SmoothingStyle::Linear(50.0))
-            .with_value_to_string(formatters::v2s_f32_rounded(2)),
+    fn octaves(&self, value: f64) -> String {
+        format!("{value:+.2} oct")
+    }
 
-            // Middling-to-high (`REQ-SPK-007`): the dynamic layer is what
-            // separates this from a static exciter, so shipping with the gate
-            // mostly shut would ship the wrong product.
-            snap: percentage("Snap", 0.60),
-            // Closed. The floor is the thing that stops silence coming up, and
-            // opening it is a deliberate move toward OTT (`REQ-SPK-003`).
-            lift: percentage("Lift", 0.0),
-            punch: percentage("Punch", 0.0),
+    /// "35", "35 %", "+35%" → 0.35.
+    fn percent(&self, text: &str) -> Option<f64> {
+        number(text).map(|value| value / 100.0)
+    }
 
-            de_harsh: bipolar("De-Harsh"),
-            sub_protect: bipolar("Sub Protect"),
-
-            mode: EnumParam::new("Mode", ModeParam::Soft),
-
-            // 4x by default: 2x is a cost saving, not an equal — it leaves
-            // aliasing about 14 dB higher (`nxe_audio::oversample`).
-            oversample: EnumParam::new("Oversample", FactorParam::Four),
-
-            up_sub: weight("Sub Up"),
-            up_body: weight("Body Up"),
-            up_mid: weight("Mid Up"),
-            up_pres: weight("Presence Up"),
-            up_air: weight("Air Up"),
-
-            down_sub: weight("Sub Down"),
-            down_body: weight("Body Down"),
-            down_mid: weight("Mid Down"),
-            down_pres: weight("Presence Down"),
-            down_air: weight("Air Down"),
-
-            gain_sub: decibels("Sub Gain"),
-            gain_body: decibels("Body Gain"),
-            gain_mid: decibels("Mid Gain"),
-            gain_pres: decibels("Presence Gain"),
-            gain_air: decibels("Air Gain"),
-
-            solo_sub: listen("Sub Solo"),
-            solo_body: listen("Body Solo"),
-            solo_mid: listen("Mid Solo"),
-            solo_pres: listen("Presence Solo"),
-            solo_air: listen("Air Solo"),
-        }
+    /// "-3", "-3 dB", "+0.5 oct" → the number.
+    fn number(&self, text: &str) -> Option<f64> {
+        number(text)
     }
 }
 
-/// A `-1..=1` control resting at zero. Five of these, so the shape lives in one
-/// place and a deviation from it would be visible.
-///
-/// **Read as a signed percentage.** It used to print `0.00`: a bare number with
-/// no unit, sitting in a row where everything else said `35 %`, `100 %`,
-/// `0.0 dB` or `0.00 oct`. Three of the seven macro knobs read that way and
-/// none of them said what the number was. And the sign is always printed, for
-/// the reason every other figure here prints it — a minus that appears the
-/// moment the knob crosses centre makes the row twitch (`.agents/rules/ui.md`).
-fn bipolar(name: &'static str) -> FloatParam {
-    FloatParam::new(
-        name,
-        0.0,
-        FloatRange::Linear {
-            min: -1.0,
-            max: 1.0,
-        },
-    )
-    .with_smoother(SmoothingStyle::Linear(30.0))
-    .with_value_to_string(Arc::new(|value| format!("{:+.0} %", value * 100.0)))
-    .with_string_to_value(Arc::new(|text| {
-        text.trim()
-            .trim_end_matches('%')
-            .trim()
-            .parse::<f32>()
-            .ok()
-            .map(|value| value / 100.0)
-    }))
-}
-
-/// A `0..=100%` control.
-fn percentage(name: &'static str, default: f32) -> FloatParam {
-    FloatParam::new(name, default, FloatRange::Linear { min: 0.0, max: 1.0 })
-        .with_unit(" %")
-        .with_smoother(SmoothingStyle::Linear(20.0))
-        .with_value_to_string(formatters::v2s_f32_percentage(0))
-        .with_string_to_value(formatters::s2v_f32_percentage())
-}
-
-/// A per-band weight: full by default, so `SPARK` on its own works every band.
-fn weight(name: &'static str) -> FloatParam {
-    percentage(name, 1.0)
-}
-
-/// A `±12 dB` trim resting at unity.
-fn decibels(name: &'static str) -> FloatParam {
-    FloatParam::new(
-        name,
-        0.0,
-        FloatRange::Linear {
-            min: -12.0,
-            max: 12.0,
-        },
-    )
-    .with_unit(" dB")
-    .with_smoother(SmoothingStyle::Linear(20.0))
-    .with_value_to_string(formatters::v2s_f32_rounded(1))
-}
-
-/// A listen switch: on/off, and not something to automate.
-fn listen(name: &'static str) -> BoolParam {
-    BoolParam::new(name, false).non_automatable()
+/// The leading number of `text`, whatever unit follows it.
+fn number(text: &str) -> Option<f64> {
+    let text = text.trim();
+    let end = text
+        .find(|c: char| !(c.is_ascii_digit() || matches!(c, '.' | '-' | '+')))
+        .unwrap_or(text.len());
+    text[..end].parse().ok()
 }
 
 impl SparkleurParams {
     /// What the engine needs once per block.
     ///
-    /// **`next_step(samples)`, not `next()`.** A smoother advances one sample
+    /// **`read_after(samples)`, not `read()`.** A smoother advances one sample
     /// per call, so reading it once per block would stretch every ramp by the
     /// block length — the trap `VEL-5` hit.
-    pub fn shape(&self, samples: u32) -> Shape {
+    pub fn shape(&self, samples: usize) -> Shape {
         Shape {
-            character: self.character.smoothed.next_step(samples),
-            focus: self.focus.smoothed.next_step(samples),
-            speed: self.speed.smoothed.next_step(samples),
-            snap: self.snap.smoothed.next_step(samples),
-            lift: self.lift.smoothed.next_step(samples),
-            punch: self.punch.smoothed.next_step(samples),
-            de_harsh: self.de_harsh.smoothed.next_step(samples),
-            sub_protect: self.sub_protect.smoothed.next_step(samples),
+            character: self.character.read_after(samples),
+            focus: self.focus.read_after(samples),
+            speed: self.speed.read_after(samples),
+            snap: self.snap.read_after(samples),
+            lift: self.lift.read_after(samples),
+            punch: self.punch.read_after(samples),
+            de_harsh: self.de_harsh.read_after(samples),
+            sub_protect: self.sub_protect.read_after(samples),
             // **Order matters**: these arrays are filled by position, and
             // `the_band_order_matches_the_engine` is what holds it in place.
             up: [
-                self.up_sub.smoothed.next_step(samples),
-                self.up_body.smoothed.next_step(samples),
-                self.up_mid.smoothed.next_step(samples),
-                self.up_pres.smoothed.next_step(samples),
-                self.up_air.smoothed.next_step(samples),
+                self.up_sub.read_after(samples),
+                self.up_body.read_after(samples),
+                self.up_mid.read_after(samples),
+                self.up_pres.read_after(samples),
+                self.up_air.read_after(samples),
             ],
             down: [
-                self.down_sub.smoothed.next_step(samples),
-                self.down_body.smoothed.next_step(samples),
-                self.down_mid.smoothed.next_step(samples),
-                self.down_pres.smoothed.next_step(samples),
-                self.down_air.smoothed.next_step(samples),
+                self.down_sub.read_after(samples),
+                self.down_body.read_after(samples),
+                self.down_mid.read_after(samples),
+                self.down_pres.read_after(samples),
+                self.down_air.read_after(samples),
             ],
             gain_db: [
-                self.gain_sub.smoothed.next_step(samples),
-                self.gain_body.smoothed.next_step(samples),
-                self.gain_mid.smoothed.next_step(samples),
-                self.gain_pres.smoothed.next_step(samples),
-                self.gain_air.smoothed.next_step(samples),
+                self.gain_sub.read_after(samples),
+                self.gain_body.read_after(samples),
+                self.gain_mid.read_after(samples),
+                self.gain_pres.read_after(samples),
+                self.gain_air.read_after(samples),
             ],
             solo: [
                 self.solo_sub.value(),
@@ -458,10 +546,10 @@ impl SparkleurParams {
     /// What the engine needs every sample, because it multiplies the signal.
     pub fn levels(&self) -> Levels {
         Levels {
-            spark: self.spark.smoothed.next(),
-            body: self.body.smoothed.next(),
-            air: self.air.smoothed.next(),
-            mix: self.mix.smoothed.next(),
+            spark: self.spark.read(),
+            body: self.body.read(),
+            air: self.air.read(),
+            mix: self.mix.read(),
         }
     }
 }
@@ -487,7 +575,7 @@ mod tests {
     #[test]
     fn there_are_thirty_five_parameters() {
         let params = SparkleurParams::default();
-        let count = params.param_map().len();
+        let count = params.param_infos().len();
         assert_eq!(count, 35, "the parameter count moved");
     }
 
@@ -543,6 +631,28 @@ mod tests {
         let params = SparkleurParams::default();
         assert_eq!(params.mix.value(), 1.0);
         assert_eq!(params.output.value(), 0.0);
-        assert_eq!(util::db_to_gain(params.output.value()), 1.0);
+        assert_eq!(db_to_linear(params.output.value()), 1.0);
+    }
+
+    /// The literal in `#[param]` is a copy of the core's constant, because a
+    /// truce default has to be a literal.
+    #[test]
+    fn the_character_default_is_the_core_one() {
+        let params = SparkleurParams::default();
+        assert_eq!(
+            params.character.value(),
+            sparkleur_core::character::DEFAULT_POSITION
+        );
+    }
+
+    /// A typed value comes back in the parameter's own unit.
+    #[test]
+    fn typed_values_parse() {
+        let params = SparkleurParams::default();
+        assert_eq!(params.parse_value(params.spark.id(), "35 %"), Some(0.35));
+        assert_eq!(params.parse_value(params.body.id(), "+20%"), Some(0.2));
+        assert_eq!(params.parse_value(params.output.id(), "-3 dB"), Some(-3.0));
+        assert_eq!(params.parse_value(params.focus.id(), "0.5 oct"), Some(0.5));
+        assert_eq!(params.parse_value(params.spark.id(), "loud"), None);
     }
 }

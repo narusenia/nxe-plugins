@@ -39,3 +39,12 @@ vst3_subcategory = "Modulation"
 # AU v2 lists this as "NXE: NXE Doubler 2". `au_name` would fix it, but
 # cargo-truce 6.3.0 only reads it for AU v3 and the preset folder, so it is
 # left out rather than half-applied (backlog).
+
+[[plugin]]
+name = "NXE Sparkleur 2"
+bundle_id = "sparkleur2"
+crate = "sparkleur"
+category = "effect"
+fourcc = "Spk2"
+description = "Five-band up-and-down dynamics with a transient-gated harmonic generator"
+vst3_subcategory = "Dynamics"

@@ -13,7 +13,7 @@
 | `crates/nxe-plug-ui` | **GPL-3.0-only** | nih-plug と `nxe-ui` の結線 |
 | `plugins/doubler/doubler` | **MIT OR Apache-2.0** | 出荷するプラグイン（Doubler 2、truce） |
 | `plugins/velour/velour` | **GPL-3.0-only** | 出荷するプラグイン |
-| `plugins/sparkleur/sparkleur` | **GPL-3.0-only** | 出荷するプラグイン |
+| `plugins/sparkleur/sparkleur` | **MIT OR Apache-2.0** | 出荷するプラグイン（Sparkleur 2、truce） |
 | `plugins/air/air` | **GPL-3.0-only** | 出荷するプラグイン |
 | `plugins/diorama/diorama` | **GPL-3.0-only** | 出荷するプラグイン |
 | `plugins/pumice/pumice` | **GPL-3.0-only** | 出荷するプラグイン |
@@ -22,7 +22,7 @@
 
 **v2 の移行中は混在している**（`docs/implementation/v2-plan.md`）。truce に
 移ったラッパは `vst3-sys` を引かないので上の側に移り、まだ nih-plug に乗って
-いる Velour / Sparkleur / Air / Diorama / Pumice のラッパと、それらだけが使う
+いる Velour / Air / Diorama / Pumice のラッパと、それらだけが使う
 `nxe-plug-ui` は GPL-3.0-only のまま残る。**最後の `nih_plug` 依存を外す単位で、
 全クレートが MIT OR Apache-2.0 になったとここに書く。**
 

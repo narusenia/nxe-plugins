@@ -11,9 +11,9 @@ Plugins move one at a time from [nih-plug](https://github.com/robbert-vdh/nih-pl
 [truce](https://github.com/truce-audio/truce) + egui, and ship again as
 `NXE <name> 2`:
 
-- **On truce**: Doubler. Exports **CLAP, VST3 and AU v2** (AU on macOS only);
-  `truce.toml` at the root declares it
-- **Still on nih-plug**: Velour, Sparkleur, Air, Diorama, and Pumice. CLAP and
+- **On truce**: Doubler and Sparkleur. Exports **CLAP, VST3 and AU v2** (AU on macOS only);
+  `truce.toml` at the root declares them
+- **Still on nih-plug**: Velour, Air, Diorama, and Pumice. CLAP and
   VST3 only — nih-plug has no AU wrapper. **Pumice was never released**, so it
   ships as `NXE Pumice` 1.0.0, not as a "2" (`v2-plan.md`, decision 16)
 
@@ -63,8 +63,9 @@ with the code, and fix the document in the same change.
 - `plugins/sparkleur/sparkleur-core`: the Sparkleur DSP — five-band multiband
   dynamics with a transient-gated harmonic generator. Host-agnostic,
   allocation-free on the audio path
-- `plugins/sparkleur/sparkleur`: the Sparkleur nih-plug wrapper — parameter
-  declarations, the Vizia UI, and the binding between them
+- `plugins/sparkleur/sparkleur`: the Sparkleur 2 truce wrapper — parameter
+  declarations, the egui editor, and the binding between them. The editor is
+  a placeholder until the H4 window lands in `V2-9`
 - `plugins/air/air-core`: the Air DSP — a high-frequency texture generated from
   the input and placed where the input is not. Host-agnostic, allocation-free
   on the audio path. `noise` is the only block written for it, and it is
