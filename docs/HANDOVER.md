@@ -1,7 +1,8 @@
 # 引き継ぎ
 
 **2026-11-24 時点。** v0.2.0 は 5 本とも出荷済み（2026-08-31）。いまは **v2 の
-実装中**。Doubler が truce に載った（`V2-1` のコード、#7）。v0.x の引き継ぎ（測定の経緯、各プラグインで踏んだ罠、
+実装中**。Doubler が truce に載り（#7）、窓のスクリーンショット差分（#10）と
+truce のリリース経路（#11）が CI に入った。Pumice は main に入った（#9）。v0.x の引き継ぎ（測定の経緯、各プラグインで踏んだ罠、
 vizia の重さ問題）は [`archive/v0-handover.md`](archive/v0-handover.md)。
 Pumice の v0 期の経緯（`ADAPTIVE` を落とした理由、PDC のゲート）は
 [`archive/pumice-handover.md`](archive/pumice-handover.md)。
@@ -19,14 +20,31 @@ Pumice の v0 期の経緯（`ADAPTIVE` を落とした理由、PDC のゲート
 
 ## 次の一手
 
-**`V2-1` の実機確認**（Ableton Live・Studio One・Logic で保存→再読込、自動化）
-は人の手が要る。`cargo truce install --user --clap --vst3 --au2 -p doubler`
-で入る。
+**人の手が要るもの**（`cargo truce install --user --clap --vst3 --au2 -p doubler`
+で入る。Logic・Cubase・Ableton・Bitwig が手元にある）:
 
-コードの側は `V2-2`〜`V2-4` と `V2-13` が着手できる（`backlog.md`）。
+- `V2-1`: 保存→再読込で全パラメータが戻るか、自動化に追従するか
+- `V2-2`: 窓を開閉したあとホストの UI がポインタに付いてくるか。**コード側に
+  原因は無い**（`v2-plan.md` の V2-2）
+- `V2-3`: 描画予算。空の窓で測っても意味が薄いので、`V2-7` の窓で測る手もある
+
+**コードの側の次は `V2-5`**（`nxe-ui` の egui 版とギャラリー）。計画上は V2-2 /
+V2-3 の後だが、どちらもコードの変更を要しない見込み。`nxe-ui` は vizia の
+5 本（Pumice 含む）がまだ使っているので、egui 版は別クレートで並べる必要がある。
+
+**v2 の途中で足した決定**（`v2-plan.md` 決定 16〜18）: Pumice は `NXE Pumice`
+1.0.0、全プラグインにプリセット、窓は作り直して「操作が主図に見える」ように。
+
+**上流（truce）に送るもの**は backlog の「まだ単位にしていないもの」に 2 つ
+（CLAP の state 読込後の rescan、AU v2 の名前）。cargo-truce の Windows の
+clap-validator 引数のずれ（`release.yml` に回避あり）も一緒に。**出す前に確認**。
 
 - `release/v0` は切ってある。v0.2 系のバグ修正はそちら
-- `au_manufacturer` と 5 本の `fourcc` は `truce.toml` で決めた。**出荷後は変えられない**
+- `au_manufacturer` と 6 本の `fourcc` は `truce.toml` で決めた。**出荷後は変えられない**
+- **手元の `auval` は信用しない。** DAW には出るのに `didn't find the component`
+  になる（他社の AU も同時に消える）。CI の auval が正
+- ビルドは kache（`~/.cargo/config.toml` の `rustc-wrapper`）。kache が消えると
+  cargo が全部止まる。mise で入れている（グローバル）
 
 ## 5 分で状況を掴む順番
 
