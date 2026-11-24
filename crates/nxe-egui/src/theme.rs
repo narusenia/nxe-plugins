@@ -84,6 +84,11 @@ pub const FOREGROUND: Token = Token::rgb(0xFA, 0xFA, 0xFA);
 pub const MUTED: Token = Token::rgb(0xA3, 0xA3, 0xA3);
 pub const SUBTLE: Token = Token::rgb(0x73, 0x73, 0x73);
 
+/// **The one second colour**, for a reading past where it should be: over
+/// 0 VU, a true peak over full scale, a loudness over its target. Only the
+/// Peek meters use it — the exception `design-system.md` records (PEEK-2).
+pub const WARN: Token = Token::rgb(0xFF, 0x7A, 0x45);
+
 /// One accent, and no other hue anywhere **inside a window**.
 ///
 /// **The hue is the only thing that changes between plugins.** Every stop is

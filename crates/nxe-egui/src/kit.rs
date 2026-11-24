@@ -32,6 +32,8 @@ pub const BAND: f32 = 64.0;
 /// What the wordmark takes at the top of the figure. A figure that draws
 /// there draws under the name.
 pub const HEAD: f32 = SPACE_2 + LINE_TITLE + SPACE_2;
+/// The mark's height across the strip: the sidebar's.
+const MARK_HEIGHT: f32 = 10.0;
 
 /// Where the caller draws.
 pub struct Areas {
@@ -53,8 +55,14 @@ pub fn kit(ui: &Ui, palette: &Palette, wordmark: &str, label: &str) -> Areas {
     painter.rect_filled(band, 0.0, ink.ground.color());
 
     // Read bottom to top, the series at the top and the vendor at the foot.
-    upward(painter, strip, label, true, ink.ink.color());
-    upward(painter, strip, "NXE", false, ink.ink.color());
+    upward(painter, strip, label, ink.ink.color());
+    // The drawn mark, as in the sidebar (`logo`), not three letters.
+    crate::logo::mark_upward(
+        painter,
+        strip.shrink2(egui::vec2(0.0, SPACE_2)),
+        MARK_HEIGHT,
+        ink.ink.color(),
+    );
 
     let figure = Rect::from_min_max(
         pos2(strip.right(), rect.top()),
@@ -71,8 +79,8 @@ pub fn kit(ui: &Ui, palette: &Palette, wordmark: &str, label: &str) -> Areas {
 }
 
 /// Tracked capitals turned a quarter to read upwards, centred across `strip`
-/// and set against its top or its foot.
-fn upward(painter: &Painter, strip: Rect, text: &str, top: bool, colour: egui::Color32) {
+/// and set against its top.
+fn upward(painter: &Painter, strip: Rect, text: &str, colour: egui::Color32) {
     let mut job = LayoutJob::default();
     job.append(
         &text.to_uppercase(),
@@ -89,10 +97,6 @@ fn upward(painter: &Painter, strip: Rect, text: &str, top: bool, colour: egui::C
     // Turned −90° about its top-left, the galley runs up from that point and
     // its thickness lies to the right of it.
     let x = strip.center().x - thickness * 0.5;
-    let y = if top {
-        strip.top() + SPACE_2 + length
-    } else {
-        strip.bottom() - SPACE_2
-    };
+    let y = strip.top() + SPACE_2 + length;
     painter.add(TextShape::new(pos2(x, y), galley, colour).with_angle(-FRAC_PI_2));
 }

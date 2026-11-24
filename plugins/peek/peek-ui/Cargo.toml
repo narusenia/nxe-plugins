@@ -1,0 +1,16 @@
+[package]
+name = "peek-ui"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The Peek meters' figures, shared by every Peek plugin"
+
+# The figures take plain values, like `nxe-egui`'s widgets. `bind` is the one
+# part that knows truce: it is the same few lines in every Peek plugin.
+[dependencies]
+egui = { workspace = true }
+nxe-egui = { workspace = true }
+peek-core = { workspace = true }
+truce-core = { workspace = true }
+truce-params = { workspace = true }
