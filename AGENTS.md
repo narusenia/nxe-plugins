@@ -11,9 +11,9 @@ Plugins move one at a time from [nih-plug](https://github.com/robbert-vdh/nih-pl
 [truce](https://github.com/truce-audio/truce) + egui, and ship again as
 `NXE <name> 2`:
 
-- **On truce**: Doubler, Sparkleur, Velour and Air. Exports **CLAP, VST3 and AU v2** (AU on macOS only);
+- **On truce**: Doubler, Sparkleur, Velour, Air and Diorama. Exports **CLAP, VST3 and AU v2** (AU on macOS only);
   `truce.toml` at the root declares them
-- **Still on nih-plug**: Diorama and Pumice. CLAP and
+- **Still on nih-plug**: Pumice. CLAP and
   VST3 only — nih-plug has no AU wrapper. **Pumice was never released**, so it
   ships as `NXE Pumice` 1.0.0, not as a "2" (`v2-plan.md`, decision 16)
 
@@ -76,9 +76,9 @@ with the code, and fix the document in the same change.
   from early reflections and a direct path that is itself processed. **No
   reverb tail**: 10–120 ms only. Host-agnostic, allocation-free on the audio
   path
-- `plugins/diorama/diorama`: the Diorama nih-plug wrapper. **Not shipped yet** —
-  the only one of the five that has never been released, which is why it could
-  still be renamed (`DIO-15`, it was `Vocal Depth`)
+- `plugins/diorama/diorama`: the Diorama 2 truce wrapper — parameter
+  declarations, the egui editor, and the binding between them. Shipped as
+  `NXE Diorama` 0.2.0 after the rename in `DIO-15` (it was `Vocal Depth`)
 - `plugins/pumice/pumice-core`: the Pumice DSP — dynamic resonance suppression
   for a single vocal. **The only engine in the line with an FFT on the audio
   path**, and the only one whose plugin reports latency

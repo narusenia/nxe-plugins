@@ -15,7 +15,7 @@
 | `plugins/velour/velour` | **MIT OR Apache-2.0** | 出荷するプラグイン（Velour 2、truce） |
 | `plugins/sparkleur/sparkleur` | **MIT OR Apache-2.0** | 出荷するプラグイン（Sparkleur 2、truce） |
 | `plugins/air/air` | **MIT OR Apache-2.0** | 出荷するプラグイン（Air 2、truce） |
-| `plugins/diorama/diorama` | **GPL-3.0-only** | 出荷するプラグイン |
+| `plugins/diorama/diorama` | **MIT OR Apache-2.0** | 出荷するプラグイン（Diorama 2、truce） |
 | `plugins/pumice/pumice` | **GPL-3.0-only** | 出荷するプラグイン |
 
 境界は 1 つだけ。**`vst3-sys` をリンクするか、しないか。**

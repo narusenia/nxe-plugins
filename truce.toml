@@ -66,3 +66,12 @@ category = "effect"
 fourcc = "Air2"
 description = "A signal-driven high-frequency texture generator"
 vst3_subcategory = "Distortion"
+
+[[plugin]]
+name = "NXE Diorama 2"
+bundle_id = "diorama2"
+crate = "diorama"
+category = "effect"
+fourcc = "Dio2"
+description = "A mix processor that moves a voice forward and back"
+vst3_subcategory = "Reverb"
