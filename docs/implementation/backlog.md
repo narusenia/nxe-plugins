@@ -60,7 +60,7 @@
 | V2-11 | Air 2 | V2-9 | ⬜ |
 | V2-12 | Diorama 2 | V2-9 | ⬜ |
 | V2-13 | リリースの CI（beta の前） | V2-1 | 🟡 |
-| V2-15 | Pumice を main に入れる（nih-plug のまま） | — | 🟡 |
+| V2-15 | Pumice を main に入れる（nih-plug のまま） | — | ✅ このPR |
 | V2-16 | Pumice 1.0（truce、`NXE Pumice` / `Pumi`） | V2-9, V2-15 | ⬜ |
 | V2-14 | 5 本の 2.0.0 と Pumice 1.0.0 | V2-8, V2-10〜V2-13, V2-16 | ⬜ |
 
@@ -74,6 +74,7 @@ v2 の移行とは独立に進められる。
 | DBL-13 | 既定値の詰めと実機確認 | [`doubler-plan.md`](../../plugins/doubler/docs/implementation/doubler-plan.md) | ❓ **耳が要る** |
 | DIO-13 | 既定値と耳 | [`diorama-plan.md`](../../plugins/diorama/docs/implementation/diorama-plan.md) | ❓ **耳が要る** |
 | — | Diorama の Advanced の偏差（`REQ-DIO-009`）。前に `dsp.md` が各偏差の数を書く | [`diorama-plan.md`](../../plugins/diorama/docs/implementation/diorama-plan.md) | ⬜ |
+| PUM-11 | Pumice の既定値と耳。`DEPTH` という名前を使えるかもここで決着（`REQ-PUM-010`） | [`pumice-plan.md`](../../plugins/pumice/docs/implementation/pumice-plan.md) | ❓ **耳が要る** |
 | SPK-18 | Sparkleur の主観サインオフ | [`sparkleur-plan.md`](../../plugins/sparkleur/docs/implementation/sparkleur-plan.md) | ❓ **耳が要る** |
 | INFRA-3 | 署名と notarize（リリースの CI のうち未了の部分） | [`infra-plan.md`](infra-plan.md) | ⬜ |
 
