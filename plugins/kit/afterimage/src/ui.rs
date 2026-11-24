@@ -1,6 +1,7 @@
-//! The Afterimage window: the spectrum now, filled, and the trace held over
-//! it as a line. Stop the sound and the fill drops while the line stays and
-//! fades — the afterimage, seen.
+//! The Afterimage window: the spectrum now, filled; the spectra just before
+//! it trailing behind as fading lines; and the trace held over them all as a
+//! line with a glow under it. Stop the sound and the fill drops while the
+//! line stays and fades — the afterimage, seen.
 
 use crate::params::AfterimageParams;
 use egui::{Align2, Stroke, Ui, pos2};
@@ -11,6 +12,30 @@ use spectral_core::{BANDS, position};
 
 /// The bottom of the figure, in dBFS.
 const FLOOR_DB: f32 = -84.0;
+
+/// Spectra kept behind the present one.
+const GHOSTS: usize = 12;
+
+/// The present spectrum every so often, newest last: a twelfth of the
+/// persistence apart, but no closer than a window frame and no further than a
+/// quarter second, so the trail moves at any setting.
+fn ghosts(ui: &Ui, present: &[f32; BANDS], persistence: f32) -> Vec<[f32; BANDS]> {
+    let id = ui.id().with("afterimage-ghosts");
+    let now = ui.input(|input| input.time);
+    let (mut last, mut kept): (f64, Vec<[f32; BANDS]>) = ui
+        .data(|data| data.get_temp(id))
+        .unwrap_or((0.0, Vec::new()));
+    let every = f64::from(persistence / GHOSTS as f32).clamp(1.0 / 30.0, 0.25);
+    if now - last >= every {
+        last = now;
+        kept.push(*present);
+        if kept.len() > GHOSTS {
+            kept.remove(0);
+        }
+    }
+    ui.data_mut(|data| data.insert_temp(id, (last, kept.clone())));
+    kept
+}
 
 /// The level at `hz` from band levels, as `0..=1` of the figure's height.
 fn height(levels: &[f32; BANDS], hz: f32) -> f32 {
@@ -115,6 +140,17 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
             font::mono(FONT_VALUE),
             PALETTE.subtle.color(),
         );
+    }
+    let ghosts = ghosts(ui, &present, p);
+    plot.fill(ui, PALETTE.accent.at(0.12), |hz| height(&trace, hz));
+    for (age, ghost) in ghosts.iter().rev().enumerate().rev() {
+        // Oldest first, so the newer ones lie on top; fainter and greyer with age.
+        let fade = 1.0 - age as f32 / GHOSTS as f32;
+        let colour = PALETTE
+            .muted
+            .mix(PALETTE.accent, fade)
+            .at(0.6 * fade * fade);
+        plot.curve(ui, colour, 1.0, |hz| height(ghost, hz));
     }
     plot.fill(ui, PALETTE.line, |hz| height(&present, hz));
     plot.curve(ui, PALETTE.accent, 2.0, |hz| height(&trace, hz));
