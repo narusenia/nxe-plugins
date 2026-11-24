@@ -7,7 +7,7 @@
 - 計画書を更新したらこの表も更新する。片方だけ直さない
 - 完了した単位は行を消さず `✅` にして、PR 番号かコミット SHA を入れる
   （main に直接コミットしている間は SHA）
-- **順序の判断は [`roadmap.md`](roadmap.md)**。この表は「何があるか」、
+- **順序の判断は [`roadmap.md`](v0-roadmap.md)**。この表は「何があるか」、
   ロードマップは「どの順でやるか、なぜその順か」
 
 最終更新: 2026-08-31
@@ -28,7 +28,7 @@
 **5 本の窓の作り直し**（fors 方向、`UI-15`〜`UI-20`）、**Hard モード**
 （Sparkleur と Velour だけ）、**`PUNCH`** の v2 からの回収。**Diorama
 （旧 Diorama）はこの版で初出荷**する — 旧 UI で 1 本だけ出さないため。
-順序の根拠は [`roadmap.md`](roadmap.md) の「v0.2.0」。
+順序の根拠は [`roadmap.md`](v0-roadmap.md) の「v0.2.0」。
 
 **先頭は「測る」2 単位**（`SPK-20` / `VEL-18`）。「かかりが弱い」は耳の不満で、
 そこから実装に届く道は測定しかない。Hard は写像を持ち上げるものなので、
@@ -73,7 +73,7 @@ CPU まで全部入っていて、**実機で一度聴いて効き幅を作り�
 | 共通クレート | `nxe-audio`（処理。`delay` が `DIO-1` で増えた）/ `nxe-dsp`（解析）/ `nxe-ui`（ウィジェット）/ `nxe-plug-ui`（結線） |
 
 **この節から下は追記ログで、同じ内容が
-[`../HANDOVER.md`](../HANDOVER.md) にもある。** 状態の正は上の表と
+[`../HANDOVER.md`](v0-handover.md) にもある。** 状態の正は上の表と
 下の全単位表で、**罠と授業料の正は `HANDOVER.md`**。
 
 **Air と、4 本まとめての重さ修正が入った**（2026-08-27）。`AIR-1`〜`AIR-13` が
@@ -652,4 +652,4 @@ Sub Protect も `Weights` に `ceiling_scale` を 1 項目足しただけで、�
 
 **要件まで済み、実装単位はまだ無い。**
 [`REQ-GLU.md`](../../plugins/vocal-glue/docs/requirements/REQ-GLU.md)。
-着手順とその根拠は [`roadmap.md`](roadmap.md)。
+着手順とその根拠は [`roadmap.md`](v0-roadmap.md)。

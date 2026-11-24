@@ -9,8 +9,8 @@
 中身は **5 本の窓の作り直し**（fors 方向）、**Hard モード**（Sparkleur と
 Velour だけ）、**`PUNCH`** の v2 からの回収、**Diorama（旧 Diorama）の
 初出荷**。順序の根拠は
-[`implementation/roadmap.md`](implementation/roadmap.md) の「v0.2.0」、
-状態は [`implementation/backlog.md`](implementation/backlog.md)。
+[`implementation/roadmap.md`](v0-roadmap.md) の「v0.2.0」、
+状態は [`implementation/backlog.md`](v0-backlog.md)。
 
 **済んだもの**: 共通 UI が `UI-15`（本ごとのアクセント）/ `UI-16`（Inter）/
 `UI-18`（反転面）/ `UI-19`（ヘッダ）/ `UI-20`（幅 880）/ `UI-21`（勾配を外した）。
@@ -69,7 +69,7 @@ Lucide は撤去）。**窓は 5 本とも型に乗った**（`AIR-14` / `DBL-17
 `REQ-VEL-005` を割った。6 なら −65.6 dB で、代償は高調波 1.95 dB だけ。
 
 詳細と表は
-[`velour-plan.md`](../plugins/velour/docs/implementation/velour-plan.md) の
+[`velour-plan.md`](../../plugins/velour/docs/implementation/velour-plan.md) の
 `VEL-18` / `VEL-19`。測定は `cargo test -p velour-core --test ceiling --
 --nocapture --test-threads=1` と `cargo test -p velour-core both_modes --
 --nocapture`。
@@ -113,7 +113,7 @@ get {position, size} of window 1'` で取れる（**プロセス名は厳密一�
 （ビューでもウィンドウでもなくプロセスの設定で、誰も戻していなかった）。
 もう 1 つは窓が開いている間の描画コストで、そちらは 7 つ直して gallery で
 **22.6 % → 約 9 %**。経緯・外した仮説 6 つ・測り方は
-[`investigations/ui-frame-cost.md`](investigations/ui-frame-cost.md)。
+[`investigations/ui-frame-cost.md`](../investigations/ui-frame-cost.md)。
 
 **5 本目 Diorama は `DIO-14` まで完了。** DSP・ラッパ・**窓**・CPU まで
 全部入っていて、**実機で一度聴いて効き幅を作り直した**。
@@ -175,7 +175,7 @@ S1gns Of L1fe / `Parallax Audio` 社）。
 > 「UI を一度開くと、消してもホストを再起動するまで操作が遅れる」という**本命の
 > 症状は残っていて**、原因は `baseview` がホストのプロセス全体でマウス合成を
 > 切っていた 1 行だった。`v0.1.4` / Air `v0.1.3` で直っている。
-> 経緯は [`investigations/ui-frame-cost.md`](investigations/ui-frame-cost.md)。
+> 経緯は [`investigations/ui-frame-cost.md`](../investigations/ui-frame-cost.md)。
 
 **測って分かった。** `mise run gallery`（ホストも音もハートビートも無い、
 ただ開いているだけの窓）が**アイドルで CPU 27.7 %**。`sample` で内訳を取ると
@@ -492,8 +492,8 @@ push して**無条件に `Ok(())` を返す**。ユニット構造体で窓へ�
 ### 設計の要点
 
 **要件も `dsp.md` も決着している** —
-[`REQ-DIO.md`](../plugins/diorama/docs/requirements/REQ-DIO.md) と
-[`dsp.md`](../plugins/diorama/docs/specifications/dsp.md)。要件は先に
+[`REQ-DIO.md`](../../plugins/diorama/docs/requirements/REQ-DIO.md) と
+[`dsp.md`](../../plugins/diorama/docs/specifications/dsp.md)。要件は先に
 「設計の中心にある 5 つの判断」だけ読めば残りはその帰結。
 
 **Air と正面から違うのは 1 点**: **原音が処理を通る**（`REQ-DIO-001`）。
@@ -521,7 +521,7 @@ push して**無条件に `Ok(())` を返す**。ユニット構造体で窓へ�
 
 **位置づけと計画。**
 
-計画は [`../plugins/diorama/docs/implementation/diorama-plan.md`](../plugins/diorama/docs/implementation/diorama-plan.md)。
+計画は [`../plugins/diorama/docs/implementation/diorama-plan.md`](../../plugins/diorama/docs/implementation/diorama-plan.md)。
 **`diorama-core` クレートもこの単位で作る**（`VEL-1` / `SPK-2` /
 `AIR-1` と同じ位置）。
 
@@ -604,20 +604,20 @@ Vocal Glue の `Ambience Glue` / Impact の `SIZE`）。`diorama-core` に置き
 
 このファイルは**そのとき何が動いていて、次に触る人が最初に知るべきこと**を
 1 枚にまとめたもの。設計の正は各仕様書、状態の正は
-[`implementation/backlog.md`](implementation/backlog.md) にある。
+[`implementation/backlog.md`](v0-backlog.md) にある。
 
 ## 5 分で状況を掴む順番
 
-1. [`../AGENTS.md`](../AGENTS.md) — リポジトリの地図と規約
-2. [`implementation/backlog.md`](implementation/backlog.md) の「現在地」 — 今どこか。
+1. [`../AGENTS.md`](../../AGENTS.md) — リポジトリの地図と規約
+2. [`implementation/backlog.md`](v0-backlog.md) の「現在地」 — 今どこか。
    **あの節は 330 行の追記ログで、中身はこのファイルと重複している** — 先頭の
    状態の表だけ読めばよい
 3. 触るプラグインの `plugins/<name>/docs/implementation/<name>-plan.md` の
    **該当単位の「決めたこと」と「踏んだ罠」** — ここに時間を溶かした記録がある。
    Diorama なら
-   [`diorama-plan.md`](../plugins/diorama/docs/implementation/diorama-plan.md)
-4. **UI を触るなら先に**: [`../.agents/rules/ui.md`](../.agents/rules/ui.md)
-   （何を守るか）と [`../.agents/rules/vizia.md`](../.agents/rules/vizia.md)
+   [`diorama-plan.md`](../../plugins/diorama/docs/implementation/diorama-plan.md)
+4. **UI を触るなら先に**: [`../.agents/rules/ui.md`](../../.agents/rules/ui.md)
+   （何を守るか）と [`../.agents/rules/vizia.md`](../../.agents/rules/vizia.md)
    （この vizia が黙って何もしない箇所）
 
 ## 何ができているか
@@ -936,7 +936,7 @@ p50 / p95 / max を並べたらしきい値を置くべき場所が変わった�
 ## Doubler で踏んだ罠
 
 このリビジョンの vizia には**コンパイルも通り、エラーも出さず、何もしない**
-ものがある。全部 [`../.agents/rules/vizia.md`](../.agents/rules/vizia.md) に
+ものがある。全部 [`../.agents/rules/vizia.md`](../../.agents/rules/vizia.md) に
 理由付きで書いてあるが、特に刺さりやすいのは:
 
 - **CSS の `font-size` は単位を受け付けない。** `12px` はパース失敗で宣言ごと
@@ -965,7 +965,7 @@ p50 / p95 / max を並べたらしきい値を置くべき場所が変わった�
 `nxe-ui` と `nxe-dsp` はそのまま使える。
 
 **3 個目は Sparkleur**（マルチバンドダイナミクス + Harmonic Sparkle）。
-順序の根拠は [`implementation/roadmap.md`](implementation/roadmap.md) の
+順序の根拠は [`implementation/roadmap.md`](v0-roadmap.md) の
 「Velour の後」。材料は `SPK-1` で `nxe-audio` に移してある。
 
 **「上げるのは 2 個目が要求してから」は当たったが、境界は 2 か所ずれた**
