@@ -151,32 +151,23 @@ jobs:
 
       # ---- truce -------------------------------------------------------------
 
-      # `cargo truce build` builds the host architecture only (its universal
-      # path is `cargo truce package`, which makes installers). So each
-      # architecture is built on its own and the binaries inside the bundles
-      # are lipo'd together. The bundles are otherwise identical; the ad-hoc
-      # signature is redone because lipo invalidates it.
+      # Universal (Apple Silicon + Intel) through `cargo truce package`, which
+      # is the only cargo-truce command that builds both: `build` makes the
+      # host architecture only, and with `--target` 6.3.0 loses the AU dylib.
+      # The installer it also writes is not shipped (decision 7 says zip); the
+      # bundles it staged for it are.
       - name: Bundle (truce, macOS)
         if: matrix.name == 'macos' && steps.tag.outputs.truce == 'true'
         run: |
           set -euo pipefail
-          plugin="${{ steps.tag.outputs.plugin }}"
-          for arch in aarch64 x86_64; do
-            rm -rf target/bundles
-            cargo truce build --clap --vst3 --au2 -p "$plugin" --target "$arch-apple-darwin"
-            mkdir -p "target/arch/$arch"
-            cp -R target/bundles/*.clap target/bundles/*.vst3 target/bundles/*.component "target/arch/$arch/"
-          done
+          cargo truce package -p "${{ steps.tag.outputs.plugin }}" \
+            --formats clap,vst3,au2 --no-notarize --no-sign
           mkdir -p target/bundled
-          for bundle in target/arch/aarch64/*; do
-            name=$(basename "$bundle")
+          for bundle in target/package/macos/plugin/*/*.clap \
+                        target/package/macos/plugin/*/*.vst3 \
+                        target/package/macos/plugin/*/*.component; do
             cp -R "$bundle" target/bundled/
-            for binary in "$bundle"/Contents/MacOS/*; do
-              lipo -create "$binary" "target/arch/x86_64/$name/Contents/MacOS/$(basename "$binary")" \
-                -output "target/bundled/$name/Contents/MacOS/$(basename "$binary")"
-            done
-            codesign --force --deep --sign - "target/bundled/$name"
-            lipo -archs "target/bundled/$name"/Contents/MacOS/*
+            lipo -archs "$bundle"/Contents/MacOS/*
           done
 
       - name: Bundle (truce, Windows)
@@ -228,7 +219,13 @@ jobs:
             cargo truce validate --clap --pluginval --auval -p "$plugin" 2>&1 | tee validate.log
           else
             cargo truce install --user --clap --vst3 -p "$plugin"
-            cargo truce validate --clap --pluginval -p "$plugin" 2>&1 | tee validate.log
+            cargo truce validate --pluginval -p "$plugin" 2>&1 | tee validate.log
+            # CLAP directly: cargo-truce 6.3.0 passes `--test-filter` here, which
+            # clap-validator replaced with `--exclude` in 2026-03. The exclusion
+            # is the one truce makes on Windows — clap-validator rejects
+            # Windows-style preset locations, so its preset-discovery tests
+            # cannot pass on any plugin there.
+            clap-validator validate --exclude preset-discovery target/bundled/*.clap 2>&1 | tee -a validate.log
           fi
           if grep -E "SKIP|not found" validate.log >/dev/null; then
             echo "::error::validate skipped a step"
