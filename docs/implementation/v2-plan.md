@@ -158,6 +158,7 @@ V2-9 の型に載せる。完了条件は V2-7 と同じ。
 |---|---|
 | **Linux を 2.0.0 に入れるか。** 今の `release.yml` は Linux も出している。決定 7 は macOS と Windows だけを挙げたので、落とすか、CI のビルドと validate だけで出すかを決める | V2-13 の前 |
 | **Mix 系の書体。** Inter + letter-spacing で進める。Host Grotesk や allo に替えるなら、バイナリへの埋め込みが許されるライセンスかを先に確かめる | V2-9 で型を確定するとき |
+| **ステータスバー（ポインタの説明）を残すか、どこに置くか。** H4 の案には描いていない | V2-9 |
 | **Colour / Design シリーズの型。** 候補は Colour が H1 系、Design が G 系 | 各シリーズに着手するとき |
 | `au_manufacturer` と 5 本の `fourcc` | V2-1 |
 | v0 から持ち越した耳の単位（`DBL-13` の既定値、`DIO-13` の既定値、Sparkleur の主観サインオフ `SPK-18`、Diorama の Advanced の偏差 `REQ-DIO-009`） | 各プラグインを型に載せる単位の中で。DSP は `<plugin>-core` にあるので、移行とは独立に進められる |
