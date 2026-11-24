@@ -36,6 +36,7 @@
 | V2-3 | 描画予算を測る |
 | V2-4 | 窓の回帰を CI で検出する |
 | V2-13 | リリースの CI |
+| V2-15 | Pumice を main に入れる |
 
 この 4 つは V2-1 の**コード**に依存していて、V2-1 に残っている実機の確認
 （下）には依存していない。
@@ -59,7 +60,9 @@
 | V2-11 | Air 2 | V2-9 | ⬜ |
 | V2-12 | Diorama 2 | V2-9 | ⬜ |
 | V2-13 | リリースの CI（beta の前） | V2-1 | 🟡 |
-| V2-14 | 5 本の 2.0.0 | V2-8, V2-10〜V2-13 | ⬜ |
+| V2-15 | Pumice を main に入れる（nih-plug のまま） | — | 🟡 |
+| V2-16 | Pumice 1.0（truce、`NXE Pumice` / `Pumi`） | V2-9, V2-15 | ⬜ |
+| V2-14 | 5 本の 2.0.0 と Pumice 1.0.0 | V2-8, V2-10〜V2-13, V2-16 | ⬜ |
 
 ### v0 から持ち越したもの
 
@@ -80,5 +83,6 @@ v2 の移行とは独立に進められる。
 |---|---|
 | Vocal Glue | 要件まで（[`REQ-GLU.md`](../../plugins/vocal-glue/docs/requirements/REQ-GLU.md)） |
 | Colour シリーズ / Design シリーズ | 構想のみ。型の候補は [`design-system.md`](../specifications/design-system.md) |
+| AU v2 の名前が `NXE: NXE Doubler 2` と二重になる | cargo-truce 6.3.0 の AU v2 の Info.plist は `au_name` を読まず `name` を使う。rescan と一緒に上流へ |
 | truce-clap の rescan を上流へ送る | `patches/truce-clap` の 1 か所。上流に入れば patch を消せる。外への PR なので出す前に確認する |
 | パワーフォロワの共通化 | 3 個目が来ているが形が 3 つとも違う。上げるなら何を共通にするかを先に決める |

@@ -70,7 +70,7 @@ Attack / Release を出さず、**`SPEED` 1 本 + 帯域の中心周波数から
 | REQ-SPK-018 | 通っている音の表示 | Should | Draft |
 | REQ-SPK-019 | WIDTH / Shimmer Spread | Won't (v1) | Decided |
 | REQ-SPK-020 | PUNCH / Transient Enhancement | Should (v0.2.0) | Decided |
-| REQ-SPK-021 | プリセットを持たない | Should | Draft |
+| REQ-SPK-021 | ~~プリセットを持たない~~ → プリセットを持つ | Must (v2) | Decided |
 | REQ-SPK-022 | MODE（Soft / Hard） | Should (v0.2.0) | Decided |
 
 ---
@@ -598,6 +598,11 @@ Advanced  per-band UP / DOWN / GAIN ── 重み（絶対量ではない）
 ---
 
 ## REQ-SPK-021: プリセットを持たない
+
+> **取り消し（2026-11-24、`docs/implementation/v2-plan.md` 決定 17）。**
+> プリセットを持つ。付属プリセットと、窓の中のプリセット欄（前後送り・読込・
+> ユーザー保存）を truce の機構と `nxe-ui` の共通部品で作る。以下は取り消す
+> 前の判断として残す。既定値を耳で詰める仕事は変わらない。
 
 - **優先度**: Should
 - **ステータス**: Draft

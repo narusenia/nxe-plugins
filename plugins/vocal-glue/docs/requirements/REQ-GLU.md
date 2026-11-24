@@ -78,7 +78,7 @@ N 帯域版が既に書かれている。**3 個目の客**なので、ここで
 | REQ-GLU-018 | 通っている音の表示 | Should | Draft |
 | REQ-GLU-019 | Timing Cohesion | Won't (v1) | Decided |
 | REQ-GLU-020 | LEAD ANCHOR | Won't (v1) | Decided |
-| REQ-GLU-021 | プリセットを持たない | Should | Draft |
+| REQ-GLU-021 | ~~プリセットを持たない~~ → プリセットを持つ | Must | Decided |
 
 ---
 
@@ -554,6 +554,11 @@ STACK ↑
 ---
 
 ## REQ-GLU-021: プリセットを持たない
+
+> **取り消し（2026-11-24、`docs/implementation/v2-plan.md` 決定 17）。**
+> プリセットを持つ。付属プリセットと、窓の中のプリセット欄（前後送り・読込・
+> ユーザー保存）を truce の機構と `nxe-ui` の共通部品で作る。以下は取り消す
+> 前の判断として残す。既定値を耳で詰める仕事は変わらない。
 
 - **優先度**: Should
 - **ステータス**: Draft
