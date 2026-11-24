@@ -17,6 +17,7 @@
 
 use crate::analysis::Analysis;
 use nxe_audio::oversample::Factor;
+use nxe_egui::text;
 use sparkleur_core::dynamics::Mode;
 use sparkleur_core::engine::{Levels, Shape};
 use truce::prelude::*;
@@ -412,52 +413,28 @@ impl SparkleurParams {
         format!("{value:+.2} oct")
     }
 
-    /// "35", "35 %", "+35%" → 0.35.
+    // **Every parameter reads its own text back** (`nxe_egui::text`): once one
+    // does, a validator expects all of them to, and clap-validator's
+    // `param-conversions` fails on the first that cannot.
     fn percent(&self, text: &str) -> Option<f64> {
-        number(text).map(|value| value / 100.0)
+        text::percent(text)
     }
 
-    /// "On" / "Off", as truce prints a switch. **Every parameter parses**:
-    /// once one does, a validator expects all of them to, and a switch that
-    /// cannot read back its own text fails `param-conversions`.
+    fn number(&self, text: &str) -> Option<f64> {
+        text::number(text)
+    }
+
     fn switch(&self, text: &str) -> Option<f64> {
-        match text.trim().to_ascii_lowercase().as_str() {
-            "on" | "1" | "true" => Some(1.0),
-            "off" | "0" | "false" => Some(0.0),
-            _ => None,
-        }
+        text::switch(text)
     }
 
     fn mode(&self, text: &str) -> Option<f64> {
-        choice(&["soft", "hard"], text)
+        text::choice(&["Soft", "Hard"], text)
     }
 
     fn factor(&self, text: &str) -> Option<f64> {
-        choice(&["2x", "4x"], text)
+        text::choice(&["2x", "4x"], text)
     }
-
-    /// "-3", "-3 dB", "+0.5 oct" → the number.
-    fn number(&self, text: &str) -> Option<f64> {
-        number(text)
-    }
-}
-
-/// The index of `text` among `names`, ignoring case.
-fn choice(names: &[&str], text: &str) -> Option<f64> {
-    let text = text.trim().to_ascii_lowercase();
-    names
-        .iter()
-        .position(|name| *name == text)
-        .map(|index| index as f64)
-}
-
-/// The leading number of `text`, whatever unit follows it.
-fn number(text: &str) -> Option<f64> {
-    let text = text.trim();
-    let end = text
-        .find(|c: char| !(c.is_ascii_digit() || matches!(c, '.' | '-' | '+')))
-        .unwrap_or(text.len());
-    text[..end].parse().ok()
 }
 
 impl SparkleurParams {
@@ -558,6 +535,43 @@ impl SparkleurParams {
             ],
             factor: self.oversample.value().into(),
             mode: self.mode.value().into(),
+        }
+    }
+
+    /// Band `index`'s parameter ids, as `[up, down, gain, solo]`. For the
+    /// editor, which addresses the five bands by number.
+    pub fn band_ids(&self, index: usize) -> [u32; 4] {
+        match index {
+            0 => [
+                self.up_sub.id(),
+                self.down_sub.id(),
+                self.gain_sub.id(),
+                self.solo_sub.id(),
+            ],
+            1 => [
+                self.up_body.id(),
+                self.down_body.id(),
+                self.gain_body.id(),
+                self.solo_body.id(),
+            ],
+            2 => [
+                self.up_mid.id(),
+                self.down_mid.id(),
+                self.gain_mid.id(),
+                self.solo_mid.id(),
+            ],
+            3 => [
+                self.up_pres.id(),
+                self.down_pres.id(),
+                self.gain_pres.id(),
+                self.solo_pres.id(),
+            ],
+            _ => [
+                self.up_air.id(),
+                self.down_air.id(),
+                self.gain_air.id(),
+                self.solo_air.id(),
+            ],
         }
     }
 

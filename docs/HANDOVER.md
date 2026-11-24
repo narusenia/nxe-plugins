@@ -22,9 +22,9 @@ Pumice の v0 期の経緯（`ADAPTIVE` を落とした理由、PDC のゲート
 
 ## 次の一手
 
-**人の手が要るもの**（`cargo truce install --user --clap --vst3 --au2 -p doubler`
-で入る。Logic・Cubase・Ableton・Bitwig が手元にある。窓だけなら
-`cargo truce run -p doubler` で DAW 無しに開く）:
+**人の手が要るもの**（`cargo truce install --user --clap --vst3 --au2` で
+truce の全プラグインが入る。Logic・Cubase・Ableton・Bitwig が手元にある。窓だけ
+なら `cargo truce run -p doubler`（`-p sparkleur`）で DAW 無しに開く）:
 
 - `V2-1`: 保存→再読込で全パラメータが戻るか、自動化に追従するか
 - `V2-2`: 窓を開閉したあとホストの UI がポインタに付いてくるか。**コード側に
@@ -34,11 +34,16 @@ Pumice の v0 期の経緯（`ADAPTIVE` を落とした理由、PDC のゲート
   （[`investigations/v2-frame-cost.md`](investigations/v2-frame-cost.md)）
 - `V2-7`: 窓を実機で見る（点のドラッグ、Tone のハンドル、値の直接入力、
   プリセットの保存と読込）。**付属プリセット 5 つの中身は仮**で、耳で決める
+- `V2-9`: Sparkleur 2 の窓を実機で見る（帯のドラッグ、Solo、曲線の点）。
+  **付属プリセット 6 つの中身は仮**。寸法は `design-system.md` に書き戻したが、
+  実機で動かしたら両方を直す
 
-**コードの側の次は `V2-9`**（Sparkleur 2。型の寸法を確定させる単位）。
-`V2-7` の残りは全部人の手なので、待たずに進められる。Doubler 2 の窓の作り
-（`plugins/doubler/doubler/src/ui/`）が手本で、**truce との結線は `ui/bind.rs`、
-プリセットは `ui/presets.rs`** の形をそのまま使う。
+**コードの側の次は `V2-10` / `V2-11` / `V2-12`**（Velour 2 / Air 2 /
+Diorama 2）。型は `V2-9` で確定した（`design-system.md` の「寸法」）。
+Sparkleur 2 の窓（`plugins/sparkleur/sparkleur/src/ui/`）が手本で、**truce
+との結線は `ui/bind.rs`、プリセットは `ui/presets.rs`** の形をそのまま使う。
+**`parse` は全パラメータに付ける**（一部だけだと clap-validator が落ちる。
+`v2-plan.md` の V2-9）。
 
 **v2 の途中で足した決定**（`v2-plan.md` 決定 16〜18）: Pumice は `NXE Pumice`
 1.0.0、全プラグインにプリセット、窓は作り直して「操作が主図に見える」ように。
