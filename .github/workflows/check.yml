@@ -41,6 +41,35 @@ jobs:
 
       - run: mise run check
 
+      # A failed screenshot test leaves what it rendered here (`V2-4`).
+      - name: Upload the rendered windows
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-macos
+          path: target/screenshots/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # **The windows on Windows** (`V2-4`). The full check runs on macOS only; this
+  # job runs just the screenshot tests, because the rasteriser is the part that
+  # differs per OS and each OS keeps its own baseline.
+  screenshot-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test -p doubler window_matches_its_screenshot
+      - name: Upload the rendered windows
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-windows
+          path: target/screenshots/
+          if-no-files-found: ignore
+          retention-days: 14
+
   # **The v2 plugins against the industry validators**: auval (AU v2),
   # pluginval (VST3) and clap-validator (CLAP), through `cargo truce validate`
   # (`docs/implementation/v2-plan.md`, decision 8). One `-p` per plugin that
