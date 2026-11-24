@@ -61,15 +61,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ~/.cargo/bin/cargo-truce
             ~/.cargo/bin/clap-validator
             /Applications/pluginval.app
-          key: validate-tools-macos-truce-6.3.0-pluginval-1.0.4-clapval-2026-11-24
+          key: validate-tools-macos-pluginval-1.0.4-clapval-2026-11-24
 
-      - name: Install tools
+      # `cargo-truce` itself comes from `mise.toml`, through mise-action above.
+      - name: Install validators
         if: steps.cache-tools.outputs.cache-hit != 'true'
         run: |
-          cargo install --locked cargo-truce@6.3.0
           cargo install --locked --git https://github.com/free-audio/clap-validator clap-validator
           curl -fsSL -o "$RUNNER_TEMP/pluginval.zip" \
             https://github.com/Tracktion/pluginval/releases/download/v1.0.4/pluginval_macOS.zip

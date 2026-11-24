@@ -143,15 +143,19 @@ mise run bundle velour     # cargo xtask bundle velour --release
 mise run install velour    # bundle, then copy into ~/Library/Audio/Plug-Ins
 ```
 
-A plugin on truce goes through `cargo truce` (install it with
-`cargo install --locked cargo-truce@6.3.0`, the same version as the crates):
+A plugin on truce goes through `cargo truce`, which `mise.toml` pins to the
+same version as the crates:
 
 ```bash
 cargo truce install --user --clap --vst3 --au2 -p doubler
 cargo truce validate --clap --pluginval --auval -p doubler
 ```
 
-CI runs that validate on macOS (`.github/workflows/check.yml`).
+CI runs that validate on macOS (`.github/workflows/check.yml`). **On a
+development Mac, `auval` can report `didn't find the component` for a plugin
+the DAWs list and load fine** — it has happened more than once, and other
+vendors' components vanish from `auval -a` at the same time. Trust the CI run
+and the host, not a local `auval`, until the registrar recovers.
 
 ## Rules
 
