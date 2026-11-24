@@ -10,6 +10,9 @@ that order, is in
 
 ## Plugins
 
+The six below are the **Basic** series: [what it is and how the plugins fit
+together](docs/series/basic.md).
+
 | Plugin | What it is | Release |
 |---|---|---|
 | [NXE Doubler](plugins/doubler/docs/requirements/REQ-DBL.md) | Multi-voice doubler — 2/4/8 detuned, delayed, humanized voices from one source | [`doubler-v0.2.0`](https://github.com/narusenia/nxe-plugins/releases/tag/doubler-v0.2.0) |
