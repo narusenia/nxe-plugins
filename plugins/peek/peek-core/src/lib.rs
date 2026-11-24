@@ -8,7 +8,16 @@
 //! passes that input through untouched.
 
 pub mod level;
+pub mod loudness;
+pub mod meters;
+pub mod scope;
+pub mod stereo;
 pub mod true_peak;
+pub mod vu;
 
 pub use level::ChannelLevel;
+pub use loudness::Loudness;
+pub use scope::Scope;
+pub use stereo::Stereo;
 pub use true_peak::TruePeak;
+pub use vu::Vu;
