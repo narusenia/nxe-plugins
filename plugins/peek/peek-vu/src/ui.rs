@@ -50,7 +50,12 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         return;
     }
     let params = ctx.params();
-    let amplitudes = params.readings.vu.read();
+    let live = peek_ui::live(ui, "vu", &params.readings.blocks);
+    let amplitudes = if live {
+        params.readings.vu.read()
+    } else {
+        [0.0; 2]
+    };
     peek_ui::heartbeat(ui, amplitudes.iter().any(|amplitude| *amplitude > 1e-4));
     let (figure, band) = areas(ui, "VU");
     let reference = params.reference.value();
@@ -95,7 +100,11 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         &mut cells,
         &ink,
         "Correlation",
-        params.readings.correlation.read()[0],
+        if live {
+            params.readings.correlation.read()[0]
+        } else {
+            0.0
+        },
         136.0,
     );
     bind::knob_for(&mut cells, ctx, &ink, params.reference.id(), "0 VU", 28.0);

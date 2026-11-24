@@ -112,7 +112,24 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         return;
     }
     let params = ctx.params();
-    let readings = &params.readings;
+    // Every meter publishes from the same block, so one count says for all.
+    // Loudness is integrated and the maxima are held: they keep what they
+    // measured.
+    let silent;
+    let readings = if peek_ui::live(ui, "peek", &params.readings.level.blocks) {
+        &params.readings
+    } else {
+        silent = crate::params::Readings::default();
+        silent
+            .loudness
+            .values
+            .write(&params.readings.loudness.values.read());
+        silent
+            .level
+            .maxima
+            .write(&params.readings.level.maxima.read());
+        &silent
+    };
     // The spectrogram scrolls in silence too.
     peek_ui::heartbeat(ui, true);
     // Not a Kit: the strip names what the window is for.
@@ -212,18 +229,21 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         params.window.value(),
     );
 
-    band(ui, ctx, areas.band);
+    band(ui, ctx, areas.band, readings);
 }
 
 /// The figures that need a number, the controls, and a click to clear the
 /// level maxima and the integrated loudness together.
-fn band(ui: &mut Ui, ctx: &Ctx, rect: Rect) {
+fn band(ui: &mut Ui, ctx: &Ctx, rect: Rect, readings: &crate::params::Readings) {
     let params = ctx.params();
-    let readings = &params.readings;
     let clear = ui.interact(rect, ui.id().with("clear"), Sense::click());
     if clear.clicked() {
-        readings.level.clears.fetch_add(1, Ordering::Relaxed);
-        readings.loudness.clears.fetch_add(1, Ordering::Relaxed);
+        params.readings.level.clears.fetch_add(1, Ordering::Relaxed);
+        params
+            .readings
+            .loudness
+            .clears
+            .fetch_add(1, Ordering::Relaxed);
     }
     let ink = PALETTE.inverted();
     let inner = rect.shrink2(vec2(SPACE_4, 0.0));

@@ -40,7 +40,14 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
     if !nxe_egui::window(ui) {
         return;
     }
-    let readings = &ctx.params().readings;
+    let real = &ctx.params().readings;
+    let silent;
+    let readings = if peek_ui::live(ui, "level", &real.blocks) {
+        real
+    } else {
+        silent = peek_core::meters::LevelReadings::default();
+        &silent
+    };
     peek_ui::heartbeat(ui, readings.peaks.read().iter().any(|peak| *peak > 1e-4));
     let palette = &PALETTE;
     let areas = kit(ui, palette, "Level", "Peek Kit");
@@ -64,9 +71,9 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
     let band = areas.band.shrink2(vec2(SPACE_4, 0.0));
     let clear = ui.interact(areas.band, ui.id().with("clear"), Sense::click());
     if clear.clicked() {
-        readings.clears.fetch_add(1, Ordering::Relaxed);
+        real.clears.fetch_add(1, Ordering::Relaxed);
     }
-    let [peak, true_peak, rms] = readings.maxima.read().map(decibels);
+    let [peak, true_peak, rms] = real.maxima.read().map(decibels);
     peek_ui::readings(
         ui,
         palette,

@@ -48,7 +48,11 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         return;
     }
     let params = ctx.params();
-    let levels = params.readings.levels.read();
+    let levels = if peek_ui::live(ui, "spectrum", &params.readings.blocks) {
+        params.readings.levels.read()
+    } else {
+        [0.0; _]
+    };
     peek_ui::heartbeat(ui, true);
     let (figure, band) = areas(ui, "Spectrum");
     let tilt = params.tilt.index() as usize;
