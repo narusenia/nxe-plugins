@@ -200,16 +200,25 @@ mod tests {
     /// that sees them. One baseline per OS: the rasterisers differ, and truce
     /// compares strictly. Baselines are baked on CI, never on a laptop — a
     /// picture from a different GPU would fail on the runner for nothing.
+    ///
+    /// **A channel may be off by 2.** Once the window had glows and curves, a
+    /// laptop and the runner disagreed on 66 anti-aliased pixels by one level,
+    /// and nothing else. A 1 px shift moves edges by far more than 2, so this
+    /// still catches what `V2-4` was built to catch.
     #[cfg(target_os = "macos")]
     #[test]
     fn window_matches_its_screenshot_macos() {
-        truce_test::screenshot!(Plugin, "screenshots/default_macos.png").run();
+        truce_test::screenshot!(Plugin, "screenshots/default_macos.png")
+            .pixel_threshold(2)
+            .run();
     }
 
     #[cfg(target_os = "windows")]
     #[test]
     fn window_matches_its_screenshot_windows() {
-        truce_test::screenshot!(Plugin, "screenshots/default_windows.png").run();
+        truce_test::screenshot!(Plugin, "screenshots/default_windows.png")
+            .pixel_threshold(2)
+            .run();
     }
 
     #[test]
