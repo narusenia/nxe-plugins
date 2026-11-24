@@ -78,22 +78,45 @@ pub fn preset_bar(
 
     let saving_id = id.with("saving");
     let mut saving: Option<String> = ui.data(|data| data.get_temp(saving_id));
+    // Read before the field, so a click on Save while typing confirms rather
+    // than counting as the field losing focus.
+    let save_response = ui.interact(save, id.with("save"), Sense::click());
+    let typing = saving.is_some();
     if let Some(mut typed) = saving.take() {
+        // A field you can see: a lighter well and an accent edge, inside the
+        // name cell and never over Save.
+        let well = name.shrink(2.0);
+        ui.painter().rect_filled(well, 0.0, palette.track.color());
+        ui.painter().rect_stroke(
+            well,
+            0.0,
+            Stroke::new(1.0, palette.accent.color()),
+            StrokeKind::Inside,
+        );
+        let inner = well.shrink2(vec2(SPACE_2, 0.0));
         let field = ui.put(
-            name.shrink2(vec2(SPACE_2, 0.0)),
+            inner,
             TextEdit::singleline(&mut typed)
                 .font(font::sans(FONT_LABEL))
-                .hint_text("Name")
+                .text_color(palette.ink.color())
+                .hint_text(egui::RichText::new("Preset name").color(palette.muted.color()))
+                .desired_width(inner.width())
+                .clip_text(true)
+                .vertical_align(egui::Align::Center)
+                .margin(egui::Margin::ZERO)
                 .frame(egui::Frame::NONE),
         );
-        if !field.has_focus() && !field.lost_focus() {
+        let on_save = save_response.hovered() || save_response.is_pointer_button_down_on();
+        if !field.has_focus() && (!field.lost_focus() || on_save) {
             field.request_focus();
         }
-        let enter = ui.input(|input| input.key_pressed(Key::Enter));
-        if field.lost_focus() || enter {
+        let confirm = ui.input(|input| input.key_pressed(Key::Enter)) || save_response.clicked();
+        let cancel =
+            ui.input(|input| input.key_pressed(Key::Escape)) || (field.lost_focus() && !on_save);
+        if confirm || cancel {
             ui.data_mut(|data| data.remove::<String>(saving_id));
             let typed = typed.trim().to_owned();
-            if enter && !typed.is_empty() {
+            if confirm && !typed.is_empty() {
                 action = Some(PresetAction::Save(typed));
             }
         } else {
@@ -184,8 +207,9 @@ pub fn preset_bar(
         ui.data_mut(|data| data.insert_temp(list_id, open));
     }
 
-    let save_response = ui.interact(save, id.with("save"), Sense::click());
-    let colour = if save_response.hovered() {
+    let colour = if typing {
+        palette.accent
+    } else if save_response.hovered() {
         palette.ink
     } else {
         palette.muted
@@ -198,7 +222,7 @@ pub fn preset_bar(
         crate::theme::FONT_EYEBROW,
         colour.color(),
     );
-    if save_response.clicked() {
+    if save_response.clicked() && !typing {
         ui.data_mut(|data| data.insert_temp(saving_id, String::new()));
     }
 
@@ -228,55 +252,88 @@ pub fn step(current: Option<usize>, count: usize, forward: bool) -> Option<usize
 mod tests {
     use super::*;
 
-    /// The list stays open across frames, and a row in it can be picked.
-    #[test]
-    fn the_list_stays_open_until_a_row_is_picked() {
-        use egui::{Context, Event, PointerButton, RawInput, Rect, pos2, vec2};
-        let ctx = Context::default();
-        ctx.set_fonts(crate::font::definitions());
-        let names: Vec<String> = ["A", "B", "C"].map(String::from).to_vec();
-        let mut time = 0.0;
-        let mut frame = |events: Vec<Event>| {
-            time += 0.05;
+    use egui::{Context, Event, PointerButton, Pos2, RawInput, Rect, pos2, vec2};
+
+    /// A 300 px preset bar in a headless context, driven a frame at a time.
+    struct Bar {
+        ctx: Context,
+        time: f64,
+        names: Vec<String>,
+    }
+
+    impl Bar {
+        fn new() -> Self {
+            let ctx = Context::default();
+            ctx.set_fonts(crate::font::definitions());
+            let mut bar = Self {
+                ctx,
+                time: 0.0,
+                names: ["A", "B", "C"].map(String::from).to_vec(),
+            };
+            bar.frame(vec![]);
+            bar
+        }
+
+        fn frame(&mut self, events: Vec<Event>) -> Option<PresetAction> {
+            self.time += 0.05;
             let input = RawInput {
                 screen_rect: Some(Rect::from_min_size(pos2(0.0, 0.0), vec2(400.0, 300.0))),
-                time: Some(time),
+                time: Some(self.time),
                 events,
                 ..Default::default()
             };
             let mut action = None;
-            let _ = ctx.run_ui(input, |ui| {
+            let names = &self.names;
+            let _ = self.ctx.run_ui(input, |ui| {
                 egui::Area::new("bar".into())
                     .fixed_pos(pos2(0.0, 0.0))
                     .show(ui.ctx(), |ui| {
-                        action = preset_bar(ui, &Palette::DOUBLER, &names, Some(0), false, 300.0);
+                        action = preset_bar(ui, &Palette::DOUBLER, names, Some(0), false, 300.0);
                     });
             });
             action
-        };
-        // Press and release in separate frames, as a hand does.
-        fn click(
-            frame: &mut impl FnMut(Vec<Event>) -> Option<PresetAction>,
-            at: egui::Pos2,
-        ) -> Option<PresetAction> {
+        }
+
+        /// Press and release in separate frames, as a hand does.
+        fn click(&mut self, at: Pos2) -> Option<PresetAction> {
             let button = |pressed| Event::PointerButton {
                 pos: at,
                 button: PointerButton::Primary,
                 pressed,
                 modifiers: Default::default(),
             };
-            frame(vec![Event::PointerMoved(at)]);
-            frame(vec![button(true)]);
-            frame(vec![button(false)])
+            self.frame(vec![Event::PointerMoved(at)]);
+            let pressed = self.frame(vec![button(true)]);
+            pressed.or(self.frame(vec![button(false)]))
         }
-        frame(vec![]);
-        let name = pos2(2.0 * ARROW + 20.0, HEIGHT / 2.0);
-        click(&mut frame, name);
-        for _ in 0..3 {
-            frame(vec![]);
+
+        fn idle(&mut self) {
+            for _ in 0..3 {
+                self.frame(vec![]);
+            }
         }
+    }
+
+    /// The list stays open across frames, and a row in it can be picked.
+    #[test]
+    fn the_list_stays_open_until_a_row_is_picked() {
+        let mut bar = Bar::new();
+        bar.click(pos2(2.0 * ARROW + 20.0, HEIGHT / 2.0));
+        bar.idle();
         let second_row = pos2(2.0 * ARROW + 20.0, HEIGHT * 2.5);
-        assert_eq!(click(&mut frame, second_row), Some(PresetAction::Load(1)));
+        assert_eq!(bar.click(second_row), Some(PresetAction::Load(1)));
+    }
+
+    /// Save opens the field, and Save again saves what was typed.
+    #[test]
+    fn save_confirms_what_was_typed() {
+        let mut bar = Bar::new();
+        let save = pos2(300.0 - SAVE / 2.0, HEIGHT / 2.0);
+        assert_eq!(bar.click(save), None);
+        bar.idle();
+        bar.frame(vec![Event::Text("Bright".into())]);
+        bar.idle();
+        assert_eq!(bar.click(save), Some(PresetAction::Save("Bright".into())));
     }
 
     #[test]
