@@ -87,6 +87,13 @@ patch で持つ。
 **完了条件**: Doubler 2 の窓を開閉したあとも、ホストの UI がポインタに遅れずに
 付いてくる（実機）。
 
+**コードを読んだ結果（2026-11-24）: 該当なし。** truce 6.3.0 の窓の層
+（`baseview-truce` 0.1.1-truce.13、`truce-egui`、`truce-clap` / `truce-vst3` /
+`truce-au`）のどこにも `setMouseCoalescingEnabled` の呼び出しが無い。
+`baseview-truce` の `updateTrackingAreas` はトラッキング領域を張り直すだけで、
+v0 の baseview が足していた 1 行を持っていない。patch も上流への PR も要らない。
+残っているのは実機の確認だけ。
+
 ### V2-3 — 描画予算を測る
 
 決定 9 の予算を、Doubler 2 の窓で測る。測り方は v0 と同じ（`sample`、
