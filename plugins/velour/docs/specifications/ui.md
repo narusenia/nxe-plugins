@@ -7,6 +7,13 @@
 道具立ての使い方は
 [`../../../../crates/nxe-ui/README.md`](../../../../crates/nxe-ui/README.md)。
 
+> **v2（Velour 2）の窓は作り直した。** 何を決めたかは
+> `docs/implementation/v2-plan.md` の V2-10、寸法は
+> `docs/specifications/design-system.md`、コードは
+> `plugins/velour/velour/src/ui/`。**下の本文は v0（vizia）の窓の仕様**で、
+> 設計方針（足したものが見える、2 層、ガードは見せる）は v2 も同じ。
+> レイアウトとウィジェットの節は v0 のもの。
+
 ## 設計方針
 
 **足したものが見える。** 並列生成（`REQ-VEL-001`）を選んだ最大の UI 上の見返りが
