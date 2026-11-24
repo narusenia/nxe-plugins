@@ -136,6 +136,9 @@ impl Kit<'_> {
 /// Draws the frame, the preset bar and the knobs, and returns the figure's
 /// area: under the wordmark, inside the margins.
 pub fn window<P: Params>(ui: &mut Ui, ctx: &PluginContext<P>, kit_: &Kit) -> Rect {
+    // truce-egui paints only on input or a parameter change, and the meters
+    // behind the figure are neither: ask again every frame (`peek_ui::heartbeat`).
+    ui.ctx().request_repaint_after(nxe_egui::smooth::FRAME);
     let areas = kit(ui, kit_.palette, kit_.name, kit_.label);
     let top = areas.figure.top() + SPACE_2;
     let mut bar = ui.new_child(UiBuilder::new().max_rect(Rect::from_min_size(

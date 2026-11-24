@@ -50,8 +50,6 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
     if !nxe_egui::window(ui) {
         return;
     }
-    // The heat moves on its own; the window has to keep up with it.
-    ui.ctx().request_repaint();
     let params = ctx.params();
     let [fever, recovery, mix] = knob_ids(params);
     let figure = kit_ui::window(
