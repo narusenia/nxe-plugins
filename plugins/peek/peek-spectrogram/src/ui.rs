@@ -52,11 +52,16 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
     // Always at 30 Hz while open: the picture scrolls even in silence.
     peek_ui::heartbeat(ui, true);
     let (figure, band) = areas(ui, "Spectrogram");
+    let levels = if peek_ui::live(ui, "spectrogram", &params.readings.blocks) {
+        params.readings.levels.read()
+    } else {
+        [0.0; _]
+    };
     peek_ui::spectrogram::figure(
         ui,
         &PALETTE,
         figure,
-        &params.readings.levels.read(),
+        &levels,
         params.floor.value(),
         params.ceiling.value(),
         peek_ui::spectrum::Axis::from_index(params.scale.index() as usize),

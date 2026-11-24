@@ -31,10 +31,11 @@ pub mod display;
 pub mod engine;
 pub mod gain;
 pub mod nodes;
-pub mod quality;
 pub mod reference;
 pub mod smoothing;
-pub mod stft;
+
+// The STFT moved to `nxe-spectral` for the Spectral Kit; the paths stay.
+pub use nxe_spectral::{quality, stft};
 
 pub use display::CURVE_POINTS;
 pub use engine::{Controls, Curves, Engine, Settings};

@@ -197,7 +197,8 @@ fn presets<P: Params>(ui: &mut Ui, ctx: &PluginContext<P>, kit_: &Kit) {
         .position(|preset| {
             kit_.values_of(preset)
                 .iter()
-                .all(|(id, value)| (plain(ctx, *id) - value).abs() < 1e-3)
+                // Relative: 5000 Hz through a log range comes back a hundredth off.
+                .all(|(id, value)| (plain(ctx, *id) - value).abs() < 1e-3 * value.abs().max(1.0))
         })
         .or_else(|| ui.data(|data| data.get_temp::<usize>(loaded_id)));
 
@@ -372,4 +373,159 @@ impl Transfer {
             egui::Stroke::new(width, colour.color()),
         ));
     }
+}
+
+/// The figure the spectral Kits draw: frequency across on a log axis,
+/// 20 Hz to 20 kHz, and something per frequency up — another frequency on the
+/// same log axis ([`Frequency::hz`]) or a linear amount from zero to `top`.
+pub struct Frequency {
+    rect: Rect,
+    /// `None`: the vertical axis is frequency too.
+    top: Option<f32>,
+}
+
+const LOW_HZ: f32 = 20.0;
+const HIGH_HZ: f32 = 20_000.0;
+
+fn log_position(hz: f32) -> f32 {
+    ((hz / LOW_HZ).ln() / (HIGH_HZ / LOW_HZ).ln()).clamp(0.0, 1.0)
+}
+
+impl Frequency {
+    /// Up is an amount, `0..=top`, labelled with `label` at the top.
+    pub fn amount(ui: &Ui, palette: &Palette, rect: Rect, top: f32, label: &str) -> Self {
+        let plot = Self {
+            rect,
+            top: Some(top.max(f32::EPSILON)),
+        };
+        plot.grid(ui, palette);
+        ui.painter_at(rect.expand(2.0)).text(
+            rect.left_top() + vec2(4.0, 2.0),
+            egui::Align2::LEFT_TOP,
+            label,
+            nxe_egui::font::mono(nxe_egui::theme::FONT_VALUE),
+            palette.muted.color(),
+        );
+        plot
+    }
+
+    /// Up is frequency too, with the identity drawn faint.
+    pub fn hz(ui: &Ui, palette: &Palette, rect: Rect) -> Self {
+        let plot = Self { rect, top: None };
+        plot.grid(ui, palette);
+        plot.curve(ui, palette.line, 1.0, |hz| hz);
+        plot
+    }
+
+    fn grid(&self, ui: &Ui, palette: &Palette) {
+        let painter = ui.painter_at(self.rect.expand(14.0));
+        let line = egui::Stroke::new(1.0, palette.line.color());
+        painter.rect_stroke(self.rect, 0.0, line, egui::StrokeKind::Inside);
+        for (hz, text) in [(100.0, "100"), (1_000.0, "1k"), (10_000.0, "10k")] {
+            let x = self.x(hz);
+            painter.line_segment(
+                [pos2(x, self.rect.top()), pos2(x, self.rect.bottom())],
+                line,
+            );
+            painter.text(
+                pos2(x + 3.0, self.rect.bottom() - 2.0),
+                egui::Align2::LEFT_BOTTOM,
+                text,
+                nxe_egui::font::mono(nxe_egui::theme::FONT_VALUE),
+                palette.subtle.color(),
+            );
+            if self.top.is_none() {
+                let y = self.y(hz);
+                painter.line_segment(
+                    [pos2(self.rect.left(), y), pos2(self.rect.right(), y)],
+                    line,
+                );
+            }
+        }
+    }
+
+    fn x(&self, hz: f32) -> f32 {
+        self.rect.left() + log_position(hz) * self.rect.width()
+    }
+
+    fn y(&self, value: f32) -> f32 {
+        let at = match self.top {
+            Some(top) => (value / top).clamp(0.0, 1.0),
+            None => log_position(value),
+        };
+        self.rect.bottom() - at * self.rect.height()
+    }
+
+    /// Shades `low..=high` across the whole height.
+    pub fn band(&self, ui: &Ui, palette: &Palette, low: f32, high: f32) {
+        let (low, high) = (low.min(high), low.max(high));
+        ui.painter_at(self.rect).rect_filled(
+            Rect::from_min_max(
+                pos2(self.x(low), self.rect.top()),
+                pos2(self.x(high), self.rect.bottom()),
+            ),
+            0.0,
+            palette.dim.color(),
+        );
+    }
+
+    /// Draws `f` across the whole frequency range.
+    pub fn curve(
+        &self,
+        ui: &Ui,
+        colour: nxe_egui::theme::Token,
+        width: f32,
+        f: impl Fn(f32) -> f32,
+    ) {
+        const STEPS: usize = 240;
+        let points: Vec<egui::Pos2> = (0..=STEPS)
+            .map(|step| {
+                let hz = LOW_HZ * (HIGH_HZ / LOW_HZ).powf(step as f32 / STEPS as f32);
+                pos2(self.x(hz), self.y(f(hz)))
+            })
+            .collect();
+        ui.painter_at(self.rect.expand(1.0)).add(egui::Shape::line(
+            points,
+            egui::Stroke::new(width, colour.color()),
+        ));
+    }
+}
+
+impl Frequency {
+    /// Fills under `f` across the whole frequency range.
+    pub fn fill(&self, ui: &Ui, colour: nxe_egui::theme::Token, f: impl Fn(f32) -> f32) {
+        const STEPS: usize = 160;
+        let painter = ui.painter_at(self.rect);
+        let width = self.rect.width() / STEPS as f32;
+        for step in 0..STEPS {
+            let at = (step as f32 + 0.5) / STEPS as f32;
+            let hz = LOW_HZ * (HIGH_HZ / LOW_HZ).powf(at);
+            let x = self.rect.left() + step as f32 * width;
+            painter.rect_filled(
+                Rect::from_min_max(
+                    pos2(x, self.y(f(hz))),
+                    pos2(x + width + 0.5, self.rect.bottom()),
+                ),
+                0.0,
+                colour.color(),
+            );
+        }
+    }
+}
+
+/// How long without a new frame before a figure takes the plugin to be
+/// bypassed or stopped. The host stops calling `process`, so the last frame
+/// would otherwise stay on screen.
+pub const STALE_SECONDS: f64 = 0.15;
+
+/// How many frames arrived since the last call (`count` is the audio
+/// thread's running total, wrapping) and how long since one last did.
+pub fn arrivals(ui: &Ui, key: &str, count: u32) -> (u32, f64) {
+    let id = ui.id().with(key);
+    let now = ui.input(|input| input.time);
+    let (seen, at): (u32, f64) = ui.data(|data| data.get_temp(id)).unwrap_or((count, now));
+    let new = count.wrapping_sub(seen);
+    let at = if new > 0 { now } else { at };
+    ui.data_mut(|data| data.insert_temp(id, (count, at)));
+    (new, now - at)
 }

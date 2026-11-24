@@ -49,16 +49,16 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         return;
     }
     let params = ctx.params();
-    let maxs = params.readings.maxs.read();
+    let silent = Default::default();
+    let readings = if peek_ui::live(ui, "scope", &params.readings.blocks) {
+        &params.readings
+    } else {
+        &silent
+    };
+    let maxs = readings.maxs.read();
     peek_ui::heartbeat(ui, maxs.iter().any(|sample| sample.abs() > 1e-4));
     let (figure, band) = areas(ui, "Scope");
-    peek_ui::scope::figure(
-        ui,
-        &PALETTE,
-        figure,
-        &params.readings,
-        params.window.value(),
-    );
+    peek_ui::scope::figure(ui, &PALETTE, figure, readings, params.window.value());
 
     let ink = PALETTE.inverted();
     let mut cells = row(ui, band);

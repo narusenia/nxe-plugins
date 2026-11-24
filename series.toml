@@ -27,4 +27,4 @@ plugins = [
 
 [kit]
 name = "Kit"
-plugins = ["fold", "fever", "buckle"]
+plugins = ["fold", "fever", "buckle", "invert", "shear", "afterimage"]

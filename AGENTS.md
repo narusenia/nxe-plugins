@@ -30,6 +30,9 @@ with the code, and fix the document in the same change.
   harmonic measurement the tests are written against. Host-agnostic and
   interface-agnostic. **Separate from `nxe-dsp` on purpose**: a bug here
   breaks the sound, a bug there breaks a picture
+- `crates/nxe-spectral`: the overlap-add STFT, moved out of `pumice-core`
+  when the Spectral Kit became its second caller. `pumice-core` re-exports it
+  under the old paths
 - `crates/nxe-egui`: the shared widgets, theme tokens, fonts and the NXE mark,
   on egui. **Depends on egui only, never on truce** — a widget takes a value
   and hands back what the pointer did, and each plugin owns the binding to its
@@ -67,12 +70,13 @@ with the code, and fix the document in the same change.
   declarations, the egui editor, and the binding between them. Shipped as
   `NXE Diorama` 0.2.0 after the rename in `DIO-15` (it was `Vocal Depth`)
 - `plugins/pumice/pumice-core`: the Pumice DSP — dynamic resonance suppression
-  for a single vocal. **The only engine in the line with an FFT on the audio
-  path**, and the only one whose plugin reports latency
+  for a single vocal. **The first engine in the line with an FFT on the audio
+  path**, and the first whose plugin reports latency
   (`docs/specifications/architecture.md` says why both are exceptions rather
-  than broken rules). Host-agnostic, allocation-free on the audio path; the
-  overlap-add buffering is written here rather than borrowed from
-  `nih_plug::util::stft`, which would move the crate to the GPL side
+  than broken rules; the Spectral Kits follow it). Host-agnostic,
+  allocation-free on the audio path; its overlap-add buffering now lives in
+  `nxe-spectral`, written rather than borrowed from `nih_plug::util::stft`,
+  which would move the crate to the GPL side
 - `plugins/pumice/pumice`: the Pumice 1.0 truce wrapper — parameter
   declarations, the egui editor, and the binding between them. What is left
   is an ear on the defaults. Its figure is the only one in the line whose
@@ -99,9 +103,12 @@ with the code, and fix the document in the same change.
 - `plugins/kit/kit-ui`: what every Kit window shares — the binding to truce,
   the preset bar over a table of factory presets, the frame, and the transfer
   curve figure
-- `plugins/kit/<name>`: one Kit per plugin (`fold`, `fever`, `buckle`), on the
-  Kit window with `Palette::DESIGN_KIT`. Thin: declarations, presets, and the
-  figure
+- `plugins/kit/spectral-core`: the engines behind the Spectral Kits —
+  Invert, Shear, Afterimage — on `nxe-spectral`'s STFT. They report a block of
+  latency, as Pumice does
+- `plugins/kit/<name>`: one Kit per plugin (`fold`, `fever`, `buckle`,
+  `invert`, `shear`, `afterimage`), on the Kit window with
+  `Palette::DESIGN_KIT`. Thin: declarations, presets, and the figure
 - `docs/`: monorepo-wide documents (architecture, cross-plugin backlog and
   roadmap). Indexed by `docs/README.md`
 - `plugins/<name>/docs/`: that plugin's own requirements, specifications, and
