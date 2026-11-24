@@ -225,7 +225,10 @@ jobs:
             # is the one truce makes on Windows — clap-validator rejects
             # Windows-style preset locations, so its preset-discovery tests
             # cannot pass on any plugin there.
-            clap-validator validate --exclude preset-discovery target/bundled/*.clap 2>&1 | tee -a validate.log
+            # Its own log: clap-validator marks individual tests SKIPPED as a
+            # matter of course, which the cargo-truce check below would read
+            # as a validator that never ran. It fails by exit status.
+            clap-validator validate --exclude preset-discovery target/bundled/*.clap 2>&1 | tee clap-validator.log
           fi
           if grep -E "SKIP|not found" validate.log >/dev/null; then
             echo "::error::validate skipped a step"
