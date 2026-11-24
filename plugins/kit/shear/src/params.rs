@@ -4,13 +4,22 @@
 use nxe_dsp::Handoff;
 use nxe_egui::text;
 use spectral_core::BANDS;
+use std::sync::atomic::AtomicU32;
 use truce::prelude::*;
+
+/// Frames the audio thread keeps for the window: 85 ms, well over a 30 Hz
+/// window frame.
+pub const RING: usize = 8;
+pub const RING_VALUES: usize = RING * BANDS;
 
 #[derive(Params)]
 pub struct ShearParams {
-    /// What comes out, in bands, for the spectrogram. Not a parameter.
+    /// The last [`RING`] frames of what comes out, in bands, oldest first,
+    /// and how many frames there have been. Not parameters.
     #[skip]
-    pub levels: Handoff<BANDS>,
+    pub ring: Handoff<RING_VALUES>,
+    #[skip]
+    pub count: AtomicU32,
 
     /// Which end is late, and how much of `Length` the lean uses.
     #[param(

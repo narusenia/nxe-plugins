@@ -24,10 +24,14 @@ pub struct Settings {
 }
 
 /// The delay at `hz`, in seconds. The figure draws this.
+///
+/// **Squared along the log axis**, not straight: the late end fans out and
+/// the early end stays tight, so the bottom of a mix holds together while the
+/// top smears (2026-11-25; the straight lean read as a ruler).
 pub fn delay(hz: f32, shear: f32, length: f32) -> f32 {
     let at = position(hz);
     let lean = if shear >= 0.0 { at } else { 1.0 - at };
-    lean * shear.abs() * length.min(LENGTH_MAX)
+    lean * lean * shear.abs() * length.min(LENGTH_MAX)
 }
 
 pub struct Shear {
@@ -41,6 +45,8 @@ pub struct Shear {
     bands: Bands,
     /// What came out of the last frame, in bands, for the window.
     levels: [f32; BANDS],
+    /// Frames made so far, wrapping: how the window tells a new frame.
+    count: u32,
 }
 
 impl Shear {
@@ -55,6 +61,7 @@ impl Shear {
             positions: (0..bins).map(|bin| bin as f32 * shell.bin_hz).collect(),
             bands: shell.bands(),
             levels: [0.0; BANDS],
+            count: 0,
             shell,
         }
     }
@@ -70,6 +77,11 @@ impl Shear {
         &self.levels
     }
 
+    /// Frames made so far, wrapping.
+    pub fn count(&self) -> u32 {
+        self.count
+    }
+
     pub fn process(&mut self, input: [f32; 2], settings: &Settings) -> [f32; 2] {
         let Self {
             shell,
@@ -79,11 +91,13 @@ impl Shear {
             positions,
             bands,
             levels,
+            count,
         } = self;
         let (frames, hop) = (*frames, shell.hop_seconds);
         let bins = shell.bins;
         let settings = *settings;
         shell.process(input, |frame| {
+            *count = count.wrapping_add(1);
             levels.fill(0.0);
             for (index, history) in history.iter_mut().enumerate().take(frame.channels()) {
                 let spectrum = frame.channel(index);
@@ -127,7 +141,8 @@ mod tests {
         };
         let low = arrival(100.0, &settings);
         let high = arrival(10_000.0, &settings);
-        // 10 kHz sits at 0.9 of the axis and 100 Hz at 0.23: about 0.33 s apart.
+        // 10 kHz sits at 0.9 of the axis and 100 Hz at 0.23: squared, about
+        // 0.38 s apart.
         assert!(
             high > low + (0.25 * RATE) as usize,
             "low {low}, high {high}"

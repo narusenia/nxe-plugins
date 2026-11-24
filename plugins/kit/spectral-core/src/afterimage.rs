@@ -49,6 +49,8 @@ pub struct Afterimage {
     /// The last frame's input and its trace, in bands, for the window.
     present: [f32; BANDS],
     trace: [f32; BANDS],
+    /// Frames made so far, wrapping: how the window tells a new frame.
+    count: u32,
 }
 
 impl Afterimage {
@@ -67,6 +69,7 @@ impl Afterimage {
             bands: shell.bands(),
             present: [0.0; BANDS],
             trace: [0.0; BANDS],
+            count: 0,
             shell,
         }
     }
@@ -82,6 +85,11 @@ impl Afterimage {
         &self.present
     }
 
+    /// Frames made so far, wrapping.
+    pub fn count(&self) -> u32 {
+        self.count
+    }
+
     /// The trace held over it, the same way.
     pub fn trace(&self) -> &[f32; BANDS] {
         &self.trace
@@ -95,10 +103,12 @@ impl Afterimage {
             bands,
             present,
             trace,
+            count,
         } = self;
         let hop = shell.hop_seconds;
         let settings = *settings;
         shell.process(input, |frame| {
+            *count = count.wrapping_add(1);
             present.fill(0.0);
             trace.fill(0.0);
             for (index, channel) in channels.iter_mut().enumerate().take(frame.channels()) {

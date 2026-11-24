@@ -60,6 +60,9 @@ impl PluginLogic for Afterimage {
         // Reading, never writing: nothing here goes back into the engine.
         params.present.write(state.engine.present());
         params.trace.write(state.engine.trace());
+        params
+            .count
+            .store(state.engine.count(), std::sync::atomic::Ordering::Relaxed);
         ProcessStatus::Normal
     }
 

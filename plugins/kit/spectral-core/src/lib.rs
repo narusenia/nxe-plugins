@@ -33,6 +33,11 @@ pub fn position(hz: f32) -> f32 {
 /// How many log-spaced bands the figures are handed, low first.
 pub const BANDS: usize = 96;
 
+/// Transform frames a second: a hop is a quarter block and a block is a
+/// 23.4 Hz bin, so this holds at every rate (8 % fewer at 44.1 kHz, which
+/// rounds its block down).
+pub const FRAMES_PER_SECOND: f32 = 23.437_5 * OVERLAP as f32;
+
 /// Folds a spectrum into [`BANDS`] log-spaced bands for the window: each band
 /// the loudest bin in it, as a sine's peak amplitude. A band narrower than a
 /// bin reads the bin under its centre, so the bottom is not left empty.

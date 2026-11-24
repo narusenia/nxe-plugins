@@ -89,7 +89,17 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
     let _ = damping;
     let p = kit_ui::plain(ctx, persistence) as f32;
     let params = ctx.params();
-    let (present, trace) = (params.present.read(), params.trace.read());
+    // Bypassed or stopped, the last frame would stay up: show nothing then.
+    let (_, quiet) = kit_ui::arrivals(
+        ui,
+        "afterimage-frames",
+        params.count.load(std::sync::atomic::Ordering::Relaxed),
+    );
+    let (present, trace) = if quiet < kit_ui::STALE_SECONDS {
+        (params.present.read(), params.trace.read())
+    } else {
+        ([0.0; BANDS], [0.0; BANDS])
+    };
     let plot = Frequency::amount(ui, &PALETTE, figure, 1.0, &format!("{p:.1} s"));
     let painter = ui.painter_at(figure);
     for db in [-24.0f32, -48.0, -72.0] {

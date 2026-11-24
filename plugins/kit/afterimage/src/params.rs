@@ -4,6 +4,7 @@
 use nxe_dsp::Handoff;
 use nxe_egui::text;
 use spectral_core::BANDS;
+use std::sync::atomic::AtomicU32;
 use truce::prelude::*;
 
 #[derive(Params)]
@@ -14,6 +15,9 @@ pub struct AfterimageParams {
     pub present: Handoff<BANDS>,
     #[skip]
     pub trace: Handoff<BANDS>,
+    /// Frames made so far, so the window can tell when they stop (bypass).
+    #[skip]
+    pub count: AtomicU32,
 
     /// How long a trace lasts at the bottom of the spectrum, in seconds.
     #[param(

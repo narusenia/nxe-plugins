@@ -512,3 +512,20 @@ impl Frequency {
         }
     }
 }
+
+/// How long without a new frame before a figure takes the plugin to be
+/// bypassed or stopped. The host stops calling `process`, so the last frame
+/// would otherwise stay on screen.
+pub const STALE_SECONDS: f64 = 0.15;
+
+/// How many frames arrived since the last call (`count` is the audio
+/// thread's running total, wrapping) and how long since one last did.
+pub fn arrivals(ui: &Ui, key: &str, count: u32) -> (u32, f64) {
+    let id = ui.id().with(key);
+    let now = ui.input(|input| input.time);
+    let (seen, at): (u32, f64) = ui.data(|data| data.get_temp(id)).unwrap_or((count, now));
+    let new = count.wrapping_sub(seen);
+    let at = if new > 0 { now } else { at };
+    ui.data_mut(|data| data.insert_temp(id, (count, at)));
+    (new, now - at)
+}

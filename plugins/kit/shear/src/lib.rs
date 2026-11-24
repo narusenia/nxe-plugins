@@ -4,8 +4,11 @@
 //!
 //! **It reports latency**: one transform block, as Pumice does.
 
+use params::RING_VALUES;
+use spectral_core::BANDS;
 use spectral_core::shear::{Settings, Shear as Engine};
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use truce::prelude::*;
 
 mod params;
@@ -19,13 +22,24 @@ pub struct Shear;
 
 pub struct ShearState {
     engine: Engine,
+    /// The last `params::RING` frames' bands, oldest first, for the spectrogram.
+    ring: [f32; RING_VALUES],
+    seen: u32,
+}
+
+impl ShearState {
+    fn new(sample_rate: f32) -> Self {
+        Self {
+            engine: Engine::new(sample_rate),
+            ring: [0.0; RING_VALUES],
+            seen: 0,
+        }
+    }
 }
 
 impl Default for ShearState {
     fn default() -> Self {
-        Self {
-            engine: Engine::new(FALLBACK_SAMPLE_RATE),
-        }
+        Self::new(FALLBACK_SAMPLE_RATE)
     }
 }
 
@@ -39,7 +53,7 @@ impl PluginLogic for Shear {
 
     #[allow(clippy::cast_possible_truncation)]
     fn reset(state: &mut ShearState, _params: &ShearParams, config: &AudioConfig) {
-        state.engine = Engine::new(config.sample_rate as f32);
+        *state = ShearState::new(config.sample_rate as f32);
     }
 
     fn process(
@@ -56,9 +70,17 @@ impl PluginLogic for Shear {
                 mix: params.mix.read(),
             };
             *output = state.engine.process(*input, &settings);
+            // Every frame, not the latest: a lean of a few tens of ms is a
+            // few frames, and the window draws at 30 Hz.
+            if state.engine.count() != state.seen {
+                state.seen = state.engine.count();
+                state.ring.copy_within(BANDS.., 0);
+                state.ring[RING_VALUES - BANDS..].copy_from_slice(state.engine.levels());
+            }
         });
         // Reading, never writing: nothing here goes back into the engine.
-        params.levels.write(state.engine.levels());
+        params.ring.write(&state.ring);
+        params.count.store(state.seen, Ordering::Relaxed);
         ProcessStatus::Normal
     }
 
