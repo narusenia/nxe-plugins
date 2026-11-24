@@ -6,36 +6,37 @@
 
 ```
 Cargo.toml                        ワークスペース（依存のピンはここに一元化）
-truce.toml                        truce に移ったプラグインの名前・ID・AU コード
-bundler.toml                      nih-plug に残るプラグインのバンドル表示名
-.cargo/config.toml                `cargo xtask` のエイリアス
+truce.toml                        全プラグインの名前・ID・AU コード
+series.toml                       リリースのシリーズと、それぞれに入るプラグイン
 crates/
   nxe-audio/                      共通の音声処理（カーブ・オーバーサンプラ・
                                   biquad・エンベロープ・相対検出器）
   nxe-dsp/                        共通の解析（レベル・ステレオ像・スペクトラム）
-  nxe-ui/                         共通 Vizia ウィジェット・テーマ・記号
-    examples/gallery.rs           ウィジェット一覧を単体アプリとして起動
-  nxe-egui/                       共通 egui ウィジェット・テーマ（v2。truce を知らない）
-    examples/gallery.rs           同上（eframe の単体ウィンドウ）
-  nxe-plug-ui/                    nih-plug のパラメータと nxe-ui の結線
+  nxe-egui/                       共通 egui ウィジェット・テーマ・書体・NXE の印
+                                  （truce を知らない）
+    assets/                       書体（OFL の本文つき）と印の SVG
+    examples/gallery.rs           ウィジェット一覧を eframe の単体アプリとして起動
+patches/                          truce-clap / truce-egui の手直し（下）
 plugins/
   doubler/
     doubler-core/                 DSP のみ（ホスト非依存）
     doubler/                      truce ラッパ（パラメータ + egui の窓）
     docs/                         このプラグインの要件・仕様・計画
-xtask/                            nih_plug_xtask のバンドラ（nih-plug 側だけ）
 ```
 
-**v2 の移行中は 2 つのフレームワークが同じワークスペースに並ぶ**
-（`docs/implementation/v2-plan.md`）。6 本とも truce に移った。どのプラグインも使わなくなった `nxe-ui` / `nxe-plug-ui` と
-xtask は nih-plug + vizia のまま残っていて、別の変更で消す。
-依存は衝突しない: truce の窓は `baseview-truce` という別名のクレートを使うので、
-下の `[patch]` で差し替えている baseview とは別物として解決される。
+**v2 で 6 本とも nih-plug + vizia から truce + egui に移った**
+（`docs/implementation/v2-plan.md`）。v0 の共通ウィジェット `nxe-ui`、
+nih-plug との結線 `nxe-plug-ui`、バンドラの xtask と `bundler.toml` は
+その後に消した。v0 の vizia について分かったことは
+`docs/archive/vizia-rules.md` と `docs/archive/vizia-pins.md` に残してある。
 
-**truce-clap は patch を 1 つ当てて使っている**（`patches/truce-clap`、ルートの
-`Cargo.toml` の `[patch.crates-io]`）。6.3.0 は state / preset の読込で値を
+**truce-clap は patch を 2 つ当てて使っている**（`patches/truce-clap`、ルートの
+`Cargo.toml` の `[patch.crates-io]`）。1 つ目: 6.3.0 は state / preset の読込で値を
 変えたあとホストに `rescan(VALUES)` を送らず、clap-validator 0.4 の
-`state-reproducibility-*` が落ちる。変更箇所は `nxe-plugins patch` で検索できる。
+`state-reproducibility-*` が落ちる。2 つ目: レイテンシが変わるとその場で
+`latency.changed` を呼んでいた。CLAP はこれを `activate` の中でしか許さないので、
+変化を覚えておき、動いていれば再起動を頼み、次の `activate` で知らせる
+（レイテンシが動くのは Pumice だけ）。変更箇所は `nxe-plugins patch` で検索できる。
 上流に入ったら patch ごと消す。
 
 **truce-egui にも patch が 1 つある**（`patches/truce-egui`）。
@@ -48,11 +49,7 @@ Geist Mono）を最初のパスの前に入れる。上流の `with_font` は 1 
 
 `truce.toml` も**ワークスペース直下に 1 つ**。`truce::plugin!` がコンパイル時に
 クレート名で自分の `[[plugin]]` を探す。`au_manufacturer` と 5 本の `fourcc` は
-`V2-1` でまとめて決めてあり、まだ移っていない 4 本の分もこのファイルの
-コメントにある。
-
-`bundler.toml` は**ワークスペースの直下に 1 つ**。バンドラがそこを読むので、
-プラグインごとに置くことはできない。
+`V2-1` でまとめて決めてある。
 
 `nxe-*` は共通クレートの接頭辞。プラグイン側のクレートは接頭辞を付けず
 プラグイン名そのもの（`doubler`、`doubler-core`）とする。共通か固有かが
@@ -70,31 +67,13 @@ Geist Mono）を最初のパスの前に入れる。上流の `with_font` は 1 
 同じ箱に入れると、その差が消えて「どっちに入れるのか」を毎回考えることになる。
 `Handoff` を挟んで解析が音声スレッドを止められない構造にしたのと同じ理由。
 
-### `nxe-plug-ui` が別クレートである理由
-
-`nxe-ui` は**nih-plug を知らない**（下の「依存の向き」）。パラメータとの結線は
-nih-plug と vizia の両方を知る必要があるので、**3 つ目のクレート**になる。
-`nxe-ui` に入れると `examples/gallery` が nih-plug をリンクして単体起動できなく
-なり、**DAW を開かずに UI を反復する**という土台が消える。
-
-Doubler と Velour は同内容の `param_bind.rs` をそれぞれ持っていた。
-**3 個目（Sparkleur）が要求したので `SPK-11` で上げた**（下の「共通クレートに
-上げるタイミング」）。中身はジェスチャの橋渡し（`apply`）、値のレンズ
-（`value_of`）、`knob` / `bar` / `segmented` / `toggle`。
-
-**プラグインに残るのは、そのプラグインにしか意味が無いもの**だけ。実際に
-残ったのは Doubler の鏡像編集 1 つ（`doubler::ui::mirror`）で、他の
-プラグインには対にすべき 2 つのボイスが無い。
-
 ## 依存の向き
 
 ```
-<plugin> ──→ <plugin>-core ──→ nxe-audio  （処理。nih-plug も Vizia も知らない）
+<plugin> ──→ <plugin>-core ──→ nxe-audio  （処理。truce も egui も知らない）
          ├─→ nxe-audio                    （ラッパが直接触る型だけ）
          ├─→ nxe-dsp                      （解析。同上）
-         ├─→ nxe-ui                       （ウィジェット。nih-plug を知らない）
-         ├─→ nxe-egui                     （v2 のウィジェット。truce を知らない）
-         └─→ nxe-plug-ui ──→ nxe-ui       （結線。**両方を知る唯一のクレート**）
+         └─→ nxe-egui                     （ウィジェット。truce を知らない）
 ```
 
 `nxe-audio` は `SPK-1` で `velour-core` から抜き出して作った。`velour-core` は
@@ -105,80 +84,14 @@ Doubler と Velour は同内容の `param_bind.rs` をそれぞれ持ってい�
 
 一方向で、戻る矢印は無い。この向きには 2 つの意味がある。
 
-**`<plugin>-core` がホストを知らないこと。** nih-plug には AU ラッパが無い。
-将来 AU を出したくなったとき、別フレームワークのラッパから同じ DSP を呼べる
-必要がある。同時に、DSP をホストなしでテストできるということでもある
+**`<plugin>-core` がホストを知らないこと。** v2 で nih-plug から truce に
+移った時、DSP には触らずにラッパだけを取り替えられたのはこのため。同時に、DSP をホストなしでテストできるということでもある
 （実際のテストはすべて core 側にある）。
 
-**`nxe-ui` が nih-plug を知らないこと。** ウィジェットは値とコールバックだけを
-受け取る。パラメータとの結線はプラグイン側の薄いアダプタが持つ。この境界が
-あると `examples/gallery` が nih-plug を一切リンクせず単体で起動できるので、
-DAW を立ち上げずに UI を反復できる。`nih_plug_vizia` のパラメータ binding は
-便利だが、それを `nxe-ui` に入れると gallery が成立しなくなる。
-
-## 依存のピン
-
-nih-plug は crates.io に無く git 依存。`nih_plug` / `nih_plug_vizia` /
-`nih_plug_xtask` は同一リポジトリなので、**3 つを同じ revision に揃える**。
-後者 2 つは `nih_plug` を path で参照しているため、revision がずれると
-`nih_plug` がツリーに 2 つ入る。
-
-**vizia は `nih_plug_vizia` が使っているものと完全に同一でなければならない。**
-
-```toml
-vizia = { git = "https://github.com/robbert-vdh/vizia.git", tag = "patched-2024-05-06" }
-```
-
-Robbert のフォークの固定タグで、上流の vizia ではない。Cargo は git ソースや
-revision が違えば**別のクレート**として扱うので、`nxe-ui` が別の vizia を
-引くと、そこで作ったビューが `nih_plug_vizia` が受け取る型と一致せず何も
-コンパイルできない。ワークスペースの `[workspace.dependencies]` に 1 箇所だけ
-書き、各クレートは `workspace = true` で参照する。
-
-### そのフォークを、さらにフォークしている
-
-**`[patch]` でワークスペース全体の vizia を `narusenia/vizia` の
-`nxe-2026-08-27` に差し替えている。** `patched-2024-05-06` に 2 コミット
-足したもので、`[patch]` はグラフ全体のソースを書き換えるので
-**`nih_plug_vizia` の vizia も同じものになる** — 上の「完全に同一でなければ
-ならない」はそのまま守られる。
-
-直したのは baseview バックエンドの 2 つで、**どちらも実測で決めた**
-（`mise run gallery` のアイドル時 CPU が **27.7 % → 0.9 %**）:
-
-1. **毎フレーム無条件に全画面を再描画していた。**
-   `Application::on_frame_update` が `should_redraw` を計算しているのに
-   `on_frame` が読んでいない。**`vizia_winit` は同じフラグを読んでいる**ので、
-   baseview 側の書き忘れ。macOS ではこのフレームタイマーが**ホストの
-   run loop** に載るため、再描画がそのままホストの UI を止めていた
-2. **`TextContext::sync_styles` がテキストビュー 1 個・1 フレームごとに
-   `fontdb` のクエリを投げていた。** キャッシュ無し、データベースには
-   システムフォント全部。描画時間の 4 分の 1
-
-**上流に投げる価値がある。まだ投げていない。**
-
-この制約には副作用が 2 つある。
-
-**上流 vizia の新機能は来ない。** ピンは 2024-05-06 のタグで、それ以降に
-上流へ入ったものは使えない。SVG ビューのような後発の機能を前提に設計しない
-（アイコンをフォントで解決しているのはこれが理由 —
-`plugins/doubler/docs/specifications/ui.md`）。
-
-**`winit` を有効にしてはいけない。** vizia の 2 つのバックエンドは
-**相互排他**で、`Application` の re-export が
-`cfg(all(not(feature = "winit"), feature = "baseview"))` とその鏡像で守られて
-いる。両方を有効にすると**どちらも** re-export されず、`Application` を使う
-コードが 1 つもコンパイルできない（`nih_plug_vizia` 自身も含む）。
-
-Cargo の feature はグラフ全体で加算的で、クレート単位で無効化できない。
-dev-dependency に隔離する手も効かない — resolver v2 は dev ターゲットを
-ビルドする時点で dev-dependency の feature を通常グラフに統合するので、
-`cargo check --workspace --all-targets` で衝突が復活する。
-
-したがって答えは 1 つだけ。**ワークスペース全体が `baseview` を使い、`winit`
-はどこでも有効にしない。** `nxe-ui` の gallery は baseview の単体ウィンドウを
-開く（`Application::run`）。副作用として、gallery が**プラグインと同じ
-バックエンド**で動くことになる — UI の挙動を DAW の外で見る意味が強くなる。
+**`nxe-egui` が truce を知らないこと。** ウィジェットは値を受け取り、
+ポインタが何をしたかを返す。パラメータとの結線は各プラグインの `ui/bind.rs`
+が持つ。この境界があると `examples/gallery` が truce を一切リンクせず単体で
+起動できるので、DAW を立ち上げずに UI を反復できる。
 
 ## 共通 DSP クレート `nxe-dsp`
 
@@ -197,9 +110,9 @@ dev-dependency に隔離する手も効かない — resolver v2 は dev ター�
 テストできる。
 
 ```
-doubler ──→ doubler-core      （DSP。nih-plug も Vizia も知らない）
+doubler ──→ doubler-core      （DSP。truce も egui も知らない）
         ├─→ nxe-dsp           （解析。同上）
-        └─→ nxe-ui            （ウィジェット。nih-plug を知らない）
+        └─→ nxe-egui          （ウィジェット。truce を知らない）
 ```
 
 **音声スレッドから UI への受け渡しは `Handoff`。** `AtomicU32` に `f32` の
@@ -295,21 +208,13 @@ CI（`check.yml` の `validate`）が macOS で同じ 2 行を回す。**リリ�
 draft release（`NXE <Series> <version>`）に付く。Linux は出さない。
 プラグインのバージョンは各 `Cargo.toml` が持ち、リリースノートに並ぶ。
 
-nih-plug に残っているプラグインのバンドルは nih-plug の xtask が行う。
-
 ```bash
-mise run bundle velour      # cargo xtask bundle velour --release
-mise run install velour     # バンドルして ~/Library/Audio/Plug-Ins へコピー（macOS）
+mise run install velour     # cargo truce install（CLAP / VST3 / AU）。先にホストを閉じる
 mise run gallery            # 共通ウィジェットの gallery
 mise run check              # fmt + clippy + test
 ```
 
-出力は `target/bundled/` に `<name>.clap` と `<name>.vst3`。表示名は
-`plugins/<name>/bundler.toml` が決める。
-
-**CI**: プルリクエストで `mise run check`。タグを打つと macOS（universal）・
-Windows・Linux でバンドルし、プラットフォームごとの zip を GitHub Release に
-添付する。macOS は署名も公証もしないので、Gatekeeper の回避手順を README に
+**CI**: プルリクエストで `mise run check`、画面の基準画像との比較、validate。macOS は署名も公証もしないので、Gatekeeper の回避手順を README に
 持つ（Apple Developer Program を契約したら署名を足す。それまでは手順が正）。
 
 ## 踏んだ罠
@@ -319,13 +224,8 @@ Windows・Linux でバンドルし、プラットフォームごとの zip を G
 
 | 罠 | 書いてある場所 |
 |---|---|
-| vizia の `winit` / `baseview` が相互排他 | 上記「依存のピン」と `.agents/rules/vizia.md` |
-| CSS の `font-family` が埋め込みフォントを選ばない | `.agents/rules/vizia.md` |
-| `draw_text` が view 自身のテキストしか描けない | `.agents/rules/vizia.md` |
-| vizia の既定の文字色が黒 | `.agents/rules/vizia.md` |
-| CSS のプロパティ名が web と違う（`child-space` 等） | `.agents/rules/vizia.md` |
-| レンズの `map` は 1 フィールドしか見られない | `.agents/rules/vizia.md` |
-| `bundler.toml` はワークスペース直下に 1 つ | 上記「クレート構成」 |
+| v0 の vizia の罠（相互排他の feature、CSS、レンズ） | `docs/archive/vizia-rules.md`、`docs/archive/vizia-pins.md` |
+| CLAP の `latency.changed` は `activate` の中だけ | 上記「クレート構成」の truce-clap の patch |
 | ブロック単位 API を使うと `REQ-DBL-012` が壊れる | `.agents/rules/rust.md` |
 | `cargo clippy \| tail` で終了コードが潰れる | `.agents/rules/rust.md` |
 
@@ -333,8 +233,9 @@ Windows・Linux でバンドルし、プラットフォームごとの zip を G
 
 1. `plugins/<name>/` に `<name>-core` と `<name>` の 2 クレートを作り、
    ワークスペースの `members` に追加する
-2. ワークスペース直下の `bundler.toml` に `[<パッケージ名>] name = "NXE <名前>"` を足す
-   （表示名の規約は `AGENTS.md`。クレート名は接頭辞なしの素の名前）
+2. ワークスペース直下の `truce.toml` に `[[plugin]]` を足し（`name`、
+   `bundle_id`、`fourcc`。表示名の規約は `AGENTS.md`）、出すシリーズの
+   `series.toml` にクレート名を足す
 3. `plugins/<name>/docs/requirements/REQ-<PREFIX>.md` を書く。ID は
    `REQ-<PREFIX>-<番号>`（Doubler は `DBL`）。要件が無い実装は始めない
 4. DSP と UI の仕様を `plugins/<name>/docs/specifications/` に書く
@@ -346,5 +247,5 @@ Windows・Linux でバンドルし、プラットフォームごとの zip を G
 8. **共通クレートに上げるものがあれば、その単位を計画の最初に置く。**
    `nxe-audio` は Sparkleur が要求して生まれた（`REQ-SPK-015`）
 
-共通ウィジェットが足りなければ `nxe-ui` に足す。そのとき
-`examples/gallery.rs` にも同じ変更で追加する（`.agents/rules/vizia.md`）。
+共通ウィジェットが足りなければ `nxe-egui` に足す。そのとき
+`examples/gallery.rs` にも同じ変更で追加する（`.agents/rules/ui.md`）。

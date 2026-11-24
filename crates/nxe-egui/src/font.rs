@@ -1,10 +1,8 @@
 //! The embedded typefaces, and the three ways text is set.
 //!
 //! **Words are Inter, figures are Geist Mono** — both SIL OFL 1.1, licence text
-//! beside the files in `crates/nxe-ui/assets/`, and it **has to travel with
-//! any release bundle** because the faces are compiled in. The files are read
-//! from the vizia crate's folder rather than copied: one copy of each binary,
-//! and they move here when that crate goes (`V2-16`).
+//! beside the files in `assets/`, and it **has to travel with any release
+//! bundle** because the faces are compiled in.
 //!
 //! **Two weights of Inter in v2, Regular and Medium** (`design-system.md`). A
 //! weight still carries no meaning on its own — Medium is for the wordmark,
@@ -18,9 +16,9 @@ use egui::text::{LayoutJob, TextFormat};
 use egui::{Align2, Color32, FontData, FontDefinitions, FontFamily, FontId, Painter, Pos2, Rect};
 use std::sync::Arc;
 
-pub const INTER: &[u8] = include_bytes!("../../nxe-ui/assets/inter/Inter-Regular.ttf");
-pub const INTER_MEDIUM: &[u8] = include_bytes!("../../nxe-ui/assets/inter/Inter-Medium.ttf");
-pub const GEIST_MONO: &[u8] = include_bytes!("../../nxe-ui/assets/geist/GeistMono-Regular.ttf");
+pub const INTER: &[u8] = include_bytes!("../assets/inter/Inter-Regular.ttf");
+pub const INTER_MEDIUM: &[u8] = include_bytes!("../assets/inter/Inter-Medium.ttf");
+pub const GEIST_MONO: &[u8] = include_bytes!("../assets/geist/GeistMono-Regular.ttf");
 
 /// The family name Inter Medium is registered under.
 pub const MEDIUM: &str = "nxe-medium";

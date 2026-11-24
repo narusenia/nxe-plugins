@@ -3,5 +3,5 @@
 **/*.rs.bk
 .DS_Store
 
-# `cargo xtask bundle` output
+# v0 `cargo xtask bundle` output
 /bundled

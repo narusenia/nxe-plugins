@@ -4,8 +4,6 @@ members = [
     "crates/nxe-audio",
     "crates/nxe-dsp",
     "crates/nxe-egui",
-    "crates/nxe-plug-ui",
-    "crates/nxe-ui",
     "plugins/air/air",
     "plugins/air/air-core",
     "plugins/doubler/doubler-core",
@@ -18,7 +16,6 @@ members = [
     "plugins/diorama/diorama",
     "plugins/pumice/pumice-core",
     "plugins/pumice/pumice",
-    "xtask",
 ]
 
 [workspace.package]
@@ -31,8 +28,6 @@ repository = "https://github.com/narusenia/nxe-plugins"
 nxe-audio = { path = "crates/nxe-audio" }
 nxe-dsp = { path = "crates/nxe-dsp" }
 nxe-egui = { path = "crates/nxe-egui" }
-nxe-plug-ui = { path = "crates/nxe-plug-ui" }
-nxe-ui = { path = "crates/nxe-ui" }
 air = { path = "plugins/air/air" }
 air-core = { path = "plugins/air/air-core" }
 doubler-core = { path = "plugins/doubler/doubler-core" }
@@ -59,102 +54,18 @@ truce-standalone = "=6.3.0"
 clap-sys = "0.5"
 egui = "0.34"
 
-# nih-plug is not on crates.io. All three crates come from one repository, so
-# they must stay on the same revision — `nih_plug_vizia` and `nih_plug_xtask`
-# depend on `nih_plug` by path, and a mismatch would put two copies of it in
-# the tree.
-#
-# `nih_plug`'s default features include `assert_process_allocs`, which panics
-# on a heap allocation inside `process()` in debug builds. That is exactly the
-# rule `.agents/rules/rust.md` states, enforced by the compiler rather than by
-# review — do not turn it off.
-nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git", rev = "f36931f7af4646065488a9845d8f8c2f95252c23" }
-nih_plug_vizia = { git = "https://github.com/robbert-vdh/nih-plug.git", rev = "f36931f7af4646065488a9845d8f8c2f95252c23" }
-nih_plug_xtask = { git = "https://github.com/robbert-vdh/nih-plug.git", rev = "f36931f7af4646065488a9845d8f8c2f95252c23" }
+# The v0 plugins ran on nih-plug + vizia, through our own forks of vizia and
+# baseview (`narusenia/vizia`, `narusenia/baseview`, tag `nxe-2026-08-31c`).
+# What those forks fixed — one of them a baseview bug that slowed the whole
+# host, the rest the cost of an open window — is in
+# `docs/investigations/ui-frame-cost.md`. None of it has gone upstream yet.
 
-# This MUST stay byte-identical to what `nih_plug_vizia` depends on
-# (Robbert's fork, tag `patched-2024-05-06`). Cargo treats a different git
-# source or revision as a *different crate*, so `nxe-ui`'s views would not be
-# the same type as the ones `nih_plug_vizia` accepts, and nothing would
-# compile. See `docs/specifications/architecture.md`.
-#
-# `winit` and `baseview` are MUTUALLY EXCLUSIVE. vizia re-exports
-# `Application` under `cfg(all(not(feature = "winit"), feature = "baseview"))`
-# and the mirror image for winit, so enabling both exports NEITHER and nothing
-# that uses `Application` compiles — including `nih_plug_vizia` itself.
-#
-# Cargo features are additive across the whole graph and cannot be turned off
-# per crate, and resolver v2 does not isolate a dev-dependency once a dev
-# target is being built. So there is exactly one workable answer:
-# **the whole workspace uses `baseview`, and `winit` is never enabled
-# anywhere.** `nxe-ui`'s gallery opens a standalone baseview window
-# (`Application::run`), which also means the gallery exercises the same
-# backend the plugin runs on.
-vizia = { git = "https://github.com/robbert-vdh/vizia.git", tag = "patched-2024-05-06", default-features = false, features = [
-    "baseview",
-    "clipboard",
-    "x11",
-] }
-
-# **The vizia both of the above resolve to is ours** (`nxe-2026-08-31c`, which
-# is `patched-2024-05-06` plus seven commits), **and so is baseview**
-# (`nxe-2026-08-31c`, `RustAudio/baseview` plus three). `[patch]` rewrites the
-# source for the whole graph, so `nih_plug_vizia`'s vizia and ours stay the same
-# crate — which is the constraint the note above is about.
-#
-# Everything here was found by measuring and reading the result with `sample`;
-# the numbers, the reasoning, and the five hypotheses that turned out to be
-# wrong are in `docs/investigations/ui-frame-cost.md`.
-#
-# **The one that was actually felt, and it is not a performance fix at all:**
-#
-# 1. **baseview turned off mouse coalescing for the whole host process.**
-#    `updateTrackingAreas` called `[NSEvent setMouseCoalescingEnabled: NO]` —
-#    a **class** method, so it applies to the host, not to our view — and
-#    nothing ever turned it back on. From the first time a plugin editor was
-#    opened, the host received every single mouse-moved event instead of the
-#    coalesced ones, for the rest of its life: its interface stopped tracking
-#    the pointer and slid after it, removing the plugin did not help, and only
-#    relaunching the host did. **This is what "the DAW goes sluggish and stays
-#    sluggish" was**, and none of the frame-cost work below touched it.
-#
-# **What a window costs while it is open** (`NXE_GALLERY_HZ=30 mise run
-# gallery`, 22.6 % of a core down to about 10 %):
-#
-# 2. **`vizia_baseview` redrew every frame whether or not anything changed.**
-#    `Application::on_frame_update` computes `should_redraw` and `on_frame`
-#    never read it. On macOS the frame timer runs on the **host's** run loop.
-# 3. **`TextContext::sync_styles` ran a `fontdb` query per text view per
-#    frame**, uncached, over a database holding every system font.
-# 4. **Every view filled a background, stroked a border and stroked an outline
-#    whether or not any of them could be seen**, and built the box path to do
-#    it with. Most of a tree is containers with none of the three, and femtovg
-#    gives every fill and stroke its own draw call. **456 draw calls a frame
-#    down to 219.**
-# 5. **Every frame drew the whole window.** A meter moving one pixel re-shaped
-#    and re-sent every label on screen, and **63 % of a window's draw calls are
-#    text**. It now draws only the box that asked for it. **219 down to 68.**
-# 6. **A changed string relayouted the tree**, so a readout ticking along with
-#    the audio re-ran morphorm over every view and cosmic-text over every
-#    string. It asks only when the view is sized by its contents — which is why
-#    `nxe_ui::readout::cell` fixes both of its dimensions.
-# 7. **The macOS frame timer ran at 66.7 Hz**, faster than any common display
-#    and faster than anything that feeds it, on the host's run loop. It is
-#    60 Hz. **Not 30**: 30 beats against the plugin's own 30 Hz heartbeat and
-#    the meters stutter.
-# 8. **Input waited for the frame timer**, so a drag was answered at the
-#    timer's rate rather than the pointer's. It is answered in `on_event` now,
-#    limited to one frame apart so a drag cannot outrun the frame rate.
-#
-# All eight are worth sending upstream; none has been yet. **The first one is
-# a bug in baseview that affects every plugin built on it**, and is the one to
-# send first.
 # **truce-clap 6.3.0 with two changes**: after a state or preset load it asks the
 # host to rescan parameter values, which CLAP requires and clap-validator 0.4
 # checks; and a latency change asks for a restart (when active) and announces
 # the new value from `activate`, the only place CLAP allows `latency.changed`
-# (Pumice is the one plugin whose latency moves). Upstream does neither yet. The change is marked `nxe-plugins patch` in
-# `patches/truce-clap/src/lib.rs`; drop this entry once a truce release has it.
+# (Pumice is the one plugin whose latency moves). Upstream does neither yet.
+# Both are marked `nxe-plugins patch` in `patches/truce-clap/src/lib.rs`; drop this entry once a truce release has it.
 #
 # **truce-egui 6.3.0 with one addition**: `EguiEditor::with_font_definitions`,
 # which installs a whole `FontDefinitions` before the first pass. Upstream's
@@ -165,12 +76,6 @@ vizia = { git = "https://github.com/robbert-vdh/vizia.git", tag = "patched-2024-
 [patch.crates-io]
 truce-clap = { path = "patches/truce-clap" }
 truce-egui = { path = "patches/truce-egui" }
-
-[patch."https://github.com/RustAudio/baseview.git"]
-baseview = { git = "https://github.com/narusenia/baseview.git", tag = "nxe-2026-08-31c" }
-
-[patch."https://github.com/robbert-vdh/vizia.git"]
-vizia = { git = "https://github.com/narusenia/vizia.git", tag = "nxe-2026-08-31c" }
 
 [profile.release]
 lto = "thin"

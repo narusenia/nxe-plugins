@@ -25,11 +25,11 @@
 | **どの順でやるか、なぜその順か** | [implementation/roadmap.md](implementation/roadmap.md) |
 | **v2 の後のシリーズ（ラインナップ・Kit・順番）** | [implementation/series-plan.md](implementation/series-plan.md) |
 | **まだ書かれていないプラグインの構想** | [`../concepts/`](../concepts/) |
-| **共通ウィジェットの使い方**（契約・トークン・アイコン） | [`../crates/nxe-ui/README.md`](../crates/nxe-ui/README.md) |
+| **共通ウィジェットの使い方**（契約・トークン・アイコン） | [`../crates/nxe-egui/README.md`](../crates/nxe-egui/README.md) |
 | **守るべき規約**（Rust / UI / 文書） | [`../.agents/rules/`](../.agents/rules/) |
 | **コミットとブランチの規約** | [`../.agents/rules/git.md`](../.agents/rules/git.md) |
 | **画面の規則**（グリッド、色、読み値、何を出すか） | [`../.agents/rules/ui.md`](../.agents/rules/ui.md) |
-| **踏んだ罠**（vizia の挙動、検証の抜け） | [`../.agents/rules/vizia.md`](../.agents/rules/vizia.md) / [`../.agents/rules/rust.md`](../.agents/rules/rust.md) |
+| **踏んだ罠**（検証の抜け。v0 の vizia は archive） | [`../.agents/rules/rust.md`](../.agents/rules/rust.md) / [`archive/vizia-rules.md`](archive/vizia-rules.md) |
 | **プラグイン固有の要件・仕様・計画** | `plugins/<name>/docs/` |
 
 同じ内容を 2 箇所に書かない。実装と食い違うときは**実装が正**で、気づいた

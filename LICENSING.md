@@ -1,30 +1,20 @@
 # ライセンス
 
-**このリポジトリは 1 つのライセンスでは説明できない。** 再利用できる部品と、
-出荷するプラグインとで条件が違う。
+**v2 から、全クレートと全プラグインが MIT OR Apache-2.0。**
 
 | | ライセンス | 中身 |
 |---|---|---|
 | `crates/nxe-audio` | **MIT OR Apache-2.0** | 共通の音声処理 |
 | `crates/nxe-dsp` | **MIT OR Apache-2.0** | 共通の解析 |
-| `crates/nxe-ui` | **MIT OR Apache-2.0** | 共通の Vizia ウィジェットとテーマ |
-| `crates/nxe-egui` | **MIT OR Apache-2.0** | 共通の egui ウィジェットとテーマ（v2） |
+| `crates/nxe-egui` | **MIT OR Apache-2.0** | 共通の egui ウィジェットとテーマ |
 | `plugins/*/*-core` | **MIT OR Apache-2.0** | 各プラグインの DSP |
-| `crates/nxe-plug-ui` | **GPL-3.0-only** | nih-plug と `nxe-ui` の結線 |
-| `plugins/doubler/doubler` | **MIT OR Apache-2.0** | 出荷するプラグイン（Doubler 2、truce） |
-| `plugins/velour/velour` | **MIT OR Apache-2.0** | 出荷するプラグイン（Velour 2、truce） |
-| `plugins/sparkleur/sparkleur` | **MIT OR Apache-2.0** | 出荷するプラグイン（Sparkleur 2、truce） |
-| `plugins/air/air` | **MIT OR Apache-2.0** | 出荷するプラグイン（Air 2、truce） |
-| `plugins/diorama/diorama` | **MIT OR Apache-2.0** | 出荷するプラグイン（Diorama 2、truce） |
-| `plugins/pumice/pumice` | **MIT OR Apache-2.0** | 出荷するプラグイン（Pumice 1.0、truce） |
+| `plugins/*/<plugin>` | **MIT OR Apache-2.0** | 出荷するプラグイン（truce） |
 
-境界は 1 つだけ。**`vst3-sys` をリンクするか、しないか。**
-
-**v2 の移行中は混在している**（`docs/implementation/v2-plan.md`）。truce に
-移ったラッパは `vst3-sys` を引かないので上の側に移り、まだ nih-plug に乗って
-いるラッパは無くなった。どのプラグインも使わなくなった
-`nxe-plug-ui` だけが GPL-3.0-only のまま残る。**最後の `nih_plug` 依存を外す単位で、
-全クレートが MIT OR Apache-2.0 になったとここに書く。**
+境界は 1 つだけ。**`vst3-sys` をリンクするか、しないか。** v0（0.x）は
+nih-plug に乗っていて `vst3-sys` を引いたので、ラッパと配布物は
+GPL-3.0-only だった（`LICENSE-GPL-3.0` はそのために残す）。truce は
+`vst3-sys` を引かないので、6 本とも truce に移った v2 で GPL は無くなった。
+nih-plug と vizia の側（`nxe-ui`、`nxe-plug-ui`、xtask）もこの時に消した。
 
 ## truce のライセンス
 
@@ -34,8 +24,7 @@ truce は **The Truce License 1.0**（SPDX `LicenseRef-TruceLicense-1.0`）。
 サービスとして提供するには許可が要る。**
 
 **配布物には影響しない。** 但し書きの 2.2 が「audio plug-in, plug-in suite」を
-対象外と明記していて、このリポジトリが出すのはプラグインだけ。`nxe-ui` などの
-共通クレートも、自分のプラグインのための部品で、truce を他の開発者に売る
+対象外と明記していて、このリポジトリが出すのはプラグインだけ。共通クレートも、自分のプラグインのための部品で、truce を他の開発者に売る
 ものではない。truce のコードは改変せず依存として引いているだけなので、
 Apache-2.0 の表示義務も crates.io の配布物が満たしている。
 
@@ -44,7 +33,7 @@ Apache-2.0 の表示義務も crates.io の配布物が満たしている。
 （`cargo tree -p doubler --features clap,vst3,au` に `vst3-sys` も
 `nih_plug` も出ないことを確かめてある）。
 
-## なぜ下の側が GPL なのか
+## v0 が GPL だった理由
 
 `nih_plug` は `vst3-sys` に無条件で依存していて、`vst3-sys` は GPLv3:
 
@@ -59,7 +48,7 @@ cdylib から `nih_export_clap!` と `nih_export_vst3!` を両方呼んでいて
 `cargo xtask bundle` はその**同じバイナリ**を両方のバンドルに入れる。だから
 「CLAP 版は VST3 を含まないので緩い」は**この構成では成り立たない**。
 
-## なぜ上の側は緩くできるのか
+## なぜ緩くできるのか
 
 `vst3-sys` を一切引かないから。依存を数えて確かめてある:
 

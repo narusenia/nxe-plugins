@@ -15,7 +15,7 @@ paths:
   known. A `Vec::push`, a `Box::new`, a `format!`, or a `collect()` on the
   audio path is a bug, not a style preference.
 - **No locks, no channels that block, no file or network I/O** on the audio
-  path. GUI → audio communication goes through parameters (nih-plug already
+  path. GUI → audio communication goes through parameters (truce already
   makes those lock-free) or an atomic; audio → GUI goes through atomics or a
   ring buffer that never blocks the writer.
 - **No panics.** Index with the length you allocated, not with a value derived
@@ -26,8 +26,8 @@ paths:
 
 ## Block size
 
-**Do not use nih-plug's block-based APIs** (`iter_blocks`, `Smoother::next_block`,
-or reading a parameter once per buffer) without revisiting `REQ-DBL-012` first.
+**Do not read parameters per block** (a block smoother, or reading a parameter
+once per buffer) without revisiting `REQ-DBL-012` first.
 The plugins guarantee that the output does not depend on the host's block size,
 and today that holds for a structural reason rather than a tested one: `process`
 is a plain per-sample loop, every smoother is polled exactly once per sample,
@@ -36,14 +36,13 @@ guarantee quietly, in a way only a host with an unusual buffer size would show.
 
 ## Crate boundaries
 
-- A `<plugin>-core` crate **must not depend on nih-plug, Vizia, or any host
+- A `<plugin>-core` crate **must not depend on truce, egui, or any host
   API**. It takes sample rate and plain values in, and writes samples out. This
-  is what makes an AU wrapper possible later, and it is also what makes the DSP
+  is what let v2 replace the wrapper without touching the sound, and what makes the DSP
   testable without a host.
-- `nxe-ui` **must not depend on nih-plug**. Widgets take a value and a
-  callback. The plugin crate owns the adapter that binds them to its
-  parameters.
-- Dependency direction is one way: `plugin` → (`plugin-core`, `nxe-ui`).
+- `nxe-egui` **must not depend on truce**. Widgets take a value and hand back
+  what the pointer did. The plugin crate owns the binding to its parameters.
+- Dependency direction is one way: `plugin` → (`plugin-core`, `nxe-egui`).
   Nothing points back.
 
 ## Tests
@@ -60,7 +59,7 @@ guarantee quietly, in a way only a host with an unusual buffer size would show.
 **Assert on a constant at compile time, not in a test.** clippy rejects
 `assert!` on a constant expression, and it is right: `const _: () =
 assert!(...)` next to the constant fails the build instead of a test run nobody
-had to execute. The radius guards in `nxe_ui::theme` are the example.
+had to execute. The line-height guards in `nxe_egui::theme` are the example.
 
 **A string replacement against a formatted file silently does nothing.**
 Editing by matching source text you wrote earlier fails the moment `rustfmt` has

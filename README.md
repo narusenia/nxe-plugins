@@ -1,8 +1,8 @@
 # nxe-plugins
 
-Audio plugins in Rust, built on [nih-plug](https://github.com/robbert-vdh/nih-plug)
-with a [Vizia](https://github.com/vizia/vizia) UI. Each plugin exports **CLAP**
-and **VST3**.
+Audio plugins in Rust, built on [truce](https://github.com/truce-audio/truce)
+with an [egui](https://github.com/emilk/egui) UI. Each plugin exports **CLAP**,
+**VST3** and **AU**. The 0.x releases were built on nih-plug and Vizia.
 
 Five plugins ship today, all at `0.2.0`. What is being built next, and why in
 that order, is in
@@ -27,12 +27,8 @@ pointer is on.
 
 ## Formats
 
-CLAP and VST3, for macOS (Apple Silicon and Intel), Windows, and Linux.
-
-**AU is not supported** and is not planned: nih-plug has no AU wrapper. Logic
-Pro and GarageBand cannot load these plugins. Every plugin keeps its DSP in a
-host-agnostic crate so that an AU wrapper remains possible later, but none
-exists.
+CLAP, VST3 and AU v2 for macOS (Apple Silicon and Intel); CLAP and VST3 for
+Windows. Linux is not built from 2.0; the 0.x releases had it.
 
 ## Building
 
@@ -42,14 +38,13 @@ toolchain and tasks.
 ```bash
 mise trust                  # once, after cloning
 mise run check              # fmt + clippy + tests
-mise run bundle doubler     # build the CLAP and VST3 bundles
-mise run install doubler    # bundle, then install into the user plugin folders
+mise run install doubler    # build, then install CLAP, VST3 and AU into the user plugin folders
 mise run gallery            # run the shared UI widget gallery as a desktop app
 ```
 
 Working on this repository? Start with [`AGENTS.md`](AGENTS.md) for the layout
 and the rules, [`docs/README.md`](docs/README.md) for which document plays which
-role, and [`crates/nxe-ui/README.md`](crates/nxe-ui/README.md) if you are
+role, and [`crates/nxe-egui/README.md`](crates/nxe-egui/README.md) if you are
 touching the interface.
 
 ## Installing a release build
@@ -78,11 +73,9 @@ xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/CLAP/NXE\ *.clap \
 
 ## License
 
-**Two licenses.** The shared crates — `nxe-audio`, `nxe-dsp`, `nxe-ui` and each
-plugin's `<plugin>-core` — are **MIT OR Apache-2.0**, so the DSP and the widgets
-can be reused anywhere. The wrapper crates and the shipped plugin bundles are
-**GPL-3.0-only**, because `nih_plug` links `vst3-sys` and that is GPLv3.
+**MIT OR Apache-2.0**, every crate and every bundle from 2.0. The 0.x bundles
+were **GPL-3.0-only**, because nih-plug links `vst3-sys` and that is GPLv3;
+[LICENSE-GPL-3.0](LICENSE-GPL-3.0) stays for them.
 
 [`LICENSING.md`](LICENSING.md) has the per-crate table and the reasoning.
-[LICENSE-MIT](LICENSE-MIT) / [LICENSE-APACHE](LICENSE-APACHE) /
-[LICENSE-GPL-3.0](LICENSE-GPL-3.0).
+[LICENSE-MIT](LICENSE-MIT) / [LICENSE-APACHE](LICENSE-APACHE).

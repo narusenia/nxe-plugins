@@ -32,46 +32,15 @@ description = "Full verification (fmt + clippy + test)"
 depends = ["fmt", "clippy", "test"]
 
 [tasks.gallery]
-description = "Run the shared UI widget gallery as a desktop app"
-run = "cargo run -p nxe-ui --example gallery"
+description = "Run the shared egui widget gallery as a desktop app"
+run = "cargo run -p nxe-egui --example gallery"
 
-[tasks.bundle]
-description = "Build the CLAP and VST3 bundles for one plugin"
-run = 'cargo xtask bundle {{arg(name="plugin")}} --release'
-
-# macOS only. `cargo xtask bundle` writes every bundle into one directory, so
-# this copies the whole directory rather than guessing how the bundler cased
-# the plugin's display name. With more than one plugin built, it installs them
-# all — which is what you want locally and not worth a filter.
-#
-# **The old bundle is removed, not copied over.** `cp -R` onto an existing
-# bundle merges into it and rewrites the Mach-O in place, keeping the same
-# inode — so a host that already has that file mapped pages in a binary whose
-# pages no longer match its signature, and macOS kills the host outright:
-# `EXC_BAD_ACCESS` / `SIGKILL (Code Signature Invalid)`, `CODESIGNING` /
-# `Invalid Page`. Studio One died exactly this way on 2026-08-30. Removing
-# first gives the new bundle a new inode, and a host holding the old one keeps
-# reading the old file instead of dying.
-#
-# **Quit the host before installing anyway.** This makes the crash unlikely
-# rather than impossible — a host that rescans mid-install can still read half
-# a bundle.
+# **Quit the host before installing.** A host that rescans or has the old
+# bundle mapped while it is replaced can read half a bundle; Studio One died
+# that way on 2026-08-30 (`SIGKILL (Code Signature Invalid)`).
 [tasks.install]
-description = "Bundle one plugin and install it into the user plugin folders (macOS)"
-run = '''
-set -euo pipefail
-cargo xtask bundle {{arg(name="plugin")}} --release
-mkdir -p ~/Library/Audio/Plug-Ins/CLAP ~/Library/Audio/Plug-Ins/VST3
-for bundle in target/bundled/*.clap; do
-  rm -rf ~/Library/Audio/Plug-Ins/CLAP/"$(basename "$bundle")"
-  cp -R "$bundle" ~/Library/Audio/Plug-Ins/CLAP/
-done
-for bundle in target/bundled/*.vst3; do
-  rm -rf ~/Library/Audio/Plug-Ins/VST3/"$(basename "$bundle")"
-  cp -R "$bundle" ~/Library/Audio/Plug-Ins/VST3/
-done
-echo "installed into ~/Library/Audio/Plug-Ins (quit the host first next time)"
-'''
+description = "Build one plugin and install it into the user plugin folders (CLAP, VST3, AU)"
+run = 'cargo truce install --user --clap --vst3 --au2 -p {{arg(name="plugin")}}'
 
 [tasks."oversampler:design"]
 description = "Re-derive Velour's halfband coefficients (stdlib Python only)"

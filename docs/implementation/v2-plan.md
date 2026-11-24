@@ -375,6 +375,18 @@ Logic（AU）で反転して無音。
   その声のどこが鳴るかで、プリセットが動かすと一般にできない部分を壊す）。
   Default 以外の中身は仮
 
+### V2-17 — nih-plug と vizia の側を消す
+
+V2-16 で最後のプラグインが truce に移ったので、どのプラグインも使わなくなった
+`nxe-ui`、`nxe-plug-ui`、xtask、`bundler.toml`、`.cargo/config.toml` の
+エイリアス、vizia と baseview のフォークへの `[patch]` を消す。書体と印の SVG は
+`nxe-egui/assets/` に移す（それまでは `nxe-ui/assets/` から読んでいた）。
+`.agents/rules/vizia.md` と依存のピンの記録は `docs/archive/` へ。
+全クレートが MIT OR Apache-2.0 になる（`LICENSING.md`）。
+
+**完了条件**: ワークスペースに `nih_plug` と `vizia` が 1 つも無い（`Cargo.lock`）。
+`mise run check` が通る。
+
 ### V2-13 — リリースの CI
 
 **V2-8（beta）の前に行う。** `release.yml` を truce のビルドに置き換える。

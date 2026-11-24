@@ -3,8 +3,7 @@
 //! **Knows nothing about truce.** A widget takes a value and the text to show,
 //! and hands back what the pointer did; binding that to a parameter is each
 //! plugin's job. That boundary is what lets `examples/gallery` run as a plain
-//! desktop app. The vizia `nxe-ui` stays beside this until the last plugin
-//! leaves vizia (`v2-plan.md`, `V2-16`).
+//! desktop app.
 //!
 //! Every widget is in `examples/gallery.rs` (`.agents/rules/ui.md`).
 
