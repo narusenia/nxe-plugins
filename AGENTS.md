@@ -11,11 +11,12 @@ Plugins move one at a time from [nih-plug](https://github.com/robbert-vdh/nih-pl
 [truce](https://github.com/truce-audio/truce) + egui, and ship again as
 `NXE <name> 2`:
 
-- **On truce**: Doubler, Sparkleur, Velour, Air and Diorama. Exports **CLAP, VST3 and AU v2** (AU on macOS only);
+- **On truce**: all six — Doubler, Sparkleur, Velour, Air, Diorama and Pumice. Exports **CLAP, VST3 and AU v2** (AU on macOS only);
   `truce.toml` at the root declares them
-- **Still on nih-plug**: Pumice. CLAP and
-  VST3 only — nih-plug has no AU wrapper. **Pumice was never released**, so it
-  ships as `NXE Pumice` 1.0.0, not as a "2" (`v2-plan.md`, decision 16)
+- **Pumice was never released**, so it ships as `NXE Pumice` 1.0.0, not as a
+  "2" (`v2-plan.md`, decision 16)
+- The nih-plug side (`nxe-ui`, `nxe-plug-ui`, xtask, `bundler.toml`) is no
+  longer used by any plugin and goes in its own change
 
 v0.x (all five on nih-plug) is kept on the `release/v0` branch; fixes to the
 shipped 0.2 builds go there, not to `main`.
@@ -86,10 +87,10 @@ with the code, and fix the document in the same change.
   than broken rules). Host-agnostic, allocation-free on the audio path; the
   overlap-add buffering is written here rather than borrowed from
   `nih_plug::util::stft`, which would move the crate to the GPL side
-- `plugins/pumice/pumice`: the Pumice nih-plug wrapper, until `V2-16` moves it
-  to truce. **Implemented up to its
-  window**; what is left is an ear on the defaults. Its figure
-  (`nxe_ui::node::NodeField`) is the only one in the line whose points can be
+- `plugins/pumice/pumice`: the Pumice 1.0 truce wrapper — parameter
+  declarations, the egui editor, and the binding between them. What is left
+  is an ear on the defaults. Its figure is the only one in the line whose
+  points can be
   put anywhere, added and removed. **Its adaptive detection was dropped from
   v1** — the product's whole claim, measured and found not to work, with the
   three failed statistics recorded in `REQ-PUM-003` rather than deleted

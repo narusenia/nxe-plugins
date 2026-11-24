@@ -16,8 +16,8 @@ Pumice は**単体ボーカルトラックの動的共鳴抑制**。1 本の声�
 `PUM-10c` で v1 から落とした）。何を測って何が失敗したかは
 `REQ-PUM-003` にそのまま残してある。
 
-対象は Bitwig / Ableton Live / Reaper / Studio One。**AU は対象外**
-（`REQ-PUM-014`）。
+対象は Bitwig / Ableton Live / Reaper / Studio One / Logic。truce に移って
+AU も出す（`REQ-PUM-014`、`V2-16`）。
 
 ## この製品がラインで初めてやること
 
@@ -518,12 +518,15 @@ WHEN   e[k] の非対称フォロワ（SPEED）
 
 - **優先度**: Must
 - **ステータス**: Draft
-- **説明**: **CLAP と VST3**。AU は出さない。
+- **説明**: **CLAP、VST3、AU v2**（AU は macOS のみ）。nih-plug には AU が
+  無かったので外していたが、truce に移った `V2-16` で取り消した。
 - 製品名は `NXE Pumice`、クレートは `pumice` / `pumice-core`、
-  CLAP id は `com.nxe.pumice`。**`CLAP_ID` と `VST3_CLASS_ID` は出荷後に
-  変えられない**（`REQ-DIO-014`）。
+  CLAP id は `com.nxe.pumice`、AU の fourcc は `Pumi`。truce は
+  `bundle_id = "pumice"` から CLAP id、VST3 の class id、状態のハッシュを
+  作る。**どれも出荷後に変えられない**（`REQ-DIO-014`）。
 - **受入条件**:
   - [ ] 4 ホストで CLAP と VST3 の両方が読み込まれる
+  - [ ] Logic で AU が読み込まれる
   - [ ] 4 ホストで PDC が効く（`REQ-PUM-007` と同じ確認）
 - **依存**: なし
 
