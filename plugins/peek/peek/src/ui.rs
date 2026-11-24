@@ -20,6 +20,7 @@ use nxe_egui::font;
 use nxe_egui::kit::{self, kit};
 use nxe_egui::readout::HEIGHT as READOUT;
 use nxe_egui::theme::{FONT_EYEBROW, Palette, SPACE_2, SPACE_3, SPACE_4};
+use peek_ui::spectrum::Axis;
 use peek_ui::{bind, decibels};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -84,8 +85,23 @@ fn cell(ui: &Ui, rect: Rect, title: &str) -> Rect {
 
 /// A segmented choice at the top right of a cell.
 fn corner(ui: &mut Ui, ctx: &Ctx, rect: Rect, id: u32, names: &[&str], index: usize, width: f32) {
+    corner_at(ui, ctx, rect, 0.0, id, names, index, width);
+}
+
+/// The same, `offset` further left, for a second choice beside the first.
+#[allow(clippy::too_many_arguments)]
+fn corner_at(
+    ui: &mut Ui,
+    ctx: &Ctx,
+    rect: Rect,
+    offset: f32,
+    id: u32,
+    names: &[&str],
+    index: usize,
+    width: f32,
+) {
     let mut child = ui.new_child(UiBuilder::new().max_rect(Rect::from_min_size(
-        pos2(rect.right() - width - SPACE_2, rect.top() + 3.0),
+        pos2(rect.right() - width - SPACE_2 - offset, rect.top() + 3.0),
         vec2(width, nxe_egui::segment::HEIGHT),
     )));
     peek_ui::choice(&mut child, ctx, &PALETTE, id, names, index, width);
@@ -140,6 +156,8 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
 
     let lower = columns(bottom, &[0.42, 0.33, 0.25]);
     let tilt = params.tilt.index() as usize;
+    let spectrum_scale = params.spectrum_scale.index() as usize;
+    let spectrogram_scale = params.spectrogram_scale.index() as usize;
     let spectrum = cell(ui, lower[0], "Spectrum");
     peek_ui::spectrum::figure(
         ui,
@@ -147,6 +165,7 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         Rect::from_min_max(spectrum.min, spectrum.max - vec2(0.0, 14.0)),
         &readings.spectrum.levels.read(),
         Tilt::SLOPES[tilt],
+        Axis::from_index(spectrum_scale),
     );
     corner(
         ui,
@@ -157,6 +176,16 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         tilt,
         132.0,
     );
+    corner_at(
+        ui,
+        ctx,
+        lower[0],
+        132.0 + SPACE_2,
+        params.spectrum_scale.id(),
+        &["Log", "Lin"],
+        spectrum_scale,
+        72.0,
+    );
     peek_ui::spectrogram::figure(
         ui,
         &PALETTE,
@@ -164,8 +193,24 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         &readings.spectrogram.levels.read(),
         -72.0,
         -18.0,
+        Axis::from_index(spectrogram_scale),
     );
-    peek_ui::scope::figure(ui, &PALETTE, cell(ui, lower[2], "Scope"), &readings.scope);
+    corner(
+        ui,
+        ctx,
+        lower[1],
+        params.spectrogram_scale.id(),
+        &["Log", "Lin"],
+        spectrogram_scale,
+        72.0,
+    );
+    peek_ui::scope::figure(
+        ui,
+        &PALETTE,
+        cell(ui, lower[2], "Scope"),
+        &readings.scope,
+        params.window.value(),
+    );
 
     band(ui, ctx, areas.band);
 }

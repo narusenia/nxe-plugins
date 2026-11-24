@@ -90,19 +90,62 @@ pub fn figure(ui: &Ui, palette: &Palette, rect: Rect, values: [f32; 5], target: 
     let y_of =
         |lufs: f32| graph.bottom() - ((lufs - LOW) / (HIGH - LOW)).clamp(0.0, 1.0) * graph.height();
     painter.rect_filled(graph, 0.0, palette.track.at(0.5).color());
-    for lufs in [-12.0, -24.0, -36.0] {
+    // A line every 6 LU, every other one labelled.
+    let mut lufs = HIGH - 6.0;
+    while lufs > LOW {
         let y = y_of(lufs);
+        let labelled = (lufs as i32) % 12 == 0;
         painter.line_segment(
             [pos2(graph.left(), y), pos2(graph.right(), y)],
-            Stroke::new(1.0, palette.line.color()),
+            Stroke::new(
+                1.0,
+                if labelled {
+                    palette.line
+                } else {
+                    palette.line.at(0.5)
+                }
+                .color(),
+            ),
         );
-        painter.text(
-            pos2(graph.left() + 2.0, y - 1.0),
-            Align2::LEFT_BOTTOM,
-            format!("{lufs:.0}"),
-            font::mono(FONT_VALUE),
-            palette.subtle.color(),
+        if labelled {
+            painter.text(
+                pos2(graph.left() + 2.0, y - 1.0),
+                Align2::LEFT_BOTTOM,
+                format!("{lufs:.0}"),
+                font::mono(FONT_VALUE),
+                palette.subtle.color(),
+            );
+        }
+        lufs -= 6.0;
+    }
+    // Time: every 10 s, the ends labelled.
+    let seconds = HISTORY as f64 * EVERY;
+    for tick in 0..=(seconds / 10.0) as usize {
+        let x = graph.right() - graph.width() * (tick as f32 * 10.0 / seconds as f32);
+        painter.line_segment(
+            [pos2(x, graph.bottom()), pos2(x, graph.bottom() - 4.0)],
+            Stroke::new(1.0, palette.muted.color()),
         );
+        if tick % 3 == 0 {
+            painter.text(
+                pos2(x, graph.bottom() - 5.0),
+                if tick == 0 {
+                    Align2::RIGHT_BOTTOM
+                } else if x - graph.left() < 16.0 {
+                    // At the left edge the label leans in, or it is cut.
+                    Align2::LEFT_BOTTOM
+                } else {
+                    Align2::CENTER_BOTTOM
+                },
+                if tick == 0 {
+                    "now".to_owned()
+                } else {
+                    format!("-{}s", tick * 10)
+                },
+                font::mono(FONT_VALUE),
+                palette.subtle.color(),
+            );
+        }
     }
     painter.line_segment(
         [

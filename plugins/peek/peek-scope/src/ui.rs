@@ -52,7 +52,13 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
     let maxs = params.readings.maxs.read();
     peek_ui::heartbeat(ui, maxs.iter().any(|sample| sample.abs() > 1e-4));
     let (figure, band) = areas(ui, "Scope");
-    peek_ui::scope::figure(ui, &PALETTE, figure, &params.readings);
+    peek_ui::scope::figure(
+        ui,
+        &PALETTE,
+        figure,
+        &params.readings,
+        params.window.value(),
+    );
 
     let ink = PALETTE.inverted();
     let mut cells = row(ui, band);

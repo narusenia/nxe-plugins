@@ -17,6 +17,14 @@ impl Tilt {
     pub const SLOPES: [f32; 3] = [0.0, 3.0, 4.5];
 }
 
+#[derive(ParamEnum, Debug)]
+pub enum Scale {
+    #[name = "Log"]
+    Log,
+    #[name = "Linear"]
+    Linear,
+}
+
 #[derive(Params)]
 pub struct PeekSpectrumParams {
     #[skip]
@@ -24,4 +32,8 @@ pub struct PeekSpectrumParams {
 
     #[param(name = "Tilt", default = 2)]
     pub tilt: EnumParam<Tilt>,
+
+    /// How frequency is laid out across the picture.
+    #[param(name = "Scale", default = 0)]
+    pub scale: EnumParam<Scale>,
 }

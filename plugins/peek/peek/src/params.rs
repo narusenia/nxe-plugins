@@ -50,6 +50,14 @@ impl Target {
     pub const NAMES: [&str; 4] = ["-14", "-16", "-18", "-23"];
 }
 
+#[derive(ParamEnum, Debug)]
+pub enum Scale {
+    #[name = "Log"]
+    Log,
+    #[name = "Linear"]
+    Linear,
+}
+
 #[derive(Params)]
 pub struct PeekParams {
     #[skip]
@@ -63,6 +71,12 @@ pub struct PeekParams {
 
     #[param(name = "Tilt", default = 2)]
     pub tilt: EnumParam<Tilt>,
+
+    #[param(name = "Spectrum Scale", default = 0)]
+    pub spectrum_scale: EnumParam<Scale>,
+
+    #[param(name = "Spectrogram Scale", default = 0)]
+    pub spectrogram_scale: EnumParam<Scale>,
 
     #[param(name = "Window", range = "log(5, 500)", default = 50.0, unit = "ms")]
     pub window: FloatParam,

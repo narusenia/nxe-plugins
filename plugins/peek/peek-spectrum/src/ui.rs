@@ -52,6 +52,8 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
     peek_ui::heartbeat(ui, true);
     let (figure, band) = areas(ui, "Spectrum");
     let tilt = params.tilt.index() as usize;
+    let scale = params.scale.index() as usize;
+    let axis = peek_ui::spectrum::Axis::from_index(scale);
     let plot = Rect::from_min_max(figure.min, figure.max - vec2(0.0, 14.0));
     peek_ui::spectrum::figure(
         ui,
@@ -59,6 +61,7 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         plot,
         &levels,
         crate::params::Tilt::SLOPES[tilt],
+        axis,
     );
 
     let ink = PALETTE.inverted();
@@ -70,6 +73,15 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         params.tilt.id(),
         &["Flat", "3 dB", "4.5 dB"],
         tilt,
-        220.0,
+        200.0,
+    );
+    peek_ui::choice(
+        &mut cells,
+        ctx,
+        &ink,
+        params.scale.id(),
+        &["Log", "Linear"],
+        scale,
+        140.0,
     );
 }

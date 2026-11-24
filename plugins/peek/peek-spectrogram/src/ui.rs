@@ -59,10 +59,20 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         &params.readings.levels.read(),
         params.floor.value(),
         params.ceiling.value(),
+        peek_ui::spectrum::Axis::from_index(params.scale.index() as usize),
     );
 
     let ink = PALETTE.inverted();
     let mut cells = row(ui, band);
     bind::knob_for(&mut cells, ctx, &ink, params.floor.id(), "Floor", 28.0);
     bind::knob_for(&mut cells, ctx, &ink, params.ceiling.id(), "Ceiling", 28.0);
+    peek_ui::choice(
+        &mut cells,
+        ctx,
+        &ink,
+        params.scale.id(),
+        &["Log", "Linear"],
+        params.scale.index() as usize,
+        140.0,
+    );
 }

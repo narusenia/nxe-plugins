@@ -102,10 +102,19 @@ pub fn bipolar(ui: &Ui, palette: &Palette, rect: Rect, value: f32) {
         0.0,
         palette.ink.color(),
     );
-    painter.line_segment(
-        [pos2(middle, rect.top()), pos2(middle, rect.bottom())],
-        Stroke::new(1.0, palette.subtle.color()),
-    );
+    // Quarters marked, the middle strongest.
+    for quarter in -2..=2 {
+        let x = middle + quarter as f32 * rect.width() * 0.25;
+        let (top, colour) = if quarter == 0 {
+            (rect.top(), palette.subtle)
+        } else {
+            (rect.bottom() - 3.0, palette.muted)
+        };
+        painter.line_segment(
+            [pos2(x, top), pos2(x, rect.bottom())],
+            Stroke::new(1.0, colour.color()),
+        );
+    }
 }
 
 /// A named −1…+1 bar in a band cell, `width` wide and a readout tall.
