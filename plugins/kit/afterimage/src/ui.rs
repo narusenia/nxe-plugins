@@ -1,7 +1,7 @@
-//! The Afterimage window: the spectrum now, filled; the spectra just before
-//! it trailing behind as fading lines; and the trace held over them all as a
-//! line with a glow under it. Stop the sound and the fill drops while the
-//! line stays and fades — the afterimage, seen.
+//! The Afterimage window: the spectra just played as lines, fading with age,
+//! and the trace held over them as a line with a glow under it. Stop the
+//! sound and the lines die away while the trace stays and fades — the
+//! afterimage, seen. The present is not filled: the newest line already is it.
 
 use crate::params::AfterimageParams;
 use egui::{Align2, Stroke, Ui, pos2};
@@ -149,9 +149,5 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         let colour = PALETTE.accent.at(0.55 * fade * fade);
         plot.curve(ui, colour, 1.0, |hz| height(ghost, hz));
     }
-    // The accent darkened, not grey: the window stays in one hue.
-    plot.fill(ui, PALETTE.ground.mix(PALETTE.deep, 0.45), |hz| {
-        height(&present, hz)
-    });
     plot.curve(ui, PALETTE.accent, 2.0, |hz| height(&trace, hz));
 }
