@@ -66,9 +66,10 @@ Gatekeeper will refuse it. Clear the quarantine attribute from every NXE
 bundle you installed:
 
 ```bash
-xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/CLAP/NXE\ *.clap \
-  ~/Library/Audio/Plug-Ins/VST3/NXE\ *.vst3 \
-  ~/Library/Audio/Plug-Ins/Components/NXE\ *.component
+cd ~/Library/Audio/Plug-Ins
+for name in "Doubler 2" "Sparkleur 2" "Velour 2" "Air 2" "Diorama 2" "Pumice"; do
+  xattr -dr com.apple.quarantine "CLAP/$name.clap" "VST3/$name.vst3" "Components/$name.component"
+done
 ```
 
 ## License

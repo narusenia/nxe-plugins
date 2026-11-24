@@ -114,7 +114,7 @@ jobs:
       - name: Register the AU for auval
         run: |
           sudo mkdir -p /Library/Audio/Plug-Ins/Components
-          for bundle in ~/Library/Audio/Plug-Ins/Components/NXE*.component; do
+          for bundle in ~/Library/Audio/Plug-Ins/Components/*.component; do
             sudo cp -R "$bundle" /Library/Audio/Plug-Ins/Components/
           done
           killall -9 AudioComponentRegistrar || true
