@@ -3,6 +3,8 @@
 > 2026-11-24 に決めたもの。窓の形は
 > [`../specifications/design-system.md`](../specifications/design-system.md) の
 > 「シリーズと強度」が持つ。ここはラインナップと順番だけを持つ。
+> 元の案（約 80 案、各案の DSP とパラメーター）は
+> [`../../concepts/series-ideas.md`](../../concepts/series-ideas.md)。
 > 名前の商標、既存製品との重複、DSP が実現できるかはまだ確認していない。
 
 ## シリーズ
