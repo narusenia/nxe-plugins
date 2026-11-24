@@ -83,7 +83,7 @@ Sparkleur の分割型（`REQ-SPK-001`）の逆。構想の Harshness Control �
 | REQ-AIR-019 | TONAL FOLLOW | Won't (v1) | Decided |
 | REQ-AIR-020 | Motion | Won't (v1) | Decided |
 | REQ-AIR-021 | Fold / Bit Crush | Won't (v1) | Decided |
-| REQ-AIR-022 | プリセットを持たない | Should | Draft |
+| REQ-AIR-022 | ~~プリセットを持たない~~ → プリセットを持つ | Must (v2) | Decided |
 
 **011 以降の番号は 3 製品で揃えてある**（ステレオ / ミックス / UI / フォーマット /
 ホスト非依存 / CPU / サンプルレート / 表示）。横断で読むときに効く。
@@ -727,6 +727,11 @@ WIDTH 1    L と R が独立なノイズ列      → 最大幅、モノ和で �
 ---
 
 ## REQ-AIR-022: プリセットを持たない
+
+> **取り消し（2026-11-24、`docs/implementation/v2-plan.md` 決定 17）。**
+> プリセットを持つ。付属プリセットと、窓の中のプリセット欄（前後送り・読込・
+> ユーザー保存）を truce の機構と `nxe-ui` の共通部品で作る。以下は取り消す
+> 前の判断として残す。既定値を耳で詰める仕事は変わらない。
 
 - **優先度**: Should
 - **ステータス**: Draft

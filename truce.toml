@@ -12,6 +12,10 @@
 #   Sparkleur 2  bundle_id = "sparkleur2"  fourcc = "Spk2"
 #   Air 2        bundle_id = "air2"        fourcc = "Air2"
 #   Diorama 2    bundle_id = "diorama2"    fourcc = "Dio2"
+#   Pumice       bundle_id = "pumice"      fourcc = "Pumi"
+#
+# Pumice is the exception: it was never released, so it ships as 1.0.0 with no
+# "2" (`v2-plan.md`, decision 16).
 #
 # The "2" is in the ids on purpose: v2 drops compatibility with v0 sessions,
 # and a new id lets both versions be installed side by side
@@ -32,5 +36,6 @@ category = "effect"
 fourcc = "Dbl2"
 description = "Multi-voice doubler"
 vst3_subcategory = "Modulation"
-# AU lists a plugin as "<manufacturer>: <name>", so the vendor is already there.
-au_name = "Doubler 2"
+# AU v2 lists this as "NXE: NXE Doubler 2". `au_name` would fix it, but
+# cargo-truce 6.3.0 only reads it for AU v3 and the preset folder, so it is
+# left out rather than half-applied (backlog).

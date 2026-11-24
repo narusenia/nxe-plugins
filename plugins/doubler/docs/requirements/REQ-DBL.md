@@ -40,7 +40,7 @@ Logic Pro と GarageBand では読み込めない（`REQ-DBL-009`）。
 | REQ-DBL-010 | DSP のホスト非依存性 | Must | Draft |
 | REQ-DBL-011 | リアルタイム安全性と CPU 予算 | Must | Draft |
 | REQ-DBL-012 | サンプルレート・ブロックサイズ非依存 | Must | Draft |
-| REQ-DBL-013 | プリセット | Won't (v1) | Decided |
+| REQ-DBL-013 | プリセット | Must (v2) | Decided |
 | REQ-DBL-014 | ミラー編集 | Should | Draft |
 | REQ-DBL-015 | 通っている音の表示 | Should | Draft |
 
@@ -301,6 +301,11 @@ Logic Pro と GarageBand では読み込めない（`REQ-DBL-009`）。
 - **依存**: REQ-DBL-011
 
 ## REQ-DBL-013: プリセット
+
+> **取り消し（2026-11-24、`docs/implementation/v2-plan.md` 決定 17）。**
+> プリセットを持つ。付属プリセットと、窓の中のプリセット欄（前後送り・読込・
+> ユーザー保存）を truce の機構と `nxe-ui` の共通部品で作る。以下は取り消す
+> 前の判断として残す。既定値を耳で詰める仕事は変わらない。
 
 - **優先度**: Won't (v1)
 - **ステータス**: Decided
