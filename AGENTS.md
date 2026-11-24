@@ -70,8 +70,8 @@ with the code, and fix the document in the same change.
   on the audio path. `noise` is the only block written for it, and it is
   written not to know what Air is: two more plugins want a noise generator, and
   the second to ask moves the file into `nxe-audio` unchanged
-- `plugins/air/air`: the Air nih-plug wrapper — parameter declarations, the
-  Vizia UI, and the binding between them
+- `plugins/air/air`: the Air 2 truce wrapper — parameter declarations, the
+  egui editor, and the binding between them
 - `plugins/diorama/diorama-core`: the Diorama DSP — a vocal's distance, built
   from early reflections and a direct path that is itself processed. **No
   reverb tail**: 10–120 ms only. Host-agnostic, allocation-free on the audio

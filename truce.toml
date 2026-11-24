@@ -57,3 +57,12 @@ category = "effect"
 fourcc = "Vlr2"
 description = "Vocal presence saturator"
 vst3_subcategory = "Distortion"
+
+[[plugin]]
+name = "NXE Air 2"
+bundle_id = "air2"
+crate = "air"
+category = "effect"
+fourcc = "Air2"
+description = "A signal-driven high-frequency texture generator"
+vst3_subcategory = "Distortion"

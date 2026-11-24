@@ -289,6 +289,27 @@ V2-9 の型に載せる。完了条件は V2-7 と同じ。
 - 付属プリセット 6 つ（Default / Warm / Clear Vocal / Breath / Edge / Push）。
   マクロだけを書く。Default は `VEL-17` で耳で決めた既定値で、残りは仮
 
+**V2-11 で決めたこと**（実装で）:
+
+- truce への移植（`NXE Air 2` / `air2` / `Air2`、MIT OR Apache-2.0）。mono in /
+  stereo out は残した（`REQ-AIR-011`）。インスタンスごとのノイズの種は
+  `AirState` に持ち、`reset` で作り直しても変えない。v0 の「パラメータ ID が
+  出荷したものと同じ」テストは外した — truce の ID はフィールド名のハッシュで、
+  v2 は v0 のセッションと互換を持たない（決定 4）
+- 窓は 880 × 430。主題は Velour と同じ**レイヤー**（足している音の大きさを
+  入力に対して dB で）。マクロは Surface / Blend / Character、Focus / Width /
+  Follow、Mix / Output
+- 主図は入力の塗りと足した層の線に、**層の置き場所**を重ねる: `corner_of`
+  から上の帯で、Focus が左端、Surface が高さ、Blend が倍音（縦の線）と
+  ノイズ（粒）の割合、Character が線と粒の詰まり方、Width が上の棒の幅。
+  左上の 3 本は検出器で、枠が Follow の深さ、塗りが今の動き。ドラッグで
+  Surface
+- 下の列は `Follow`（3 つの偏差と今の動き）と `Curve`（Drive / Bias / Guard
+  と、ガードが引いている量、層の相関）。v0 の「タブ無し 1 画面」
+  （`REQ-AIR-013`）は H4 の型に合わせて崩した
+- 付属プリセット 6 つ（Default / Silk / Breath / Shimmer / Wide Air /
+  Static）。マクロだけを書く。Default 以外の中身は仮
+
 ### V2-15 — Pumice を main に入れる
 
 `pumice` ブランチ（nih-plug、`PUM-11` の耳の手前まで）を main に入れる。

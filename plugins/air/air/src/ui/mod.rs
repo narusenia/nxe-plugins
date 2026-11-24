@@ -1,358 +1,342 @@
-//! The NXE Air editor.
+//! The Air 2 window, on the H4 layout (`design-system.md`).
 //!
-//! **One screen, no tabs** (`REQ-AIR-013`). Fifteen parameters fit, and the
-//! question this plugin is used to answer — is the layer where I want it, and
-//! is anything holding it back — cannot be asked of half a panel (`SPK-19`).
+//! ```text
+//! ┌───────────┬──────────────────────────────────────┐
+//! │ Air       │ ◂ ▸ preset                    [2x|4x]│
+//! │ LAYER     ├──────────────────────────────────────┤
+//! │  -24.0 dB │ the figure (the accent ground):      │
+//! │ ┊┊┊┊┃┊┊┊  │ source, layer, and where it sits    │
+//! │ ◕  ◕  ◕   ├──────────────────────────────────────┤
+//! │ ◕  ◕  ◕   │ [Follow|Curve]                IN OUT │
+//! │ ◕  ◕      │ three knobs, and what they do now    │
+//! │ NXE       │                                      │
+//! └───────────┴──────────────────────────────────────┘
+//! ```
+//!
+//! The subject is **the layer**: how loud what Air adds is, against what came
+//! in. An additive plugin is read by how much it is adding.
+//!
+//! The size is fixed and never asked of the host to change: a window that
+//! resized itself froze Ableton in v0 (`docs/HANDOVER.md`).
 
-use nih_plug::prelude::*;
-use nih_plug_vizia::vizia::prelude::*;
-use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
-use nih_plug_vizia::{ViziaState, ViziaTheming, create_vizia_editor};
-use nxe_ui::curve::Curve;
-use nxe_ui::heartbeat::Lifeline;
-use nxe_ui::hint::Describe;
-use nxe_ui::{font, theme};
-use std::sync::Arc;
-use std::time::Duration;
-
-use crate::analysis::{Analysis, BANDS, HIGH_HZ, LOW_HZ, METERS};
-use crate::params::AirParams;
-
-mod advanced;
+mod bind;
 mod field;
-mod meters;
-mod readout;
+mod panel;
+mod presets;
 
-/// The window.
-///
-/// **The height is arithmetic, not a number found by looking.** Every part in
-/// the column below has a known height — `nxe_ui::theme::LINE_*` exists so that
-/// the text lines do too — so adding a row moves the window instead of running
-/// off the bottom of it (`.agents/rules/ui.md`).
-pub(crate) const WIDTH: u32 = theme::WINDOW_WIDTH;
-const HEIGHT: u32 = (theme::SPACE_3 * 2.0
-    + nxe_ui::header::HEIGHT
-    + theme::SPACE_3
-    + FIGURE_HEIGHT
-    + theme::SPACE_3
-    + knob_block_height(MAIN_KNOB)
-    + theme::SPACE_3
-    + theme::RULE
-    + theme::SPACE_3
-    + advanced::HEIGHT
-    + nxe_ui::status::HEIGHT) as u32;
+use crate::params::AirParams;
+use bind::Ctx;
+use egui::{Rect, Ui, UiBuilder, pos2, vec2};
+use nxe_egui::knob::knob;
+use nxe_egui::preset::{PresetAction, preset_bar, step};
+use nxe_egui::sidebar::{Subject, sidebar};
+use nxe_egui::theme::{Palette, SIDEBAR_WIDTH, SPACE_2, SPACE_3, SPACE_4, WINDOW_WIDTH};
+use nxe_egui::{meter, segment, smooth, window};
+use std::sync::Arc;
+use truce::prelude::*;
+use truce_egui::EguiEditor;
 
-/// The figure's row, including the inverted surface's own padding
-/// (`nxe_ui::surface`).
-const FIGURE_HEIGHT: f32 = field::HEIGHT + theme::SPACE_4 * 2.0;
+const PALETTE: Palette = Palette::AIR;
+const KNOB: f32 = 40.0;
+const RIGHT: f32 = WINDOW_WIDTH as f32 - SIDEBAR_WIDTH;
+const FACTOR_WIDTH: f32 = 80.0;
+const METERS: f32 = 56.0;
+/// How often a silent window checks whether the audio has started.
+const ANALYSIS_POLL: std::time::Duration = std::time::Duration::from_millis(100);
 
-/// **All seven the same size.** Sparkleur separates "what shapes the sound"
-/// from "how much of it arrives", but every one of Air's seven decides how the
-/// layer is made — `MIX` included, because it scales what was added rather than
-/// turning the original down (`REQ-AIR-012`).
-const MAIN_KNOB: f32 = 52.0;
-pub(crate) const OUTPUT_KNOB: f32 = 38.0;
+/// The lower row: the taller of the two tabs.
+const LOWER: f32 = panel::HEIGHT;
 
-pub fn default_state() -> Arc<ViziaState> {
-    ViziaState::new(|| (WIDTH, HEIGHT))
+/// **The window's height, added up** (`.agents/rules/ui.md`). The sidebar's
+/// three rows of macros set it, and the figure takes whatever the right
+/// column's other parts leave — so the two columns end on the same line.
+pub const HEIGHT: f32 =
+    nxe_egui::sidebar::HEAD + 3.0 * LINE_KNOB + 2.0 * SPACE_3 + nxe_egui::sidebar::FOOT;
+const FIGURE: f32 =
+    HEIGHT - (nxe_egui::preset::HEIGHT + SPACE_3 + segment::HEIGHT + SPACE_2 + LOWER + SPACE_3);
+const _: () = assert!(FIGURE >= 200.0, "the figure is squeezed");
+const LINE_KNOB: f32 = nxe_egui::knob::block_height(KNOB);
+
+pub fn create(params: Arc<AirParams>) -> Box<dyn Editor> {
+    EguiEditor::new(params, (WINDOW_WIDTH, HEIGHT.ceil() as u32), view)
+        .with_font_definitions(nxe_egui::font::definitions)
+        .into_editor()
 }
 
-#[derive(Lens)]
-pub(crate) struct Ui {
-    params: Arc<AirParams>,
-    /// Keeps the display's heartbeat running. Dropped with the window,
-    /// which is what stops the thread (`nxe_ui::heartbeat`).
-    ///
-    /// **Never read on purpose**: what it does, it does by being dropped.
-    #[allow(dead_code)]
-    heartbeat: Lifeline,
-    /// What the audio thread has published. Read on a heartbeat rather than
-    /// mapped from the `Arc`: the handoff's identity never changes, so nothing
-    /// would tell the binding system to look again.
-    analysis: Arc<Analysis>,
-    /// The reactive copies. Updating these is what makes the display move.
-    dry: Curve,
-    layer: Curve,
-    peaks: Vec<f32>,
-    holds: Vec<f32>,
-    /// The readout strip's printed figures and its bars.
-    ///
-    /// **Copied here rather than read inside a lens.** A lens that reads the
-    /// handoff is re-evaluated once per *frame*, not once per heartbeat — see
-    /// the note in `ui/readout.rs`.
-    readouts: Vec<String>,
-    gauges: Vec<f32>,
+fn view(ui: &mut Ui, ctx: &Ctx) {
+    if !window(ui) {
+        return;
+    }
+    let palette = &PALETTE;
+    // **truce-egui only paints when input or a parameter changes**, and the
+    // analysis handoffs are neither. The window looks again every
+    // `ANALYSIS_POLL`; while there is sound it runs at the smoothing's 30 Hz.
+    let sounding = ctx
+        .params()
+        .analysis
+        .peaks
+        .read()
+        .iter()
+        .any(|peak| *peak > 1e-4);
+    ui.ctx().request_repaint_after(if sounding {
+        smooth::FRAME
+    } else {
+        ANALYSIS_POLL
+    });
+    ui.spacing_mut().item_spacing = vec2(0.0, 0.0);
+    let full = ui.max_rect();
+
+    // The sidebar: the layer against the input, and the macros.
+    let layer = layer_db(
+        &ctx.params().analysis.layer.read(),
+        &ctx.params().analysis.dry.read(),
+    );
+    let shown = smooth::smoothed(
+        ui,
+        ui.id().with("layer"),
+        &[layer.unwrap_or(-60.0)],
+        smooth::TAU,
+    )[0];
+    let figure = nxe_egui::readout::figure(layer.map(|_| shown), 1);
+    let subject = Subject {
+        name: "Layer",
+        figure: &figure,
+        unit: "dB",
+        position: ((shown + 60.0) / 60.0).clamp(0.0, 1.0),
+    };
+    let mut column = ui.new_child(
+        UiBuilder::new().max_rect(Rect::from_min_size(full.min, vec2(SIDEBAR_WIDTH, HEIGHT))),
+    );
+    column.spacing_mut().item_spacing = vec2(0.0, 0.0);
+    sidebar(&mut column, palette, "Air", &subject, HEIGHT, |ui, ink| {
+        let params = ctx.params();
+        let rows: [&[(u32, &str)]; 3] = [
+            &[
+                (params.surface.id(), "Surface"),
+                (params.blend.id(), "Blend"),
+                (params.character.id(), "Character"),
+            ],
+            &[
+                (params.focus.id(), "Focus"),
+                (params.width.id(), "Width"),
+                (params.follow.id(), "Follow"),
+            ],
+            &[(params.mix.id(), "Mix"), (params.output.id(), "Output")],
+        ];
+        ui.spacing_mut().item_spacing = vec2(0.0, SPACE_3);
+        for row in rows {
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing = vec2(SPACE_2, 0.0);
+                for (id, name) in row.iter().copied() {
+                    let control = knob(
+                        ui,
+                        ink,
+                        name,
+                        bind::normalized(ctx, id),
+                        &ctx.format_param(id),
+                        KNOB,
+                    );
+                    bind::control(ctx, id, &control);
+                }
+            });
+        }
+    });
+
+    // The right column.
+    let left = full.left() + SIDEBAR_WIDTH;
+    let mut y = full.top();
+    let strip = Rect::from_min_size(pos2(left, y), vec2(RIGHT, nxe_egui::preset::HEIGHT));
+    top_strip(ui, ctx, palette, strip);
+    y += nxe_egui::preset::HEIGHT;
+
+    // The field is the other half of the L: the accent ground, drawn with the
+    // inverted palette.
+    let field_rect = Rect::from_min_size(pos2(left, y), vec2(RIGHT, FIGURE));
+    let ink = palette.inverted();
+    let painter = ui.painter_at(field_rect);
+    painter.rect_filled(field_rect, 0.0, ink.ground.color());
+    field::field(ui, ctx, &painter, field_rect, &ink);
+    y += FIGURE + SPACE_3;
+
+    let tab_id = ui.id().with("tab");
+    let tab: usize = ui.data(|data| data.get_temp(tab_id)).unwrap_or(0);
+    let mut tabs = ui.new_child(UiBuilder::new().max_rect(Rect::from_min_size(
+        pos2(left + SPACE_3, y),
+        vec2(180.0, segment::HEIGHT),
+    )));
+    if let Some(picked) = segment::segment(&mut tabs, palette, &["Follow", "Curve"], tab, 180.0) {
+        ui.data_mut(|data| data.insert_temp(tab_id, picked));
+    }
+    y += segment::HEIGHT + SPACE_2;
+
+    let body = Rect::from_min_size(
+        pos2(left + SPACE_3, y),
+        vec2(RIGHT - 2.0 * SPACE_3 - METERS - SPACE_4, LOWER),
+    );
+    if tab == 0 {
+        panel::follow(ui, ctx, palette, body, KNOB);
+    } else {
+        panel::curve(ui, ctx, palette, body, KNOB);
+    }
+    meters(
+        ui,
+        ctx,
+        palette,
+        Rect::from_min_size(pos2(body.right() + SPACE_4, y), vec2(METERS, LOWER)),
+    );
 }
 
-#[derive(Clone)]
-pub(crate) enum UiEvent {
-    /// The heartbeat asking the model to re-read what the audio thread
-    /// published.
-    Poll,
-}
+/// The preset bar, and the oversampling switch.
+fn top_strip(ui: &mut Ui, ctx: &Ctx, palette: &Palette, rect: Rect) {
+    let params = ctx.params();
+    let mut row = ui.new_child(
+        UiBuilder::new()
+            .max_rect(rect)
+            .layout(egui::Layout::left_to_right(egui::Align::Min)),
+    );
+    row.spacing_mut().item_spacing = vec2(SPACE_2, 0.0);
+    let preset_width = rect.width() - FACTOR_WIDTH - SPACE_2;
+    preset_row(&mut row, ctx, palette, preset_width);
 
-impl Model for Ui {
-    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
-        event.map(|ui_event: &UiEvent, _| match ui_event {
-            UiEvent::Poll => {
-                self.dry = spectrum_curve(&self.analysis.dry.read());
-                self.layer = spectrum_curve(&self.analysis.layer.read());
-                let peaks = self.analysis.peaks.read();
-                let holds = self.analysis.holds.read();
-                self.peaks = peaks.iter().copied().map(meter_position).collect();
-                self.holds = holds.iter().copied().map(meter_position).collect();
-                readout::poll(&self.analysis, &mut self.readouts, &mut self.gauges);
-            }
-        });
+    let (id, index) = (params.oversample.id(), params.oversample.index() as usize);
+    if let Some(picked) = segment::segment(&mut row, palette, &["2x", "4x"], index, FACTOR_WIDTH) {
+        bind::set_once(ctx, id, bind::normalize(ctx, id, picked as f64));
     }
 }
 
-/// How often the display re-reads the analysis. 30 Hz is as fast as a figure
-/// needs to look alive, and half the work of matching the frame rate.
-const ANALYSIS_INTERVAL: Duration = Duration::from_millis(33);
-
-/// The floor of the spectra. Below this a band is drawn as silence — without a
-/// floor the curve sits on the noise of an idle track, and the grain field
-/// never empties (`nxe_ui::dots`).
-const SPECTRUM_FLOOR_DB: f32 = -72.0;
-
-/// The floor of the meters. Shallower than the spectra's: a meter is read for
-/// "how close to clipping", and 60 dB of travel puts a working mix in the top
-/// third where it can be read.
-pub(crate) const METER_FLOOR_DB: f32 = -60.0;
-
-/// An amplitude as a position on a meter.
-pub(crate) fn meter_position(amplitude: f32) -> f32 {
-    let db = 20.0 * amplitude.max(1e-9).log10();
-    ((db - METER_FLOOR_DB) / -METER_FLOOR_DB).clamp(0.0, 1.0)
-}
-
-/// One published band frame as a curve across the figure's axis.
-///
-/// **Both mappings live on this side of the widget**: `nxe-ui` knows nothing
-/// about hertz or decibels, and `nxe-dsp` knows nothing about the view it ends
-/// up in.
-fn spectrum_curve(levels: &[f32; BANDS]) -> Curve {
-    levels
+/// The preset bar: the factory presets, then the user's.
+fn preset_row(ui: &mut Ui, ctx: &Ctx, palette: &Palette, width: f32) {
+    let store = presets::store();
+    let user_id = ui.id().with("user-presets");
+    let user: Vec<(String, String)> =
+        match ui.data(|data| data.get_temp::<Vec<(String, String)>>(user_id)) {
+            Some(user) => user,
+            None => {
+                let user: Vec<(String, String)> = presets::user_presets(&store)
+                    .into_iter()
+                    .map(|preset| (preset.name, preset.uri))
+                    .collect();
+                ui.data_mut(|data| data.insert_temp(user_id, user.clone()));
+                user
+            }
+        };
+    let mut names: Vec<String> = presets::FACTORY
         .iter()
-        .enumerate()
-        .map(|(index, level)| {
-            let hz = LOW_HZ * (HIGH_HZ / LOW_HZ).powf(index as f32 / (BANDS - 1) as f32);
-            let db = 20.0 * level.max(1e-9).log10();
-            let y = ((db - SPECTRUM_FLOOR_DB) / -SPECTRUM_FLOOR_DB).clamp(0.0, 1.0);
-            (field::axis_x(hz), y)
-        })
-        .collect()
-}
+        .map(|preset| preset.name.to_owned())
+        .collect();
+    names.extend(user.iter().map(|(name, _)| name.clone()));
 
-pub fn create(
-    params: Arc<AirParams>,
-    state: Arc<ViziaState>,
-    analysis: Arc<Analysis>,
-) -> Option<Box<dyn Editor>> {
-    // `ViziaTheming::None`: the plugin brings its own stylesheet and wants none
-    // of vizia's defaults leaking into it.
-    create_vizia_editor(state, ViziaTheming::None, move |cx, _| {
-        theme::install(cx, theme::Palette::AIR);
+    let loaded_id = ui.id().with("loaded-user-preset");
+    let current = presets::FACTORY
+        .iter()
+        .position(|preset| presets::matches(ctx, preset))
+        .or_else(|| ui.data(|data| data.get_temp::<usize>(loaded_id)));
 
-        // **Started before the model, because the model holds what stops
-        // it.** The lifeline dies with the window's context, and the
-        // thread ends within one interval (`nxe_ui::heartbeat`).
-        let heartbeat = nxe_ui::heartbeat::start(cx, ANALYSIS_INTERVAL, UiEvent::Poll);
-
-        Ui {
-            params: params.clone(),
-            analysis: analysis.clone(),
-            dry: Curve::new(),
-            layer: Curve::new(),
-            peaks: vec![0.0; METERS],
-            holds: vec![0.0; METERS],
-            readouts: vec![String::new(); readout::FIGURES],
-            gauges: vec![0.0; readout::GAUGES],
-            heartbeat,
+    let load = |ui: &mut Ui, index: usize| {
+        if let Some(preset) = presets::FACTORY.get(index) {
+            presets::apply(ctx, &presets::values_of(ctx.params(), preset));
+            ui.data_mut(|data| data.remove::<usize>(loaded_id));
+        } else if let Some((_, uri)) = user.get(index - presets::FACTORY.len())
+            && let Some(preset) = store.find(uri)
+            && presets::load(ctx, &store, &preset).is_ok()
+        {
+            ui.data_mut(|data| data.insert_temp(loaded_id, index));
         }
-        .build(cx);
-
-        VStack::new(cx, |cx| {
-            HStack::new(cx, |cx| {
-                VStack::new(cx, |cx| {
-                    nxe_ui::header::header(cx, "Air", "signal-driven texture", |_| {});
-                    // The figure. It is what the plugin *is* (`ui.md`), and it
-                    // is the window's one inverted surface (`UI-18`).
-                    figure_row(cx);
-                    main_row(cx);
-                    Element::new(cx).class("rule");
-                    advanced::view(cx);
-                })
-                .width(Stretch(1.0))
-                .height(Stretch(1.0))
-                .row_between(Pixels(theme::SPACE_3));
-
-                // **Outside everything else**, because "is this louder or
-                // better" is a question asked while looking at any of it
-                // (`.agents/rules/ui.md`).
-                meters::view(cx);
-            })
-            .width(Stretch(1.0))
-            .height(Stretch(1.0))
-            .col_between(Pixels(theme::SPACE_3))
-            .child_space(Pixels(theme::SPACE_3));
-
-            // **Flush to the bottom edge, and the full width of the window.**
-            // A strip that stopped at the meters would read as one more panel
-            // rather than as the window's floor (`nxe_ui::status`).
-            readout::status(cx);
-        })
-        // **`.root` is what paints the window.** Without it the ground is the
-        // host's black while every `.panel` sits at `BACKGROUND`, so the panels
-        // read as lighter boxes — the theme's "two levels, not three" needs the
-        // window to be one of them. Sparkleur shipped one build without it
-        // (`.agents/rules/vizia.md`).
-        //
-        // **No child space, and no row between.** The padding belongs to the
-        // row above the strip so the strip can reach the edges; `.root` sets
-        // `row-between: SPACE_4`, and those 16 px come out of the row, leaving
-        // anything `Stretch(1.0)` in it — the meter strip — short of the
-        // fixed-height column beside it (`SPK-23`).
-        .class("root")
-        .width(Stretch(1.0))
-        .height(Stretch(1.0))
-        .child_space(Pixels(0.0))
-        .row_between(Pixels(0.0));
-    })
+    };
+    match preset_bar(ui, palette, &names, current, false, width) {
+        Some(PresetAction::Previous) => {
+            if let Some(index) = step(current, names.len(), false) {
+                load(ui, index);
+            }
+        }
+        Some(PresetAction::Next) => {
+            if let Some(index) = step(current, names.len(), true) {
+                load(ui, index);
+            }
+        }
+        Some(PresetAction::Load(index)) => load(ui, index),
+        Some(PresetAction::Save(name)) if presets::save(ctx, &store, &name).is_ok() => {
+            ui.data_mut(|data| data.remove::<Vec<(String, String)>>(user_id));
+        }
+        _ => {}
+    }
 }
 
-/// The figure, on the accent — the window's one exception
-/// (`.agents/rules/ui.md`).
-fn figure_row(cx: &mut Context) {
-    nxe_ui::surface::inverted(cx, |cx| {
-        field::view(cx);
-    })
-    .height(Pixels(FIGURE_HEIGHT))
-    .width(Stretch(1.0));
-}
-
-/// The seven controls, on one line.
-fn main_row(cx: &mut Context) {
-    HStack::new(cx, |cx| {
-        knob(cx, "SURFACE", "How much surface to make", |params| {
-            &params.surface
-        });
-        knob(cx, "BLEND", "Harmonic against noise", |params| {
-            &params.blend
-        });
-        knob(
-            cx,
-            "CHARACTER",
-            "Knee on one side, grain on the other",
-            |params| &params.character,
+/// IN and OUT, left and right, on one scale — **"is this better, or just
+/// louder"** is the judgement a dynamics processor is used for.
+fn meters(ui: &mut Ui, ctx: &Ctx, palette: &Palette, rect: Rect) {
+    let peaks = smooth::smoothed(
+        ui,
+        ui.id().with("peaks"),
+        &ctx.params().analysis.peaks.read().map(level_of),
+        smooth::TAU,
+    );
+    let holds = ctx.params().analysis.holds.read().map(level_of);
+    for (index, (peak, hold)) in peaks.iter().zip(holds).enumerate() {
+        let x = rect.left() + index as f32 * 14.0 + if index >= 2 { 6.0 } else { 0.0 };
+        meter::meter(
+            ui.painter(),
+            palette,
+            Rect::from_min_size(pos2(x, rect.top() + 4.0), vec2(6.0, rect.height() - 8.0)),
+            *peak,
+            hold,
+            true,
         );
-        knob(cx, "FOCUS", "Where the layer sits", |params| &params.focus);
-        knob(cx, "WIDTH", "How far the noise half spreads", |params| {
-            &params.width
-        });
-        knob(
-            cx,
-            "FOLLOW",
-            "How much the layer answers to the input",
-            |params| &params.follow,
-        );
-        knob(cx, "MIX", "How much of the layer is added", |params| {
-            &params.mix
-        });
-    })
-    .class("row")
-    .height(Auto)
-    .width(Stretch(1.0));
+    }
 }
 
-/// How tall a [`knob_block`] of a given knob size comes out.
-///
-/// **A window's height is the sum of its parts**, and this is one of them.
-pub(crate) const fn knob_block_height(size: f32) -> f32 {
-    size + theme::SPACE_1 + theme::LINE_LABEL + theme::SPACE_1 + theme::LINE_VALUE
+/// How loud the added layer is against the input, in dB, from the two
+/// spectra's energy. `None` while nothing is coming in.
+fn layer_db(layer: &[f32], dry: &[f32]) -> Option<f32> {
+    let energy = |levels: &[f32]| levels.iter().map(|level| level * level).sum::<f32>();
+    let dry = energy(dry);
+    (dry > 1e-12).then(|| (10.0 * (energy(layer).max(1e-12) / dry).log10()).max(-60.0))
 }
 
-/// One labelled knob with its value underneath.
-pub(crate) fn knob_block<P, F>(
-    cx: &mut Context,
-    label: &'static str,
-    hint: &'static str,
-    size: f32,
-    to_param: F,
-) where
-    P: Param + 'static,
-    F: Fn(&Arc<AirParams>) -> &P + Copy + 'static,
-{
-    VStack::new(cx, |cx| {
-        // The description goes on the knob rather than the whole block, so it does
-        // not follow the pointer around the label and the number.
-        nxe_plug_ui::knob(cx, Ui::params, to_param, size).describe(hint);
-        Label::new(cx, label)
-            .class("label")
-            .height(Pixels(theme::LINE_LABEL));
-        // **Figures are set in the mono face.** A proportional one changes width
-        // between a `1` and an `8`, and a value that jitters under a drag is
-        // what fixing the decimal count was meant to prevent.
-        font::value(
-            cx,
-            ParamWidgetBase::make_lens(Ui::params, to_param, |param| param.to_string()),
-        )
-        .height(Pixels(theme::LINE_VALUE));
-    })
-    .width(Stretch(1.0))
-    .height(Auto)
-    .row_between(Pixels(theme::SPACE_1))
-    .child_left(Stretch(1.0))
-    .child_right(Stretch(1.0));
-}
-
-fn knob<P, F>(cx: &mut Context, label: &'static str, hint: &'static str, to_param: F)
-where
-    P: Param + 'static,
-    F: Fn(&Arc<AirParams>) -> &P + Copy + 'static,
-{
-    knob_block(cx, label, hint, MAIN_KNOB, to_param);
+/// An amplitude as a meter's fill: −60 dB at the bottom, 0 dB at the top.
+fn level_of(amplitude: f32) -> f32 {
+    ((20.0 * amplitude.max(1e-9).log10() + 60.0) / 60.0).clamp(0.0, 1.0)
 }
 
 #[cfg(test)]
 mod tests {
-    /// **Every parameter has somewhere to be touched.**
-    ///
-    /// A parameter with no control is one a user can only reach through the
-    /// host's generic view, and **nothing else would notice** — it compiles, it
-    /// saves, it automates, and the window simply never mentions it. Two were
-    /// lost to a header rewrite in the one crate that lacked this test
-    /// (`SPK-19`).
-    #[test]
-    fn every_parameter_has_a_control() {
-        const PARAMS: &str = include_str!("../params.rs");
-        const COUNT: usize = 15;
-        const SOURCES: [&str; 4] = [
-            include_str!("mod.rs"),
-            include_str!("advanced.rs"),
-            include_str!("field.rs"),
-            include_str!("readout.rs"),
-        ];
+    use super::layer_db;
 
-        // **Only the fields carrying an `#[id]`.** A `params.rs` also holds
-        // editor state and persisted switches, and those are not parameters —
-        // the attribute is what makes one, so it is what the scan looks for.
+    #[test]
+    fn the_layer_is_its_energy_against_the_input() {
+        assert_eq!(layer_db(&[0.0; 4], &[0.0; 4]), None);
+        let layer = layer_db(&[0.1; 4], &[1.0; 4]).unwrap();
+        assert!((layer + 20.0).abs() < 1e-3, "{layer}");
+    }
+
+    /// **Every parameter has a control** (`.agents/rules/ui.md`). A parameter
+    /// reachable only through the host's generic view is never mentioned by
+    /// the window, and nothing else notices.
+    #[test]
+    fn every_parameter_is_on_screen() {
+        const PARAMS: &str = include_str!("../params.rs");
+        let views = [
+            include_str!("mod.rs"),
+            include_str!("field.rs"),
+            include_str!("panel.rs"),
+        ]
+        .concat();
         let fields: Vec<&str> = PARAMS
             .lines()
-            .zip(PARAMS.lines().skip(1))
-            .filter(|(line, _)| line.trim().starts_with("#[id"))
-            .filter_map(|(_, next)| next.trim().strip_prefix("pub "))
+            .filter_map(|line| line.trim().strip_prefix("pub "))
+            .filter(|rest| {
+                rest.contains(": FloatParam")
+                    || rest.contains(": EnumParam<")
+                    || rest.contains(": BoolParam")
+            })
             .filter_map(|rest| rest.split_once(':'))
             .map(|(name, _)| name)
             .collect();
-        assert_eq!(fields.len(), COUNT, "the parameter list moved: {fields:?}");
-
+        assert_eq!(fields.len(), 15, "the parameter scan moved: {fields:?}");
         for field in fields {
-            let access = format!(".{field}");
             assert!(
-                SOURCES.iter().any(|source| source.contains(&access)),
-                "{field} has no control"
+                views.contains(&format!(".{field}.id()")),
+                "`{field}` has no control in the window"
             );
         }
     }
