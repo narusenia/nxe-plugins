@@ -23,7 +23,6 @@ pub fn create(params: Arc<DoublerParams>) -> Box<dyn Editor> {
 fn view(ui: &mut egui::Ui, _state: &PluginContext<DoublerParams>) {
     egui::CentralPanel::default().show_inside(ui, |ui| {
         // The bare name: the host list has already said `NXE` (`AGENTS.md`).
-        ui.add_space(1.0);
         ui.heading("Doubler");
     });
 }
