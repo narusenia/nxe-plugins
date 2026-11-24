@@ -266,6 +266,29 @@ truce の `flags` には「自動化しない」だけを指定する方法が�
 
 V2-9 の型に載せる。完了条件は V2-7 と同じ。
 
+**V2-10 で決めたこと**（実装で）:
+
+- truce への移植（`NXE Velour 2` / `velour2` / `Vlr2`、MIT OR Apache-2.0）。
+  全パラメータに `parse`（`nxe_egui::text`）。Solo は Sparkleur と同じ理由で
+  自動化できるようになった。両極のつまみ（帯ごとの Texture と Bias）の表示は
+  v0 の `0.00` から符号付きの % にした（Sparkleur と同じ）
+- 窓は 880 × 430。サイドバーの主題は**レイヤー**（足している音の大きさを、
+  入力に対して dB で。2 つのスペクトラムのエネルギー比）。並列のサチュレーター
+  は「どれだけ足しているか」で読むもので、メーターは dry が支配するので
+  それを言えない。マクロは 3 × 3（Drive / Texture / Density、Body / Presence /
+  Air、Focus / Mix / Output）
+- 主図は Band Field。dry を塗り、足している音を線で重ねる。帯ごとに、フェーダー
+  の高さの柱（ガードが引いている分は上から削れる）と、**その帯の曲線**
+  （`curve_for`）を小さな四角に描く。決定 18 は曲線が受け持つ: Drive・
+  Texture・帯の Texture・Bias・Mode が曲線を変え、Focus は帯の範囲を動かす。
+  帯のドラッグはその帯のフェーダー
+- 下の列は `Bands`（3 帯 × Texture / Bias / Solo）と `Advanced`（Harsh
+  Guard / Sib Guard / Emotion と、ガードが今引いている量）。**Density・Mix・
+  Output・Emotion は主図を動かさない**（Density と Emotion は信号に対して
+  働くので静止した図に出ない）
+- 付属プリセット 6 つ（Default / Warm / Clear Vocal / Breath / Edge / Push）。
+  マクロだけを書く。Default は `VEL-17` で耳で決めた既定値で、残りは仮
+
 ### V2-15 — Pumice を main に入れる
 
 `pumice` ブランチ（nih-plug、`PUM-11` の耳の手前まで）を main に入れる。

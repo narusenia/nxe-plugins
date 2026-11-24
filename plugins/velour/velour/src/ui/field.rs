@@ -1,318 +1,266 @@
-//! The Band Field: the three generators as regions on a log frequency axis.
+//! The Band Field: the three generators as regions on a log frequency axis, on
+//! the accent ground.
 //!
 //! **The reason the parallel topology was chosen shows up here** (`ui.md`): the
-//! dry spectrum and the spectrum of what is being added to it are two separate
-//! layers, drawn at the same time. A crossover design has only "before" and
-//! "after", and the difference between them has to be subtracted by eye.
+//! dry spectrum and the spectrum of what is being added to it are two layers,
+//! drawn at once — the dry as a wash, the added layer as a line over it.
 //!
-//! A region's horizontal span is `velour_core::Generator::input_range`, which is
-//! the function the filters are tuned from — so `FOCUS` slides the picture and
-//! the sound together, and the picture cannot drift.
+//! Each region is one generator, spanning `Generator::input_range` — the
+//! function the filters are tuned from, so `FOCUS` slides the picture and the
+//! sound together. Inside it:
+//!
+//! - **a column as tall as the band's fader**, sunk by what its guard is
+//!   pulling (`REQ-VEL-006`): a region that sinks says why `AIR` "does
+//!   nothing". Dragging the region moves the fader
+//! - **the band's curve**, from `velour_core::engine::curve_for`, the function
+//!   the audio path is tuned from. This is what makes the macros visible with
+//!   nothing playing (`v2-plan.md`, decision 18): `DRIVE` bends it, `TEXTURE`
+//!   and the per-band texture move it between even and odd, a bias leans it,
+//!   and `Hard` sharpens it
 
-use super::{Ui, UiEvent};
-use crate::analysis::Analysis;
-use crate::params::VelourParams;
-use nih_plug::prelude::Param;
-use nih_plug_vizia::vizia::prelude::*;
-use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
-use nxe_ui::band::{Band, BandField, BandFieldModifiers, BandGesture};
-use nxe_ui::theme;
-use velour_core::BAND_COUNT;
+use super::bind::{self, Ctx};
+use crate::analysis::{HIGH_HZ, LOW_HZ};
+use egui::{Align2, Painter, Pos2, Rect, Sense, Stroke, Ui, pos2, vec2};
+use nxe_egui::curve::curve;
+use nxe_egui::theme::{FONT_EYEBROW, FONT_VALUE, Palette, SPACE_1, SPACE_2, SPACE_3};
+use nxe_egui::{font, input, smooth, surface};
 use velour_core::bands::{BANDS, Generator};
+use velour_core::engine::{BAND_COUNT, curve_for};
 use velour_core::guard::MAX_REDUCTION_DB;
 
-/// The axis the caller owns, because the widget cannot label its own gridlines
-/// (`.agents/rules/vizia.md`).
-const LOW_HZ: f32 = 20.0;
-const HIGH_HZ: f32 = 20_000.0;
+pub const NAMES: [&str; BAND_COUNT] = ["Body", "Presence", "Air"];
 
-const MARKS: [(f32, &str); 6] = [
-    (20.0, "20"),
-    (100.0, "100"),
-    (500.0, "500"),
-    (2_000.0, "2k"),
-    (5_000.0, "5k"),
-    (20_000.0, "20k"),
-];
+const FLOOR_DB: f32 = -72.0;
+/// The axis is drawn at a fixed rate: the spans barely move with it, and the
+/// window does not know the host's.
+const SAMPLE_RATE: f32 = 48_000.0;
+const LABEL: f32 = 16.0;
+const GLYPH: f32 = 44.0;
 
-/// The height of the figure. It is what the plugin *is*, so it gets the room.
-///
-/// **The same number in every plugin** (`SPK-19`). Velour tuned it to 236 for a
-/// figure whose regions grow from the floor, Sparkleur to 176 for one whose
-/// content gathers around a centre line — each right on its own, and together
-/// they meant two windows on the same grid whose sections stopped lining up
-/// where the figures ended. Opened side by side that is the first thing that
-/// reads as sloppy. Two hundred is the shared number: Velour's regions still
-/// have room to grow into, and Sparkleur is no longer mostly black.
-pub const HEIGHT: f32 = 200.0;
-
-/// Hz onto `0..=1` across the view, logarithmically.
-fn axis_x(hz: f32) -> f32 {
-    (hz.max(LOW_HZ) / LOW_HZ).log10() / (HIGH_HZ / LOW_HZ).log10()
+/// Frequency → `0..=1` across the figure, log.
+pub fn x_of(hz: f32) -> f32 {
+    ((hz.max(LOW_HZ) / LOW_HZ).ln() / (HIGH_HZ / LOW_HZ).ln()).clamp(0.0, 1.0)
 }
 
-/// A guard's reduction in dB as the fraction of its allowed range. A region
-/// sinks by this much, so **the amount it sinks by is the reduction itself**
-/// (`REQ-VEL-006`).
-fn reduction_fraction(decibels: f32) -> f32 {
-    (-decibels / MAX_REDUCTION_DB).clamp(0.0, 1.0)
+/// What a guard's reduction sinks its region by, as a fraction of the region.
+/// **Body has no guard** (`velour_core::engine`).
+pub fn sunk(band: usize, guards: &[f32; 2]) -> f32 {
+    let reduction = match band {
+        0 => return 0.0,
+        1 => guards[0],
+        _ => guards[1],
+    };
+    (-reduction / MAX_REDUCTION_DB).clamp(0.0, 1.0)
 }
 
-/// Which guard watches which band. **BODY has none** — a muddy low end is a
-/// `FOCUS` and fader question, and a detector there would only add a way for it
-/// to be unclear whether the plugin is working (`velour_core::engine`).
-fn reduction_of(index: usize, guards: &[f32; 2]) -> f32 {
-    match index {
-        0 => 0.0,
-        1 => reduction_fraction(guards[0]),
-        _ => reduction_fraction(guards[1]),
-    }
-}
-
-/// The three regions, from the parameters and from what the guards are doing.
-///
-/// **The guards are read here rather than copied into the model.** A region
-/// carries its reduction in the same value as its level, and a lens can only map
-/// one field (`.agents/rules/vizia.md`) — so this map reads the handoff
-/// directly. Any change to the model re-evaluates it, and the heartbeat is a
-/// change to the model thirty times a second.
-pub(crate) fn bands_of(params: &VelourParams, host_rate: f32, analysis: &Analysis) -> Vec<Band> {
-    let guards = analysis.guards.read();
-    let focus = params.focus.value();
-    let levels = [
-        params.body.unmodulated_normalized_value(),
-        params.presence.unmodulated_normalized_value(),
-        params.air.unmodulated_normalized_value(),
-    ];
-    let soloed = [
-        params.solo_body.value(),
-        params.solo_presence.value(),
-        params.solo_air.value(),
-    ];
-
-    (0..BAND_COUNT)
-        .map(|index| {
-            let (low, high) = Generator::input_range(BANDS[index], focus, host_rate);
-            Band {
-                low: axis_x(low),
-                high: axis_x(high),
-                level: levels[index],
-                // **Negative, and scaled by the level.** `Band::delta` is a
-                // share of the whole height and signed either way (`SPK-10`);
-                // Velour only ever pulls down, and it pulls a fraction of what
-                // the band was set to, so the picture is what it always was.
-                delta: -reduction_of(index, &guards) * levels[index],
-                // A step along the accent per band, deep to bright, so the three
-                // are distinguishable without adding a hue
-                // (`crates/nxe-ui/README.md`).
-                tint: index as f32 / (BAND_COUNT - 1) as f32,
-                soloed: soloed[index],
-            }
-        })
+/// The band's resting curve, `0..=1` both ways, normalized to its own peak so
+/// the shape reads at any drive.
+pub fn glyph(params: &crate::params::VelourParams, band: usize) -> Vec<(f32, f32)> {
+    let shaper = curve_for(&params.display_shape(), band, 0.0).shaper();
+    let outputs: Vec<f32> = (0..=32)
+        .map(|step| shaper.shape(step as f32 / 16.0 - 1.0))
+        .collect();
+    let peak = outputs
+        .iter()
+        .fold(0.0f32, |peak, output| peak.max(output.abs()))
+        .max(1e-6);
+    outputs
+        .iter()
+        .enumerate()
+        .map(|(step, output)| (step as f32 / 32.0, (output / peak + 1.0) * 0.5))
         .collect()
 }
 
-pub fn view(cx: &mut Context) {
-    let faders: Vec<ParamWidgetBase> = vec![
-        ParamWidgetBase::new(cx, Ui::params, |params| &params.body),
-        ParamWidgetBase::new(cx, Ui::params, |params| &params.presence),
-        ParamWidgetBase::new(cx, Ui::params, |params| &params.air),
-    ];
-    let focus = ParamWidgetBase::new(cx, Ui::params, |params| &params.focus);
+fn spectrum(levels: &[f32]) -> Vec<f32> {
+    levels
+        .iter()
+        .map(|level| ((20.0 * level.max(1e-9).log10() - FLOOR_DB) / -FLOOR_DB).clamp(0.0, 1.0))
+        .collect()
+}
 
-    VStack::new(cx, |cx| {
-        BandField::new(
-            cx,
-            Ui::bands,
-            // What came in, and the harmonics being added to it. **Both at
-            // once**, which is what the parallel topology bought (`ui.md`).
-            Ui::dry,
-            Ui::wet,
-            MARKS.iter().map(|(hz, _)| axis_x(*hz)).collect(),
-            move |cx, gesture| {
-                // **Rebuild the regions now, not on the next heartbeat.**
-                // `Ui::bands` is written by the heartbeat, which is right for
-                // what the audio thread publishes and wrong for a drag: the
-                // fader would move under the pointer and the region behind it
-                // would follow up to an interval later. The write below has
-                // already happened by the time this is dispatched, so the
-                // refresh sees the new value.
-                cx.emit(UiEvent::Poll);
+fn points(levels: &[f32]) -> Vec<(f32, f32)> {
+    levels
+        .iter()
+        .enumerate()
+        .map(|(band, y)| (band as f32 / (levels.len() - 1).max(1) as f32, *y))
+        .collect()
+}
 
-                let index = match gesture {
-                    BandGesture::Begin(index)
-                    | BandGesture::End(index)
-                    | BandGesture::Reset(index)
-                    | BandGesture::Change { index, .. } => index,
-                    BandGesture::Hover(over) => {
-                        cx.emit(UiEvent::Hover(over));
-                        return;
-                    }
-                    // The rail is `FOCUS`. It writes a plain normalized value,
-                    // which is what lets the widget move its own copy first —
-                    // there is no other parameter to clamp it against
-                    // (`.agents/rules/vizia.md`).
-                    BandGesture::FocusBegin => {
-                        focus.begin_set_parameter(cx);
-                        return;
-                    }
-                    BandGesture::FocusChange(value) => {
-                        focus.set_normalized_value(cx, value);
-                        return;
-                    }
-                    BandGesture::FocusEnd => {
-                        focus.end_set_parameter(cx);
-                        return;
-                    }
-                    BandGesture::FocusReset => {
-                        focus.begin_set_parameter(cx);
-                        focus.set_normalized_value(cx, focus.default_normalized_value());
-                        focus.end_set_parameter(cx);
-                        return;
-                    }
-                };
+pub fn field(ui: &mut Ui, ctx: &Ctx, painter: &Painter, rect: Rect, ink: &Palette) {
+    let params = ctx.params();
+    let plot = Rect::from_min_max(
+        rect.min + vec2(SPACE_3, LABEL + SPACE_1),
+        rect.max - vec2(SPACE_3, LABEL),
+    );
+    let x_at = |hz: f32| plot.left() + plot.width() * x_of(hz);
 
-                let Some(fader) = faders.get(index) else {
-                    return;
-                };
-                match gesture {
-                    BandGesture::Begin(_) => fader.begin_set_parameter(cx),
-                    BandGesture::End(_) => fader.end_set_parameter(cx),
-                    BandGesture::Change { level, .. } => fader.set_normalized_value(cx, level),
-                    BandGesture::Reset(_) => {
-                        fader.begin_set_parameter(cx);
-                        fader.set_normalized_value(cx, fader.default_normalized_value());
-                        fader.end_set_parameter(cx);
-                    }
-                    _ => {}
-                }
+    // What came in as a wash, what is added as a line over it.
+    let dry = spectrum(&params.analysis.dry.read());
+    let dry = smooth::smoothed(ui, ui.id().with("dry"), &dry, smooth::TAU);
+    curve(
+        painter,
+        plot,
+        &points(&dry),
+        ink.subtle,
+        Some(ink.dim),
+        false,
+    );
+    let wet = spectrum(&params.analysis.wet.read());
+    let wet = smooth::smoothed(ui, ui.id().with("wet"), &wet, smooth::TAU);
+    let sounding = wet.iter().any(|level| *level > 0.02);
+    curve(painter, plot, &points(&wet), ink.ink, None, sounding);
+
+    let guards = params.analysis.guards.read();
+    let guards = smooth::smoothed(ui, ui.id().with("guards"), &guards, smooth::TAU);
+    let guards = [guards[0], guards[1]];
+    let solos: [bool; BAND_COUNT] =
+        std::array::from_fn(|band| bind::plain(ctx, params.band_ids(band)[3]) > 0.5);
+    let soloing = solos.iter().any(|on| *on);
+    let focus = bind::plain(ctx, params.focus.id());
+
+    for (band, name) in NAMES.iter().enumerate() {
+        let (low, high) = Generator::input_range(BANDS[band], focus, SAMPLE_RATE);
+        let (left, right) = (x_at(low), x_at(high));
+        let region = Rect::from_min_max(pos2(left, plot.top()), pos2(right, plot.bottom()));
+        let heard = !soloing || solos[band];
+        let alpha = if heard { 1.0 } else { 0.3 };
+        let hair = Stroke::new(1.0, ink.line.at(ink.line.alpha * alpha).color());
+        painter.line_segment([region.left_top(), region.left_bottom()], hair);
+        painter.line_segment([region.right_top(), region.right_bottom()], hair);
+
+        // The fader, sunk by the guard.
+        let level_id = params.band_ids(band)[0];
+        let level = bind::plain(ctx, level_id);
+        let held = sunk(band, &guards);
+        let column = Rect::from_min_max(
+            pos2(left + SPACE_1, plot.bottom() - plot.height() * level),
+            pos2(right - SPACE_1, plot.bottom()),
+        );
+        painter.rect_filled(column, 0.0, ink.dim.at(ink.dim.alpha * alpha).color());
+        let top = column.top() + column.height() * held;
+        painter.line_segment(
+            [pos2(column.left(), top), pos2(column.right(), top)],
+            Stroke::new(2.0, ink.ink.at(alpha).color()),
+        );
+        if held > 0.01 {
+            // What the guard took, hatched off the top of the column.
+            painter.rect_filled(
+                Rect::from_min_max(column.left_top(), pos2(column.right(), top)),
+                0.0,
+                ink.track.color(),
+            );
+        }
+
+        let response = ui.interact(
+            region,
+            ui.id().with(("band", band)),
+            Sense::click_and_drag(),
+        );
+        let gestures = input::read(&response, bind::normalized(ctx, level_id));
+        bind::gestures(
+            ctx,
+            &[level_id],
+            &gestures,
+            &[gestures.change.unwrap_or(0.0)],
+        );
+        if response.hovered() || response.dragged() {
+            painter.rect_stroke(
+                region.shrink(1.0),
+                0.0,
+                Stroke::new(1.0, ink.ink.at(0.5).color()),
+                egui::StrokeKind::Inside,
+            );
+        }
+
+        // The curve, in a square at the top of the region.
+        let side = GLYPH.min(region.width() - 2.0 * SPACE_2).max(16.0);
+        let square = Rect::from_center_size(
+            pos2(region.center().x, plot.top() + SPACE_2 + side / 2.0),
+            vec2(side, side),
+        );
+        painter.rect_filled(square, 0.0, ink.ground.color());
+        painter.rect_stroke(
+            square,
+            0.0,
+            Stroke::new(1.0, ink.line.color()),
+            egui::StrokeKind::Inside,
+        );
+        let line: Vec<Pos2> = glyph(params, band)
+            .into_iter()
+            .map(|(x, y)| {
+                pos2(
+                    square.left() + square.width() * x,
+                    square.bottom() - square.height() * y,
+                )
+            })
+            .collect();
+        painter.add(egui::Shape::line(
+            line.clone(),
+            Stroke::new(1.5, ink.ink.at(alpha).color()),
+        ));
+        if sounding && heard {
+            surface::glow(painter, &line, ink.ink.at(0.5));
+        }
+
+        let centre = region.center().x;
+        font::tracked(
+            painter,
+            pos2(centre, rect.top() + SPACE_1),
+            Align2::CENTER_TOP,
+            name,
+            FONT_EYEBROW,
+            if solos[band] {
+                ink.ink.color()
+            } else {
+                ink.muted.at(ink.muted.alpha * alpha).color()
             },
-        )
-        // Whatever the model says is being pointed at — a region here, or a row
-        // in the Advanced table (`VEL-14`) — is marked.
-        .highlight(Ui::hovered)
-        // Wiring this is what makes the rail live (`crates/nxe-ui/README.md`).
-        .focus(nxe_plug_ui::value_of(Ui::params, |params| &params.focus))
-        .height(Stretch(1.0))
-        .width(Stretch(1.0));
-
-        // The labels are placed with the same mapping the widget was given.
-        HStack::new(cx, |cx| {
-            for (index, (hz, text)) in MARKS.iter().enumerate() {
-                let label = Label::new(cx, *text)
-                    .class("subtle")
-                    .position_type(PositionType::SelfDirected);
-
-                // **An absolutely-positioned label at the far edge runs off
-                // it.** `left: 100%` puts the label's *start* at the right-hand
-                // edge, so `20k` grew out of the box — it read as `20` with the
-                // curve panel beside it, and as `20` clipped without one. Hang
-                // the last one off the other side instead (`SPK-15` fixed the
-                // same three lines in Sparkleur; this is the copy the backlog
-                // was holding).
-                if index == MARKS.len() - 1 {
-                    label.left(Stretch(1.0)).right(Pixels(0.0));
-                } else {
-                    label.left(Percentage(axis_x(*hz) * 100.0));
-                }
-            }
-        })
-        .height(Pixels(14.0))
-        .width(Stretch(1.0));
-    })
-    .height(Pixels(HEIGHT))
-    .width(Stretch(1.0))
-    .row_between(Pixels(theme::SPACE_1));
+        );
+        let figure = if held > 0.01 {
+            format!("{:.0}%  {:+.1} dB", level * 100.0, guards[band.min(2) - 1])
+        } else {
+            format!("{:.0}%", level * 100.0)
+        };
+        painter.text(
+            pos2(centre, rect.bottom() - SPACE_1),
+            Align2::CENTER_BOTTOM,
+            figure,
+            font::mono(FONT_VALUE),
+            ink.ink.at(alpha).color(),
+        );
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::params::VelourParams;
+    use truce_params::Params;
 
-    #[test]
-    fn the_axis_covers_hearing_and_clamps_below_it() {
-        assert_eq!(axis_x(LOW_HZ), 0.0);
-        assert!((axis_x(HIGH_HZ) - 1.0).abs() < 1e-6);
-        // Below the axis is the left edge rather than a negative position.
-        assert_eq!(axis_x(1.0), 0.0);
-        // And the decades are evenly spaced, which is what makes the marks
-        // readable.
-        let decade = axis_x(2_000.0) - axis_x(200.0);
-        assert!((decade - (axis_x(200.0) - axis_x(20.0))).abs() < 1e-6);
-    }
-
-    /// **The picture did not change when `Band::reduction` became a signed
-    /// `delta`** (`SPK-10`). The widget used to compute `level · (1 − r)`; it
-    /// now computes `level + delta`, and this is the call site that has to make
-    /// the two the same number.
-    #[test]
-    fn the_signed_delta_draws_what_the_reduction_used_to() {
-        for level in [0.0f32, 0.3, 0.8, 1.0] {
-            for reduction in [0.0f32, 0.25, 0.5, 1.0] {
-                let band = Band {
-                    level,
-                    delta: -reduction * level,
-                    ..Band::default()
-                };
-                let before = level * (1.0 - reduction);
-                assert!(
-                    (band.live() - before).abs() < 1e-6,
-                    "{level} / {reduction}: {} against {before}",
-                    band.live()
-                );
-            }
-        }
-    }
-
-    /// The three regions have to come out in the engine's order, or a fader
-    /// drags the wrong band.
-    #[test]
-    fn the_regions_are_in_the_engine_order() {
-        let params = VelourParams::default();
-        let bands = bands_of(&params, 48_000.0, &Analysis::default());
-        assert_eq!(bands.len(), BAND_COUNT);
-        for pair in bands.windows(2) {
-            assert!(
-                pair[0].low < pair[1].low,
-                "the regions are not left to right"
-            );
-        }
-        // Deep to bright across the three.
-        assert_eq!(bands[0].tint, 0.0);
-        assert_eq!(bands[BAND_COUNT - 1].tint, 1.0);
-    }
-
-    /// `FOCUS` slides them, which is the one thing a number cannot show
-    /// (`REQ-VEL-002`).
-    #[test]
-    fn focus_slides_every_region() {
-        let params = VelourParams::default();
-        let resting = bands_of(&params, 48_000.0, &Analysis::default());
-
-        // The parameter cannot be moved without a host, so the mapping is
-        // checked at the source instead.
-        for index in 0..BAND_COUNT {
-            let (low, _) = Generator::input_range(BANDS[index], 1.0, 48_000.0);
-            assert!(
-                axis_x(low) > resting[index].low,
-                "band {index} did not move up"
-            );
-        }
-    }
-
-    /// The figure sinks by exactly what the guard is pulling, and BODY never
+    /// The figure sinks by exactly what the guard is pulling, and Body never
     /// sinks because nothing guards it.
     #[test]
-    fn a_region_sinks_by_the_reduction() {
-        assert_eq!(reduction_fraction(0.0), 0.0);
-        assert_eq!(reduction_fraction(-MAX_REDUCTION_DB), 1.0);
-        assert!((reduction_fraction(-MAX_REDUCTION_DB / 2.0) - 0.5).abs() < 1e-6);
-        // A positive number would be a guard pushing, which cannot happen.
-        assert_eq!(reduction_fraction(3.0), 0.0);
+    fn a_region_sinks_by_its_guard() {
+        let guards = [-MAX_REDUCTION_DB / 2.0, -MAX_REDUCTION_DB];
+        assert_eq!(sunk(0, &guards), 0.0);
+        assert!((sunk(1, &guards) - 0.5).abs() < 1e-6);
+        assert!((sunk(2, &guards) - 1.0).abs() < 1e-6);
+        assert_eq!(sunk(1, &[3.0, 0.0]), 0.0, "a guard cannot push");
+    }
 
-        let pulling = [-9.0, -18.0];
-        assert_eq!(reduction_of(0, &pulling), 0.0);
-        assert_eq!(reduction_of(1, &pulling), reduction_fraction(-9.0));
-        assert_eq!(reduction_of(2, &pulling), 1.0);
+    /// **Decision 18**: turning `DRIVE` changes the picture with nothing
+    /// playing.
+    #[test]
+    fn drive_bends_the_curve() {
+        let params = VelourParams::default();
+        params.set_plain(params.drive.id(), 0.05);
+        let gentle = glyph(&params, 1);
+        params.set_plain(params.drive.id(), 1.0);
+        let driven = glyph(&params, 1);
+        let moved = gentle
+            .iter()
+            .zip(&driven)
+            .map(|(a, b)| (a.1 - b.1).abs())
+            .fold(0.0f32, f32::max);
+        assert!(moved > 0.02, "the curve moved by {moved}");
     }
 }
