@@ -8,8 +8,8 @@
 use crate::font;
 use crate::theme::{FONT_LABEL, LINE_LABEL, Palette, SPACE_1, SPACE_2};
 use egui::{
-    Align2, Area, Key, Order, Popup, Rect, Sense, Shape, Stroke, StrokeKind, TextEdit, Ui, Vec2,
-    pos2, vec2,
+    Align2, Area, Key, Order, Rect, Sense, Shape, Stroke, StrokeKind, TextEdit, Ui, Vec2, pos2,
+    vec2,
 };
 
 pub const HEIGHT: f32 = LINE_LABEL + SPACE_1 * 2.0;
@@ -127,10 +127,14 @@ pub fn preset_bar(
             );
         }
         let list_id = id.with("list");
+        // Open state is ours, not egui's `Popup` memory: from egui 0.32 a popup
+        // that is not kept alive every frame closes at the end of the frame,
+        // so the list shut as soon as it opened.
+        let mut open = ui.data(|data| data.get_temp::<bool>(list_id).unwrap_or(false));
         if response.clicked() {
-            Popup::toggle_id(ui.ctx(), list_id);
+            open = !open;
         }
-        if Popup::is_id_open(ui.ctx(), list_id) {
+        if open {
             let area = Area::new(list_id)
                 .order(Order::Foreground)
                 .fixed_pos(name.left_bottom())
@@ -174,9 +178,10 @@ pub fn preset_bar(
                 && !area.response.contains_pointer()
                 && !response.clicked();
             if action.is_some() || clicked_elsewhere {
-                Popup::close_id(ui.ctx(), list_id);
+                open = false;
             }
         }
+        ui.data_mut(|data| data.insert_temp(list_id, open));
     }
 
     let save_response = ui.interact(save, id.with("save"), Sense::click());
@@ -222,6 +227,57 @@ pub fn step(current: Option<usize>, count: usize, forward: bool) -> Option<usize
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The list stays open across frames, and a row in it can be picked.
+    #[test]
+    fn the_list_stays_open_until_a_row_is_picked() {
+        use egui::{Context, Event, PointerButton, RawInput, Rect, pos2, vec2};
+        let ctx = Context::default();
+        ctx.set_fonts(crate::font::definitions());
+        let names: Vec<String> = ["A", "B", "C"].map(String::from).to_vec();
+        let mut time = 0.0;
+        let mut frame = |events: Vec<Event>| {
+            time += 0.05;
+            let input = RawInput {
+                screen_rect: Some(Rect::from_min_size(pos2(0.0, 0.0), vec2(400.0, 300.0))),
+                time: Some(time),
+                events,
+                ..Default::default()
+            };
+            let mut action = None;
+            let _ = ctx.run_ui(input, |ui| {
+                egui::Area::new("bar".into())
+                    .fixed_pos(pos2(0.0, 0.0))
+                    .show(ui.ctx(), |ui| {
+                        action = preset_bar(ui, &Palette::DOUBLER, &names, Some(0), false, 300.0);
+                    });
+            });
+            action
+        };
+        // Press and release in separate frames, as a hand does.
+        fn click(
+            frame: &mut impl FnMut(Vec<Event>) -> Option<PresetAction>,
+            at: egui::Pos2,
+        ) -> Option<PresetAction> {
+            let button = |pressed| Event::PointerButton {
+                pos: at,
+                button: PointerButton::Primary,
+                pressed,
+                modifiers: Default::default(),
+            };
+            frame(vec![Event::PointerMoved(at)]);
+            frame(vec![button(true)]);
+            frame(vec![button(false)])
+        }
+        frame(vec![]);
+        let name = pos2(2.0 * ARROW + 20.0, HEIGHT / 2.0);
+        click(&mut frame, name);
+        for _ in 0..3 {
+            frame(vec![]);
+        }
+        let second_row = pos2(2.0 * ARROW + 20.0, HEIGHT * 2.5);
+        assert_eq!(click(&mut frame, second_row), Some(PresetAction::Load(1)));
+    }
 
     #[test]
     fn stepping_wraps_both_ways() {
