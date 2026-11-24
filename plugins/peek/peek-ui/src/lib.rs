@@ -18,6 +18,7 @@ use egui::{Align2, Rect, Stroke, Ui, UiBuilder, pos2, vec2};
 use nxe_egui::readout::{HEIGHT as READOUT, figure, readout};
 use nxe_egui::theme::{FONT_EYEBROW, Palette, SPACE_2, SPACE_4};
 use nxe_egui::{font, smooth};
+use std::sync::atomic::{AtomicU32, Ordering};
 
 pub use nxe_egui::theme::WARN;
 
@@ -29,6 +30,23 @@ const POLL: std::time::Duration = std::time::Duration::from_millis(100);
 pub fn heartbeat(ui: &Ui, sounding: bool) {
     ui.ctx()
         .request_repaint_after(if sounding { smooth::FRAME } else { POLL });
+}
+
+/// How long the audio thread may go without publishing before the window
+/// treats it as stopped.
+const STALE_SECONDS: f64 = 0.15;
+
+/// Whether blocks are still arriving (`blocks` is a reading's running count).
+/// Bypassed, or with the transport stopped, the host stops calling `process`
+/// and the last block would stay on screen; the window draws silence instead.
+pub fn live(ui: &Ui, key: &str, blocks: &AtomicU32) -> bool {
+    let id = ui.id().with(key);
+    let now = ui.input(|input| input.time);
+    let count = blocks.load(Ordering::Relaxed);
+    let (seen, at): (u32, f64) = ui.data(|data| data.get_temp(id)).unwrap_or((count, now));
+    let at = if count != seen { now } else { at };
+    ui.data_mut(|data| data.insert_temp(id, (count, at)));
+    now - at < STALE_SECONDS
 }
 
 /// An amplitude as decibels; `None` for silence.

@@ -30,6 +30,9 @@ fn cleared(clears: &AtomicU32, seen: &mut u32) -> bool {
 
 #[derive(Default)]
 pub struct LevelReadings {
+    /// Blocks published so far, wrapping: how the window tells that the
+    /// host has stopped calling (bypass, a stopped transport).
+    pub blocks: AtomicU32,
     pub peaks: Handoff<2>,
     pub holds: Handoff<2>,
     pub rms: Handoff<2>,
@@ -58,6 +61,7 @@ impl LevelMeter {
     }
 
     pub fn publish(&mut self, readings: &LevelReadings) {
+        readings.blocks.fetch_add(1, Ordering::Relaxed);
         if cleared(&readings.clears, &mut self.seen) {
             self.channels.iter_mut().for_each(ChannelLevel::clear);
         }
@@ -91,6 +95,9 @@ impl LevelMeter {
 
 #[derive(Default)]
 pub struct VuReadings {
+    /// Blocks published so far, wrapping: how the window tells that the
+    /// host has stopped calling (bypass, a stopped transport).
+    pub blocks: AtomicU32,
     /// Left and right, as amplitudes (a sine reads its RMS).
     pub vu: Handoff<2>,
     pub correlation: Handoff<1>,
@@ -116,6 +123,7 @@ impl VuMeter {
     }
 
     pub fn publish(&self, readings: &VuReadings) {
+        readings.blocks.fetch_add(1, Ordering::Relaxed);
         readings
             .vu
             .write(&[self.channels[0].value(), self.channels[1].value()]);
@@ -127,6 +135,9 @@ impl VuMeter {
 
 #[derive(Default)]
 pub struct StereoReadings {
+    /// Blocks published so far, wrapping: how the window tells that the
+    /// host has stopped calling (bypass, a stopped transport).
+    pub blocks: AtomicU32,
     pub lefts: Handoff<STEREO_POINTS>,
     pub rights: Handoff<STEREO_POINTS>,
     /// Correlation, then balance.
@@ -149,6 +160,7 @@ impl StereoMeter {
     }
 
     pub fn publish(&self, readings: &StereoReadings) {
+        readings.blocks.fetch_add(1, Ordering::Relaxed);
         readings.lefts.write(self.0.lefts());
         readings.rights.write(self.0.rights());
         readings
@@ -165,6 +177,8 @@ pub struct SpectrumMeter<const BANDS: usize>(Spectrum<BANDS>);
 
 #[derive(Default)]
 pub struct SpectrumReadings<const BANDS: usize> {
+    /// Blocks published so far, wrapping (`LevelReadings::blocks`).
+    pub blocks: AtomicU32,
     /// Amplitude per band, low to high.
     pub levels: Handoff<BANDS>,
 }
@@ -179,6 +193,7 @@ impl<const BANDS: usize> SpectrumMeter<BANDS> {
     }
 
     pub fn publish(&self, readings: &SpectrumReadings<BANDS>) {
+        readings.blocks.fetch_add(1, Ordering::Relaxed);
         readings.levels.write(&self.0.levels());
     }
 }
@@ -247,6 +262,9 @@ impl LoudnessMeter {
 
 #[derive(Default)]
 pub struct ScopeReadings {
+    /// Blocks published so far, wrapping: how the window tells that the
+    /// host has stopped calling (bypass, a stopped transport).
+    pub blocks: AtomicU32,
     /// Oldest first.
     pub mins: Handoff<SCOPE_POINTS>,
     pub maxs: Handoff<SCOPE_POINTS>,
@@ -268,6 +286,7 @@ impl ScopeMeter {
     }
 
     pub fn publish(&self, readings: &ScopeReadings) {
+        readings.blocks.fetch_add(1, Ordering::Relaxed);
         readings.mins.write(&self.0.mins());
         readings.maxs.write(&self.0.maxs());
     }

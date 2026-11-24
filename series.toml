@@ -24,3 +24,7 @@ plugins = [
     "peek-scope",
     "peek",
 ]
+
+[kit]
+name = "Kit"
+plugins = ["fold", "fever", "buckle", "invert", "shear", "afterimage"]

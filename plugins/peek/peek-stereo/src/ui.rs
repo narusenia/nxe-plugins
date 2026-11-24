@@ -47,7 +47,13 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
     if !nxe_egui::window(ui) {
         return;
     }
-    let readings = &ctx.params().readings;
+    let real = &ctx.params().readings;
+    let silent = Default::default();
+    let readings = if peek_ui::live(ui, "stereo", &real.blocks) {
+        real
+    } else {
+        &silent
+    };
     let lefts = readings.lefts.read();
     peek_ui::heartbeat(ui, lefts.iter().any(|sample| sample.abs() > 1e-4));
     let (figure, band) = areas(ui, "Stereo");

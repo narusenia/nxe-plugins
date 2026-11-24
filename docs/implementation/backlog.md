@@ -75,6 +75,18 @@ V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実
 | PEEK-8 | Peek（まとめ、ホストでリサイズ可） | PEEK-2〜7 | 🟡 同上 |
 | PEEK-9 | 最初の beta（`peek-<YYYY.MM>-beta.N`） | PEEK-1 | ⬜ |
 
+### Kit — [`nonlinear-kit-plan.md`](../../plugins/kit/docs/implementation/nonlinear-kit-plan.md)
+
+| ID | 単位 | 依存 | 状態 |
+|---|---|---|---|
+| KIT-1 | `Palette::DESIGN_KIT`、`kit-ui`、`nonlinear-core`、Fold | — | 🟡 コードは済み。Windows の基準画像（CI で焼く）と、実機で聴くことが残り |
+| KIT-2 | Fever | KIT-1 | 🟡 同上 |
+| KIT-3 | Buckle | KIT-1 | 🟡 同上 |
+| KIT-4 | 最初の beta（`kit-<YYYY.MM>-beta.N`） | KIT-1〜3 | ⬜ |
+| KIT-5 | `nxe-spectral` の切り出し、`spectral-core`、Invert（[`spectral-kit-plan.md`](../../plugins/kit/docs/implementation/spectral-kit-plan.md)） | KIT-1 | 🟡 コードは済み。Windows の基準画像と耳が残り |
+| KIT-6 | Shear | KIT-5 | 🟡 同上 |
+| KIT-7 | Afterimage | KIT-5 | 🟡 同上 |
+
 ### v0 から持ち越したもの
 
 単位の内容は各プラグインの計画書が正。DSP は `<plugin>-core` にあるので、
