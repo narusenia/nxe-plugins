@@ -146,6 +146,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # The cache can bring back a previous run's `target/`; a stale
+          # plugin folder would otherwise be zipped into this release.
+          rm -rf target/bundled target/series
           for entry in ${{ needs.plan.outputs.plugins }}; do
             plugin="${entry%%:*}"
             fourcc="${entry##*:}"
