@@ -43,6 +43,12 @@ with the code, and fix the document in the same change.
   to its own parameters. `examples/gallery.rs` runs every widget as a plain
   desktop app, which is how UI work is iterated without launching a DAW.
   Its `README.md` is the guide for building an interface with it
+- `crates/nxe-egui`: the v2 widgets and tokens, on egui. **Depends on egui
+  only, never on truce** — a widget takes a value and hands back what the
+  pointer did. `examples/gallery.rs` runs every widget in an eframe window.
+  The palettes are `nxe-ui`'s value for value; **change one in both or in
+  neither** until `nxe-ui` goes with the last vizia plugin. Its `README.md` is
+  the guide
 - `plugins/doubler/doubler-core`: the Doubler DSP. Host-agnostic, allocation-free
   on the audio path
 - `plugins/doubler/doubler`: the Doubler 2 truce wrapper — parameter

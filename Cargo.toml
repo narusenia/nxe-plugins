@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/nxe-audio",
     "crates/nxe-dsp",
+    "crates/nxe-egui",
     "crates/nxe-plug-ui",
     "crates/nxe-ui",
     "plugins/air/air",
@@ -29,6 +30,7 @@ repository = "https://github.com/narusenia/nxe-plugins"
 [workspace.dependencies]
 nxe-audio = { path = "crates/nxe-audio" }
 nxe-dsp = { path = "crates/nxe-dsp" }
+nxe-egui = { path = "crates/nxe-egui" }
 nxe-plug-ui = { path = "crates/nxe-plug-ui" }
 nxe-ui = { path = "crates/nxe-ui" }
 air = { path = "plugins/air/air" }

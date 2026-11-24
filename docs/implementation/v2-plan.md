@@ -132,6 +132,36 @@ v0.2.0 の gallery と同じ条件）。
 
 **完了条件**: 全部品がギャラリーにあり、引き継いだテストが通る。
 
+**決めたこと**（実装で）:
+
+- クレートは `crates/nxe-egui`。vizia の `nxe-ui` は 4 本（Pumice 含め 5 本）
+  がまだ使うので横に並べ、最後の vizia プラグインが移る `V2-16` で消す。
+  **パレットはそれまで 2 か所にあり、変えるなら両方**
+- 部品はパレットを**引数で受け取る**。vizia は木をさかのぼって探したが、egui
+  には木が無い。反転面は子に `Palette::inverted` を渡すだけで、v0 の
+  「反転はパレットであって別の概念ではない」はそのまま成り立つ
+- 値の部品は値を書かず、`Gestures`（begin / change / end / reset / edit）と
+  打ち込まれた文字列を返す。truce の `begin_edit` / `set_param` /
+  `end_edit` に渡すのはプラグイン側のアダプタ
+- フォントは Inter Regular / **Medium**（v4.1、Regular と同じ版）と Geist
+  Mono。`nxe-ui/assets/` から読み、ファイルは 1 つずつのまま
+- ギャラリーは eframe（dev-dependency のみ）。プラグインには入らない
+- `vizia.md` は vizia のプラグインが残るあいだ要るので、`docs/archive/` へ
+  移すのは `V2-16`。`ui.md` には v2 の解禁分を書いた
+
+**実装で分かったこと**:
+
+- **egui は新しいフォントを次のパスから効かせる。** 登録前の名前付き
+  ファミリー（Medium）を使うと panic する。`nxe_egui::window` は 1 パス目に
+  登録だけして `false` を返し、呼び手はそのフレームを地だけで終える
+- **そのため truce の `screenshot!`（1 パスしか描かない）では、自前の
+  フォントが写らない。** truce-egui の `with_font` は 1 書体しか取れない。
+  `V2-7` で窓を載せる前に、truce-egui に `FontDefinitions` を渡す口を足す
+  （patch → 上流）か、スクリーンショットだけ 2 パス描かせる必要がある
+- `ui.scope_builder` は中身が使った幅を親に割り当てるので、横並びの中で
+  使うと親のカーソルが**戻る**（サイドバーの右に主図が重なった）。固定の
+  領域に子を置くときは `ui.new_child`
+
 ### V2-6 — 信号表示の平滑化
 
 決定 10 を `nxe-ui` の部品に入れる。

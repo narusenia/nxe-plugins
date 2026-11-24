@@ -11,13 +11,10 @@ use truce::prelude::*;
 use truce_core::editor::PluginContext;
 use truce_egui::EguiEditor;
 
-/// The window width every NXE plugin shares (`design-system.md`). Moves into
-/// `nxe-ui`'s egui tokens in `V2-5`.
-const WIDTH: u32 = 880;
 const HEIGHT: u32 = 480;
 
 pub fn create(params: Arc<DoublerParams>) -> Box<dyn Editor> {
-    EguiEditor::new(params, (WIDTH, HEIGHT), view).into_editor()
+    EguiEditor::new(params, (nxe_egui::theme::WINDOW_WIDTH, HEIGHT), view).into_editor()
 }
 
 fn view(ui: &mut egui::Ui, _state: &PluginContext<DoublerParams>) {

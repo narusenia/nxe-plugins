@@ -1,6 +1,7 @@
 ---
 paths:
   - "crates/nxe-ui/**"
+  - "crates/nxe-egui/**"
   - "plugins/**/src/ui/**"
   - "plugins/**/docs/specifications/ui.md"
 ---
@@ -13,6 +14,11 @@ toolkit behaves — what parses, what silently does nothing — is
 [`crates/nxe-ui/README.md`](../../crates/nxe-ui/README.md).
 
 Every rule here was paid for. Where one has a scar, the scar is named.
+
+**Two toolkits during v2.** The plugins still on vizia use `nxe-ui`; the ones
+on truce use `nxe-egui` (`crates/nxe-egui/README.md`). The rules are the same
+for both except where a rule says **v2** — what `design-system.md` lifted, and
+what vizia could not do in the first place.
 
 ## The window
 
@@ -69,6 +75,9 @@ Every rule here was paid for. Where one has a scar, the scar is named.
   that leaves the family fails it. **Five accents that were not one family would
   read as five different designs**, which is the thing the shared width exists
   to prevent.
+- **v2: a widget takes its palette as an argument** (`&Palette`). egui has no
+  tree to walk; the inverted surface hands its children `Palette::inverted`,
+  which is the same idea without the lookup. Still no `ACCENT*` constants.
 - **A custom-drawn widget reads the palette, never a constant.**
   `theme::palette(cx)` walks up to the nearest `Palette` model. There are no
   `ACCENT*` constants to reach for — that is deliberate, because a constant is
@@ -103,6 +112,11 @@ Every rule here was paid for. Where one has a scar, the scar is named.
   a state is flat" failed once at that boundary: a selected segment's label sat
   on a ramp and changed contrast across its own width (`SPK-19`). There is no
   boundary now.
+- **v2: light is for signals that move.** A spectrum, a transfer curve, a
+  meter's head may glow (`nxe_egui::surface::glow`); a static mark that glows
+  is decoration. Fills stay flat — the glow is a line's, not an area's.
+- **v2: only signals are curved** (`nxe_egui::curve`, a monotone cubic, so it
+  never shows energy above its own peaks). Marks and layout stay straight.
 - **`bright` and `deep` are for telling kinds apart, not for filling.** Where
   several of the same thing sit side by side — voice pairs, bands — step between
   them with `Token::mix`. That is the only ramp left.
@@ -113,14 +127,20 @@ Every rule here was paid for. Where one has a scar, the scar is named.
 
 ## Type
 
-- **Hierarchy comes from size, weight, colour and rules.** Not from tracking:
-  `letter-spacing` and `line-height` do not exist in this vizia revision, so a
-  design that needs them cannot be built here.
+- **Hierarchy comes from size, weight, colour and rules.** On vizia not from
+  tracking: `letter-spacing` and `line-height` do not exist in that revision.
+  **v2: tracked capitals** for a region's name and the `NXE` mark
+  (`nxe_egui::font::tracked`, `theme::TRACKING`) — tracking is the Swiss
+  setter's main tool, and nothing else is tracked.
 - **Figures are set in the mono face** (`font::value`). A proportional face
   changes width between a `1` and an `8`, and a value that jitters under a drag
   is what fixing the decimal count was meant to prevent. **Inter's tabular
   figures are not a way out**: `tnum` is an OpenType feature and this vizia
   revision has no way to turn one on.
+- **v2: two weights, Regular and Medium.** Medium is for the wordmark, the
+  sidebar's subject figure and the tracked capitals — places where size or
+  tracking already says what the text is. **A weight still means nothing on
+  its own**; the history below is why.
 - **No weight carries meaning. One face, and hierarchy from size and colour.**
   The wordmark was tried in bold (17 px: another label with the volume turned
   up) and in light (26 and 20 px: faint — a name that has to be large to be
@@ -208,7 +228,8 @@ Every rule here was paid for. Where one has a scar, the scar is named.
 
 ## Judging it
 
-- **Every widget in `nxe-ui` is in `examples/gallery.rs` in the same change.** A
+- **Every widget in `nxe-ui` or `nxe-egui` is in that crate's
+  `examples/gallery.rs` in the same change.** A
   widget not in the gallery cannot be reviewed without opening a DAW, so it will
   not be.
 - **Dimensions are only settled in a host.** Velour went 580 → 528, Sparkleur's

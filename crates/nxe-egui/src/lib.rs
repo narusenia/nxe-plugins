@@ -1,0 +1,34 @@
+//! Shared egui widgets and theme tokens for the nxe plugins (v2).
+//!
+//! **Knows nothing about truce.** A widget takes a value and the text to show,
+//! and hands back what the pointer did; binding that to a parameter is each
+//! plugin's job. That boundary is what lets `examples/gallery` run as a plain
+//! desktop app. The vizia `nxe-ui` stays beside this until the last plugin
+//! leaves vizia (`v2-plan.md`, `V2-16`).
+//!
+//! Every widget is in `examples/gallery.rs` (`.agents/rules/ui.md`).
+
+pub mod bar;
+pub mod curve;
+pub mod entry;
+pub mod font;
+pub mod input;
+pub mod knob;
+pub mod meter;
+pub mod preset;
+pub mod readout;
+pub mod segment;
+pub mod sidebar;
+pub mod status;
+pub mod surface;
+pub mod theme;
+
+/// Paints the whole window's ground and installs the faces. Call first, every
+/// frame, and **draw nothing else when it returns `false`** — the faces are
+/// not in force until the next pass ([`font::install`]).
+pub fn window(ui: &mut egui::Ui) -> bool {
+    let rect = ui.max_rect();
+    ui.painter()
+        .rect_filled(rect, 0.0, theme::BACKGROUND.color());
+    font::install(ui.ctx())
+}

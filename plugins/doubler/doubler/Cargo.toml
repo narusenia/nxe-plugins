@@ -28,6 +28,7 @@ au = ["dep:truce-au"]
 [dependencies]
 doubler-core = { workspace = true }
 nxe-dsp = { workspace = true }
+nxe-egui = { workspace = true }
 truce = { workspace = true }
 truce-core = { workspace = true }
 truce-params = { workspace = true }
