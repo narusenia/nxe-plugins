@@ -134,6 +134,9 @@ V2-1 の仮の窓を、V2-5 の部品と H4 の型で置き換える。
 ### V2-8 — Doubler 2 beta
 
 Doubler 2 だけを beta として出し（タグは `doubler-v2.0.0-beta.N`）、制作で数週間使う。
+タグは `release.yml` の `*-v*` に当たるので、**beta は V2-13 で truce に置き換えた
+リリースの CI で作る**（今の `cargo xtask bundle` の経路では作れない）。配布は
+draft release の zip。
 
 **完了条件**: 使って見つかった問題が、単位か積み残しとして backlog に載っている。
 
@@ -150,7 +153,8 @@ V2-9 の型に載せる。完了条件は V2-7 と同じ。
 
 ### V2-13 — リリースの CI
 
-`release.yml` を truce のビルドに置き換える。タグは今と同じ `<plugin>-v<version>`、
+**V2-8（beta）の前に行う。** `release.yml` を truce のビルドに置き換える。
+nih-plug のまま残っている 4 本のタグも壊さないよう、移行中は両方の経路を持つ。タグは今と同じ `<plugin>-v<version>`、
 1 タグ 1 プラグイン。
 
 **完了条件**: macOS と Windows の zip が draft release に付く。`cargo truce validate`
