@@ -92,6 +92,16 @@ with the code, and fix the document in the same change.
   (`nxe_egui::kit`). Thin: declarations, and a window that calls `peek-ui`
 - `plugins/peek/peek`: every meter at once. **The one window in the line the
   host may resize**; it never asks the host to resize it
+- `plugins/kit/nonlinear-core`: the engines behind the Design Kits — Fold,
+  Fever, Buckle. Each is a plain curve the window draws and an engine that
+  runs it 4x oversampled, the mix inside the oversampled loop. Devour takes
+  them over when it comes
+- `plugins/kit/kit-ui`: what every Kit window shares — the binding to truce,
+  the preset bar over a table of factory presets, the frame, and the transfer
+  curve figure
+- `plugins/kit/<name>`: one Kit per plugin (`fold`, `fever`, `buckle`), on the
+  Kit window with `Palette::DESIGN_KIT`. Thin: declarations, presets, and the
+  figure
 - `docs/`: monorepo-wide documents (architecture, cross-plugin backlog and
   roadmap). Indexed by `docs/README.md`
 - `plugins/<name>/docs/`: that plugin's own requirements, specifications, and

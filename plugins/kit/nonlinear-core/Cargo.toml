@@ -1,0 +1,13 @@
+[package]
+name = "nonlinear-core"
+# Shared by Fold, Fever and Buckle, and Devour's when it comes, so it versions
+# on its own. Nothing has shipped yet.
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The nonlinear engines behind the Design Kits, independent of any plugin host"
+
+# No host API and no UI toolkit (`.agents/rules/rust.md`).
+[dependencies]
+nxe-audio.workspace = true

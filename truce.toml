@@ -158,3 +158,32 @@ category = "effect"
 fourcc = "Peek"
 description = "Every Peek meter in one resizable window"
 vst3_subcategory = "Analyzer"
+
+# The Design Kits (`plugins/kit/docs/implementation/nonlinear-kit-plan.md`).
+# Like every id here, none of these may change once shipped.
+[[plugin]]
+name = "Fold"
+bundle_id = "fold"
+crate = "fold"
+category = "effect"
+fourcc = "Fold"
+description = "A sine wavefolder"
+vst3_subcategory = "Distortion"
+
+[[plugin]]
+name = "Fever"
+bundle_id = "fever"
+crate = "fever"
+category = "effect"
+fourcc = "Fevr"
+description = "A saturator that heats up and wanders"
+vst3_subcategory = "Distortion"
+
+[[plugin]]
+name = "Buckle"
+bundle_id = "buckle"
+crate = "buckle"
+category = "effect"
+fourcc = "Bckl"
+description = "A waveform that turns over past a threshold"
+vst3_subcategory = "Distortion"

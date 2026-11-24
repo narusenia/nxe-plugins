@@ -248,6 +248,15 @@ impl Palette {
         Token::rgb(0x73, 0x73, 0x73),
     );
 
+    /// Acid green: the Kits cut from the Design series (`nonlinear-kit-plan.md`,
+    /// decision 3, the canvas's Kit 7). **Not in [`Palette::ALL`]**: it is
+    /// Design's colour, not one of the Basic family's.
+    pub const DESIGN_KIT: Self = Self::ramp(
+        Token::rgb(0xE9, 0xFF, 0x8F),
+        Token::rgb(0xD7, 0xFF, 0x3A),
+        Token::rgb(0x6B, 0x80, 0x10),
+    );
+
     /// Every palette with the name of the plugin that wears it. For the gallery
     /// and for the test that keeps them one family.
     pub const ALL: [(&'static str, Self); 6] = [
