@@ -11,9 +11,9 @@ Plugins move one at a time from [nih-plug](https://github.com/robbert-vdh/nih-pl
 [truce](https://github.com/truce-audio/truce) + egui, and ship again as
 `NXE <name> 2`:
 
-- **On truce**: Doubler, Sparkleur and Velour. Exports **CLAP, VST3 and AU v2** (AU on macOS only);
+- **On truce**: Doubler, Sparkleur, Velour and Air. Exports **CLAP, VST3 and AU v2** (AU on macOS only);
   `truce.toml` at the root declares them
-- **Still on nih-plug**: Air, Diorama, and Pumice. CLAP and
+- **Still on nih-plug**: Diorama and Pumice. CLAP and
   VST3 only — nih-plug has no AU wrapper. **Pumice was never released**, so it
   ships as `NXE Pumice` 1.0.0, not as a "2" (`v2-plan.md`, decision 16)
 
