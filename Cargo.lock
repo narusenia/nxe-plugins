@@ -4418,14 +4418,24 @@ checksum = "3d595e54a326bc53c1c197b32d295e14b169e3cfeaa8dc82b529f947fba6bcf5"
 
 [[package]]
 name = "pumice"
-version = "0.2.0"
+version = "1.0.0"
 dependencies = [
- "nih_plug",
- "nih_plug_vizia",
+ "clap-sys 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "egui",
  "nxe-dsp",
- "nxe-plug-ui",
- "nxe-ui",
+ "nxe-egui",
  "pumice-core",
+ "truce",
+ "truce-au",
+ "truce-clap",
+ "truce-core",
+ "truce-egui",
+ "truce-loader",
+ "truce-params",
+ "truce-standalone",
+ "truce-test",
+ "truce-utils",
+ "truce-vst3",
 ]
 
 [[package]]
