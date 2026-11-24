@@ -30,6 +30,12 @@ xtask/                            nih_plug_xtask のバンドラ（nih-plug 側�
 依存は衝突しない: truce の窓は `baseview-truce` という別名のクレートを使うので、
 下の `[patch]` で差し替えている baseview とは別物として解決される。
 
+**truce-clap は patch を 1 つ当てて使っている**（`patches/truce-clap`、ルートの
+`Cargo.toml` の `[patch.crates-io]`）。6.3.0 は state / preset の読込で値を
+変えたあとホストに `rescan(VALUES)` を送らず、clap-validator 0.4 の
+`state-reproducibility-*` が落ちる。変更箇所は `nxe-plugins patch` で検索できる。
+上流に入ったら patch ごと消す。
+
 `truce.toml` も**ワークスペース直下に 1 つ**。`truce::plugin!` がコンパイル時に
 クレート名で自分の `[[plugin]]` を探す。`au_manufacturer` と 5 本の `fourcc` は
 `V2-1` でまとめて決めてあり、まだ移っていない 4 本の分もこのファイルの

@@ -80,4 +80,5 @@ v2 の移行とは独立に進められる。
 |---|---|
 | Vocal Glue | 要件まで（[`REQ-GLU.md`](../../plugins/vocal-glue/docs/requirements/REQ-GLU.md)） |
 | Colour シリーズ / Design シリーズ | 構想のみ。型の候補は [`design-system.md`](../specifications/design-system.md) |
+| truce-clap の rescan を上流へ送る | `patches/truce-clap` の 1 か所。上流に入れば patch を消せる。外への PR なので出す前に確認する |
 | パワーフォロワの共通化 | 3 個目が来ているが形が 3 つとも違う。上げるなら何を共通にするかを先に決める |

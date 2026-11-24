@@ -142,6 +142,13 @@ vizia = { git = "https://github.com/robbert-vdh/vizia.git", tag = "patched-2024-
 # All eight are worth sending upstream; none has been yet. **The first one is
 # a bug in baseview that affects every plugin built on it**, and is the one to
 # send first.
+# **truce-clap 6.3.0 with one change**: after a state or preset load it asks the
+# host to rescan parameter values, which CLAP requires and clap-validator 0.4
+# checks. Upstream does not yet. The change is marked `nxe-plugins patch` in
+# `patches/truce-clap/src/lib.rs`; drop this entry once a truce release has it.
+[patch.crates-io]
+truce-clap = { path = "patches/truce-clap" }
+
 [patch."https://github.com/RustAudio/baseview.git"]
 baseview = { git = "https://github.com/narusenia/baseview.git", tag = "nxe-2026-08-31c" }
 
