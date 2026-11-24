@@ -18,10 +18,13 @@
 //! got** (`REQ-PUM-018`). Computing it again in the wrapper is how a figure
 //! starts telling a different story from the sound.
 
-/// How many points the figure is given. 880 px over ten octaves is 88 px per
-/// octave; this is a point every eight pixels or so, which is finer than a
-/// stroke.
-pub const CURVE_POINTS: usize = 128;
+/// How many points the figure is given: about 51 an octave, a point every
+/// two pixels or so of the figure.
+///
+/// **It was 128, and that hid the Quality switch.** Thirteen points an octave
+/// are coarser than every Quality's bins above a few hundred hertz, so Low,
+/// Normal and High drew the same reduction.
+pub const CURVE_POINTS: usize = 512;
 
 /// The bottom and the top of the drawn axis.
 pub const LOW_HZ: f32 = 20.0;
@@ -122,6 +125,32 @@ pub fn resample_into(values: &[f32], bin_hz: f32, out: &mut [f32; CURVE_POINTS])
                 interpolated + (averaged - interpolated) * t
             }
         };
+    }
+}
+
+/// The reduction's resampling: **the engine's own resolution, not a smoothed
+/// picture of it**, so the Quality switch shows.
+///
+/// Where a point is narrower than a bin it takes **the bin it falls in**,
+/// unblended, so a coarse transform draws wide steps. Where a point covers
+/// several bins it takes **the deepest** (the most negative) of them, so a
+/// narrow cut stays as deep as it is rather than being averaged away.
+pub fn resample_hold_into(values: &[f32], bin_hz: f32, out: &mut [f32; CURVE_POINTS]) {
+    if values.is_empty() || bin_hz <= 0.0 {
+        out.fill(0.0);
+        return;
+    }
+    let last = values.len() - 1;
+    let first = 1.min(last);
+    let step = (HIGH_HZ / LOW_HZ).powf(0.5 / (CURVE_POINTS - 1) as f32);
+    for (index, slot) in out.iter_mut().enumerate() {
+        let centre = point_hz(index);
+        let low = ((centre / step / bin_hz).round() as usize).clamp(first, last);
+        let high = ((centre * step / bin_hz).round() as usize).clamp(low, last);
+        *slot = values[low..=high]
+            .iter()
+            .copied()
+            .fold(f32::INFINITY, f32::min);
     }
 }
 
@@ -352,6 +381,29 @@ mod tests {
         let mut out = [1.0; CURVE_POINTS];
         resample_into(&[], 23.437_5, &mut out);
         assert!(out.iter().all(|value| *value == 0.0));
+    }
+
+    /// A coarse transform draws wider steps than a fine one, and a cut one
+    /// bin wide keeps its depth however many bins a point covers.
+    #[test]
+    fn the_reduction_shows_the_transform_resolution() {
+        let distinct = |bin_hz: f32| {
+            let bins = (24_000.0 / bin_hz) as usize + 1;
+            let values: Vec<f32> = (0..bins).map(|bin| -(bin as f32)).collect();
+            let mut out = [0.0; CURVE_POINTS];
+            resample_hold_into(&values, bin_hz, &mut out);
+            let below = (0..CURVE_POINTS).filter(|&i| point_hz(i) < 500.0).count();
+            let mut levels: Vec<i32> = out[..below].iter().map(|v| *v as i32).collect();
+            levels.dedup();
+            levels.len()
+        };
+        assert!(distinct(11.718_75) > 2 * distinct(46.875));
+
+        let mut values = vec![0.0; 2049];
+        values[853] = -12.0; // ~10 kHz at 11.7 Hz a bin
+        let mut out = [0.0; CURVE_POINTS];
+        resample_hold_into(&values, 11.718_75, &mut out);
+        assert_eq!(out.iter().copied().fold(0.0, f32::min), -12.0);
     }
 
     /// clap-validator runs at 8 kHz, where the axis reaches past Nyquist.

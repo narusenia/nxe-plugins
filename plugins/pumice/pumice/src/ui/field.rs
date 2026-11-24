@@ -68,7 +68,7 @@ pub fn width_from(centre_hz: f32, pointer_hz: f32) -> f32 {
 /// The weight curve, `0..=1` both ways, `0.5` the resting line, at `points`
 /// evenly spaced positions along the axis.
 ///
-/// **One point per pixel, not `CURVE_POINTS`.** 128 points are 13 an octave,
+/// **One point per pixel, not `CURVE_POINTS`.** 128 points were 13 an octave,
 /// and a node can be a tenth of an octave wide, so its bump was drawn from one
 /// or two points and the line looked broken. `weight_at` is a formula, so
 /// sampling it finely costs six nodes per pixel and nothing else.
