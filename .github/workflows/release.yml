@@ -19,7 +19,18 @@ name: release
 # single push carries more than three tags — four went up together once and
 # nothing built, with no error anywhere to say so. `workflow_dispatch` is the
 # way back from that without deleting and re-pushing a tag.
+#
+# **Two paths while v2 is under way** (`docs/implementation/v2-plan.md`,
+# `V2-13`). A plugin listed in `truce.toml` is built by `cargo truce` for macOS
+# (CLAP, VST3, AU v2) and Windows (CLAP, VST3) and validated before it is
+# zipped; the rest still go through nih-plug's xtask on all three platforms.
+# Linux is not built for a truce plugin: decision 7 names macOS and Windows.
+#
+# A pull request that touches this file builds Doubler without releasing it, so
+# a change here is exercised before a tag depends on it.
 on:
+  pull_request:
+    paths: [.github/workflows/release.yml]
   push:
     tags: ["*-v*"]
   workflow_dispatch:
@@ -50,24 +61,40 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag || github.ref_name }}
+          ref: ${{ inputs.tag || github.ref }}
 
       # `doubler-v0.1.0` names both what to build and what to call it. Split
-      # once, in bash, so every later step reads the same two values.
+      # once, in bash, so every later step reads the same values. A pull
+      # request has no tag, so it builds Doubler at whatever version it is.
+      #
+      # `skip` is a truce plugin on Linux: every later step checks it, which is
+      # how a matrix entry is dropped for one tag and not another.
       - name: Read the tag
         id: tag
         shell: bash
         run: |
-          tag="${{ inputs.tag || github.ref_name }}"
-          plugin="${tag%-v*}"
-          version="${tag##*-v}"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            plugin=doubler
+            version=$(grep -m1 '^version = ' plugins/doubler/doubler/Cargo.toml | cut -d'"' -f2)
+          else
+            tag="${{ inputs.tag || github.ref_name }}"
+            plugin="${tag%-v*}"
+            version="${tag##*-v}"
+          fi
+          truce=false
+          if grep -q "^crate = \"$plugin\"$" truce.toml; then truce=true; fi
+          skip=false
+          if [ "$truce" = true ] && [ "${{ matrix.name }}" = linux ]; then skip=true; fi
           echo "plugin=$plugin" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "truce=$truce" >> "$GITHUB_OUTPUT"
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
           echo "archive=nxe-$plugin-$version-${{ matrix.name }}" >> "$GITHUB_OUTPUT"
 
       # A tag that disagrees with the crate would ship the wrong thing under the
       # right name, and the artefacts would look correct while being wrong.
       - name: Check the tag against the crate version
+        if: steps.tag.outputs.skip != 'true'
         shell: bash
         run: |
           plugin="${{ steps.tag.outputs.plugin }}"
@@ -81,7 +108,7 @@ jobs:
       # The list comes from nih-plug's own CI. Without them the baseview window
       # and the audio backends do not build.
       - name: Install Linux build dependencies
-        if: matrix.name == 'linux'
+        if: matrix.name == 'linux' && steps.tag.outputs.skip != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev libgl-dev libjack-dev \
@@ -91,36 +118,135 @@ jobs:
       # Same toolchain as `mise run check` and as a laptop: the version lives in
       # `mise.toml` and nowhere else.
       - uses: jdx/mise-action@v2
+        if: steps.tag.outputs.skip != 'true'
 
       - uses: Swatinem/rust-cache@v2
+        if: steps.tag.outputs.skip != 'true'
         with:
           key: ${{ matrix.name }}
 
-      # `bundle-universal` builds both macOS architectures and lipos them, so
-      # one bundle runs on Apple Silicon and Intel.
+      # Both macOS architectures, lipo'd into one bundle that runs on Apple
+      # Silicon and Intel.
       - name: Add the second macOS architecture
-        if: matrix.name == 'macos'
+        if: matrix.name == 'macos' && steps.tag.outputs.skip != 'true'
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
-      - name: Bundle
-        if: matrix.name == 'macos'
+      # ---- nih-plug ----------------------------------------------------------
+
+      - name: Bundle (nih-plug)
+        if: matrix.name == 'macos' && steps.tag.outputs.truce != 'true'
         run: cargo xtask bundle-universal ${{ steps.tag.outputs.plugin }} --release
 
-      - name: Bundle
-        if: matrix.name != 'macos'
+      - name: Bundle (nih-plug)
+        if: matrix.name != 'macos' && steps.tag.outputs.truce != 'true'
         run: cargo xtask bundle ${{ steps.tag.outputs.plugin }} --release
 
       # The bundles link `vst3-sys` (GPLv3), so the binary is conveyed under
       # the GPL and the license text travels with it (`LICENSING.md`). The
       # corresponding source is this repository.
-      - name: Put the license in the archive
+      - name: Put the license in the archive (nih-plug)
+        if: steps.tag.outputs.truce != 'true'
         shell: bash
         run: cp LICENSE-GPL-3.0 target/bundled/LICENSE
+
+      # ---- truce -------------------------------------------------------------
+
+      # `cargo truce build` builds the host architecture only (its universal
+      # path is `cargo truce package`, which makes installers). So each
+      # architecture is built on its own and the binaries inside the bundles
+      # are lipo'd together. The bundles are otherwise identical; the ad-hoc
+      # signature is redone because lipo invalidates it.
+      - name: Bundle (truce, macOS)
+        if: matrix.name == 'macos' && steps.tag.outputs.truce == 'true'
+        run: |
+          set -euo pipefail
+          plugin="${{ steps.tag.outputs.plugin }}"
+          for arch in aarch64 x86_64; do
+            rm -rf target/bundles
+            cargo truce build --clap --vst3 --au2 -p "$plugin" --target "$arch-apple-darwin"
+            mkdir -p "target/arch/$arch"
+            cp -R target/bundles/*.clap target/bundles/*.vst3 target/bundles/*.component "target/arch/$arch/"
+          done
+          mkdir -p target/bundled
+          for bundle in target/arch/aarch64/*; do
+            name=$(basename "$bundle")
+            cp -R "$bundle" target/bundled/
+            for binary in "$bundle"/Contents/MacOS/*; do
+              lipo -create "$binary" "target/arch/x86_64/$name/Contents/MacOS/$(basename "$binary")" \
+                -output "target/bundled/$name/Contents/MacOS/$(basename "$binary")"
+            done
+            codesign --force --deep --sign - "target/bundled/$name"
+            lipo -archs "target/bundled/$name"/Contents/MacOS/*
+          done
+
+      - name: Bundle (truce, Windows)
+        if: matrix.name == 'windows' && steps.tag.outputs.truce == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo truce build --clap --vst3 -p "${{ steps.tag.outputs.plugin }}"
+          mkdir -p target/bundled
+          cp -R target/bundles/*.clap target/bundles/*.vst3 target/bundled/
+
+      # **A bundle that fails the validators does not ship** (`V2-13`). The
+      # same validators as `check.yml`, against the lipo'd bundles on macOS.
+      - name: Install validators (truce)
+        if: steps.tag.outputs.truce == 'true' && steps.tag.outputs.skip != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo install --locked --git https://github.com/free-audio/clap-validator clap-validator
+          if [ "${{ matrix.name }}" = macos ]; then
+            curl -fsSL -o "$RUNNER_TEMP/pluginval.zip" \
+              https://github.com/Tracktion/pluginval/releases/download/v1.0.4/pluginval_macOS.zip
+            unzip -oq "$RUNNER_TEMP/pluginval.zip" -d /Applications/
+          else
+            curl -fsSL -o "$RUNNER_TEMP/pluginval.zip" \
+              https://github.com/Tracktion/pluginval/releases/download/v1.0.4/pluginval_Windows.zip
+            mkdir -p "$RUNNER_TEMP/pluginval"
+            unzip -oq "$RUNNER_TEMP/pluginval.zip" -d "$RUNNER_TEMP/pluginval"
+            echo "$RUNNER_TEMP/pluginval" >> "$GITHUB_PATH"
+          fi
+
+      # `cargo truce validate` reads installed bundles, so the shipped ones are
+      # installed first: what is validated is what goes in the zip. The AU also
+      # goes to the system folder, where the registrar finds it (`check.yml`).
+      - name: Validate (truce)
+        if: steps.tag.outputs.truce == 'true' && steps.tag.outputs.skip != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          plugin="${{ steps.tag.outputs.plugin }}"
+          if [ "${{ matrix.name }}" = macos ]; then
+            mkdir -p ~/Library/Audio/Plug-Ins/CLAP ~/Library/Audio/Plug-Ins/VST3
+            cp -R target/bundled/*.clap ~/Library/Audio/Plug-Ins/CLAP/
+            cp -R target/bundled/*.vst3 ~/Library/Audio/Plug-Ins/VST3/
+            sudo mkdir -p /Library/Audio/Plug-Ins/Components
+            sudo cp -R target/bundled/*.component /Library/Audio/Plug-Ins/Components/
+            killall -9 AudioComponentRegistrar || true
+            for _ in $(seq 1 30); do auval -a | grep -q Nxeu && break; sleep 2; done
+            cargo truce validate --clap --pluginval --auval -p "$plugin" 2>&1 | tee validate.log
+          else
+            cargo truce install --user --clap --vst3 -p "$plugin"
+            cargo truce validate --clap --pluginval -p "$plugin" 2>&1 | tee validate.log
+          fi
+          if grep -E "SKIP|not found" validate.log >/dev/null; then
+            echo "::error::validate skipped a step"
+            exit 1
+          fi
+
+      # Permissive (`LICENSING.md`): both texts, the user picks.
+      - name: Put the license in the archive (truce)
+        if: steps.tag.outputs.truce == 'true' && steps.tag.outputs.skip != 'true'
+        shell: bash
+        run: |
+          cp LICENSE-MIT target/bundled/LICENSE-MIT
+          cp LICENSE-APACHE target/bundled/LICENSE-APACHE
 
       # `zip` is not on the Windows runners and `Compress-Archive` is not
       # anywhere else, so this is two steps rather than one clever one.
       - name: Zip
-        if: matrix.name != 'windows'
+        if: matrix.name != 'windows' && steps.tag.outputs.skip != 'true'
         run: |
           cd target/bundled
           zip -r "../../${{ steps.tag.outputs.archive }}.zip" .
@@ -132,6 +258,7 @@ jobs:
           Compress-Archive -Path target/bundled/* -DestinationPath "${{ steps.tag.outputs.archive }}.zip"
 
       - uses: actions/upload-artifact@v4
+        if: steps.tag.outputs.skip != 'true'
         with:
           name: ${{ matrix.name }}
           path: nxe-*.zip
@@ -139,6 +266,8 @@ jobs:
 
   release:
     needs: bundle
+    # A pull request only proves the build; it never makes a release.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
