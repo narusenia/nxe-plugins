@@ -823,19 +823,15 @@ unsafe extern "C" fn clap_plugin_on_main_thread<P: PluginExport>(plugin: *const 
         // the audio thread. `changed()` re-reads our reported latency;
         // an active plugin additionally needs `request_restart` to apply
         // the new delay compensation.
-        // nxe-plugins patch: `changed` only while inactive. CLAP allows it
-        // only inside `activate`; an active plugin asks for a restart, and
-        // `activate` announces the new latency (clap-validator checks this).
+        // nxe-plugins patch: CLAP allows `latency.changed` only inside
+        // `activate` (clap-validator checks this), so the change is kept for
+        // the next one; an active plugin asks for that restart now.
         if data.latency_dirty.swap(false, Ordering::Relaxed) && !data.host.is_null() {
-            if data.active.load(Ordering::Relaxed) {
-                data.latency_restart.store(true, Ordering::Relaxed);
-                if let Some(req_restart) = (*data.host).request_restart {
-                    req_restart(data.host);
-                }
-            } else if !data.host_latency.is_null()
-                && let Some(changed) = (*data.host_latency).changed
+            data.latency_restart.store(true, Ordering::Relaxed);
+            if data.active.load(Ordering::Relaxed)
+                && let Some(req_restart) = (*data.host).request_restart
             {
-                changed(data.host);
+                req_restart(data.host);
             }
         }
     }
