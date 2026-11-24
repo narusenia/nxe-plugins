@@ -65,16 +65,23 @@ pub fn width_from(centre_hz: f32, pointer_hz: f32) -> f32 {
     (2.0 * (pointer_hz / centre_hz).log2().abs()).clamp(NARROWEST_OCTAVES, WIDEST_OCTAVES)
 }
 
-/// The weight curve, `0..=1` both ways, `0.5` the resting line.
-pub fn weight(params: &crate::params::PumiceParams) -> Vec<(f32, f32)> {
+/// The weight curve, `0..=1` both ways, `0.5` the resting line, at `points`
+/// evenly spaced positions along the axis.
+///
+/// **One point per pixel, not `CURVE_POINTS`.** 128 points were 13 an octave,
+/// and a node can be a tenth of an octave wide, so its bump was drawn from one
+/// or two points and the line looked broken. `weight_at` is a formula, so
+/// sampling it finely costs six nodes per pixel and nothing else.
+pub fn weight(params: &crate::params::PumiceParams, points: usize) -> Vec<(f32, f32)> {
     let nodes = params.nodes();
     let range = params.range();
     let edge = Settings::DEFAULT.edge_octaves;
-    (0..CURVE_POINTS)
+    let last = points.max(2) - 1;
+    (0..=last)
         .map(|index| {
-            let hz = point_hz(index);
-            let weight = pumice_core::nodes::weight_at(hz, &nodes, range, edge);
-            (x_of(hz), (weight * 0.5).clamp(0.0, 1.0))
+            let x = index as f32 / last as f32;
+            let weight = pumice_core::nodes::weight_at(hz_of(x), &nodes, range, edge);
+            (x, (weight * 0.5).clamp(0.0, 1.0))
         })
         .collect()
 }
@@ -231,10 +238,25 @@ pub fn field(
         [pos2(plot.left(), y_at(0.5)), pos2(plot.right(), y_at(0.5))],
         Stroke::new(1.0, ink.muted.at(0.5).color()),
     );
-    let line: Vec<Pos2> = weight(params)
+    let line: Vec<Pos2> = weight(params, plot.width().round() as usize + 1)
         .into_iter()
         .map(|(x, y)| pos2(x_at(x), y_at(y)))
         .collect();
+    // A faint flat fill between the resting line and the weight, so a node
+    // reads as a shape and not as a kink in a wire. One quad per pixel column.
+    let rest = y_at(0.5);
+    let fill = ink.ink.at(0.14).color();
+    let mut mesh = egui::Mesh::default();
+    for pair in line.windows(2) {
+        let base = mesh.vertices.len() as u32;
+        mesh.colored_vertex(pair[0], fill);
+        mesh.colored_vertex(pos2(pair[0].x, rest), fill);
+        mesh.colored_vertex(pair[1], fill);
+        mesh.colored_vertex(pos2(pair[1].x, rest), fill);
+        mesh.add_triangle(base, base + 1, base + 2);
+        mesh.add_triangle(base + 1, base + 3, base + 2);
+    }
+    painter.add(Shape::mesh(mesh));
     painter.add(Shape::line(line, Stroke::new(2.0, ink.ink.color())));
 
     // The nodes.
@@ -431,15 +453,27 @@ mod tests {
     #[test]
     fn a_node_bends_the_weight() {
         let params = PumiceParams::default();
-        let flat = weight(&params);
+        let flat = weight(&params, 512);
         params.set_plain(params.node3.enabled.id(), 1.0);
         params.set_plain(params.node3.depth.id(), 1.0);
-        let bent = weight(&params);
+        let bent = weight(&params, 512);
         let moved = flat
             .iter()
             .zip(&bent)
             .map(|(a, b)| (a.1 - b.1).abs())
             .fold(0.0f32, f32::max);
         assert!(moved > 0.2, "the weight moved by {moved}");
+    }
+
+    /// The narrowest node is drawn from many points, not one or two.
+    #[test]
+    fn the_narrowest_node_is_drawn_smoothly() {
+        let params = PumiceParams::default();
+        params.set_plain(params.node3.enabled.id(), 1.0);
+        params.set_plain(params.node3.depth.id(), 1.0);
+        params.set_plain(params.node3.width.id(), f64::from(NARROWEST_OCTAVES));
+        let curve = weight(&params, 1200);
+        let raised = curve.iter().filter(|(_, y)| *y > 0.55).count();
+        assert!(raised >= 8, "the bump is {raised} points wide");
     }
 }

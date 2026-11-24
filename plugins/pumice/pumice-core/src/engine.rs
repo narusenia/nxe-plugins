@@ -386,7 +386,7 @@ impl Engine {
             crate::display::full_scale(self.stft.block()),
             &mut into.spectrum_db,
         );
-        crate::display::resample_into(
+        crate::display::resample_hold_into(
             &self.detector.smoothed_db[..bins],
             bin_hz,
             &mut into.reduction_db,
