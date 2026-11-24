@@ -24,20 +24,68 @@ pub fn centre(index: usize, bands: usize) -> f32 {
 }
 
 pub fn axis(ui: &Ui, palette: &Palette, rect: Rect) {
-    let painter = ui.painter_at(rect.expand(12.0));
-    for (hz, text) in [(100.0, "100"), (1_000.0, "1k"), (10_000.0, "10k")] {
+    let painter = ui.painter_at(rect.expand(14.0));
+    let labels = font::mono(FONT_VALUE);
+    // Every 1-2-5 step gets a line; the decades are stronger and every step
+    // that fits gets its figure.
+    let mut last_label = f32::NEG_INFINITY;
+    for (hz, text) in [
+        (20.0, "20"),
+        (50.0, "50"),
+        (100.0, "100"),
+        (200.0, "200"),
+        (500.0, "500"),
+        (1_000.0, "1k"),
+        (2_000.0, "2k"),
+        (5_000.0, "5k"),
+        (10_000.0, "10k"),
+        (20_000.0, "20k"),
+    ] {
         let x = rect.left() + x_of(hz) * rect.width();
+        let decade = text.starts_with('1') || hz == 20.0;
         painter.line_segment(
             [pos2(x, rect.top()), pos2(x, rect.bottom())],
-            Stroke::new(1.0, palette.line.color()),
+            Stroke::new(
+                1.0,
+                if decade {
+                    palette.line
+                } else {
+                    palette.line.at(0.5)
+                }
+                .color(),
+            ),
+        );
+        if x - last_label >= 26.0 {
+            last_label = x;
+            painter.text(
+                pos2(x, rect.bottom() + 2.0),
+                Align2::CENTER_TOP,
+                text,
+                labels.clone(),
+                if decade {
+                    palette.muted
+                } else {
+                    palette.subtle
+                }
+                .color(),
+            );
+        }
+    }
+    let mut db = TOP_DB - 12.0;
+    while db > FLOOR_DB {
+        let y = rect.bottom() - (db - FLOOR_DB) / (TOP_DB - FLOOR_DB) * rect.height();
+        painter.line_segment(
+            [pos2(rect.left(), y), pos2(rect.right(), y)],
+            Stroke::new(1.0, palette.line.at(0.5).color()),
         );
         painter.text(
-            pos2(x, rect.bottom() + 2.0),
-            Align2::CENTER_TOP,
-            text,
-            font::mono(FONT_VALUE),
+            pos2(rect.right() - 2.0, y - 1.0),
+            Align2::RIGHT_BOTTOM,
+            format!("{db:.0}"),
+            labels.clone(),
             palette.subtle.color(),
         );
+        db -= 12.0;
     }
 }
 
@@ -53,9 +101,12 @@ pub fn figure<const BANDS: usize>(
         .iter()
         .enumerate()
         .map(|(index, level)| {
-            let tilted = crate::decibels(*level).unwrap_or(FLOOR_DB - 12.0)
-                + tilt * (centre(index, BANDS) / 1_000.0).log2();
-            ((tilted - FLOOR_DB) / (TOP_DB - FLOOR_DB)).clamp(0.0, 1.0)
+            // Silence stays on the floor: tilting it lifted the top end of a
+            // silent spectrum by 19 dB.
+            crate::decibels(*level).map_or(0.0, |db| {
+                let tilted = db + tilt * (centre(index, BANDS) / 1_000.0).log2();
+                ((tilted - FLOOR_DB) / (TOP_DB - FLOOR_DB)).clamp(0.0, 1.0)
+            })
         })
         .collect();
     let shown = smooth::smoothed(ui, ui.id().with("peek-spectrum"), &db, smooth::TAU);
@@ -96,6 +147,19 @@ pub fn figure<const BANDS: usize>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn silence_is_on_the_floor_whatever_the_tilt() {
+        let ctx = egui::Context::default();
+        let _ = ctx.run_ui(Default::default(), |ui| {
+            let rect = egui::Rect::from_min_size(pos2(0.0, 0.0), egui::vec2(100.0, 100.0));
+            figure(ui, &Palette::PEEK, rect, &[0.0f32; 8], 4.5);
+            let shown: Vec<f32> = ui
+                .data(|data| data.get_temp(ui.id().with("peek-spectrum-peaks")))
+                .unwrap();
+            assert!(shown.iter().all(|value| *value == 0.0), "{shown:?}");
+        });
+    }
 
     #[test]
     fn the_axis_is_logarithmic() {
