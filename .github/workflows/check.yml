@@ -104,7 +104,7 @@ jobs:
           unzip -oq "$RUNNER_TEMP/pluginval.zip" -d /Applications/
 
       - name: Install the plugins
-        run: cargo truce install --user --clap --vst3 --au2 -p doubler
+        run: cargo truce install --user --clap --vst3 --au2
 
       # **auval did not find a component installed for the user** — on the
       # runner, and on a development Mac where the DAWs listed it fine. The AU
@@ -127,7 +127,7 @@ jobs:
       - name: Validate
         run: |
           set -e -o pipefail
-          cargo truce validate --clap --pluginval --auval -p doubler 2>&1 | tee validate.log
+          cargo truce validate --clap --pluginval --auval 2>&1 | tee validate.log
           if grep -E "SKIP|not found" validate.log >/dev/null; then
             echo "::error::validate skipped a step"
             exit 1

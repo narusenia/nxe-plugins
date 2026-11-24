@@ -233,6 +233,13 @@ draft release の zip。
 
 **完了条件**: V2-7 と同じ。加えて、型の寸法が `design-system.md` にある。
 
+**進み具合**: truce への移植は済み（`NXE Sparkleur 2` / `sparkleur2` /
+`Spk2`、MIT OR Apache-2.0）。窓はまだ仮で、H4 の窓とプリセットが残り。
+移植で変わったことが 1 つある。**Solo の 5 つは自動化できるようになった。**
+truce の `flags` には「自動化しない」だけを指定する方法が無く、`readonly` は
+窓からの変更も止めてしまう。保存された Solo が付いたまま開くと壊れて聞こえる
+ので、窓で Solo の状態がはっきり見えるようにする。
+
 ### V2-10 / V2-11 / V2-12 — Velour 2 / Air 2 / Diorama 2
 
 V2-9 の型に載せる。完了条件は V2-7 と同じ。

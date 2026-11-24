@@ -19,6 +19,7 @@ use crate::params::SparkleurParams;
 use nxe_audio::harmonics::{amplitude, at_dbfs, bin_of, db_ratio, noise, pink, rms, tone};
 use sparkleur_core::crossover::BAND_COUNT;
 use sparkleur_core::engine::{Engine, Shape};
+use truce::params::FloatParamReadF32;
 
 const RATE: f32 = 48_000.0;
 const BLOCK: usize = 64;

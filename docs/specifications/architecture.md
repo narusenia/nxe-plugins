@@ -27,8 +27,8 @@ xtask/                            nih_plug_xtask のバンドラ（nih-plug 側�
 ```
 
 **v2 の移行中は 2 つのフレームワークが同じワークスペースに並ぶ**
-（`docs/implementation/v2-plan.md`）。truce に移ったのは Doubler だけで、
-残り 4 本のラッパと `nxe-ui` / `nxe-plug-ui` は nih-plug + vizia のまま。
+（`docs/implementation/v2-plan.md`）。truce に移ったのは Doubler と Sparkleur で、
+残り 4 本（Velour / Air / Diorama / Pumice）のラッパと `nxe-ui` / `nxe-plug-ui` は nih-plug + vizia のまま。
 依存は衝突しない: truce の窓は `baseview-truce` という別名のクレートを使うので、
 下の `[patch]` で差し替えている baseview とは別物として解決される。
 
