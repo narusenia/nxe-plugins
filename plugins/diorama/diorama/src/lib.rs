@@ -327,7 +327,7 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn window_matches_its_screenshot_macos() {
-        truce_test::screenshot!(Plugin, "screenshots/default_macos.png")
+        truce_test::screenshot!(Plugin, "screenshots/diorama_macos.png")
             .pixel_threshold(2)
             .run();
     }
@@ -335,7 +335,7 @@ mod tests {
     #[cfg(target_os = "windows")]
     #[test]
     fn window_matches_its_screenshot_windows() {
-        truce_test::screenshot!(Plugin, "screenshots/default_windows.png")
+        truce_test::screenshot!(Plugin, "screenshots/diorama_windows.png")
             .pixel_threshold(2)
             .run();
     }
