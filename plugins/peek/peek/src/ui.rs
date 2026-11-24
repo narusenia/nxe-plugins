@@ -162,8 +162,8 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         &PALETTE,
         cell(ui, lower[1], "Spectrogram"),
         &readings.spectrogram.levels.read(),
-        -96.0,
-        -12.0,
+        -72.0,
+        -18.0,
     );
     peek_ui::scope::figure(ui, &PALETTE, cell(ui, lower[2], "Scope"), &readings.scope);
 

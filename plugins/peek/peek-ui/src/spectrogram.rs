@@ -57,8 +57,11 @@ pub fn figure<const BANDS: usize>(
             line.copy_within(1.., 0);
             // Row 0 is the top of the picture: the highest band.
             let level = levels[BANDS - 1 - row];
-            let strength =
-                crate::decibels(level).map_or(0.0, |db| ((db - floor) / span).clamp(0.0, 1.0));
+            // Squared, so the loud half of the range keeps its steps: linear,
+            // music sat near the top and the picture went flat grey.
+            let strength = crate::decibels(level)
+                .map_or(0.0, |db| ((db - floor) / span).clamp(0.0, 1.0))
+                .powi(2);
             line[COLUMNS - 1] = palette.ground.mix(palette.accent, strength).color();
         }
         state.texture.set(

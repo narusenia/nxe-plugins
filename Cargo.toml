@@ -85,7 +85,14 @@ egui = "0.34"
 # the next pass — which `screenshot!` (one pass) never reaches, so the window's
 # own faces would never be in a baseline. Marked `nxe-plugins patch` in
 # `patches/truce-egui/src/font.rs` and `editor.rs`.
+#
+# **baseview-truce 0.1.1-truce.13 with one change**: the frame timer runs in
+# the run loop's common modes. In the default mode alone it stops while a
+# host window is being resized (the event-tracking mode), so a resizable
+# editor (`Peek`) froze until the mouse came up. Marked `nxe-plugins patch` in
+# `patches/baseview-truce/src/macos/window.rs`.
 [patch.crates-io]
+baseview-truce = { path = "patches/baseview-truce" }
 truce-clap = { path = "patches/truce-clap" }
 truce-egui = { path = "patches/truce-egui" }
 

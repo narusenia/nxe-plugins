@@ -9,9 +9,9 @@ pub struct PeekSpectrogramParams {
     #[skip]
     pub readings: SpectrumReadings<SPECTROGRAM_BANDS>,
 
-    #[param(name = "Floor", range = "linear(-120, -48)", default = -96.0, unit = "dB")]
+    #[param(name = "Floor", range = "linear(-120, -48)", default = -72.0, unit = "dB")]
     pub floor: FloatParam,
 
-    #[param(name = "Ceiling", range = "linear(-48, 0)", default = -12.0, unit = "dB")]
+    #[param(name = "Ceiling", range = "linear(-48, 0)", default = -18.0, unit = "dB")]
     pub ceiling: FloatParam,
 }
