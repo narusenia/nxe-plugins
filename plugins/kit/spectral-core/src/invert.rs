@@ -72,21 +72,24 @@ impl Invert {
         self.shell.process(input, |frame| {
             for (index, channel) in channels.iter_mut().enumerate().take(frame.channels()) {
                 let bins = frame.channel(index);
+                // The band as bins that exist: at a low sample rate `high`
+                // can sit past Nyquist.
+                let (first, top) = (low.ceil() as usize, (high as usize).min(bins.len() - 1));
                 channel.magnitude.fill(0.0);
                 for (bin, value) in bins.iter().enumerate() {
                     let (magnitude, frequency) = channel.analysis.read(bin, *value);
-                    if !(low..=high).contains(&(bin as f32)) {
+                    if !(first..=top).contains(&bin) {
                         continue;
                     }
                     let target = low + high - frequency;
-                    let to = (target.round() as usize).clamp(low.ceil() as usize, high as usize);
+                    let to = (target.round().max(0.0) as usize).clamp(first, top);
                     // The loudest source decides the frequency a bin carries.
                     if magnitude > channel.magnitude[to] {
                         channel.frequency[to] = target;
                     }
                     channel.magnitude[to] += magnitude;
                 }
-                let band = (low.ceil() as usize)..=(high as usize).min(bins.len() - 1);
+                let band = first..=top;
                 for (bin, value) in bins
                     .iter_mut()
                     .enumerate()
@@ -138,6 +141,15 @@ mod tests {
         let out = run(8_000.0, &BAND);
         let tail = &out[RATE as usize / 2..];
         assert!(level_at(tail, 8_000.0) > 0.2, "{}", level_at(tail, 8_000.0));
+    }
+
+    #[test]
+    fn a_band_past_nyquist_does_not_panic() {
+        let mut invert = Invert::new(8_000.0);
+        for index in 0..8_000 {
+            let x = sine(index, 1_000.0);
+            assert!(invert.process([x, x], &BAND)[0].is_finite());
+        }
     }
 
     #[test]
