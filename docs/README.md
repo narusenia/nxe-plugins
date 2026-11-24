@@ -61,6 +61,7 @@
 | Diorama | 声の前後位置を作る（初期反射 + 直接音）**v0.2.0 で初出荷** | [要件](../plugins/diorama/docs/requirements/REQ-DIO.md) / [DSP](../plugins/diorama/docs/specifications/dsp.md) / [UI](../plugins/diorama/docs/specifications/ui.md) / [計画](../plugins/diorama/docs/implementation/diorama-plan.md) |
 | Peek | メーターのシリーズ（Level / VU / Stereo / Spectrum / Spectrogram / Loudness / Scope と、まとめの Peek）。音は変えない | [計画](../plugins/peek/docs/implementation/peek-plan.md) |
 | Kit（Nonlinear） | Design から切り出す小さなプラグイン 3 本（Fold / Fever / Buckle）。つまみ 3 つ | [計画](../plugins/kit/docs/implementation/nonlinear-kit-plan.md) |
+| Kit（Spectral） | STFT の上の Kit 3 本（Invert / Shear / Afterimage）。レイテンシを報告する | [計画](../plugins/kit/docs/implementation/spectral-kit-plan.md) |
 | Vocal Glue | ボーカルバスの結束（直列 5 段）**要件のみ** | [要件](../plugins/vocal-glue/docs/requirements/REQ-GLU.md) |
 
 ## 構想

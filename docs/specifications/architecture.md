@@ -135,6 +135,12 @@ doubler ──→ doubler-core      （DSP。truce も egui も知らない）
 **2026-09-01。** どちらも Pumice（`REQ-PUM-007`）が初めてで、**規則を折って
 いるのではなく、規則が想定していなかった場合**なので、理由をここに残す。
 
+**2026-11-25 追記。** Spectral Kit（Invert / Shear / Afterimage）が 2 例目。
+STFT は `crates/nxe-spectral` に移し、3 本とも `NORMAL` 固定で 1 ブロックを
+申告する。乾いた音も変換を通るので、`MIX` = 0 はビット一致しない
+（`spectral-kit-plan.md`）。Nonlinear Kit も乾いた音をオーバーサンプラに
+通すので同じ（`nonlinear-kit-plan.md` の決定 5）。
+
 ### FFT は禁止されていない。「安いもので済むなら FFT を使わない」だった
 
 過去に 2 回却下している。`nxe_dsp::spectrum` は「表示は対数軸で、FFT の

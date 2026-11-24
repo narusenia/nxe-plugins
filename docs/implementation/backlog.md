@@ -83,7 +83,9 @@ V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実
 | KIT-2 | Fever | KIT-1 | 🟡 同上 |
 | KIT-3 | Buckle | KIT-1 | 🟡 同上 |
 | KIT-4 | 最初の beta（`kit-<YYYY.MM>-beta.N`） | KIT-1〜3 | ⬜ |
-| KIT-5 | Spectral Kit（Invert / Shear / Afterimage）と `nxe-spectral` の切り出し | — | ⬜ |
+| KIT-5 | `nxe-spectral` の切り出し、`spectral-core`、Invert（[`spectral-kit-plan.md`](../../plugins/kit/docs/implementation/spectral-kit-plan.md)） | KIT-1 | 🟡 コードは済み。Windows の基準画像と耳が残り |
+| KIT-6 | Shear | KIT-5 | 🟡 同上 |
+| KIT-7 | Afterimage | KIT-5 | 🟡 同上 |
 
 ### v0 から持ち越したもの
 
