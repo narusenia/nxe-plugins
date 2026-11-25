@@ -2677,6 +2677,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "parasite"
+version = "1.0.0"
+dependencies = [
+ "clap-sys",
+ "egui",
+ "kit-ui",
+ "nxe-dsp",
+ "nxe-egui",
+ "parasite-core",
+ "truce",
+ "truce-au",
+ "truce-clap",
+ "truce-core",
+ "truce-egui",
+ "truce-loader",
+ "truce-params",
+ "truce-standalone",
+ "truce-test",
+ "truce-utils",
+ "truce-vst3",
+]
+
+[[package]]
+name = "parasite-core"
+version = "0.1.0"
+dependencies = [
+ "nxe-audio",
+]
+
+[[package]]
 name = "parking_lot"
 version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"

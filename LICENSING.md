@@ -130,6 +130,7 @@ Steinberg Media Technologies GmbH`）。`vst3-sys` が GPLv3 を選んだ理由 
 |---|---|---|---|
 | Inter（Regular / Medium） | **SIL OFL 1.1** | `crates/nxe-ui/assets/inter/` | 語。Medium は v2（`nxe-egui`）だけ |
 | Geist Mono（Regular） | **SIL OFL 1.1** | `crates/nxe-ui/assets/geist/` | 数値 |
+| Ioskeley Mono NL（Regular / Medium） | **SIL OFL 1.1** | `crates/nxe-egui/assets/ioskeley/` | Design の窓の語（Parasite から） |
 
 **OFL はフォント自体の条件で、それをリンクしたソフトウェアには伝染しない。**
 `nxe-ui` と `nxe-egui` が MIT OR Apache-2.0 のままでいられるのはこのため — 上の境界
