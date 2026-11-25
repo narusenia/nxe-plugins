@@ -6,8 +6,13 @@
 //! settles, the way a drop's bubble rings as it closes. **Pitch** is where it
 //! settles, **Size** how big it is — bigger rings longer and slides slower —
 //! and **Splash** how many fall, how far apart in time and stereo, and how
-//! loosely tuned. In **Follow** a drop settles on the harmonic of the input's
-//! pitch nearest to Pitch; with no clear pitch it falls as in **Free**.
+//! loosely tuned. In **Follow** a drop settles on the octave or fifth of the
+//! input's pitch nearest to where it would fall (harmonics 1, 2, 3, 4, 6, 8,
+//! 12, ...: a 9th or 11th harmonic at 2 kHz no longer sounds like the note),
+//! and **keeps settling while it rings**: the tracker needs a few tens of
+//! milliseconds on a new note, so a drop let fall on the attack first heads
+//! for the old note and slides over once the new one is heard. With no clear
+//! pitch it falls as in **Free**.
 //!
 //! A drop's level is the input's recent peak when the drop starts to sound,
 //! and even the first waits a few milliseconds, so a slow attack has risen by
@@ -81,6 +86,8 @@ struct Drop {
     gain: f32,
     phase: f32,
     hz: f32,
+    /// Where it would settle in Free; Follow moves it onto the input.
+    wanted: f32,
     settle_hz: f32,
     rise: f32,
     amplitude: f32,
@@ -148,6 +155,8 @@ impl Dew {
 
         let mut wet = [0.0; 2];
         let peak = self.peak.min(1.0);
+        let followed = (settings.follow && self.pitch.clarity() > CLEAR).then(|| self.pitch.hz());
+        let ceiling = 0.45 * self.sample_rate;
         for drop in &mut self.drops {
             if drop.wait > 0 {
                 drop.wait -= 1;
@@ -158,6 +167,9 @@ impl Dew {
             }
             if drop.amplitude <= 0.0 {
                 continue;
+            }
+            if followed.is_some() {
+                drop.settle_hz = settle(drop.wanted, followed).min(ceiling);
             }
             drop.hz += drop.rise * (drop.settle_hz - drop.hz);
             drop.phase = (drop.phase + drop.hz / self.sample_rate).fract();
@@ -224,6 +236,7 @@ impl Dew {
                 gain,
                 phase: 0.0,
                 hz: settle_hz / (1.0 + RISE),
+                wanted,
                 settle_hz,
                 rise,
                 amplitude: 0.0,
@@ -271,13 +284,21 @@ fn attack_ratio(sensitivity: f32) -> f32 {
     10f32.powf(db / 10.0)
 }
 
-/// Where a drop that wants `wanted` Hz settles: there, or on the harmonic of
-/// `followed` nearest to it.
+/// Where a drop that wants `wanted` Hz settles: there, or on the octave or
+/// fifth of `followed` (harmonic `2^n` or `3·2^n`) nearest to it in pitch.
 pub fn settle(wanted: f32, followed: Option<f32>) -> f32 {
-    match followed {
-        Some(hz) if hz > 0.0 => hz * (wanted / hz).round().max(1.0),
-        _ => wanted,
-    }
+    let Some(hz) = followed.filter(|hz| *hz > 0.0) else {
+        return wanted;
+    };
+    let octaves = (wanted / hz).max(1.0).log2();
+    let below = octaves.floor().exp2();
+    // Within one octave the candidates are the octave below, its fifth, and
+    // the octave above; the nearest in log distance wins.
+    [below, 1.5 * below, 2.0 * below]
+        .into_iter()
+        .map(|k| hz * k)
+        .min_by(|a, b| (a / wanted).ln().abs().total_cmp(&(b / wanted).ln().abs()))
+        .unwrap_or(wanted)
 }
 
 #[cfg(test)]
@@ -415,14 +436,61 @@ mod tests {
     }
 
     #[test]
-    fn follow_settles_on_a_harmonic() {
-        let hz = settle(1_000.0, Some(220.0));
-        assert!((hz / 220.0 - (hz / 220.0).round()).abs() < 1e-4);
-        assert!((hz - 1_100.0).abs() < 1e-3);
+    fn follow_settles_on_an_octave_or_a_fifth() {
+        // 1 kHz over a 220 Hz note: 880 (two octaves) beats 1320 (a fifth above).
+        assert!((settle(1_000.0, Some(220.0)) - 880.0).abs() < 1e-2);
+        // 1.25 kHz: 1320, the fifth, is nearer.
+        assert!((settle(1_250.0, Some(220.0)) - 1_320.0).abs() < 1e-2);
+        // Never the 9th or 11th harmonic.
+        for wanted in [1_900.0, 2_000.0, 2_400.0] {
+            let k = settle(wanted, Some(220.0)) / 220.0;
+            let odd = k / k.log2().floor().exp2();
+            assert!(
+                (odd - 1.0).abs() < 1e-3 || (odd - 1.5).abs() < 1e-3,
+                "{wanted}: {k}"
+            );
+        }
         // Under the fundamental it settles on the fundamental.
         assert_eq!(settle(100.0, Some(220.0)), 220.0);
         // No clear pitch, no change.
         assert_eq!(settle(1_000.0, None), 1_000.0);
+    }
+
+    #[test]
+    fn a_ringing_drop_moves_to_a_new_note() {
+        // A long drop let fall on a 220 Hz note; the note changes to 330 Hz
+        // while it rings, and the drop ends on 330 Hz's octaves and fifths.
+        let settings = Settings {
+            size: 1.0,
+            splash: 0.0,
+            follow: true,
+            pitch: 1_000.0,
+            ..SETTINGS
+        };
+        let mut dew = Dew::new(RATE);
+        let saw = |i: usize, hz: f32| ((hz * i as f32 / RATE).fract() * 2.0 - 1.0) * 0.3;
+        for i in 0..(RATE * 0.5) as usize {
+            dew.process([saw(i, 220.0); 2], &settings);
+        }
+        // A fresh attack on the new note, then let it settle.
+        for _ in 0..(RATE * 0.004) as usize {
+            dew.process([0.0; 2], &settings);
+        }
+        for i in 0..(RATE * 0.12) as usize {
+            dew.process([saw(i, 330.0); 2], &settings);
+        }
+        let sounding: Vec<f32> = dew
+            .drops
+            .iter()
+            .filter(|d| d.sounding())
+            .map(|d| d.settle_hz)
+            .collect();
+        assert!(!sounding.is_empty());
+        for hz in sounding {
+            let k = hz / 330.0;
+            let odd = k / k.log2().floor().exp2();
+            assert!((odd - 1.0).abs() < 0.02 || (odd - 1.5).abs() < 0.02, "{hz}");
+        }
     }
 
     #[test]
