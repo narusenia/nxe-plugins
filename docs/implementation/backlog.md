@@ -99,7 +99,7 @@ V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実
 | MEN-2 | `nxe_egui::colour`（Colour 6 の枠、`Palette::COLOUR`、音名の色） | — | ✅ |
 | MEN-3 | Meniscus のプラグイン | MEN-1, MEN-2 | 🟡 コードと基準画像（macOS / Windows）は済み。耳が残り |
 | PRI-1 | `resonance_core::prisma`（音、倍音、Coupling、Freeze） | RES-2 | ✅ 試験 10 本 |
-| PRI-2 | Prisma のプラグイン（MIDI を受ける、図はプリズム） | PRI-1, MEN-2 | 🟡 コードと基準画像（macOS / Windows）は済み。MIDI を送って耳で確かめることが残り |
+| PRI-2 | Prisma のプラグイン（MIDI を受ける、図はプリズム） | PRI-1, MEN-2 | ✅ コードと基準画像（macOS / Windows）。2026-11-26 に DAW から MIDI を送って動くことを確かめた。付属プリセットの値は仮 |
 | COL-1 | 最初の beta（`colour-<YYYY.MM>-beta.N`） | MEN-3, PRI-2 | ⬜ |
 
 ### Design — [`parasite-plan.md`](../../plugins/parasite/docs/implementation/parasite-plan.md)
