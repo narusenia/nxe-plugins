@@ -106,4 +106,4 @@ v0 で払った代償のうち、フレームワークを替えても残るも�
 ## まだ決めていないこと
 
 [`implementation/v2-plan.md`](implementation/v2-plan.md) の「まだ決めていない
-こと」が正。Linux は 2026-11-26 に戻した（x86_64 の CLAP と VST3、zip だけ）。確かめるのは CI（ビルド、テスト、clap-validator、仮想画面の上の pluginval）だけで、実機の DAW では見ていない。
+こと」が正。Linux は 2026-11-26 に戻した（x86_64 の CLAP と VST3、zip だけ）。確かめるのは CI（ビルド、テスト、clap-validator、仮想画面の上の pluginval）だけで、実機の DAW では見ていない。2026-11-26 に全 5 シリーズを Linux 付きで出した（`basic`・`peek`・`kit` は beta.3、`design` は beta.2、`colour` は beta.1。workflow がプレリリースとして公開する）。**タグを一度に 4 つ以上 push すると、GitHub はタグの push で workflow を起動しない**。3 つまでずつ push するか、`gh workflow run release.yml --ref <tag> -f tag=<tag>` で起動する。

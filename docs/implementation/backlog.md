@@ -50,7 +50,7 @@ V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実
 | V2-5 | `nxe-ui` の egui 版とギャラリー | V2-2, V2-3 | ✅ `crates/nxe-egui`。全部品がギャラリーにあり、パレットのテストを引き継いだ |
 | V2-6 | 信号表示の平滑化 | V2-5 | ✅ `nxe_egui::smooth`。30 Hz の読みを 60 Hz で描いて毎フレーム動くことをテストで確認 |
 | V2-7 | Doubler 2 を型に載せる | V2-5, V2-6 | 🟡 コードと基準画像（macOS / Windows、CI で焼いたもの）は済み。残りは実機で見ること、描画予算の測定、付属プリセットの中身を耳で決めること |
-| V2-8 | Basic の beta（6 本まとめて、`basic-<YYYY.MM>-beta.N`） | V2-4, V2-7, V2-13 | ✅ `basic-2026.11-beta.1`（2026-11-25、プリセットと Pumice の PDC は未確認のまま β として出した） |
+| V2-8 | Basic の beta（6 本まとめて、`basic-<YYYY.MM>-beta.N`） | V2-4, V2-7, V2-13 | ✅ `basic-2026.11-beta.1`（2026-11-25、プリセットと Pumice の PDC は未確認のまま β として出した）。`basic-2026.11-beta.3`（2026-11-26）で Linux |
 | V2-9 | Sparkleur 2（型を確定する） | V2-7 | 🟡 コード、寸法の書き戻し、基準画像（macOS / Windows、CI で焼いたもの）は済み。残りは実機で見ること、付属プリセットの中身を耳で決めること |
 | V2-10 | Velour 2 | V2-9 | 🟡 コード、基準画像（CI で焼いたもの）は済み（#20）。残りは実機で見ること、付属プリセットの中身を耳で決めること |
 | V2-11 | Air 2 | V2-9 | 🟡 コード、基準画像（CI で焼いたもの）は済み（#21）。残りは実機で見ること、付属プリセットの中身を耳で決めること |
@@ -73,7 +73,7 @@ V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実
 | PEEK-6 | Peek Loudness | PEEK-1 | 🟡 同上。EBU の試験条件 3 つは試験で確認済み |
 | PEEK-7 | Peek Scope | PEEK-1 | 🟡 同上 |
 | PEEK-8 | Peek（まとめ、ホストでリサイズ可） | PEEK-2〜7 | 🟡 同上 |
-| PEEK-9 | 最初の beta（`peek-<YYYY.MM>-beta.N`） | PEEK-1 | ✅ `peek-2026.11-beta.1`（2026-11-25、1cdbb9a） |
+| PEEK-9 | 最初の beta（`peek-<YYYY.MM>-beta.N`） | PEEK-1 | ✅ `peek-2026.11-beta.1`（2026-11-25、1cdbb9a）。`peek-2026.11-beta.3`（2026-11-26）で Linux |
 
 ### Kit — [`nonlinear-kit-plan.md`](../../plugins/kit/docs/implementation/nonlinear-kit-plan.md)
 
@@ -82,7 +82,7 @@ V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実
 | KIT-1 | `Palette::DESIGN_KIT`、`kit-ui`、`nonlinear-core`、Fold | — | ✅ 付属プリセットは 2026-11-26 に耳で確かめた。コード（#36）と基準画像（macOS / Windows、#38） |
 | KIT-2 | Fever | KIT-1 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた |
 | KIT-3 | Buckle | KIT-1 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた |
-| KIT-4 | 最初の beta（`kit-<YYYY.MM>-beta.N`） | KIT-1〜3 | ✅ `kit-2026.11-beta.1`（2026-11-25、1cdbb9a）。Spectral Kit の 3 本も同じ版に乗った |
+| KIT-4 | 最初の beta（`kit-<YYYY.MM>-beta.N`） | KIT-1〜3 | ✅ `kit-2026.11-beta.1`（2026-11-25、1cdbb9a）。Spectral Kit の 3 本も同じ版に乗った。`kit-2026.11-beta.3`（2026-11-26）で Colour の Kit 4 本と Linux |
 | KIT-5 | `nxe-spectral` の切り出し、`spectral-core`、Invert（[`spectral-kit-plan.md`](../../plugins/kit/docs/implementation/spectral-kit-plan.md)） | KIT-1 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた。コード（#37）と基準画像（#38） |
 | KIT-6 | Shear | KIT-5 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた |
 | KIT-7 | Afterimage | KIT-5 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた |
@@ -100,7 +100,7 @@ V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実
 | MEN-3 | Meniscus のプラグイン | MEN-1, MEN-2 | 🟡 コードと基準画像（macOS / Windows）は済み。耳が残り |
 | PRI-1 | `resonance_core::prisma`（音、倍音、Coupling、Freeze） | RES-2 | ✅ 試験 10 本 |
 | PRI-2 | Prisma のプラグイン（MIDI を受ける、図はプリズム） | PRI-1, MEN-2 | ✅ コードと基準画像（macOS / Windows）。2026-11-26 に DAW から MIDI を送って動くことを確かめた。付属プリセットの値は仮 |
-| COL-1 | 最初の beta（`colour-<YYYY.MM>-beta.N`） | MEN-3, PRI-2 | ⬜ |
+| COL-1 | 最初の beta（`colour-<YYYY.MM>-beta.N`） | MEN-3, PRI-2 | ✅ `colour-2026.11-beta.1`（2026-11-26、65fea46、Linux 付き） |
 
 ### Design — [`parasite-plan.md`](../../plugins/parasite/docs/implementation/parasite-plan.md)
 
@@ -109,7 +109,7 @@ V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実
 | PAR-1 | `parasite-core`: ピッチ追従（YIN）とエンジン、4 種 | — | ✅ 2026-11-25 に付属プリセットで耳で確かめた |
 | PAR-2 | `nxe_egui::design`（Design 7 の枠と細いスライダー） | — | ✅ |
 | PAR-3 | Parasite のプラグイン | PAR-1, PAR-2 | ✅ |
-| PAR-4 | 最初の beta（`design-<YYYY.MM>-beta.N`） | PAR-3 | ✅ `design-2026.11-beta.1`（2026-11-25、Latest） |
+| PAR-4 | 最初の beta（`design-<YYYY.MM>-beta.N`） | PAR-3 | ✅ `design-2026.11-beta.1`（2026-11-25）。`design-2026.11-beta.2`（2026-11-26）で Linux |
 
 ### v0 から持ち越したもの
 
