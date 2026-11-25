@@ -24,8 +24,8 @@
 //! species switch without a jump and the dry signal lines up; the plugin
 //! reports it as latency.
 
-use crate::pitch::{self, Pitch};
 use nxe_audio::envelope::Power;
+use nxe_audio::pitch::{self, Pitch};
 use nxe_audio::{DelayLine, Envelope};
 use std::f32::consts::{PI, TAU};
 

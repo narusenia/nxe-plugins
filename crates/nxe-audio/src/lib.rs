@@ -1,5 +1,6 @@
 //! The processing every NXE plugin shares: the harmonic curve, the
-//! oversampler, biquads, envelope followers and the relative guard.
+//! oversampler, biquads, envelope followers, the relative guard and the pitch
+//! tracker.
 //!
 //! Host-agnostic by construction — no nih-plug, no Vizia, no host API.
 //! Everything on the audio path is allocation-free once built.
@@ -27,6 +28,7 @@ pub mod envelope;
 pub mod guard;
 pub mod harmonics;
 pub mod oversample;
+pub mod pitch;
 pub mod shaper;
 
 pub use delay::DelayLine;

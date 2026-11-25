@@ -28,6 +28,7 @@ members = [
     "plugins/peek/peek-scope",
     "plugins/peek/peek",
     "plugins/kit/nonlinear-core",
+    "plugins/kit/resonance-core",
     "plugins/kit/spectral-core",
     "plugins/parasite/parasite-core",
     "plugins/parasite/parasite",
@@ -38,6 +39,7 @@ members = [
     "plugins/kit/invert",
     "plugins/kit/shear",
     "plugins/kit/afterimage",
+    "plugins/kit/dew",
 ]
 
 [workspace.package]
@@ -61,6 +63,7 @@ pumice-core = { path = "plugins/pumice/pumice-core" }
 peek-core = { path = "plugins/peek/peek-core" }
 peek-ui = { path = "plugins/peek/peek-ui" }
 nonlinear-core = { path = "plugins/kit/nonlinear-core" }
+resonance-core = { path = "plugins/kit/resonance-core" }
 spectral-core = { path = "plugins/kit/spectral-core" }
 parasite-core = { path = "plugins/parasite/parasite-core" }
 kit-ui = { path = "plugins/kit/kit-ui" }

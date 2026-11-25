@@ -226,6 +226,16 @@ fourcc = "Prst"
 description = "An oscillator that follows the input's pitch and feeds on it"
 vst3_subcategory = "Modulation"
 
+# The first Colour Kit (`plugins/kit/docs/implementation/resonance-kit-plan.md`).
+[[plugin]]
+name = "Dew"
+bundle_id = "dew"
+crate = "dew"
+category = "effect"
+fourcc = "Dewk"
+description = "Water drops on every attack"
+vst3_subcategory = "Generator"
+
 # One installer per series (`release.yml`), beside the zips: a `.pkg` on macOS,
 # an Inno Setup `.exe` on Windows. Each lists the same plugins as its series in
 # `series.toml`. The ids end in `-suite` so they never meet a plugin's
@@ -254,8 +264,8 @@ description = "Meters that never touch the sound: seven single meters and Peek, 
 [[suite]]
 name = "NXE Kit"
 bundle_id = "kit-suite"
-plugins = ["fold", "fever", "buckle", "invert", "shear", "afterimage"]
-description = "Small sound-design tools: Fold, Fever, Buckle, Invert, Shear and Afterimage."
+plugins = ["fold", "fever", "buckle", "invert", "shear", "afterimage", "dew"]
+description = "Small sound-design tools: Fold, Fever, Buckle, Invert, Shear, Afterimage and Dew."
 
 [[suite]]
 name = "NXE Design"

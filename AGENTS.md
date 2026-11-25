@@ -26,7 +26,8 @@ with the code, and fix the document in the same change.
 ## Repository map
 
 - `crates/nxe-audio`: shared audio **processing** — the harmonic curve, the
-  oversampler, biquads, envelope followers, the relative guard, and the
+  oversampler, biquads, envelope followers, the relative guard, the YIN
+  pitch tracker (moved from `parasite-core` when Dew asked), and the
   harmonic measurement the tests are written against. Host-agnostic and
   interface-agnostic. **Separate from `nxe-dsp` on purpose**: a bug here
   breaks the sound, a bug there breaks a picture
@@ -106,14 +107,16 @@ with the code, and fix the document in the same change.
 - `plugins/kit/spectral-core`: the engines behind the Spectral Kits —
   Invert, Shear, Afterimage — on `nxe-spectral`'s STFT. They report a block of
   latency, as Pumice does
+- `plugins/kit/resonance-core`: the engines behind the Colour Kits — Dew,
+  then Halo. Meniscus and Prisma take them over when they come
 - `plugins/kit/<name>`: one Kit per plugin (`fold`, `fever`, `buckle`,
-  `invert`, `shear`, `afterimage`), on the Kit window with
-  `Palette::DESIGN_KIT`. Thin: declarations, presets, and the figure
+  `invert`, `shear`, `afterimage`, `dew`), on the Kit window with
+  `Palette::DESIGN_KIT`, or `Palette::COLOUR_KIT` for the Colour Kits.
+  Thin: declarations, presets, and the figure
 - `plugins/parasite/parasite-core`: the Parasite DSP — an oscillator that
   follows the input's pitch and feeds on it, four ways (FM, Ring, Sync,
-  Voice). Its `pitch` (YIN) is the Harmonic engine's first block and is
-  written not to know Parasite: the second caller moves it into `nxe-audio`.
-  Reports a fixed ~10 ms latency
+  Voice). Its pitch tracker is `nxe_audio::pitch`. Reports a fixed ~10 ms
+  latency
 - `plugins/parasite/parasite`: the Parasite truce wrapper, the first Design
   flagship, on the Design window (`nxe_egui::design`, Design 7: a square
   figure and three columns of thin sliders). It borrows `kit-ui`'s binding
