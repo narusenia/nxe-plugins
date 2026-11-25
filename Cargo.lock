@@ -789,6 +789,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c87e182de0887fd5361989c677c4e8f5000cd9491d6d563161a8f3a5519fc7f"
 
 [[package]]
+name = "dew"
+version = "1.0.0"
+dependencies = [
+ "clap-sys",
+ "egui",
+ "kit-ui",
+ "nxe-dsp",
+ "nxe-egui",
+ "resonance-core",
+ "truce",
+ "truce-au",
+ "truce-clap",
+ "truce-core",
+ "truce-egui",
+ "truce-loader",
+ "truce-params",
+ "truce-standalone",
+ "truce-test",
+ "truce-utils",
+ "truce-vst3",
+]
+
+[[package]]
 name = "diorama"
 version = "2.0.0"
 dependencies = [
@@ -3301,6 +3324,13 @@ name = "renderdoc-sys"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832"
+
+[[package]]
+name = "resonance-core"
+version = "0.1.0"
+dependencies = [
+ "nxe-audio",
+]
 
 [[package]]
 name = "rfd"

@@ -86,6 +86,8 @@ V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実
 | KIT-5 | `nxe-spectral` の切り出し、`spectral-core`、Invert（[`spectral-kit-plan.md`](../../plugins/kit/docs/implementation/spectral-kit-plan.md)） | KIT-1 | 🟡 コード（#37）と基準画像（#38）は済み。耳が残り |
 | KIT-6 | Shear | KIT-5 | 🟡 同上 |
 | KIT-7 | Afterimage | KIT-5 | 🟡 同上 |
+| RES-1 | `nxe-audio::pitch`、`Palette::COLOUR_KIT`、`resonance-core`、Dew（[`resonance-kit-plan.md`](../../plugins/kit/docs/implementation/resonance-kit-plan.md)） | — | ✅ コードと基準画像（macOS / Windows）は済み。2026-11-25 に耳で確かめた（Sensitivity、Pitch、Follow を直した）。付属プリセットの値は仮 |
+| RES-2 | Halo | RES-1 | ⬜ |
 
 ### Design — [`parasite-plan.md`](../../plugins/parasite/docs/implementation/parasite-plan.md)
 

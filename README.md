@@ -84,7 +84,8 @@ shows them all in one window you can resize.
 ## Kit
 
 Small plugins, two to four knobs each, that each take one idea from a larger
-plugin and do only that.
+plugin and do only that. Acid green ones are cut from Design, aqua ones from
+Colour.
 
 <p>
   <img src="plugins/kit/fold/screenshots/fold_macos.png" width="32%" alt="Fold">
@@ -93,6 +94,7 @@ plugin and do only that.
   <img src="plugins/kit/invert/screenshots/invert_macos.png" width="32%" alt="Invert">
   <img src="plugins/kit/shear/screenshots/shear_macos.png" width="32%" alt="Shear">
   <img src="plugins/kit/afterimage/screenshots/afterimage_macos.png" width="32%" alt="Afterimage">
+  <img src="plugins/kit/dew/screenshots/dew_macos.png" width="32%" alt="Dew">
 </p>
 
 | Plugin | What it is |
@@ -103,6 +105,7 @@ plugin and do only that.
 | Invert | The spectrum turned upside down between two frequencies |
 | Shear | Each frequency delayed by its own amount |
 | Afterimage | What was loud stays on as a fading trace |
+| Dew | Water drops on every attack, tuned freely or to the input's harmonics (from the next Kit release) |
 
 ## Design
 

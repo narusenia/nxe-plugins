@@ -1,8 +1,7 @@
 //! The pitch of a monophonic input, by YIN (de Cheveigné and Kawahara, 2002).
 //!
-//! Written not to know what Parasite is: the Harmonic engine wants it next
-//! (`series-plan.md`), and the second caller moves this file into `nxe-audio`
-//! unchanged, as Air's `noise` waits to.
+//! Written in `parasite-core` not knowing what Parasite is, and moved here
+//! unchanged when Dew became its second caller (`resonance-kit-plan.md`).
 //!
 //! The input is low-passed and decimated to about 12 kHz first, which is
 //! plenty for a fundamental under 1 kHz and cuts the cost by the square of the
@@ -12,7 +11,7 @@
 //!
 //! Allocation-free once built.
 
-use nxe_audio::biquad::{Biquad, Coefficients};
+use crate::biquad::{Biquad, Coefficients};
 
 /// The lowest and highest fundamental it looks for.
 pub const LOW_HZ: f32 = 50.0;

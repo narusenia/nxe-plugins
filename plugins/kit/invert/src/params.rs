@@ -50,12 +50,7 @@ impl InvertParams {
 
     /// "5.00 kHz" and "200 Hz" both read back.
     fn hertz_in(&self, text: &str) -> Option<f64> {
-        let value = text::number(text)?;
-        Some(if text.to_ascii_lowercase().contains('k') {
-            value * 1_000.0
-        } else {
-            value
-        })
+        text::hz(text)
     }
 
     fn percent(&self, text: &str) -> Option<f64> {

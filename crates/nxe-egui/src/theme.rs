@@ -257,6 +257,15 @@ impl Palette {
         Token::rgb(0x6B, 0x80, 0x10),
     );
 
+    /// Aqua: the Kits cut from the Colour series (`resonance-kit-plan.md`,
+    /// decision 3, the user's pick on 2026-11-25). **Not in
+    /// [`Palette::ALL`]**, for the same reason as [`Palette::DESIGN_KIT`].
+    pub const COLOUR_KIT: Self = Self::ramp(
+        Token::rgb(0xA8, 0xF0, 0xF2),
+        Token::rgb(0x5C, 0xE1, 0xE6),
+        Token::rgb(0x1E, 0x7F, 0x84),
+    );
+
     /// Every palette with the name of the plugin that wears it. For the gallery
     /// and for the test that keeps them one family.
     pub const ALL: [(&'static str, Self); 6] = [

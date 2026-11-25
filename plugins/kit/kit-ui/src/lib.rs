@@ -95,6 +95,24 @@ pub fn slider_for<P: Params>(
     apply(ctx, id, &control);
 }
 
+/// A draggable figure (`nxe_egui::number`) bound to parameter `id`.
+pub fn number_for<P: Params>(
+    ui: &mut Ui,
+    ctx: &PluginContext<P>,
+    palette: &Palette,
+    id: u32,
+    width: f32,
+) {
+    let control = nxe_egui::number::number(
+        ui,
+        palette,
+        normalized(ctx, id),
+        &ctx.format_param(id),
+        width,
+    );
+    apply(ctx, id, &control);
+}
+
 fn apply<P: Params>(ctx: &PluginContext<P>, id: u32, control: &Control) {
     let gestures = &control.gestures;
     if gestures.begin {
