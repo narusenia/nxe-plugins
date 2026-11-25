@@ -12,7 +12,7 @@
 
 境界は 1 つだけ。**`vst3-sys` をリンクするか、しないか。** v0（0.x）は
 nih-plug に乗っていて `vst3-sys` を引いたので、ラッパと配布物は
-GPL-3.0-only だった（`LICENSE-GPL-3.0` はそのために残す）。truce は
+GPL-3.0-only だった（その全文 `LICENSE-GPL-3.0` は v0 のコードと一緒に `release/v0` にある。main には GPL のものが無いので置かない）。truce は
 `vst3-sys` を引かないので、6 本とも truce に移った v2 で GPL は無くなった。
 nih-plug と vizia の側（`nxe-ui`、`nxe-plug-ui`、xtask）もこの時に消した。
 

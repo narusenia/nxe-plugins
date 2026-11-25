@@ -193,7 +193,8 @@ touching the interface.
 
 **MIT OR Apache-2.0**, every crate and every bundle from 2.0. The 0.x bundles
 were **GPL-3.0-only**, because nih-plug links `vst3-sys` and that is GPLv3;
-[LICENSE-GPL-3.0](LICENSE-GPL-3.0) stays for them.
+their license text is on the
+[`release/v0`](https://github.com/nxe-plugins/nxe-plugins/tree/release/v0) branch with their code.
 
 [`LICENSING.md`](LICENSING.md) has the per-crate table and the reasoning.
 [LICENSE-MIT](LICENSE-MIT) / [LICENSE-APACHE](LICENSE-APACHE).
