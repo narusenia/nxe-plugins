@@ -8,6 +8,7 @@
 //! Every widget is in `examples/gallery.rs` (`.agents/rules/ui.md`).
 
 pub mod bar;
+pub mod colour;
 pub mod curve;
 pub mod design;
 pub mod entry;

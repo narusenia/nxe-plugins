@@ -64,6 +64,8 @@
 | Kit（Spectral） | STFT の上の Kit 3 本（Invert / Shear / Afterimage）。レイテンシを報告する | [計画](../plugins/kit/docs/implementation/spectral-kit-plan.md) |
 | Kit（Resonance） | Colour から切り出す Kit（Dew、Halo）。差し色はアクア | [計画](../plugins/kit/docs/implementation/resonance-kit-plan.md) |
 | Kit（Particle） | Effloresce から切り出す Kit（Glint、Pollen）。差し色はアクア | [計画](../plugins/kit/docs/implementation/particle-kit-plan.md) |
+| Meniscus | Colour の最初のフラッグシップ。入力を水面に通し、アタックで水面の音程を沈めて揺らしながら戻す。Colour の窓の型（`nxe_egui::colour`）をここで作った | [計画](../plugins/meniscus/docs/implementation/meniscus-plan.md) |
+| Prisma | Colour の 2 本目。入力を、MIDI で弾いた音（か和音）の倍音の共振器に分ける。Coupling と Freeze。図はプリズム | [計画](../plugins/prisma/docs/implementation/prisma-plan.md) |
 | Parasite | Design の最初のフラッグシップ。入力のピッチに追従する発振器が、入力に取り付いて変える（FM / Ring / Sync / Voice） | [計画](../plugins/parasite/docs/implementation/parasite-plan.md) |
 | Vocal Glue | ボーカルバスの結束（直列 5 段）**要件のみ** | [要件](../plugins/vocal-glue/docs/requirements/REQ-GLU.md) |
 

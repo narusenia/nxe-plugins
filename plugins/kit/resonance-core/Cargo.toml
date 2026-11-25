@@ -1,7 +1,7 @@
 [package]
 name = "resonance-core"
-# Shared by the Colour Kits (Dew, then Halo) and by Meniscus and Prisma when
-# they come, so it versions on its own.
+# Shared by the Colour Kits (Dew, Halo) and the Colour flagships (Meniscus,
+# Prisma), so it versions on its own.
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true

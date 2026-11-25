@@ -268,6 +268,29 @@ fourcc = "Polk"
 description = "The input as fine grains, scattered just behind it"
 vst3_subcategory = "Delay"
 
+# The first Colour flagship (`plugins/meniscus/docs/implementation/meniscus-plan.md`).
+[[plugin]]
+name = "Meniscus"
+bundle_id = "meniscus"
+crate = "meniscus"
+category = "effect"
+fourcc = "Mnsc"
+description = "The input on a liquid surface that wobbles on every attack"
+vst3_subcategory = "Filter"
+
+# The second Colour flagship (`plugins/prisma/docs/implementation/prisma-plan.md`).
+# An effect that takes MIDI: the notes to ring. On macOS that makes the AU a
+# music effect (`aumf`) rather than an effect.
+[[plugin]]
+name = "Prisma"
+bundle_id = "prisma"
+crate = "prisma"
+category = "effect"
+midi_input = true
+fourcc = "Prsm"
+description = "The input split into the notes you play, ringing and coupled"
+vst3_subcategory = "Filter"
+
 # One installer per series (`release.yml`), beside the zips: a `.pkg` on macOS,
 # an Inno Setup `.exe` on Windows. Each lists the same plugins as its series in
 # `series.toml`. The ids end in `-suite` so they never meet a plugin's

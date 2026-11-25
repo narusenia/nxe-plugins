@@ -1,0 +1,197 @@
+//! Sensitivity, Decay, Inharmonic, Coupling, Tone, Shimmer, Wet (the field is
+//! `mix`), Output; the Source, the Chord, the Tuning and its Root; Freeze.
+//! **The field names are the parameter ids** (`prisma-plan.md`, the table):
+//! never rename them.
+
+use nxe_dsp::Handoff;
+use nxe_egui::text;
+use resonance_core::prisma::{NOTES, PARTIALS, READING};
+use std::sync::atomic::AtomicU32;
+use truce::prelude::*;
+
+/// Every resonator's reading (`Prisma::partials`).
+pub const SHOWN: usize = NOTES * PARTIALS * READING;
+
+#[derive(ParamEnum, Debug)]
+pub enum Source {
+    Chord,
+    #[name = "MIDI"]
+    Midi,
+}
+
+impl Source {
+    pub const NAMES: [&'static str; 2] = ["Chord", "MIDI"];
+}
+
+#[derive(ParamEnum, Debug)]
+pub enum Chord {
+    Fifth,
+    #[name = "Maj"]
+    Major,
+    #[name = "Min"]
+    Minor,
+}
+
+impl Chord {
+    pub const NAMES: [&'static str; 3] = ["Fifth", "Maj", "Min"];
+}
+
+#[derive(ParamEnum, Debug)]
+pub enum Tuning {
+    Free,
+    Follow,
+}
+
+impl Tuning {
+    pub const NAMES: [&'static str; 2] = ["Free", "Follow"];
+}
+
+#[derive(Params)]
+pub struct PrismaParams {
+    #[param(
+        name = "Sensitivity",
+        range = "linear(0, 1)",
+        default = 0.5,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
+    pub sensitivity: FloatParam,
+
+    #[param(
+        name = "Decay",
+        range = "linear(0, 1)",
+        default = 0.5,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
+    pub decay: FloatParam,
+
+    #[param(
+        name = "Inharmonic",
+        range = "linear(0, 1)",
+        default = 0.0,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
+    pub inharmonic: FloatParam,
+
+    #[param(
+        name = "Coupling",
+        range = "linear(0, 1)",
+        default = 0.2,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
+    pub coupling: FloatParam,
+
+    #[param(
+        name = "Tone",
+        range = "linear(0, 1)",
+        default = 0.5,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
+    pub tone: FloatParam,
+
+    #[param(
+        name = "Shimmer",
+        range = "linear(0, 1)",
+        default = 0.2,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
+    pub shimmer: FloatParam,
+
+    /// Shown as Wet: the dry signal is always all there, this is how much of
+    /// the ring is added to it.
+    #[param(
+        name = "Wet",
+        range = "linear(0, 1)",
+        default = 0.5,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
+    pub mix: FloatParam,
+
+    #[param(
+        name = "Output",
+        range = "linear(-12, 12)",
+        default = 0.0,
+        unit = "dB",
+        parse = "number",
+        smooth = "linear(20)"
+    )]
+    pub output: FloatParam,
+
+    #[param(name = "Source", default = 0, parse = "source")]
+    pub source: EnumParam<Source>,
+
+    #[param(name = "Chord", default = 0, parse = "chord")]
+    pub chord: EnumParam<Chord>,
+
+    #[param(name = "Tuning", default = 0, parse = "tuning")]
+    pub tuning: EnumParam<Tuning>,
+
+    /// The chord's root in Free.
+    #[param(
+        name = "Root",
+        range = "log(40, 1000)",
+        default = 220.0,
+        format = "hz",
+        parse = "hz_text",
+        smooth = "linear(20)"
+    )]
+    pub root: FloatParam,
+
+    /// Hold the ring as it is.
+    #[param(name = "Freeze", parse = "switch")]
+    pub freeze: BoolParam,
+
+    /// Every resonator, for the figure.
+    #[skip]
+    pub shown: Handoff<SHOWN>,
+    /// Blocks processed, so the window knows when the host stopped calling.
+    #[skip]
+    pub count: AtomicU32,
+}
+
+impl PrismaParams {
+    fn percent(&self, text: &str) -> Option<f64> {
+        text::percent(text)
+    }
+
+    fn number(&self, text: &str) -> Option<f64> {
+        text::number(text)
+    }
+
+    fn hz(&self, value: f64) -> String {
+        format!("{value:.0} Hz")
+    }
+
+    fn hz_text(&self, text: &str) -> Option<f64> {
+        text::hz(text)
+    }
+
+    fn switch(&self, text: &str) -> Option<f64> {
+        text::switch(text)
+    }
+
+    fn source(&self, text: &str) -> Option<f64> {
+        text::choice(&Source::NAMES, text)
+    }
+
+    fn chord(&self, text: &str) -> Option<f64> {
+        text::choice(&Chord::NAMES, text)
+    }
+
+    fn tuning(&self, text: &str) -> Option<f64> {
+        text::choice(&Tuning::NAMES, text)
+    }
+}
