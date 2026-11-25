@@ -30,6 +30,19 @@ pub fn hz(text: &str) -> Option<f64> {
     })
 }
 
+/// The nearest note's name to `hz`, with its octave: 220 → "A3".
+pub fn note(hz: f32) -> String {
+    const NAMES: [&str; 12] = [
+        "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
+    ];
+    let midi = (69.0 + 12.0 * (hz / 440.0).log2()).round() as i32;
+    format!(
+        "{}{}",
+        NAMES[midi.rem_euclid(12) as usize],
+        midi.div_euclid(12) - 1
+    )
+}
+
 /// A percentage, as a fraction: "35%" → 0.35.
 pub fn percent(text: &str) -> Option<f64> {
     number(text).map(|value| value / 100.0)

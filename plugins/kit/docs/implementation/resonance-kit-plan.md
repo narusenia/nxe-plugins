@@ -46,19 +46,38 @@
    - 乱数は決定的なので、同じ入力なら同じ水滴が落ちる
    - 図は、鳴っている滴を**波紋**で描く。横は左右の位置、縦は音程（100 Hz〜
      8 kHz）、時間とともに広がり、減衰とともに消える
-6. **ピッチ追従は `nxe-audio::pitch` に移した。** Parasite の YIN を、2 本目の
+6. **Halo の中身**:
+   - 和音の各音に共鳴器を 1 つずつ置き、入力で鳴らす。共鳴器は複素数の 1 極
+     （`y = r·e^{iω}·y + (1 − r)·x`）。自分の音程での利得が 1 なので、根音で歌うと
+     同じくらいの大きさで返り、音程が動いても係数を作り直すクリックが出ない
+   - **音程は Free / Follow を切り替える**（2026-11-25、ユーザーの選択）。Free は
+     `Root`（40 Hz〜1 kHz、窓では数字の箱）、Follow は入力のピッチ（取れない
+     ときは最後の音程を保つ）。根音は 40 ms で滑る
+   - **和音は `Chord` で選ぶ**: `Fifth`（1、3/2、2、3、4 倍。3 度なし、既定）、
+     `Maj`（5/4 を足す）、`Min`（6/5 を足す）。2 オクターブ、純正律
+     （2026-11-25、ユーザーの選択は「和音」。3 度の長短を決めるために種類を
+     選べるようにした）
+   - つまみは `Decay`（T60 0.3〜8 s）、`Shimmer`（各音を最大 ±18 セント、
+     0.15〜0.6 Hz でゆっくり揺らす。音ごとに速さが違う）、`Tone`（上の音の重み
+     `ratio^−tilt`、tilt 1.6〜0）、`Mix`（足す量。0 % で入力とビット一致）
+     （2026-11-25、ユーザーの選択）
+   - 響きは `tanh` で 1.5 を上限にやわらかく抑える
+   - 図は和音を**同心円**で描く。内側が根音、外側が 2 オクターブ上。輪の線は
+     選んだ和音から描くので鳴る前から見え、光り方は鳴っている強さ。真ん中に
+     根音の名前
+7. **ピッチ追従は `nxe-audio::pitch` に移した。** Parasite の YIN を、2 本目の
    呼び手（Dew の Follow）が来たので中身を変えずに移した（`architecture.md` の
    規則）
 
 ## 出荷後に変えられないもの
 
-| | Dew |
-|---|---|
-| 名前（`truce.toml`） | `Dew` |
-| `bundle_id` | `dew` |
-| AU `fourcc` | `Dewk` |
-| パラメーターのフィールド | `sensitivity`、`size`、`splash`、`mix`、`tuning`、`pitch` |
-| 版 | 1.0.0 |
+| | Dew | Halo |
+|---|---|---|
+| 名前（`truce.toml`） | `Dew` | `Halo` |
+| `bundle_id` | `dew` | `halo` |
+| AU `fourcc` | `Dewk` | `Halk` |
+| パラメーターのフィールド | `sensitivity`、`size`、`splash`、`mix`、`tuning`、`pitch` | `decay`、`shimmer`、`tone`、`mix`、`chord`、`tuning`、`root` |
+| 版 | 1.0.0 | 1.0.0 |
 
 リリースは `series.toml` の `[kit]`、タグ `kit-<YYYY.MM>[-beta.N]`。
 
@@ -67,7 +86,7 @@
 | ID | 単位 | 依存 | 状態 |
 |---|---|---|---|
 | RES-1 | `nxe-audio::pitch` への移動、`Palette::COLOUR_KIT`、`resonance-core` の Dew、プラグイン Dew | — | ✅ コードと基準画像（macOS / Windows）は済み。2026-11-25 に耳で確かめた（Sensitivity、Pitch、Follow を直した）。付属プリセットの値は仮 |
-| RES-2 | Halo | RES-1 | ⬜ |
+| RES-2 | `resonance-core` の Halo、プラグイン Halo | RES-1 | 🟡 コードと macOS の基準画像は済み。Windows の基準画像と耳が残り |
 
-付属プリセット（Default、Drip、Rain、Mist、Puddle）の中身は、耳で決める仕事と
-して残る。
+付属プリセット（Dew は Default、Drip、Rain、Mist、Puddle。Halo は Default、Glow、
+Choir、Bloom、Ember）の中身は、耳で決める仕事として残る。

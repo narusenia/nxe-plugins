@@ -236,6 +236,16 @@ fourcc = "Dewk"
 description = "Water drops on every attack"
 vst3_subcategory = "Generator"
 
+# The second Colour Kit (`plugins/kit/docs/implementation/resonance-kit-plan.md`).
+[[plugin]]
+name = "Halo"
+bundle_id = "halo"
+crate = "halo"
+category = "effect"
+fourcc = "Halk"
+description = "A ring of tuned resonance around the input"
+vst3_subcategory = "Reverb"
+
 # One installer per series (`release.yml`), beside the zips: a `.pkg` on macOS,
 # an Inno Setup `.exe` on Windows. Each lists the same plugins as its series in
 # `series.toml`. The ids end in `-suite` so they never meet a plugin's
@@ -264,8 +274,8 @@ description = "Meters that never touch the sound: seven single meters and Peek, 
 [[suite]]
 name = "NXE Kit"
 bundle_id = "kit-suite"
-plugins = ["fold", "fever", "buckle", "invert", "shear", "afterimage", "dew"]
-description = "Small sound-design tools: Fold, Fever, Buckle, Invert, Shear, Afterimage and Dew."
+plugins = ["fold", "fever", "buckle", "invert", "shear", "afterimage", "dew", "halo"]
+description = "Small sound-design tools: Fold, Fever, Buckle, Invert, Shear, Afterimage, Dew and Halo."
 
 [[suite]]
 name = "NXE Design"

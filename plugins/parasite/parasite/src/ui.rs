@@ -279,15 +279,7 @@ fn percent(value: f32) -> String {
 
 /// The note's name and the frequency: `("A3", "220.0 Hz")`.
 fn note(hz: f32) -> (String, String) {
-    const NAMES: [&str; 12] = [
-        "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
-    ];
-    let midi = (69.0 + 12.0 * (hz / 440.0).log2()).round() as i32;
-    let name = NAMES[midi.rem_euclid(12) as usize];
-    (
-        format!("{name}{}", midi.div_euclid(12) - 1),
-        format!("{hz:.1} Hz"),
-    )
+    (nxe_egui::text::note(hz), format!("{hz:.1} Hz"))
 }
 
 /// The host in grey and the output over it, two host periods across, on the

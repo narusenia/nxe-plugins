@@ -95,6 +95,7 @@ Colour.
   <img src="plugins/kit/shear/screenshots/shear_macos.png" width="32%" alt="Shear">
   <img src="plugins/kit/afterimage/screenshots/afterimage_macos.png" width="32%" alt="Afterimage">
   <img src="plugins/kit/dew/screenshots/dew_macos.png" width="32%" alt="Dew">
+  <img src="plugins/kit/halo/screenshots/halo_macos.png" width="32%" alt="Halo">
 </p>
 
 | Plugin | What it is |
@@ -106,6 +107,7 @@ Colour.
 | Shear | Each frequency delayed by its own amount |
 | Afterimage | What was loud stays on as a fading trace |
 | Dew | Water drops on every attack, tuned freely or to the input's harmonics (from the next Kit release) |
+| Halo | A ring of tuned resonance around the input: a chord on a root you set or the input's own pitch (from the next Kit release) |
 
 ## Design
 
