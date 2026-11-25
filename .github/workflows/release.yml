@@ -8,8 +8,9 @@
 # own version in its `Cargo.toml`, and the notes list them. Besides a zip per
 # plugin and platform there is one per platform holding the whole series.
 #
-# Every plugin is on truce: macOS (universal; CLAP, VST3, AU v2) and Windows
-# (CLAP, VST3). Linux is not built — decision 7 names macOS and Windows.
+# Every plugin is on truce: macOS (universal; CLAP, VST3, AU v2), Windows
+# (CLAP, VST3) and Linux (x86_64; CLAP, VST3). Linux came back on 2026-11-26:
+# zips only, no installer, checked by CI rather than in a host.
 #
 # **Nothing is signed or notarized.** Until there is an Apple Developer Program
 # membership, macOS users clear the quarantine attribute by hand; the README says
@@ -97,6 +98,9 @@ jobs:
             name: macos
           - os: windows-latest
             name: windows
+          # The oldest supported Ubuntu, so the bundles load on older glibc.
+          - os: ubuntu-22.04
+            name: linux
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -118,6 +122,18 @@ jobs:
         if: matrix.name == 'macos'
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
+      # The window's X11 and GL, and what pluginval needs to start without a
+      # screen.
+      - name: Install the Linux libraries
+        if: matrix.name == 'linux'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -yq --no-install-recommends \
+            pkg-config libx11-dev libx11-xcb-dev libxcb1-dev libxcb-icccm4-dev \
+            libxcb-dri2-0-dev libxcursor-dev libxrandr-dev libxi-dev \
+            libxkbcommon-dev libxkbcommon-x11-dev libgl1-mesa-dev \
+            libasound2-dev libjack-jackd2-dev libfreetype6 libcurl4 xvfb
+
       - name: Install validators
         shell: bash
         run: |
@@ -127,6 +143,13 @@ jobs:
             curl -fsSL -o "$RUNNER_TEMP/pluginval.zip" \
               https://github.com/Tracktion/pluginval/releases/download/v1.0.4/pluginval_macOS.zip
             unzip -oq "$RUNNER_TEMP/pluginval.zip" -d /Applications/
+          elif [ "${{ matrix.name }}" = linux ]; then
+            curl -fsSL -o "$RUNNER_TEMP/pluginval.zip" \
+              https://github.com/Tracktion/pluginval/releases/download/v1.0.4/pluginval_Linux.zip
+            mkdir -p "$RUNNER_TEMP/pluginval"
+            unzip -oq "$RUNNER_TEMP/pluginval.zip" -d "$RUNNER_TEMP/pluginval"
+            chmod +x "$RUNNER_TEMP/pluginval/pluginval"
+            echo "$RUNNER_TEMP/pluginval" >> "$GITHUB_PATH"
           else
             curl -fsSL -o "$RUNNER_TEMP/pluginval.zip" \
               https://github.com/Tracktion/pluginval/releases/download/v1.0.4/pluginval_Windows.zip
@@ -182,12 +205,16 @@ jobs:
               cargo truce build --clap --vst3 -p "$plugin"
               cp -R target/bundles/*.clap target/bundles/*.vst3 "$out/"
               cargo truce install --user --clap --vst3 -p "$plugin"
-              cargo truce validate --pluginval -p "$plugin" 2>&1 | tee validate.log
+              # pluginval opens every editor; on Linux there is no screen but
+              # a virtual one.
+              run=""; [ "${{ matrix.name }}" = linux ] && run="xvfb-run -a"
+              $run cargo truce validate --pluginval -p "$plugin" 2>&1 | tee validate.log
               # CLAP directly: cargo-truce 6.3.0 passes `--test-filter` here,
               # which clap-validator replaced with `--exclude` in 2026-03. The
               # exclusion is the one truce makes on Windows — clap-validator
               # rejects Windows-style preset locations, so its preset-discovery
-              # tests cannot pass on any plugin there. Its own log, because it
+              # tests cannot pass on any plugin there. Linux keeps it too:
+              # the same plugins, the same presets, one command. Its own log, because it
               # marks tests SKIPPED as a matter of course; it fails by status.
               clap-validator validate --exclude preset-discovery "$out"/*.clap 2>&1 | tee clap-validator.log
             fi
@@ -207,6 +234,8 @@ jobs:
       # carry no quarantine, so nothing has to be cleared by hand. The suite's
       # own version is truce.toml's workspace one, so the file is renamed.
       - name: Installer
+        # Linux ships zips only: no one installer format fits every distribution.
+        if: matrix.name != 'linux'
         shell: bash
         run: |
           set -euo pipefail

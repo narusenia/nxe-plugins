@@ -39,6 +39,7 @@ def newest(releases, key):
 
 def links(tag, assets, platform, installer):
     found = []
+    # Linux has no installer, only the zip.
     for label, name in (("installer", f"nxe-{tag}-{platform}-installer.{installer}"), ("zip", f"nxe-{tag}-{platform}.zip")):
         if name in assets:
             found.append(f"[{label}]({BASE}/download/{tag}/{name})")
@@ -47,25 +48,26 @@ def links(tag, assets, platform, installer):
 
 def table(series, releases):
     rows = [
-        "| Series | What it is | Latest | macOS | Windows | All releases |",
-        "|---|---|---|---|---|---|",
+        "| Series | What it is | Latest | macOS | Windows | Linux | All releases |",
+        "|---|---|---|---|---|---|---|",
     ]
     for key, entry in series.items():
         name = entry["name"]
         tag = newest(releases, key)
         every = f"[{name}]({BASE}?q={key}-&expanded=true)"
         if tag is None:
-            rows.append(f"| [**{name}**](#{key}) | {entry['summary']} | not released | — | — | {every} |")
+            rows.append(f"| [**{name}**](#{key}) | {entry['summary']} | not released | — | — | — | {every} |")
             continue
         assets = {a["name"] for a in gh("release", "view", tag, "--repo", REPO, "--json", "assets")["assets"]}
         rows.append(
             f"| [**{name}**](#{key}) | {entry['summary']} | [`{tag}`]({BASE}/tag/{tag}) "
-            f"| {links(tag, assets, 'macos', 'pkg')} | {links(tag, assets, 'windows', 'exe')} | {every} |"
+            f"| {links(tag, assets, 'macos', 'pkg')} | {links(tag, assets, 'windows', 'exe')} "
+            f"| {links(tag, assets, 'linux', None)} | {every} |"
         )
     return "\n".join(rows)
 
 
-PLUGIN_ZIP = re.compile(r"^nxe-(?P<plugin>[a-z0-9-]+)-(?P<version>\d+\.\d+\.\d+)-(?P<platform>macos|windows)\.zip$")
+PLUGIN_ZIP = re.compile(r"^nxe-(?P<plugin>[a-z0-9-]+)-(?P<version>\d+\.\d+\.\d+)-(?P<platform>macos|windows|linux)\.zip$")
 
 
 def manifest(series, releases):
@@ -94,6 +96,7 @@ def manifest(series, releases):
             "page": f"{BASE}/tag/{tag}",
             "macos": {"installer": url(f"nxe-{tag}-macos-installer.pkg"), "zip": url(f"nxe-{tag}-macos.zip")},
             "windows": {"installer": url(f"nxe-{tag}-windows-installer.exe"), "zip": url(f"nxe-{tag}-windows.zip")},
+            "linux": {"zip": url(f"nxe-{tag}-linux.zip")},
             "plugins": plugins,
         }
     return out
