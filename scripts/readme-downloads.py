@@ -14,7 +14,7 @@ import re
 import subprocess
 import tomllib
 
-REPO = "narusenia/nxe-plugins"
+REPO = "nxe-plugins/nxe-plugins"
 BASE = f"https://github.com/{REPO}/releases"
 START, END = "<!-- downloads:start -->", "<!-- downloads:end -->"
 

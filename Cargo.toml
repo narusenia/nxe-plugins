@@ -52,7 +52,7 @@ members = [
 version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/narusenia/nxe-plugins"
+repository = "https://github.com/nxe-plugins/nxe-plugins"
 
 [workspace.dependencies]
 nxe-audio = { path = "crates/nxe-audio" }
