@@ -65,7 +65,7 @@ V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実
 
 | ID | 単位 | 依存 | 状態 |
 |---|---|---|---|
-| PEEK-1 | Kit の窓の型（`nxe-egui::kit`）、`peek-core`、Peek Level | — | 🟡 コードと validate は済み（#35）。基準画像（CI で焼く）と実機で見ることが残り |
+| PEEK-1 | Kit の窓の型（`nxe-egui::kit`）、`peek-core`、Peek Level | — | 🟡 コード、validate、基準画像は済み（#35）。止まったら無音を描く（#37）。実機で見ることが残り |
 | PEEK-2 | Peek VU（弧と針の見た目を含む） | PEEK-1 | 🟡 コードは済み（#35）。実機で見ることが残り |
 | PEEK-3 | Peek Stereo | PEEK-1 | 🟡 同上 |
 | PEEK-4 | Peek Spectrum | PEEK-1 | 🟡 同上 |
@@ -73,17 +73,17 @@ V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実
 | PEEK-6 | Peek Loudness | PEEK-1 | 🟡 同上。EBU の試験条件 3 つは試験で確認済み |
 | PEEK-7 | Peek Scope | PEEK-1 | 🟡 同上 |
 | PEEK-8 | Peek（まとめ、ホストでリサイズ可） | PEEK-2〜7 | 🟡 同上 |
-| PEEK-9 | 最初の beta（`peek-<YYYY.MM>-beta.N`） | PEEK-1 | ⬜ |
+| PEEK-9 | 最初の beta（`peek-<YYYY.MM>-beta.N`） | PEEK-1 | ✅ `peek-2026.11-beta.1`（2026-11-25、1cdbb9a） |
 
 ### Kit — [`nonlinear-kit-plan.md`](../../plugins/kit/docs/implementation/nonlinear-kit-plan.md)
 
 | ID | 単位 | 依存 | 状態 |
 |---|---|---|---|
-| KIT-1 | `Palette::DESIGN_KIT`、`kit-ui`、`nonlinear-core`、Fold | — | 🟡 コードは済み。Windows の基準画像（CI で焼く）と、実機で聴くことが残り |
+| KIT-1 | `Palette::DESIGN_KIT`、`kit-ui`、`nonlinear-core`、Fold | — | 🟡 コード（#36）と基準画像（macOS / Windows、#38）は済み。付属プリセットと既定値を耳で決めることが残り |
 | KIT-2 | Fever | KIT-1 | 🟡 同上 |
 | KIT-3 | Buckle | KIT-1 | 🟡 同上 |
-| KIT-4 | 最初の beta（`kit-<YYYY.MM>-beta.N`） | KIT-1〜3 | ⬜ |
-| KIT-5 | `nxe-spectral` の切り出し、`spectral-core`、Invert（[`spectral-kit-plan.md`](../../plugins/kit/docs/implementation/spectral-kit-plan.md)） | KIT-1 | 🟡 コードは済み。Windows の基準画像と耳が残り |
+| KIT-4 | 最初の beta（`kit-<YYYY.MM>-beta.N`） | KIT-1〜3 | ✅ `kit-2026.11-beta.1`（2026-11-25、1cdbb9a）。Spectral Kit の 3 本も同じ版に乗った |
+| KIT-5 | `nxe-spectral` の切り出し、`spectral-core`、Invert（[`spectral-kit-plan.md`](../../plugins/kit/docs/implementation/spectral-kit-plan.md)） | KIT-1 | 🟡 コード（#37）と基準画像（#38）は済み。耳が残り |
 | KIT-6 | Shear | KIT-5 | 🟡 同上 |
 | KIT-7 | Afterimage | KIT-5 | 🟡 同上 |
 
