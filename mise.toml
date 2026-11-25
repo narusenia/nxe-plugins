@@ -46,6 +46,10 @@ run = 'cargo truce install --user --clap --vst3 --au2 -p {{arg(name="plugin")}}'
 description = "Re-derive Velour's halfband coefficients (stdlib Python only)"
 run = "python3 scripts/design-oversampler.py"
 
+[tasks."readme:downloads"]
+description = "Rewrite the README's download table from the published releases (needs gh)"
+run = "python3 scripts/readme-downloads.py"
+
 [tasks."logo:generate"]
 description = "Regenerate the NXE logotype path commands from its SVG"
 run = "python3 scripts/generate-logo.py"

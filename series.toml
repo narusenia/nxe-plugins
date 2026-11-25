@@ -10,10 +10,12 @@
 
 [basic]
 name = "Basic"
+summary = "Tools for a vocal and the mix"
 plugins = ["doubler", "sparkleur", "velour", "air", "diorama", "pumice"]
 
 [peek]
 name = "Peek"
+summary = "Meters that never touch the sound"
 plugins = [
     "peek-level",
     "peek-vu",
@@ -27,8 +29,10 @@ plugins = [
 
 [kit]
 name = "Kit"
+summary = "Small sound-design tools, a few knobs each"
 plugins = ["fold", "fever", "buckle", "invert", "shear", "afterimage"]
 
 [design]
 name = "Design"
+summary = "Tools that remake a sound"
 plugins = ["parasite"]
