@@ -205,7 +205,7 @@ cargo truce install --user --clap --vst3 --au2 -p doubler
 cargo truce validate --clap --pluginval --auval -p doubler
 ```
 
-CI（`check.yml` の `validate`）が macOS で同じ 2 行を回す。**リリースはシリーズ単位**
+CI（`check.yml` の `validate`）が macOS で同じ 2 行を、`series.toml` のシリーズごとのジョブに分けて並べて回す（clap-validator と auval が先、pluginval が後）。**リリースはシリーズ単位**
 （`release.yml`）: タグ `<series>-<YYYY.MM>[.N][-beta.N]`（`basic-2026.12`）で、
 `series.toml` にあるそのシリーズの全プラグインを、macOS は
 `cargo truce package`（universal、CLAP / VST3 / AU v2。stage された bundle を

@@ -70,20 +70,59 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  # Which plugins the validate jobs share out: one job per series in
+  # `series.toml`, so a new series is validated without touching this file.
+  # A plugin in `truce.toml` that no series lists would be validated by none of
+  # them, so that fails here rather than passing unseen.
+  series:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.read.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: read
+        shell: python
+        run: |
+          import json, os, tomllib
+          series = tomllib.load(open("series.toml", "rb"))
+          plugins = {p["crate"] for p in tomllib.load(open("truce.toml", "rb"))["plugin"]}
+          listed = {name for s in series.values() for name in s["plugins"]}
+          if plugins - listed:
+              raise SystemExit(f"in truce.toml but in no series: {sorted(plugins - listed)}")
+          matrix = [{"series": key, "plugins": " ".join(s["plugins"])} for key, s in series.items()]
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"matrix={json.dumps(matrix)}\n")
+
   # **The v2 plugins against the industry validators**: auval (AU v2),
   # pluginval (VST3) and clap-validator (CLAP), through `cargo truce validate`
-  # (`docs/implementation/v2-plan.md`, decision 8). One `-p` per plugin that
-  # is on truce; the others join as they move.
+  # (`docs/implementation/v2-plan.md`, decision 8).
+  #
+  # **One job per series, side by side.** pluginval takes about a minute a
+  # plugin, and 21 of them in one job took 20 minutes. `cargo truce` takes one
+  # `-p` (a second replaces the first), so each job loops over its plugins.
+  #
+  # **clap-validator and auval first**, pluginval after: the first two take
+  # seconds for every plugin, so what they catch shows before pluginval starts.
   #
   # A validator that is missing or a bundle that is not installed is reported
   # as SKIP rather than as a failure, so the log is grepped for it: a validate
   # step that checked nothing must not pass.
   validate:
+    needs: series
+    name: validate (${{ matrix.series }})
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.series.outputs.matrix) }}
+    env:
+      PLUGINS: ${{ matrix.plugins }}
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: validate-${{ matrix.series }}
 
       - name: Cache tools
         id: cache-tools
@@ -104,7 +143,10 @@ jobs:
           unzip -oq "$RUNNER_TEMP/pluginval.zip" -d /Applications/
 
       - name: Install the plugins
-        run: cargo truce install --user --clap --vst3 --au2
+        run: |
+          for plugin in $PLUGINS; do
+            cargo truce install --user --clap --vst3 --au2 -p "$plugin"
+          done
 
       # **auval did not find a component installed for the user** — on the
       # runner, and on a development Mac where the DAWs listed it fine. The AU
@@ -124,11 +166,24 @@ jobs:
           done
           auval -a | grep Nxeu
 
-      - name: Validate
+      - name: clap-validator and auval
         run: |
           set -e -o pipefail
-          cargo truce validate --clap --pluginval --auval 2>&1 | tee validate.log
-          if grep -E "SKIP|not found" validate.log >/dev/null; then
+          for plugin in $PLUGINS; do
+            cargo truce validate --clap --auval -p "$plugin" 2>&1 | tee -a fast.log
+          done
+          if grep -E "SKIP|not found" fast.log >/dev/null; then
+            echo "::error::validate skipped a step"
+            exit 1
+          fi
+
+      - name: pluginval
+        run: |
+          set -e -o pipefail
+          for plugin in $PLUGINS; do
+            cargo truce validate --pluginval -p "$plugin" 2>&1 | tee -a pluginval.log
+          done
+          if grep -E "SKIP|not found" pluginval.log >/dev/null; then
             echo "::error::validate skipped a step"
             exit 1
           fi
