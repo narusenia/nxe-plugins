@@ -25,9 +25,24 @@ pub fn value_entry(
     text: &str,
     open: bool,
 ) -> Option<String> {
-    let mut buffer: Option<String> = ui.data(|data| data.get_temp(id));
     let response = ui.interact(rect, id.with("figure"), Sense::click());
-    if buffer.is_none() && (open || response.clicked()) {
+    entry(ui, palette, id, rect, text, open || response.clicked())
+}
+
+/// [`value_entry`] without the click of its own: the field opens only when
+/// `open` says so. For a control that wants every click on itself — a drag,
+/// a double-click to reset — and opens the field on a Cmd-click
+/// (`crate::number`).
+pub fn entry(
+    ui: &mut Ui,
+    palette: &Palette,
+    id: Id,
+    rect: Rect,
+    text: &str,
+    open: bool,
+) -> Option<String> {
+    let mut buffer: Option<String> = ui.data(|data| data.get_temp(id));
+    if buffer.is_none() && open {
         buffer = Some(text.to_owned());
     }
 
