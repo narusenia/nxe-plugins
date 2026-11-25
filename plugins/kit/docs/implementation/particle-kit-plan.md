@@ -53,5 +53,5 @@
 
 | ID | 単位 | 依存 | 状態 |
 |---|---|---|---|
-| PRT-1 | `nxe-audio::onset` への移動、`particle-core` の Glint、プラグイン Glint | — | 🟡 コードと macOS の基準画像は済み。Windows の基準画像と耳が残り |
+| PRT-1 | `nxe-audio::onset` への移動、`particle-core` の Glint、プラグイン Glint | — | 🟡 コードと基準画像（macOS / Windows）は済み。耳が残り |
 | PRT-2 | Pollen | PRT-1 | ⬜ 中身を決めるところから |
