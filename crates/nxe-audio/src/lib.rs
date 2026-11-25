@@ -27,6 +27,7 @@ pub mod delay;
 pub mod envelope;
 pub mod guard;
 pub mod harmonics;
+pub mod onset;
 pub mod oversample;
 pub mod pitch;
 pub mod shaper;
