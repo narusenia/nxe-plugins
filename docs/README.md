@@ -62,6 +62,7 @@
 | Peek | メーターのシリーズ（Level / VU / Stereo / Spectrum / Spectrogram / Loudness / Scope と、まとめの Peek）。音は変えない | [計画](../plugins/peek/docs/implementation/peek-plan.md) |
 | Kit（Nonlinear） | Design から切り出す小さなプラグイン 3 本（Fold / Fever / Buckle）。つまみ 3 つ | [計画](../plugins/kit/docs/implementation/nonlinear-kit-plan.md) |
 | Kit（Spectral） | STFT の上の Kit 3 本（Invert / Shear / Afterimage）。レイテンシを報告する | [計画](../plugins/kit/docs/implementation/spectral-kit-plan.md) |
+| Parasite | Design の最初のフラッグシップ。入力のピッチに追従する発振器が、入力に取り付いて変える（FM / Ring / Sync / Voice） | [計画](../plugins/parasite/docs/implementation/parasite-plan.md) |
 | Vocal Glue | ボーカルバスの結束（直列 5 段）**要件のみ** | [要件](../plugins/vocal-glue/docs/requirements/REQ-GLU.md) |
 
 ## 構想

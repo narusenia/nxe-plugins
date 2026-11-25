@@ -109,6 +109,15 @@ with the code, and fix the document in the same change.
 - `plugins/kit/<name>`: one Kit per plugin (`fold`, `fever`, `buckle`,
   `invert`, `shear`, `afterimage`), on the Kit window with
   `Palette::DESIGN_KIT`. Thin: declarations, presets, and the figure
+- `plugins/parasite/parasite-core`: the Parasite DSP — an oscillator that
+  follows the input's pitch and feeds on it, four ways (FM, Ring, Sync,
+  Voice). Its `pitch` (YIN) is the Harmonic engine's first block and is
+  written not to know Parasite: the second caller moves it into `nxe-audio`.
+  Reports a fixed ~10 ms latency
+- `plugins/parasite/parasite`: the Parasite truce wrapper, the first Design
+  flagship, on the Design window (`nxe_egui::design`, Design 7: a square
+  figure and three columns of thin sliders). It borrows `kit-ui`'s binding
+  and preset bar until Singularity needs them too
 - `docs/`: monorepo-wide documents (architecture, cross-plugin backlog and
   roadmap). Indexed by `docs/README.md`
 - `plugins/<name>/docs/`: that plugin's own requirements, specifications, and
