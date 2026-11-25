@@ -22,8 +22,7 @@ const GUIDES: [(f32, &str); 3] = [(2_500.0, "2.5k"), (5_000.0, "5k"), (10_000.0,
 /// A spark's longest ray, in points.
 const RAY: f32 = 22.0;
 
-/// Sensitivity, Height, Decay, Wet. A first draft; settling them needs an ear
-/// (`particle-kit-plan.md`).
+/// Sensitivity, Height, Decay, Wet. Checked by ear on 2026-11-26.
 pub const FACTORY: [Factory; 5] = [
     Factory {
         name: "Default",

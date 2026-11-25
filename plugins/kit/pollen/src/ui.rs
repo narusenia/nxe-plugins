@@ -24,8 +24,7 @@ const GUIDES: [f32; 3] = [0.0, BEHIND_MS * 0.5, BEHIND_MS];
 const RADIUS: f32 = 5.0;
 const DRIFT: f32 = 14.0;
 
-/// Density, Size, Scatter, Wet. A first draft; settling them needs an ear
-/// (`particle-kit-plan.md`).
+/// Density, Size, Scatter, Wet. Checked by ear on 2026-11-26.
 pub const FACTORY: [Factory; 5] = [
     Factory {
         name: "Default",

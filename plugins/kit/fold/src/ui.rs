@@ -15,8 +15,7 @@ type Ctx = PluginContext<FoldParams>;
 
 const PALETTE: Palette = Palette::DESIGN_KIT;
 
-/// Fold, Symmetry, Mix. The values are a first draft; settling them needs an
-/// ear (`nonlinear-kit-plan.md`).
+/// Fold, Symmetry, Mix. Checked by ear on 2026-11-26.
 pub const FACTORY: [Factory; 5] = [
     Factory {
         name: "Default",

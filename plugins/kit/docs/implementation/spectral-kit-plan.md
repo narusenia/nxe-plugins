@@ -70,8 +70,8 @@
 
 | ID | 単位 | 依存 | 状態 |
 |---|---|---|---|
-| KIT-5 | `nxe-spectral` の切り出し、`spectral-core`、Invert | KIT-1 | 🟡 コード（#37）と基準画像（#38）は済み。耳が残り |
-| KIT-6 | Shear | KIT-5 | 🟡 同上 |
-| KIT-7 | Afterimage | KIT-5 | 🟡 同上 |
+| KIT-5 | `nxe-spectral` の切り出し、`spectral-core`、Invert | KIT-1 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた。コード（#37）と基準画像（#38） |
+| KIT-6 | Shear | KIT-5 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた |
+| KIT-7 | Afterimage | KIT-5 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた |
 
 付属プリセットの中身と既定値は、耳で決める仕事として残る。

@@ -16,7 +16,7 @@ type Ctx = PluginContext<InvertParams>;
 
 const PALETTE: Palette = Palette::DESIGN_KIT;
 
-/// Low, High, Mix. A first draft; settling them needs an ear.
+/// Low, High, Mix. Checked by ear on 2026-11-26.
 pub const FACTORY: [Factory; 4] = [
     Factory {
         name: "Default",

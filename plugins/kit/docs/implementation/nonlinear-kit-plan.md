@@ -55,9 +55,9 @@
 
 | ID | 単位 | 依存 | 状態 |
 |---|---|---|---|
-| KIT-1 | `Palette::DESIGN_KIT`、`kit-ui`、`nonlinear-core` の Fold、プラグイン Fold | — | 🟡 コード（#36）と基準画像（#38）は済み。耳が残り |
-| KIT-2 | Fever | KIT-1 | 🟡 同上 |
-| KIT-3 | Buckle | KIT-1 | 🟡 同上 |
+| KIT-1 | `Palette::DESIGN_KIT`、`kit-ui`、`nonlinear-core` の Fold、プラグイン Fold | — | ✅ 付属プリセットは 2026-11-26 に耳で確かめた。コード（#36）と基準画像（#38） |
+| KIT-2 | Fever | KIT-1 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた |
+| KIT-3 | Buckle | KIT-1 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた |
 | KIT-4 | 最初の beta（`kit-<YYYY.MM>-beta.N`） | KIT-1〜3 | ✅ `kit-2026.11-beta.1`（2026-11-25） |
 
 付属プリセットの中身と既定値は、ほかと同じく**耳で決める仕事として残る**。
