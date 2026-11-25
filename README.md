@@ -10,15 +10,15 @@ with an [egui](https://github.com/emilk/egui) UI. Every plugin exports
 
 ## Download
 
-One release per series. Each carries a zip for the whole series, a zip per
-plugin, and — from Design on — an installer per platform.
+One release per series. Each carries an installer per platform, a zip for
+the whole series, and a zip per plugin.
 
 <!-- downloads:start -->
 | Series | What it is | Latest | macOS | Windows | All releases |
 |---|---|---|---|---|---|
-| [**Basic**](#basic) | Tools for a vocal and the mix | [`basic-2026.11-beta.1`](https://github.com/narusenia/nxe-plugins/releases/tag/basic-2026.11-beta.1) | [zip](https://github.com/narusenia/nxe-plugins/releases/download/basic-2026.11-beta.1/nxe-basic-2026.11-beta.1-macos.zip) | [zip](https://github.com/narusenia/nxe-plugins/releases/download/basic-2026.11-beta.1/nxe-basic-2026.11-beta.1-windows.zip) | [Basic](https://github.com/narusenia/nxe-plugins/releases?q=basic-&expanded=true) |
-| [**Peek**](#peek) | Meters that never touch the sound | [`peek-2026.11-beta.1`](https://github.com/narusenia/nxe-plugins/releases/tag/peek-2026.11-beta.1) | [zip](https://github.com/narusenia/nxe-plugins/releases/download/peek-2026.11-beta.1/nxe-peek-2026.11-beta.1-macos.zip) | [zip](https://github.com/narusenia/nxe-plugins/releases/download/peek-2026.11-beta.1/nxe-peek-2026.11-beta.1-windows.zip) | [Peek](https://github.com/narusenia/nxe-plugins/releases?q=peek-&expanded=true) |
-| [**Kit**](#kit) | Small sound-design tools, a few knobs each | [`kit-2026.11-beta.1`](https://github.com/narusenia/nxe-plugins/releases/tag/kit-2026.11-beta.1) | [zip](https://github.com/narusenia/nxe-plugins/releases/download/kit-2026.11-beta.1/nxe-kit-2026.11-beta.1-macos.zip) | [zip](https://github.com/narusenia/nxe-plugins/releases/download/kit-2026.11-beta.1/nxe-kit-2026.11-beta.1-windows.zip) | [Kit](https://github.com/narusenia/nxe-plugins/releases?q=kit-&expanded=true) |
+| [**Basic**](#basic) | Tools for a vocal and the mix | [`basic-2026.11-beta.2`](https://github.com/narusenia/nxe-plugins/releases/tag/basic-2026.11-beta.2) | [installer](https://github.com/narusenia/nxe-plugins/releases/download/basic-2026.11-beta.2/nxe-basic-2026.11-beta.2-macos-installer.pkg) · [zip](https://github.com/narusenia/nxe-plugins/releases/download/basic-2026.11-beta.2/nxe-basic-2026.11-beta.2-macos.zip) | [installer](https://github.com/narusenia/nxe-plugins/releases/download/basic-2026.11-beta.2/nxe-basic-2026.11-beta.2-windows-installer.exe) · [zip](https://github.com/narusenia/nxe-plugins/releases/download/basic-2026.11-beta.2/nxe-basic-2026.11-beta.2-windows.zip) | [Basic](https://github.com/narusenia/nxe-plugins/releases?q=basic-&expanded=true) |
+| [**Peek**](#peek) | Meters that never touch the sound | [`peek-2026.11-beta.2`](https://github.com/narusenia/nxe-plugins/releases/tag/peek-2026.11-beta.2) | [installer](https://github.com/narusenia/nxe-plugins/releases/download/peek-2026.11-beta.2/nxe-peek-2026.11-beta.2-macos-installer.pkg) · [zip](https://github.com/narusenia/nxe-plugins/releases/download/peek-2026.11-beta.2/nxe-peek-2026.11-beta.2-macos.zip) | [installer](https://github.com/narusenia/nxe-plugins/releases/download/peek-2026.11-beta.2/nxe-peek-2026.11-beta.2-windows-installer.exe) · [zip](https://github.com/narusenia/nxe-plugins/releases/download/peek-2026.11-beta.2/nxe-peek-2026.11-beta.2-windows.zip) | [Peek](https://github.com/narusenia/nxe-plugins/releases?q=peek-&expanded=true) |
+| [**Kit**](#kit) | Small sound-design tools, a few knobs each | [`kit-2026.11-beta.2`](https://github.com/narusenia/nxe-plugins/releases/tag/kit-2026.11-beta.2) | [installer](https://github.com/narusenia/nxe-plugins/releases/download/kit-2026.11-beta.2/nxe-kit-2026.11-beta.2-macos-installer.pkg) · [zip](https://github.com/narusenia/nxe-plugins/releases/download/kit-2026.11-beta.2/nxe-kit-2026.11-beta.2-macos.zip) | [installer](https://github.com/narusenia/nxe-plugins/releases/download/kit-2026.11-beta.2/nxe-kit-2026.11-beta.2-windows-installer.exe) · [zip](https://github.com/narusenia/nxe-plugins/releases/download/kit-2026.11-beta.2/nxe-kit-2026.11-beta.2-windows.zip) | [Kit](https://github.com/narusenia/nxe-plugins/releases?q=kit-&expanded=true) |
 | [**Design**](#design) | Tools that remake a sound | [`design-2026.11-beta.1`](https://github.com/narusenia/nxe-plugins/releases/tag/design-2026.11-beta.1) | [installer](https://github.com/narusenia/nxe-plugins/releases/download/design-2026.11-beta.1/nxe-design-2026.11-beta.1-macos-installer.pkg) · [zip](https://github.com/narusenia/nxe-plugins/releases/download/design-2026.11-beta.1/nxe-design-2026.11-beta.1-macos.zip) | [installer](https://github.com/narusenia/nxe-plugins/releases/download/design-2026.11-beta.1/nxe-design-2026.11-beta.1-windows-installer.exe) · [zip](https://github.com/narusenia/nxe-plugins/releases/download/design-2026.11-beta.1/nxe-design-2026.11-beta.1-windows.zip) | [Design](https://github.com/narusenia/nxe-plugins/releases?q=design-&expanded=true) |
 <!-- downloads:end -->
 
@@ -120,8 +120,8 @@ What comes next, and why in that order, is in
 **Formats.** CLAP, VST3 and AU v2 on macOS (Apple Silicon and Intel); CLAP and
 VST3 on Windows. Linux is not built from 2.0; the 0.x releases had it.
 
-**The easy way: the series installer** (from Design on). It lets you pick
-plugins and formats. It is not signed, so the first time:
+**The easy way: the series installer.** It lets you pick plugins and
+formats. It is not signed, so the first time:
 
 - **macOS:** open it, close the warning, then go to *System Settings → Privacy &
   Security* and click *Open Anyway*. Plugins it installs need no `xattr`.
