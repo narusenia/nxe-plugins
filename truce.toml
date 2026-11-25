@@ -24,7 +24,7 @@
 [vendor]
 name = "NXE"
 id = "com.nxe"
-url = "https://github.com/narusenia/nxe-plugins"
+url = "https://github.com/nxe-plugins/nxe-plugins"
 # Apple reserves all-lowercase manufacturer codes, so this has capitals.
 au_manufacturer = "Nxeu"
 
