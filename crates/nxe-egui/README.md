@@ -6,6 +6,7 @@ The v2 widgets and tokens, on egui. The rules the windows follow are
 
 ```bash
 cargo run -p nxe-egui --example gallery
+NXE_GALLERY_DESIGN=1 cargo run -p nxe-egui --example gallery   # the Design window instead
 ```
 
 ## How a widget is used
