@@ -263,6 +263,9 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
+          # A rebuild from `workflow_dispatch` runs on a branch, so the tag
+          # has to be named; a tag push names itself.
+          tag_name: ${{ inputs.tag || github.ref_name }}
           name: ${{ needs.plan.outputs.title }}
           body_path: notes.md
           files: artifacts/*.zip
