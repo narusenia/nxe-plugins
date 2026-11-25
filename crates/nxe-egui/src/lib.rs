@@ -17,6 +17,7 @@ pub mod kit;
 pub mod knob;
 pub mod logo;
 pub mod meter;
+pub mod number;
 pub mod preset;
 pub mod readout;
 pub mod segment;

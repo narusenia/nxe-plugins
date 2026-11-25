@@ -20,6 +20,16 @@ pub fn number(text: &str) -> Option<f64> {
     text[..end].parse().ok()
 }
 
+/// A frequency: "1.2 kHz", "350 Hz" or a bare number, in Hz.
+pub fn hz(text: &str) -> Option<f64> {
+    let value = number(text)?;
+    Some(if text.to_ascii_lowercase().contains('k') {
+        value * 1_000.0
+    } else {
+        value
+    })
+}
+
 /// A percentage, as a fraction: "35%" → 0.35.
 pub fn percent(text: &str) -> Option<f64> {
     number(text).map(|value| value / 100.0)

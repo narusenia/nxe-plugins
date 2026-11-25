@@ -1,4 +1,4 @@
-//! Size, Splash, Mix and the Tuning switch. **The field names are the
+//! Sensitivity, Size, Splash, Mix, the Tuning switch and its Pitch. **The field names are the
 //! parameter ids** (`resonance-kit-plan.md`, the table): never rename them.
 
 use nxe_dsp::Handoff;
@@ -19,6 +19,16 @@ impl Tuning {
 
 #[derive(Params)]
 pub struct DewParams {
+    #[param(
+        name = "Sensitivity",
+        range = "linear(0, 1)",
+        default = 0.5,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
+    pub sensitivity: FloatParam,
+
     #[param(
         name = "Size",
         range = "linear(0, 1)",
@@ -52,6 +62,17 @@ pub struct DewParams {
     #[param(name = "Tuning", default = 0, parse = "tuning")]
     pub tuning: EnumParam<Tuning>,
 
+    /// Where a drop settles; in Follow, the harmonic of the input nearest to it.
+    #[param(
+        name = "Pitch",
+        range = "log(200, 8000)",
+        default = 2000.0,
+        format = "hz",
+        parse = "hz_text",
+        smooth = "linear(20)"
+    )]
+    pub pitch: FloatParam,
+
     /// The drops sounding, for the figure (`Dew::drops`).
     #[skip]
     pub drops: Handoff<{ DROPS * READING }>,
@@ -63,6 +84,18 @@ pub struct DewParams {
 impl DewParams {
     fn percent(&self, text: &str) -> Option<f64> {
         text::percent(text)
+    }
+
+    fn hz(&self, value: f64) -> String {
+        if value >= 1_000.0 {
+            format!("{:.2} kHz", value / 1_000.0)
+        } else {
+            format!("{value:.0} Hz")
+        }
+    }
+
+    fn hz_text(&self, text: &str) -> Option<f64> {
+        text::hz(text)
     }
 
     fn tuning(&self, text: &str) -> Option<f64> {

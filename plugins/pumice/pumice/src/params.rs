@@ -42,12 +42,7 @@ impl From<QualityParam> for Quality {
 
 /// "1.2 kHz" or "350 Hz" (or a bare number) back to Hz.
 pub fn hz(text: &str) -> Option<f64> {
-    let value = text::number(text)?;
-    Some(if text.to_ascii_lowercase().contains('k') {
-        value * 1_000.0
-    } else {
-        value
-    })
+    text::hz(text)
 }
 
 /// One node's four parameters.

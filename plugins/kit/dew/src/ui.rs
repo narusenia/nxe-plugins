@@ -22,34 +22,40 @@ const RIPPLE_SPEED: f32 = 260.0;
 /// The pitches the figure marks.
 const GUIDES: [(f32, &str); 3] = [(250.0, "250"), (1_000.0, "1k"), (4_000.0, "4k")];
 const TUNING_WIDTH: f32 = 104.0;
+const PITCH_WIDTH: f32 = 72.0;
 
-/// Size, Splash, Mix. A first draft; settling them needs an ear
+/// Sensitivity, Size, Splash, Mix. A first draft; settling them needs an ear
 /// (`resonance-kit-plan.md`).
 pub const FACTORY: [Factory; 5] = [
     Factory {
         name: "Default",
-        values: &[0.4, 0.4, 0.5],
+        values: &[0.5, 0.4, 0.4, 0.5],
     },
     Factory {
         name: "Drip",
-        values: &[0.75, 0.0, 0.6],
+        values: &[0.4, 0.75, 0.0, 0.6],
     },
     Factory {
         name: "Rain",
-        values: &[0.3, 1.0, 0.45],
+        values: &[0.7, 0.3, 1.0, 0.45],
     },
     Factory {
         name: "Mist",
-        values: &[0.1, 0.85, 0.3],
+        values: &[0.8, 0.1, 0.85, 0.3],
     },
     Factory {
         name: "Puddle",
-        values: &[1.0, 0.5, 0.7],
+        values: &[0.3, 1.0, 0.5, 0.7],
     },
 ];
 
-pub fn knob_ids(params: &DewParams) -> [u32; 3] {
-    [params.size.id(), params.splash.id(), params.mix.id()]
+pub fn knob_ids(params: &DewParams) -> [u32; 4] {
+    [
+        params.sensitivity.id(),
+        params.size.id(),
+        params.splash.id(),
+        params.mix.id(),
+    ]
 }
 
 pub fn create(params: Arc<DewParams>) -> Box<dyn Editor> {
@@ -63,7 +69,7 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         return;
     }
     let params = ctx.params();
-    let [size, splash, mix] = knob_ids(params);
+    let [sensitivity, size, splash, mix] = knob_ids(params);
     let figure = kit_ui::window(
         ui,
         ctx,
@@ -73,7 +79,12 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
             product: "Dew",
             plugin_id: "com.nxe.dew",
             palette: &PALETTE,
-            knobs: &[(size, "Size"), (splash, "Splash"), (mix, "Mix")],
+            knobs: &[
+                (sensitivity, "Sensitivity"),
+                (size, "Size"),
+                (splash, "Splash"),
+                (mix, "Mix"),
+            ],
             factory: &FACTORY,
         },
     );
@@ -87,19 +98,27 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
     };
     ripples(ui, figure, &drops);
 
+    // Free or Follow, and the pitch either one aims at, in one row.
     let tuning = params.tuning.index() as usize;
-    let mut corner = ui.new_child(UiBuilder::new().max_rect(Rect::from_min_size(
+    let height = nxe_egui::segment::HEIGHT;
+    let row = Rect::from_min_size(
         pos2(
-            figure.right() - TUNING_WIDTH - SPACE_2,
-            figure.bottom() - nxe_egui::segment::HEIGHT - SPACE_2,
+            figure.right() - TUNING_WIDTH - SPACE_2 - PITCH_WIDTH - SPACE_2,
+            figure.bottom() - height - SPACE_2,
         ),
-        vec2(TUNING_WIDTH, nxe_egui::segment::HEIGHT),
-    )));
+        vec2(TUNING_WIDTH + SPACE_2 + PITCH_WIDTH, height),
+    );
+    let mut switch = ui.new_child(UiBuilder::new().max_rect(row));
     if let Some(picked) =
-        nxe_egui::segment::segment(&mut corner, &PALETTE, &Tuning::NAMES, tuning, TUNING_WIDTH)
+        nxe_egui::segment::segment(&mut switch, &PALETTE, &Tuning::NAMES, tuning, TUNING_WIDTH)
     {
         kit_ui::set_plain(ctx, params.tuning.id(), picked as f64);
     }
+    let mut pitch = ui.new_child(UiBuilder::new().max_rect(Rect::from_min_size(
+        pos2(row.right() - PITCH_WIDTH, row.top()),
+        vec2(PITCH_WIDTH, height),
+    )));
+    kit_ui::number_for(&mut pitch, ctx, &PALETTE, params.pitch.id(), PITCH_WIDTH);
 }
 
 /// Where a height `0..=1` up the pitch span sits in `figure`.

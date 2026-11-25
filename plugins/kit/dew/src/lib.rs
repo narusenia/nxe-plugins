@@ -61,6 +61,8 @@ impl PluginLogic for Dew {
         let follow = params.tuning.index() as usize == Tuning::Follow as usize;
         buffer.for_each_stereo_frame(|input, output| {
             let settings = Settings {
+                sensitivity: params.sensitivity.read(),
+                pitch: params.pitch.read(),
                 size: params.size.read(),
                 splash: params.splash.read(),
                 mix: params.mix.read(),
