@@ -56,17 +56,27 @@ Plugins are released a series at a time: one release per drop, tagged
 `<series>-<YYYY.MM>` (`basic-2026.12`), with a zip per plugin and platform
 (`nxe-doubler-2.0.0-macos.zip`), plus one zip per platform holding the
 whole series (`nxe-basic-2026.12-macos.zip`). The 0.x releases before it were one per
-plugin, tagged `<plugin>-v<version>`. Unpack it and copy the bundles
-into:
+plugin, tagged `<plugin>-v<version>`.
+
+**The easy way: the series installer.** Each release also carries one
+installer per platform for the whole series
+(`nxe-basic-2026.12-macos-installer.pkg`, `nxe-basic-2026.12-windows-installer.exe`).
+It lets you pick plugins and formats. It is not signed either, so the first time:
+
+- **macOS:** open it, close the warning, then go to *System Settings → Privacy &
+  Security* and click *Open Anyway*. Plugins it installs need no `xattr`.
+- **Windows:** SmartScreen warns; choose *More info → Run anyway*.
+
+**By hand:** unpack a zip and copy the bundles into:
 
 | | CLAP | VST3 | AU |
 |---|---|---|---|
 | macOS | `~/Library/Audio/Plug-Ins/CLAP` | `~/Library/Audio/Plug-Ins/VST3` | `~/Library/Audio/Plug-Ins/Components` |
 | Windows | `%COMMONPROGRAMFILES%\CLAP` | `%COMMONPROGRAMFILES%\VST3` | — |
 
-**macOS builds are not signed or notarized.** The first time you load one,
-Gatekeeper will refuse it. Clear the quarantine attribute from every NXE
-bundle you installed:
+**macOS builds are not signed or notarized.** The first time you load one
+copied by hand, Gatekeeper will refuse it. Clear the quarantine attribute
+from every NXE bundle you installed:
 
 ```bash
 cd ~/Library/Audio/Plug-Ins

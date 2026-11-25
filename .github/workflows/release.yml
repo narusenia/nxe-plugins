@@ -64,6 +64,11 @@ jobs:
           missing = sorted({p for v in series.values() for p in v["plugins"]} - truce.keys())
           if missing:
               sys.exit(f"::error::series.toml names plugins not in truce.toml: {' '.join(missing)}")
+          # Each series' installer is a `[[suite]]` in truce.toml with the same plugins.
+          suites = {s["bundle_id"]: s.get("plugins") for s in tomllib.load(open("truce.toml", "rb")).get("suite", [])}
+          wrong = [k for k, v in series.items() if suites.get(f"{k}-suite") != v["plugins"]]
+          if wrong:
+              sys.exit(f"::error::truce.toml needs a [[suite]] <series>-suite listing the same plugins as series.toml for: {' '.join(wrong)}")
           if os.environ["EVENT"] == "pull_request":
               key, version, plugins = "basic", "pr", ["doubler"]
           else:
@@ -135,8 +140,9 @@ jobs:
       #
       # macOS is universal through `cargo truce package`, the only cargo-truce
       # command that builds both architectures: `build` makes the host's only,
-      # and with `--target` 6.3.0 loses the AU dylib. The installer it also
-      # writes is not shipped (decision 7 says zip); the bundles it staged are.
+      # and with `--target` 6.3.0 loses the AU dylib. The per-plugin installer
+      # it also writes is not shipped; the bundles it staged are, and the
+      # series installer is made below.
       #
       # **A bundle that fails the validators does not ship** (`V2-13`).
       # `cargo truce validate` reads installed bundles, so the shipped ones are
@@ -195,6 +201,29 @@ jobs:
             echo "nxe-$plugin-$version-${{ matrix.name }}" > "$out.name"
           done
 
+      # The whole series as one installer: a `.pkg` (choose plugins and
+      # formats, for this user or the whole machine) and an Inno Setup `.exe`.
+      # Unsigned, like the zips (`INFRA-3`), but files an installer writes
+      # carry no quarantine, so nothing has to be cleared by hand. The suite's
+      # own version is truce.toml's workspace one, so the file is renamed.
+      - name: Installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf target/dist
+          if [ "${{ matrix.name }}" = macos ]; then
+            formats=clap,vst3,au2; ext=pkg
+          else
+            formats=clap,vst3; ext=exe
+            if [ ! -f "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" ] && [ ! -f "/c/Program Files/Inno Setup 6/ISCC.exe" ]; then
+              choco install innosetup --no-progress -y
+            fi
+          fi
+          cargo truce package --suite "${{ needs.plan.outputs.series }}-suite" --no-per-plugin \
+            --formats "$formats" --no-notarize --no-sign
+          cp target/dist/${{ needs.plan.outputs.series }}-suite-*."$ext" \
+            "nxe-${{ needs.plan.outputs.series }}-${{ needs.plan.outputs.version }}-${{ matrix.name }}-installer.$ext"
+
       # `zip` is not on the Windows runners and `Compress-Archive` is not
       # anywhere else, so this is two steps rather than one clever one.
       - name: Zip
@@ -227,7 +256,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
-          path: nxe-*.zip
+          path: |
+            nxe-*.zip
+            nxe-*-installer.*
           if-no-files-found: error
 
   release:
@@ -268,7 +299,9 @@ jobs:
           tag_name: ${{ inputs.tag || github.ref_name }}
           name: ${{ needs.plan.outputs.title }}
           body_path: notes.md
-          files: artifacts/*.zip
+          files: |
+            artifacts/*.zip
+            artifacts/*-installer.*
           prerelease: ${{ needs.plan.outputs.prerelease }}
           # A draft, not a published release: the macOS bundle is unsigned, so
           # someone has to say the notes are right and press the button.

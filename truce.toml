@@ -215,3 +215,34 @@ category = "effect"
 fourcc = "Aftr"
 description = "What was loud stays on as a fading trace"
 vst3_subcategory = "Spectral"
+
+# One installer per series (`release.yml`), beside the zips: a `.pkg` on macOS,
+# an Inno Setup `.exe` on Windows. Each lists the same plugins as its series in
+# `series.toml`. The ids end in `-suite` so they never meet a plugin's
+# `bundle_id` (`peek` is one).
+[[suite]]
+name = "NXE Basic"
+bundle_id = "basic-suite"
+plugins = ["doubler", "sparkleur", "velour", "air", "diorama", "pumice"]
+description = "Tools for a vocal mix: Doubler 2, Sparkleur 2, Velour 2, Air 2, Diorama 2 and Pumice."
+
+[[suite]]
+name = "NXE Peek"
+bundle_id = "peek-suite"
+plugins = [
+    "peek-level",
+    "peek-vu",
+    "peek-stereo",
+    "peek-spectrum",
+    "peek-spectrogram",
+    "peek-loudness",
+    "peek-scope",
+    "peek",
+]
+description = "Meters that never touch the sound: seven single meters and Peek, which shows them all."
+
+[[suite]]
+name = "NXE Kit"
+bundle_id = "kit-suite"
+plugins = ["fold", "fever", "buckle", "invert", "shear", "afterimage"]
+description = "Small sound-design tools: Fold, Fever, Buckle, Invert, Shear and Afterimage."

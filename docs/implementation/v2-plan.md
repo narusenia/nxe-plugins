@@ -400,7 +400,7 @@ nih-plug のまま残っている 4 本のタグも壊さないよう、移行�
 **決めたこと**: truce 版は Linux を出さない（決定 7 のとおり）。nih-plug に
 残っている間のタグは今までどおり 3 OS。macOS は `cargo truce package` で
 universal（Apple Silicon + Intel）を作り、installer 用に stage された bundle を
-zip にする（installer 自体は配らない）。`cargo truce build` はホストの
+zip にする（プラグインごとの installer は配らない）。`cargo truce build` はホストの
 アーキテクチャしか作らず、`--target` を付けると 6.3.0 は AU の dylib を
 見失う。
 `release.yml` を触る PR では、Doubler を release せずにビルドと validate だけ回す。
@@ -413,6 +413,13 @@ zip にする（installer 自体は配らない）。`cargo truce build` はホ�
 各 `Cargo.toml` が持ち、リリースノートに並べる。1 本だけ直した時も次の回
 （`.1`）として出し、変わっていないものはそのまま載る。nih-plug の経路と
 Linux はここで消した（6 本とも truce に載ったので）。
+
+**決めたこと（2026-11-25、ユーザーの依頼）**: zip に加えて、**シリーズ 1 つを
+1 つのインストーラーにしたもの**を OS ごとに載せる（macOS は `.pkg`、Windows は
+Inno Setup の `.exe`、`cargo truce package --suite`）。中身は `truce.toml` の
+`[[suite]]`（`<series>-suite`）で、`series.toml` と一覧が食い違うと plan の
+ジョブで落ちる。署名は無いまま（`INFRA-3`）だが、インストーラーが書いた
+ファイルには quarantine が付かないので、手で `xattr` を外す手順が要らなくなる。
 
 ### V2-14 — 5 本の 2.0.0 と Pumice 1.0.0
 
