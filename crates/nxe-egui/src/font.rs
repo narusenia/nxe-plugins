@@ -1,6 +1,7 @@
 //! The embedded typefaces, and the three ways text is set.
 //!
-//! **Words are Inter, figures are Geist Mono** — both SIL OFL 1.1, licence text
+//! **Words are Inter, figures are Geist Mono**; the Design windows set their
+//! words in Ioskeley Mono. All SIL OFL 1.1, licence text
 //! beside the files in `assets/`, and it **has to travel with any release
 //! bundle** because the faces are compiled in.
 //!
@@ -19,9 +20,16 @@ use std::sync::Arc;
 pub const INTER: &[u8] = include_bytes!("../assets/inter/Inter-Regular.ttf");
 pub const INTER_MEDIUM: &[u8] = include_bytes!("../assets/inter/Inter-Medium.ttf");
 pub const GEIST_MONO: &[u8] = include_bytes!("../assets/geist/GeistMono-Regular.ttf");
+/// The Design family's lettering (`design`): Ioskeley Mono, without
+/// ligatures. SIL OFL 1.1 like the others.
+pub const IOSKELEY: &[u8] = include_bytes!("../assets/ioskeley/IoskeleyMonoNL-Regular.ttf");
+pub const IOSKELEY_MEDIUM: &[u8] = include_bytes!("../assets/ioskeley/IoskeleyMonoNL-Medium.ttf");
 
 /// The family name Inter Medium is registered under.
 pub const MEDIUM: &str = "nxe-medium";
+/// The family names the Design lettering is registered under.
+pub const DRAFTING: &str = "nxe-drafting";
+pub const DRAFTING_MEDIUM: &str = "nxe-drafting-medium";
 
 /// The font definitions every window uses. egui's own faces stay behind ours
 /// as a fallback for any glyph Inter does not have.
@@ -31,6 +39,8 @@ pub fn definitions() -> FontDefinitions {
         ("inter", INTER),
         ("inter-medium", INTER_MEDIUM),
         ("geist-mono", GEIST_MONO),
+        ("ioskeley", IOSKELEY),
+        ("ioskeley-medium", IOSKELEY_MEDIUM),
     ] {
         fonts
             .font_data
@@ -47,11 +57,17 @@ pub fn definitions() -> FontDefinitions {
         .get_mut(&FontFamily::Monospace)
         .expect("egui always defines the monospace family")
         .insert(0, "geist-mono".into());
-    let mut medium = vec!["inter-medium".to_owned()];
-    medium.extend(fallback);
-    fonts
-        .families
-        .insert(FontFamily::Name(MEDIUM.into()), medium);
+    for (family, face) in [
+        (MEDIUM, "inter-medium"),
+        (DRAFTING, "ioskeley"),
+        (DRAFTING_MEDIUM, "ioskeley-medium"),
+    ] {
+        let mut faces = vec![face.to_owned()];
+        faces.extend(fallback.iter().cloned());
+        fonts
+            .families
+            .insert(FontFamily::Name(family.into()), faces);
+    }
     fonts
 }
 
@@ -62,7 +78,8 @@ pub fn definitions() -> FontDefinitions {
 /// for them and returns `false`; the caller draws nothing but the ground and
 /// gets a second pass straight away. Cheap to call every frame.
 pub fn install(ctx: &egui::Context) -> bool {
-    let family = FontFamily::Name(MEDIUM.into());
+    // The last family registered: when it is bound, all of them are.
+    let family = FontFamily::Name(DRAFTING_MEDIUM.into());
     if ctx.fonts(|fonts| fonts.definitions().families.contains_key(&family)) {
         return true;
     }
@@ -77,6 +94,15 @@ pub fn sans(size: f32) -> FontId {
 
 pub fn medium(size: f32) -> FontId {
     FontId::new(size, FontFamily::Name(MEDIUM.into()))
+}
+
+/// The Design family's lettering, as on a drawing.
+pub fn drafting(size: f32) -> FontId {
+    FontId::new(size, FontFamily::Name(DRAFTING.into()))
+}
+
+pub fn drafting_medium(size: f32) -> FontId {
+    FontId::new(size, FontFamily::Name(DRAFTING_MEDIUM.into()))
 }
 
 pub fn mono(size: f32) -> FontId {

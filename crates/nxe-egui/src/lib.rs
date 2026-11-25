@@ -9,6 +9,7 @@
 
 pub mod bar;
 pub mod curve;
+pub mod design;
 pub mod entry;
 pub mod font;
 pub mod input;
