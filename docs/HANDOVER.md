@@ -45,7 +45,7 @@ draft release に乗る（プラグインごとの zip と、全部入りの zip
 公開するのは人**。draft はいったん Pre-release で出る。出し直すときは
 Actions の release を `workflow_dispatch` でタグを渡して動かす（#39 まではタグ名が
 渡らず失敗した）。版は各クレートの `Cargo.toml` から読む（#38 までは
-`plugins/<name>/<name>/` 決め打ちで、Kit と Peek で落ちた）。README のプラグイン表の差し替えは `V2-14` で。
+`plugins/<name>/<name>/` 決め打ちで、Kit と Peek で落ちた）。公開したら `mise run readme:downloads` で README の表を書き直す。サイト（GitHub Pages、`site/`）と最新版の一覧 `downloads.json` は、公開すると `pages` のワークフローが自動で作り直す（beta も載る）。README のプラグイン表の差し替えは `V2-14` で。
 
 **v2 の後**は [`implementation/series-plan.md`](implementation/series-plan.md)
 （Colour / Design / Create / Kit / Peek）。窓の型は `design-system.md` の

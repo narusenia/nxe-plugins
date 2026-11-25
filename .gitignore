@@ -5,3 +5,6 @@
 
 # v0 `cargo xtask bundle` output
 /bundled
+
+# Written by `scripts/readme-downloads.py`; the Pages workflow writes it fresh.
+site/downloads.json

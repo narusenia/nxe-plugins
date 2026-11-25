@@ -1,0 +1,43 @@
+# The site on GitHub Pages: `site/`, with `downloads.json` written fresh from
+# the published releases (`scripts/readme-downloads.py --json-only`).
+#
+# **On a published release** so the site and the JSON point at it the moment
+# it is out, without a commit; on a change to the site or the script; and by
+# hand.
+
+name: pages
+
+on:
+  release:
+    types: [published]
+  push:
+    branches: [main]
+    paths: ["site/**", "scripts/readme-downloads.py", "series.toml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write downloads.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/readme-downloads.py --json-only
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
