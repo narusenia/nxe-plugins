@@ -13,12 +13,14 @@ with an [egui](https://github.com/emilk/egui) UI. Every plugin exports
 One release per series. Each carries a zip for the whole series, a zip per
 plugin, and — from Design on — an installer per platform.
 
+<!-- downloads:start -->
 | Series | What it is | Latest | macOS | Windows | All releases |
 |---|---|---|---|---|---|
 | [**Basic**](#basic) | Tools for a vocal and the mix | [`basic-2026.11-beta.1`](https://github.com/narusenia/nxe-plugins/releases/tag/basic-2026.11-beta.1) | [zip](https://github.com/narusenia/nxe-plugins/releases/download/basic-2026.11-beta.1/nxe-basic-2026.11-beta.1-macos.zip) | [zip](https://github.com/narusenia/nxe-plugins/releases/download/basic-2026.11-beta.1/nxe-basic-2026.11-beta.1-windows.zip) | [Basic](https://github.com/narusenia/nxe-plugins/releases?q=basic-&expanded=true) |
 | [**Peek**](#peek) | Meters that never touch the sound | [`peek-2026.11-beta.1`](https://github.com/narusenia/nxe-plugins/releases/tag/peek-2026.11-beta.1) | [zip](https://github.com/narusenia/nxe-plugins/releases/download/peek-2026.11-beta.1/nxe-peek-2026.11-beta.1-macos.zip) | [zip](https://github.com/narusenia/nxe-plugins/releases/download/peek-2026.11-beta.1/nxe-peek-2026.11-beta.1-windows.zip) | [Peek](https://github.com/narusenia/nxe-plugins/releases?q=peek-&expanded=true) |
 | [**Kit**](#kit) | Small sound-design tools, a few knobs each | [`kit-2026.11-beta.1`](https://github.com/narusenia/nxe-plugins/releases/tag/kit-2026.11-beta.1) | [zip](https://github.com/narusenia/nxe-plugins/releases/download/kit-2026.11-beta.1/nxe-kit-2026.11-beta.1-macos.zip) | [zip](https://github.com/narusenia/nxe-plugins/releases/download/kit-2026.11-beta.1/nxe-kit-2026.11-beta.1-windows.zip) | [Kit](https://github.com/narusenia/nxe-plugins/releases?q=kit-&expanded=true) |
 | [**Design**](#design) | Tools that remake a sound | [`design-2026.11-beta.1`](https://github.com/narusenia/nxe-plugins/releases/tag/design-2026.11-beta.1) | [installer](https://github.com/narusenia/nxe-plugins/releases/download/design-2026.11-beta.1/nxe-design-2026.11-beta.1-macos-installer.pkg) · [zip](https://github.com/narusenia/nxe-plugins/releases/download/design-2026.11-beta.1/nxe-design-2026.11-beta.1-macos.zip) | [installer](https://github.com/narusenia/nxe-plugins/releases/download/design-2026.11-beta.1/nxe-design-2026.11-beta.1-windows-installer.exe) · [zip](https://github.com/narusenia/nxe-plugins/releases/download/design-2026.11-beta.1/nxe-design-2026.11-beta.1-windows.zip) | [Design](https://github.com/narusenia/nxe-plugins/releases?q=design-&expanded=true) |
+<!-- downloads:end -->
 
 Every release is on the [releases page](https://github.com/narusenia/nxe-plugins/releases).
 The builds are not signed: see [Installing](#installing) for the first run.

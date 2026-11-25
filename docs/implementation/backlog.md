@@ -94,7 +94,7 @@ V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実
 | ID | 単位 | 依存 | 状態 |
 |---|---|---|---|
 | PAR-1 | `parasite-core`: ピッチ追従（YIN）とエンジン、4 種 | — | ✅ 2026-11-25 に付属プリセットで耳で確かめた |
-| PAR-2 | `nxe_egui::design`（Design 7 の枠と細いスライダー） | — | 🟡 コードは済み |
+| PAR-2 | `nxe_egui::design`（Design 7 の枠と細いスライダー） | — | ✅ |
 | PAR-3 | Parasite のプラグイン | PAR-1, PAR-2 | ✅ |
 | PAR-4 | 最初の beta（`design-<YYYY.MM>-beta.N`） | PAR-3 | ✅ `design-2026.11-beta.1`（2026-11-25、Latest） |
 

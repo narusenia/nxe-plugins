@@ -29,6 +29,9 @@ struct Gallery {
     current: Option<usize>,
     modified: bool,
     loose: f32,
+    /// `NXE_GALLERY_DESIGN` shows the Design window (Design 7) instead.
+    design: bool,
+    species: usize,
     started: std::time::Instant,
 }
 
@@ -46,6 +49,8 @@ impl Default for Gallery {
             current: Some(0),
             modified: false,
             loose: 0.5,
+            design: std::env::var_os("NXE_GALLERY_DESIGN").is_some(),
+            species: 0,
             started: std::time::Instant::now(),
         }
     }
@@ -74,6 +79,10 @@ fn apply(control: &Control, value: &mut f32, default: f32, changed: &mut bool) {
 impl eframe::App for Gallery {
     fn ui(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
         if !window(ui) {
+            return;
+        }
+        if self.design {
+            self.design(ui);
             return;
         }
         // `NXE_GALLERY_HZ` sets how often the window redraws; the default is
@@ -311,6 +320,92 @@ impl eframe::App for Gallery {
             .is_pointer_over_egui()
             .then_some("Drag up or down. Shift for fine, double-click to reset.");
         status::status(ui, palette, width, hint);
+    }
+}
+
+impl Gallery {
+    /// The Design window (Design 7) at its real size: the frame, its thin
+    /// sliders, the glyph row and the feeds table, on Parasite's numbers.
+    fn design(&mut self, ui: &mut Ui) {
+        use nxe_egui::design;
+        let palette = &Palette::DESIGN_KIT;
+        let (frame, _) =
+            ui.allocate_exact_size(vec2(design::WIDTH, design::HEIGHT), egui::Sense::hover());
+        let frame_ui = ui.new_child(egui::UiBuilder::new().max_rect(frame));
+        let areas = design::design(
+            &frame_ui,
+            palette,
+            "Parasite",
+            "Design",
+            ["Host", "Parasite", "Output"],
+        );
+        let mut changed = false;
+        let mut column = ui.new_child(egui::UiBuilder::new().max_rect(areas.columns[0]));
+        column.spacing_mut().item_spacing = vec2(0.0, SPACE_2);
+        for (index, name) in ["Sensitivity", "Resistance"].into_iter().enumerate() {
+            let value = &mut self.macros[index];
+            let text = format!("{:.0}%", *value * 100.0);
+            let control = design::slider(
+                &mut column,
+                palette,
+                name,
+                *value,
+                &text,
+                areas.columns[0].width(),
+            );
+            apply(&control, value, 0.5, &mut changed);
+        }
+        let mut column = ui.new_child(egui::UiBuilder::new().max_rect(areas.columns[1]));
+        column.spacing_mut().item_spacing = vec2(0.0, SPACE_2);
+        let names = ["Sine", "Saw", "Square", "Noise"];
+        if let Some(picked) = design::glyphs(
+            &mut column,
+            palette,
+            &names,
+            self.species,
+            areas.columns[1].width(),
+            |painter, rect, colour, index| {
+                painter.text(
+                    rect.center(),
+                    egui::Align2::CENTER_CENTER,
+                    names[index],
+                    font::drafting(9.0),
+                    colour,
+                );
+            },
+        ) {
+            self.species = picked;
+        }
+        for (index, name) in ["Infection", "Hunger"].into_iter().enumerate() {
+            let value = &mut self.bars[index];
+            let text = format!("{:.0}%", *value * 100.0);
+            let control = design::slider(
+                &mut column,
+                palette,
+                name,
+                *value,
+                &text,
+                areas.columns[1].width(),
+            );
+            apply(&control, value, 0.5, &mut changed);
+        }
+        for (index, (from, to)) in [("Host pitch", "Parasite pitch"), ("Attack", "Infection")]
+            .into_iter()
+            .enumerate()
+        {
+            let row = Rect::from_min_size(
+                areas.feeds.min + vec2(0.0, index as f32 * design::ROW),
+                vec2(areas.feeds.width(), design::ROW),
+            );
+            design::feed(
+                ui,
+                palette,
+                row,
+                from,
+                to,
+                &format!("{:.0}%", self.bars[index] * 100.0),
+            );
+        }
     }
 }
 
