@@ -65,6 +65,6 @@
 | ID | 単位 | 依存 | 状態 |
 |---|---|---|---|
 | PRI-1 | `resonance_core::prisma`（音、倍音、Coupling、Freeze） | RES-2 | ✅ 試験 10 本 |
-| PRI-2 | Prisma のプラグイン（宣言、MIDI、窓、付属プリセット） | PRI-1, MEN-2 | 🟡 コードと macOS の基準画像は済み。Windows の基準画像と、DAW で MIDI を送って耳で確かめることが残り |
+| PRI-2 | Prisma のプラグイン（宣言、MIDI、窓、付属プリセット） | PRI-1, MEN-2 | 🟡 コードと基準画像（macOS / Windows）は済み。DAW で MIDI を送って耳で確かめることが残り |
 
 付属プリセット（Default、Glass、Bell Choir、Mycelium、Halo）の値は仮。

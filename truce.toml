@@ -327,3 +327,9 @@ name = "NXE Design"
 bundle_id = "design-suite"
 plugins = ["parasite"]
 description = "Tools that remake a sound: Parasite."
+
+[[suite]]
+name = "NXE Colour"
+bundle_id = "colour-suite"
+plugins = ["meniscus", "prisma"]
+description = "Tools that add colour to a sound: Meniscus and Prisma."
