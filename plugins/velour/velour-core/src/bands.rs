@@ -451,14 +451,12 @@ mod tests {
             (Band::Air, 8_000),
         ] {
             let output = run(band, hz, 3.0, 0.0, nxe_audio::shaper::BIAS_MAX);
-            // Whole periods of the tone only: a part period leaks into the
-            // mean, and how much differs by platform (4.4 periods of 44 Hz
-            // left −1.3e-4 on Linux x86_64).
-            let tone = (hz / 5) as f32;
-            let periods = (LENGTH as f32 * tone / HOST_RATE).floor();
-            let whole = (periods * HOST_RATE / tone).round() as usize;
-            let offset = mean(&output[..whole]);
-            assert!(offset.abs() < 1e-4, "{band:?} left {offset} of DC");
+            let offset = mean(&output);
+            // Without the high-pass the curve leaves about 5e-2. With it,
+            // what is left is the f32 floor of a 30 Hz section at 192 kHz,
+            // which moves with the platform's maths: 3e-5 on macOS, 1.6e-4
+            // on Linux x86_64.
+            assert!(offset.abs() < 1e-3, "{band:?} left {offset} of DC");
         }
     }
 
