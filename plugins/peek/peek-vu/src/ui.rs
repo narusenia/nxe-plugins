@@ -62,21 +62,15 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
     let vu = amplitudes.map(|amplitude| peek_ui::vu::vu_of(amplitude, reference));
 
     let look = params.look.index() as usize;
-    let mut corner = row(
-        ui,
-        Rect::from_min_size(
-            pos2(figure.right() - 96.0, figure.top() - kit::HEAD + SPACE_2),
-            vec2(96.0, nxe_egui::segment::HEIGHT),
-        ),
-    );
+    let mut corner = peek_ui::corner(ui, figure.right(), figure.top() - kit::HEAD + SPACE_2);
     peek_ui::choice(
         &mut corner,
         ctx,
         &PALETTE,
         params.look.id(),
+        "Look",
         &["Arc", "Line"],
         look,
-        96.0,
     );
     if look == 0 {
         peek_ui::vu::arc(ui, &PALETTE, figure, vu);

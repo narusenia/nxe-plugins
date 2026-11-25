@@ -83,28 +83,12 @@ fn cell(ui: &Ui, rect: Rect, title: &str) -> Rect {
     )
 }
 
-/// A segmented choice at the top right of a cell.
-fn corner(ui: &mut Ui, ctx: &Ctx, rect: Rect, id: u32, names: &[&str], index: usize, width: f32) {
-    corner_at(ui, ctx, rect, 0.0, id, names, index, width);
-}
-
-/// The same, `offset` further left, for a second choice beside the first.
-#[allow(clippy::too_many_arguments)]
-fn corner_at(
-    ui: &mut Ui,
-    ctx: &Ctx,
-    rect: Rect,
-    offset: f32,
-    id: u32,
-    names: &[&str],
-    index: usize,
-    width: f32,
-) {
-    let mut child = ui.new_child(UiBuilder::new().max_rect(Rect::from_min_size(
-        pos2(rect.right() - width - SPACE_2 - offset, rect.top() + 3.0),
-        vec2(width, nxe_egui::segment::HEIGHT),
-    )));
-    peek_ui::choice(&mut child, ctx, &PALETTE, id, names, index, width);
+/// The choices at the top right of a cell, the first at the right.
+fn corner(ui: &mut Ui, ctx: &Ctx, rect: Rect, choices: &[(u32, &str, &[&str], usize)]) {
+    let mut row = peek_ui::corner(ui, rect.right() - SPACE_2, rect.top() + 3.0);
+    for (id, label, names, index) in choices {
+        peek_ui::choice(&mut row, ctx, &PALETTE, *id, label, names, *index);
+    }
 }
 
 fn view(ui: &mut Ui, ctx: &Ctx) {
@@ -164,10 +148,7 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         ui,
         ctx,
         upper[2],
-        params.target.id(),
-        &Target::NAMES,
-        target,
-        112.0,
+        &[(params.target.id(), "Target", &Target::NAMES, target)],
     );
     peek_ui::stereo::figure(ui, &PALETTE, cell(ui, upper[3], "Stereo"), &readings.stereo);
 
@@ -188,20 +169,15 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         ui,
         ctx,
         lower[0],
-        params.tilt.id(),
-        &["Flat", "3 dB", "4.5 dB"],
-        tilt,
-        132.0,
-    );
-    corner_at(
-        ui,
-        ctx,
-        lower[0],
-        132.0 + SPACE_2,
-        params.spectrum_scale.id(),
-        &["Log", "Lin"],
-        spectrum_scale,
-        72.0,
+        &[
+            (params.tilt.id(), "Tilt", &["Flat", "3 dB", "4.5 dB"], tilt),
+            (
+                params.spectrum_scale.id(),
+                "Scale",
+                &["Log", "Linear"],
+                spectrum_scale,
+            ),
+        ],
     );
     peek_ui::spectrogram::figure(
         ui,
@@ -216,10 +192,12 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         ui,
         ctx,
         lower[1],
-        params.spectrogram_scale.id(),
-        &["Log", "Lin"],
-        spectrogram_scale,
-        72.0,
+        &[(
+            params.spectrogram_scale.id(),
+            "Scale",
+            &["Log", "Linear"],
+            spectrogram_scale,
+        )],
     );
     peek_ui::scope::figure(
         ui,

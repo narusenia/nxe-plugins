@@ -75,17 +75,17 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         ctx,
         &ink,
         params.tilt.id(),
+        "Tilt",
         &["Flat", "3 dB", "4.5 dB"],
         tilt,
-        200.0,
     );
     peek_ui::choice(
         &mut cells,
         ctx,
         &ink,
         params.scale.id(),
+        "Scale",
         &["Log", "Linear"],
         scale,
-        140.0,
     );
 }

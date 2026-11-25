@@ -161,19 +161,36 @@ pub fn bipolar_cell(ui: &mut Ui, ink: &Palette, name: &str, value: f32, width: f
     );
 }
 
-/// A segmented choice bound to an enum parameter.
+/// A choice bound to an enum parameter: its name and a list
+/// (`nxe_egui::select`), as wide as its words.
 pub fn choice<P: truce_params::Params>(
     ui: &mut Ui,
     ctx: &truce_core::editor::PluginContext<P>,
     palette: &Palette,
     id: u32,
+    label: &str,
     names: &[&str],
     index: usize,
-    width: f32,
 ) {
-    if let Some(picked) = nxe_egui::segment::segment(ui, palette, names, index, width) {
+    if let Some(picked) = nxe_egui::select::select(ui, palette, label, names, index) {
         bind::set_plain(ctx, id, picked as f64);
     }
+}
+
+/// A row of choices ending at `right`, `top` down, laid out right to left:
+/// the first added sits at the right.
+pub fn corner(ui: &mut Ui, right: f32, top: f32) -> Ui {
+    const WIDTH: f32 = 360.0;
+    let mut row = ui.new_child(
+        egui::UiBuilder::new()
+            .max_rect(Rect::from_min_size(
+                pos2(right - WIDTH, top),
+                vec2(WIDTH, nxe_egui::segment::HEIGHT),
+            ))
+            .layout(egui::Layout::right_to_left(egui::Align::Center)),
+    );
+    row.spacing_mut().item_spacing.x = nxe_egui::theme::SPACE_4;
+    row
 }
 
 #[cfg(test)]

@@ -1,7 +1,7 @@
 //! The Peek Loudness window: the integrated figure, the history against the target, and the moving readings on the band. A click on the band clears the integrated reading.
 
 use crate::params::PeekLoudnessParams;
-use egui::{Rect, Ui, UiBuilder, pos2, vec2};
+use egui::{Rect, Ui, pos2, vec2};
 use nxe_egui::kit::{self, kit};
 use nxe_egui::theme::{Palette, SPACE_2, SPACE_3, SPACE_4};
 use std::sync::Arc;
@@ -32,17 +32,6 @@ fn areas(ui: &Ui, name: &str) -> (Rect, Rect) {
     (figure, areas.band.shrink2(vec2(SPACE_4, 0.0)))
 }
 
-/// A child `Ui` laid out left to right inside `rect`.
-fn row(ui: &mut Ui, rect: Rect) -> Ui {
-    let mut row = ui.new_child(
-        UiBuilder::new()
-            .max_rect(rect)
-            .layout(egui::Layout::left_to_right(egui::Align::Center)),
-    );
-    row.spacing_mut().item_spacing = vec2(SPACE_4, 0.0);
-    row
-}
-
 use egui::{Align2, Sense};
 use nxe_egui::font;
 use nxe_egui::theme::FONT_EYEBROW;
@@ -58,21 +47,15 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
     peek_ui::heartbeat(ui, true);
     let (figure, band) = areas(ui, "Loudness");
     let target = params.target.index() as usize;
-    let mut corner = row(
-        ui,
-        Rect::from_min_size(
-            pos2(figure.right() - 160.0, figure.top() - kit::HEAD + SPACE_2),
-            vec2(160.0, nxe_egui::segment::HEIGHT),
-        ),
-    );
+    let mut corner = peek_ui::corner(ui, figure.right(), figure.top() - kit::HEAD + SPACE_2);
     peek_ui::choice(
         &mut corner,
         ctx,
         &PALETTE,
         params.target.id(),
+        "Target",
         &crate::params::Target::NAMES,
         target,
-        160.0,
     );
     peek_ui::loudness::figure(
         ui,
