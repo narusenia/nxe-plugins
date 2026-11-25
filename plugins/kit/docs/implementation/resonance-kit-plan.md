@@ -66,7 +66,7 @@
 
 | ID | 単位 | 依存 | 状態 |
 |---|---|---|---|
-| RES-1 | `nxe-audio::pitch` への移動、`Palette::COLOUR_KIT`、`resonance-core` の Dew、プラグイン Dew | — | 🟡 コードと macOS の基準画像は済み。Windows の基準画像と耳が残り |
+| RES-1 | `nxe-audio::pitch` への移動、`Palette::COLOUR_KIT`、`resonance-core` の Dew、プラグイン Dew | — | ✅ コードと基準画像（macOS / Windows）は済み。2026-11-25 に耳で確かめた（Sensitivity、Pitch、Follow を直した）。付属プリセットの値は仮 |
 | RES-2 | Halo | RES-1 | ⬜ |
 
 付属プリセット（Default、Drip、Rain、Mist、Puddle）の中身は、耳で決める仕事と
