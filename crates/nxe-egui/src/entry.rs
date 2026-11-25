@@ -58,7 +58,9 @@ pub fn entry(
     };
 
     ui.painter().rect_filled(rect, 0.0, palette.track.color());
-    let field = ui.put(
+    // In a `Ui` of its own: `ui.put` would move the caller's cursor, and a
+    // row laid out after it would jump while the field is open.
+    let field = ui.new_child(egui::UiBuilder::new().max_rect(rect)).put(
         rect,
         TextEdit::singleline(&mut editing)
             .id(id.with("field"))

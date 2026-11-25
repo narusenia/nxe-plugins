@@ -21,12 +21,14 @@ pub mod number;
 pub mod preset;
 pub mod readout;
 pub mod segment;
+pub mod select;
 pub mod sidebar;
 pub mod smooth;
 pub mod status;
 pub mod surface;
 pub mod text;
 pub mod theme;
+pub mod toggle;
 
 /// Paints the whole window's ground and installs the faces. Call first, every
 /// frame, and **draw nothing else when it returns `false`** — the faces are

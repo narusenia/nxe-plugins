@@ -5,5 +5,7 @@
 //! Host-agnostic and allocation-free once built.
 
 pub mod dew;
+pub mod halo;
 
 pub use dew::Dew;
+pub use halo::Halo;

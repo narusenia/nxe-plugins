@@ -1,4 +1,4 @@
-//! Sensitivity, Size, Splash, Mix, the Tuning switch and its Pitch. **The field names are the
+//! Sensitivity, Size, Splash, Wet (the field is `mix`), the Tuning switch and its Pitch. **The field names are the
 //! parameter ids** (`resonance-kit-plan.md`, the table): never rename them.
 
 use nxe_dsp::Handoff;
@@ -50,7 +50,7 @@ pub struct DewParams {
     pub splash: FloatParam,
 
     #[param(
-        name = "Mix",
+        name = "Wet",
         range = "linear(0, 1)",
         default = 0.5,
         unit = "%",

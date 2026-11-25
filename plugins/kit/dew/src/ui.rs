@@ -3,10 +3,11 @@
 //! frame in the Colour Kit's aqua.
 
 use crate::params::{DewParams, Tuning};
-use egui::{Align2, Rect, Stroke, Ui, UiBuilder, pos2, vec2};
+use egui::{Align, Align2, Layout, Rect, Stroke, Ui, UiBuilder, pos2};
 use kit_ui::{Factory, Kit};
 use nxe_egui::kit;
-use nxe_egui::theme::{FONT_VALUE, Palette, SPACE_2};
+use nxe_egui::segment::HEIGHT;
+use nxe_egui::theme::{FONT_VALUE, Palette, SPACE_2, SPACE_4};
 use resonance_core::dew::{DROPS, FIGURE_HZ, READING};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -21,10 +22,8 @@ const PALETTE: Palette = Palette::COLOUR_KIT;
 const RIPPLE_SPEED: f32 = 260.0;
 /// The pitches the figure marks.
 const GUIDES: [(f32, &str); 3] = [(250.0, "250"), (1_000.0, "1k"), (4_000.0, "4k")];
-const TUNING_WIDTH: f32 = 104.0;
-const PITCH_WIDTH: f32 = 72.0;
 
-/// Sensitivity, Size, Splash, Mix. A first draft; settling them needs an ear
+/// Sensitivity, Size, Splash, Wet. A first draft; settling them needs an ear
 /// (`resonance-kit-plan.md`).
 pub const FACTORY: [Factory; 5] = [
     Factory {
@@ -83,7 +82,7 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
                 (sensitivity, "Sensitivity"),
                 (size, "Size"),
                 (splash, "Splash"),
-                (mix, "Mix"),
+                (mix, "Wet"),
             ],
             factory: &FACTORY,
         },
@@ -98,27 +97,29 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
     };
     ripples(ui, figure, &drops);
 
-    // Free or Follow, and the pitch either one aims at, in one row.
-    let tuning = params.tuning.index() as usize;
-    let height = nxe_egui::segment::HEIGHT;
-    let row = Rect::from_min_size(
-        pos2(
-            figure.right() - TUNING_WIDTH - SPACE_2 - PITCH_WIDTH - SPACE_2,
-            figure.bottom() - height - SPACE_2,
-        ),
-        vec2(TUNING_WIDTH + SPACE_2 + PITCH_WIDTH, height),
+    // Free or Follow, and the pitch either one aims at, in one row from the
+    // right.
+    let row = Rect::from_min_max(
+        pos2(figure.left() + SPACE_2, figure.bottom() - HEIGHT - SPACE_2),
+        pos2(figure.right() - SPACE_2, figure.bottom() - SPACE_2),
     );
-    let mut switch = ui.new_child(UiBuilder::new().max_rect(row));
-    if let Some(picked) =
-        nxe_egui::segment::segment(&mut switch, &PALETTE, &Tuning::NAMES, tuning, TUNING_WIDTH)
-    {
-        kit_ui::set_plain(ctx, params.tuning.id(), picked as f64);
+    let mut row = ui.new_child(
+        UiBuilder::new()
+            .max_rect(row)
+            .layout(Layout::right_to_left(Align::Center)),
+    );
+    row.spacing_mut().item_spacing.x = SPACE_4;
+    kit_ui::number_for(&mut row, ctx, &PALETTE, params.pitch.id(), "Pitch");
+    let tuning = params.tuning.index() as usize;
+    if nxe_egui::toggle::toggle(
+        &mut row,
+        &PALETTE,
+        "Tuning",
+        Tuning::NAMES[tuning],
+        tuning == Tuning::Follow as usize,
+    ) {
+        kit_ui::set_plain(ctx, params.tuning.id(), (1 - tuning) as f64);
     }
-    let mut pitch = ui.new_child(UiBuilder::new().max_rect(Rect::from_min_size(
-        pos2(row.right() - PITCH_WIDTH, row.top()),
-        vec2(PITCH_WIDTH, height),
-    )));
-    kit_ui::number_for(&mut pitch, ctx, &PALETTE, params.pitch.id(), PITCH_WIDTH);
 }
 
 /// Where a height `0..=1` up the pitch span sits in `figure`.

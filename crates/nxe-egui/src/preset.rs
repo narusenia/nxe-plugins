@@ -94,7 +94,8 @@ pub fn preset_bar(
             StrokeKind::Inside,
         );
         let inner = well.shrink2(vec2(SPACE_2, 0.0));
-        let field = ui.put(
+        // Its own `Ui`, so opening the field does not move the caller's cursor.
+        let field = ui.new_child(egui::UiBuilder::new().max_rect(inner)).put(
             inner,
             TextEdit::singleline(&mut typed)
                 .font(font::sans(FONT_LABEL))
