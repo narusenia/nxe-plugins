@@ -109,8 +109,10 @@ with the code, and fix the document in the same change.
   latency, as Pumice does
 - `plugins/kit/resonance-core`: the engines behind the Colour Kits — Dew
   and Halo. Meniscus and Prisma take them over when they come
+- `plugins/kit/particle-core`: the engines behind the Effloresce Kits —
+  Glint, then Pollen. Effloresce takes them over when it comes
 - `plugins/kit/<name>`: one Kit per plugin (`fold`, `fever`, `buckle`,
-  `invert`, `shear`, `afterimage`, `dew`, `halo`), on the Kit window with
+  `invert`, `shear`, `afterimage`, `dew`, `halo`, `glint`), on the Kit window with
   `Palette::DESIGN_KIT`, or `Palette::COLOUR_KIT` for the Colour Kits.
   Thin: declarations, presets, and the figure
 - `plugins/parasite/parasite-core`: the Parasite DSP — an oscillator that

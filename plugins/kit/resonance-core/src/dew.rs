@@ -1,7 +1,7 @@
 //! Dew: water drops on the input's attacks (`resonance-kit-plan.md`).
 //!
-//! An attack is the short power average jumping well above the long one. Each
-//! attack lets fall one to six drops. **Sensitivity** sets how sharp a rise
+//! An attack is `nxe_audio::onset`: the short power average jumping well
+//! above the long one. Each attack lets fall one to six drops. **Sensitivity** sets how sharp a rise
 //! counts as an attack. A drop is a damped sine whose pitch slides up and
 //! settles, the way a drop's bubble rings as it closes. **Pitch** is where it
 //! settles, **Size** how big it is — bigger rings longer and slides slower —
@@ -23,6 +23,7 @@
 //!
 //! Allocation-free once built.
 
+use nxe_audio::onset::Onset;
 use nxe_audio::pitch::Pitch;
 use std::f32::consts::{FRAC_PI_4, TAU};
 
@@ -48,15 +49,6 @@ const PEAK_RELEASE_MS: f32 = 300.0;
 /// How far off its size a drop may fall in Free, in semitones either way.
 const JITTER: (f32, f32) = (1.0, 6.0);
 
-/// The attack detector: two power averages, and how far the short one must
-/// rise over the long one, in dB, from no Sensitivity to full.
-const FAST_MS: f32 = 2.0;
-const SLOW_MS: f32 = 60.0;
-const ATTACK_DB: (f32, f32) = (12.0, 1.5);
-/// Below this power (-60 dBFS) nothing is an attack.
-const FLOOR: f32 = 1e-6;
-/// After an attack, the next one waits at least this long.
-const HOLDOFF_MS: f32 = 50.0;
 /// How sure the pitch tracker must be before Follow believes it.
 const CLEAR: f32 = 0.85;
 /// The lowest and highest pitch the figure's height spans.
@@ -107,11 +99,7 @@ impl Drop {
 pub struct Dew {
     sample_rate: f32,
     drops: [Drop; DROPS],
-    fast: f32,
-    slow: f32,
-    fast_coefficient: f32,
-    slow_coefficient: f32,
-    holdoff: u32,
+    onset: Onset,
     peak: f32,
     peak_release: f32,
     pitch: Pitch,
@@ -120,15 +108,10 @@ pub struct Dew {
 
 impl Dew {
     pub fn new(sample_rate: f32) -> Self {
-        let coefficient = |ms: f32| 1.0 - (-1.0 / (ms * 0.001 * sample_rate)).exp();
         Self {
             sample_rate,
             drops: [Drop::default(); DROPS],
-            fast: 0.0,
-            slow: 0.0,
-            fast_coefficient: coefficient(FAST_MS),
-            slow_coefficient: coefficient(SLOW_MS),
-            holdoff: 0,
+            onset: Onset::new(sample_rate),
             peak: 0.0,
             peak_release: (-1.0 / (PEAK_RELEASE_MS * 0.001 * sample_rate)).exp(),
             pitch: Pitch::new(sample_rate),
@@ -142,15 +125,9 @@ impl Dew {
         let mono = if mono.is_finite() { mono } else { 0.0 };
         self.pitch.push(mono);
 
-        let power = mono * mono;
         self.peak = (self.peak * self.peak_release).max(mono.abs());
-        self.fast += self.fast_coefficient * (power - self.fast);
-        self.slow += self.slow_coefficient * (power - self.slow);
-        if self.holdoff > 0 {
-            self.holdoff -= 1;
-        } else if self.fast > FLOOR && self.fast > attack_ratio(settings.sensitivity) * self.slow {
+        if self.onset.push(mono, settings.sensitivity) {
             self.splash(settings);
-            self.holdoff = self.samples(HOLDOFF_MS);
         }
 
         let mut wet = [0.0; 2];
@@ -201,10 +178,6 @@ impl Dew {
                 reading.fill(0.0);
             }
         }
-    }
-
-    fn samples(&self, ms: f32) -> u32 {
-        (ms * 0.001 * self.sample_rate) as u32
     }
 
     /// Lets the drops of one attack fall.
@@ -275,13 +248,6 @@ impl Dew {
         self.random ^= self.random << 5;
         self.random as f32 / u32::MAX as f32
     }
-}
-
-/// The power ratio that counts as an attack at `sensitivity`.
-fn attack_ratio(sensitivity: f32) -> f32 {
-    let t = sensitivity.clamp(0.0, 1.0);
-    let db = ATTACK_DB.0 + (ATTACK_DB.1 - ATTACK_DB.0) * t;
-    10f32.powf(db / 10.0)
 }
 
 /// Where a drop that wants `wanted` Hz settles: there, or on the octave or

@@ -29,6 +29,7 @@ members = [
     "plugins/peek/peek",
     "plugins/kit/nonlinear-core",
     "plugins/kit/resonance-core",
+    "plugins/kit/particle-core",
     "plugins/kit/spectral-core",
     "plugins/parasite/parasite-core",
     "plugins/parasite/parasite",
@@ -41,6 +42,7 @@ members = [
     "plugins/kit/afterimage",
     "plugins/kit/dew",
     "plugins/kit/halo",
+    "plugins/kit/glint",
 ]
 
 [workspace.package]
@@ -65,6 +67,7 @@ peek-core = { path = "plugins/peek/peek-core" }
 peek-ui = { path = "plugins/peek/peek-ui" }
 nonlinear-core = { path = "plugins/kit/nonlinear-core" }
 resonance-core = { path = "plugins/kit/resonance-core" }
+particle-core = { path = "plugins/kit/particle-core" }
 spectral-core = { path = "plugins/kit/spectral-core" }
 parasite-core = { path = "plugins/parasite/parasite-core" }
 kit-ui = { path = "plugins/kit/kit-ui" }

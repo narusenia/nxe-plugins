@@ -1374,6 +1374,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "glint"
+version = "1.0.0"
+dependencies = [
+ "clap-sys",
+ "egui",
+ "kit-ui",
+ "nxe-dsp",
+ "nxe-egui",
+ "particle-core",
+ "truce",
+ "truce-au",
+ "truce-clap",
+ "truce-core",
+ "truce-egui",
+ "truce-loader",
+ "truce-params",
+ "truce-standalone",
+ "truce-test",
+ "truce-utils",
+ "truce-vst3",
+]
+
+[[package]]
 name = "glow"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2773,6 +2796,13 @@ dependencies = [
  "redox_syscall 0.5.18",
  "smallvec",
  "windows-link 0.2.1",
+]
+
+[[package]]
+name = "particle-core"
+version = "0.1.0"
+dependencies = [
+ "nxe-audio",
 ]
 
 [[package]]
