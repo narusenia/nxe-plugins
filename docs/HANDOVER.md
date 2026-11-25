@@ -3,8 +3,11 @@
 **2026-11-25 時点。** v0.2.0 は 5 本とも出荷済み（2026-08-31）。**v2 のコードは
 終わった。** 6 本とも truce + egui に載り（Doubler #16、Sparkleur、Velour #20、
 Air #21、Diorama #22、Pumice #26）、nih-plug と vizia の側は消した（#28）。
-リリースはシリーズ単位になった（#27、#29）。残りは人の手が要るもの（実機で見る、
-耳で既定値とプリセットを決める）と、リリースそのもの。v0.x の引き継ぎは
+リリースはシリーズ単位になった（#27、#29）。**3 シリーズとも beta を出した**:
+`basic-2026.11-beta.1`、`peek-2026.11-beta.1`（#35）、`kit-2026.11-beta.1`
+（Nonlinear Kit #36、Spectral Kit #37）。残りは人の手が要るもの（実機で見る、
+耳で既定値とプリセットを決める）。次に作るのは Design の最初のフラッグシップ
+**Parasite**（`series-plan.md` の「順番」3）。v0.x の引き継ぎは
 [`archive/v0-handover.md`](archive/v0-handover.md)、Pumice の v0 期の経緯は
 [`archive/pumice-handover.md`](archive/pumice-handover.md)。
 
@@ -39,7 +42,10 @@ Air #21、Diorama #22、Pumice #26）、nih-plug と vizia の側は消した（
 **その後のリリース**（`V2-8` の beta → `V2-14`）。タグは
 `basic-<YYYY.MM>[-beta.N]` 1 つで、`series.toml` の Basic 6 本がまとめて 1 つの
 draft release に乗る（プラグインごとの zip と、全部入りの zip）。**draft を
-公開するのは人**。README のプラグイン表の差し替えは `V2-14` で。
+公開するのは人**。draft はいったん Pre-release で出る。出し直すときは
+Actions の release を `workflow_dispatch` でタグを渡して動かす（#39 まではタグ名が
+渡らず失敗した）。版は各クレートの `Cargo.toml` から読む（#38 までは
+`plugins/<name>/<name>/` 決め打ちで、Kit と Peek で落ちた）。README のプラグイン表の差し替えは `V2-14` で。
 
 **v2 の後**は [`implementation/series-plan.md`](implementation/series-plan.md)
 （Colour / Design / Create / Kit / Peek）。窓の型は `design-system.md` の

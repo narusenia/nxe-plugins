@@ -70,7 +70,7 @@
 
 | ID | 単位 | 依存 | 状態 |
 |---|---|---|---|
-| KIT-5 | `nxe-spectral` の切り出し、`spectral-core`、Invert | KIT-1 | 🟡 コードは済み。Windows の基準画像と耳が残り |
+| KIT-5 | `nxe-spectral` の切り出し、`spectral-core`、Invert | KIT-1 | 🟡 コード（#37）と基準画像（#38）は済み。耳が残り |
 | KIT-6 | Shear | KIT-5 | 🟡 同上 |
 | KIT-7 | Afterimage | KIT-5 | 🟡 同上 |
 

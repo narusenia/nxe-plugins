@@ -74,7 +74,7 @@
 | PEEK-8 | Peek（7 本の計測を並べた大きな窓） | PEEK-2〜7 |
 | PEEK-9 | 最初の beta（`peek-<YYYY.MM>-beta.N`） | PEEK-1 |
 
-PEEK-9 は Peek Level だけでも切れる。Kit の型を実機で確かめるのが先。
+PEEK-9 は 8 本まとめて `peek-2026.11-beta.1` で出した（2026-11-25）。状態は `backlog.md` が正。
 
 ### PEEK-1 — Peek Level
 
