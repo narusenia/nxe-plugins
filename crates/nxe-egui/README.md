@@ -37,6 +37,7 @@ next pass.
 | `knob`, `bar` | value controls |
 | `entry` | the typed value (`UI-3`), opened from a knob's figure |
 | `segment` | mutually exclusive choices |
+| `number`, `toggle`, `select` | a named value, switch or list in a row of controls: `Root 220 Hz`, `Tuning [Free]`, `Chord Fifth ▾`; corner marks while held. Kit rows and Peek's choices |
 | `readout` | an eyebrow over a rule and one fixed-width figure |
 | `meter` | a level with a peak mark |
 | `curve` | a signal as a monotone cubic, with an optional fill and glow |

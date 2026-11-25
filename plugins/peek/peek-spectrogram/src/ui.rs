@@ -76,8 +76,8 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         ctx,
         &ink,
         params.scale.id(),
+        "Scale",
         &["Log", "Linear"],
         params.scale.index() as usize,
-        140.0,
     );
 }
