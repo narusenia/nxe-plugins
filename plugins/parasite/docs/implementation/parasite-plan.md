@@ -72,7 +72,7 @@
 | PAR-1 | `parasite-core`: ピッチ追従（YIN）とエンジン、4 種 | — | ✅ 2026-11-25 に付属プリセットで耳で確かめた |
 | PAR-2 | `nxe_egui::design`（Design 7 の枠と細いスライダー） | — | 🟡 コードは済み。ギャラリーへの追加は未 |
 | PAR-3 | Parasite のプラグイン（宣言、窓、付属プリセット） | PAR-1, PAR-2 | ✅ 基準画像は macOS と Windows。付属プリセットは 2026-11-25 に耳で確かめた |
-| PAR-4 | 最初の beta（`design-<YYYY.MM>-beta.N`） | PAR-3 | ⬜ |
+| PAR-4 | 最初の beta（`design-<YYYY.MM>-beta.N`） | PAR-3 | ✅ `design-2026.11-beta.1`（2026-11-25、Latest） |
 
 付属プリセットは 2026-11-25 にユーザーが耳で確かめた。
 Sync と Ring は折り返し対策をしていない（オーバーサンプリングなし）。
