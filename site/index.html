@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NXE Plugins</title>
+<meta name="description" content="Audio plugins in Rust: CLAP, VST3 and AU, released a series at a time.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* The plugins' own tokens (`crates/nxe-egui/src/theme.rs`): one ground,
+     hairlines, no hue but on the data. */
+  :root {
+    --ground: #0a0a0a;
+    --line: #2a2a2a;
+    --ink: #fafafa;
+    --muted: #a3a3a3;
+    --subtle: #737373;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font: 15px/1.5 Inter, system-ui, sans-serif;
+  }
+  main { max-width: 960px; margin: 0 auto; padding: 64px 16px 96px; }
+  h1 { font-size: 40px; font-weight: 500; margin: 0 0 8px; letter-spacing: -0.01em; }
+  .lede { color: var(--muted); margin: 0 0 48px; max-width: 40em; }
+  .eyebrow {
+    font-size: 11px; font-weight: 500; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--subtle);
+  }
+  section { border-top: 1px solid var(--line); padding: 24px 0 32px; }
+  .head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; }
+  h2 { font-size: 22px; font-weight: 500; margin: 0; }
+  .tag { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
+  .summary { color: var(--muted); margin: 4px 0 16px; }
+  .platforms { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .platform { border-left: 1px solid var(--line); padding-left: 12px; }
+  .platform a { display: inline-block; margin-right: 16px; }
+  a { color: var(--ink); text-decoration-color: var(--subtle); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--ink); }
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+  td { border-top: 1px solid var(--line); padding: 6px 0; }
+  td:nth-child(2) { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+  td:last-child { text-align: right; }
+  footer { color: var(--subtle); font-size: 13px; border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">NXE</p>
+  <h1>NXE Plugins</h1>
+  <p class="lede">Audio plugins in Rust. Every plugin exports CLAP, VST3 and AU, and they are released a series at a time. The latest release of every series, betas included, is below.</p>
+  <div id="series"><p class="summary">Loading the releases…</p></div>
+  <footer>
+    Every release is on <a href="https://github.com/nxe-plugins/nxe-plugins/releases">GitHub</a>.
+    The same list as JSON: <a href="downloads.json">downloads.json</a>.
+  </footer>
+</main>
+<script>
+  // Built from `downloads.json`, which the Pages workflow writes from the
+  // published releases before each deploy (`scripts/readme-downloads.py`).
+  const element = (tag, attributes = {}, ...children) => {
+    const node = document.createElement(tag);
+    Object.entries(attributes).forEach(([key, value]) => node.setAttribute(key, value));
+    node.append(...children);
+    return node;
+  };
+  const link = (url, text) => (url ? element("a", { href: url }, text) : "");
+
+  fetch("downloads.json")
+    .then((response) => response.json())
+    .then((series) => {
+      const root = document.getElementById("series");
+      root.replaceChildren();
+      for (const entry of Object.values(series)) {
+        const section = element("section");
+        section.append(
+          element("div", { class: "head" },
+            element("h2", {}, entry.name),
+            element("span", { class: "tag" }, entry.tag ? `${entry.tag}${entry.beta ? " · beta" : ""}` : "not released"),
+          ),
+          element("p", { class: "summary" }, entry.summary),
+        );
+        if (entry.tag) {
+          section.append(
+            element("div", { class: "platforms" },
+              element("div", { class: "platform" },
+                element("p", { class: "eyebrow" }, "macOS"),
+                link(entry.macos.installer, "Installer (.pkg)"), link(entry.macos.zip, "All (.zip)")),
+              element("div", { class: "platform" },
+                element("p", { class: "eyebrow" }, "Windows"),
+                link(entry.windows.installer, "Installer (.exe)"), link(entry.windows.zip, "All (.zip)")),
+            ),
+          );
+          const rows = Object.entries(entry.plugins).map(([name, plugin]) =>
+            element("tr", {},
+              element("td", {}, name),
+              element("td", {}, plugin.version),
+              element("td", {}, link(plugin.macos, "macOS"), " ", link(plugin.windows, "Windows"))));
+          section.append(element("table", {}, element("tbody", {}, ...rows)));
+          section.append(element("p", {}, link(entry.page, "Release notes")));
+        }
+        root.append(section);
+      }
+    })
+    .catch(() => {
+      document.getElementById("series").replaceChildren(
+        element("p", { class: "summary" }, "The releases could not be loaded. They are all on GitHub."));
+    });
+</script>
+</body>
+</html>
