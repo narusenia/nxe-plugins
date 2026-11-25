@@ -216,6 +216,16 @@ fourcc = "Aftr"
 description = "What was loud stays on as a fading trace"
 vst3_subcategory = "Spectral"
 
+# The first Design flagship (`plugins/parasite/docs/implementation/parasite-plan.md`).
+[[plugin]]
+name = "Parasite"
+bundle_id = "parasite"
+crate = "parasite"
+category = "effect"
+fourcc = "Prst"
+description = "An oscillator that follows the input's pitch and feeds on it"
+vst3_subcategory = "Modulation"
+
 # One installer per series (`release.yml`), beside the zips: a `.pkg` on macOS,
 # an Inno Setup `.exe` on Windows. Each lists the same plugins as its series in
 # `series.toml`. The ids end in `-suite` so they never meet a plugin's
@@ -246,3 +256,9 @@ name = "NXE Kit"
 bundle_id = "kit-suite"
 plugins = ["fold", "fever", "buckle", "invert", "shear", "afterimage"]
 description = "Small sound-design tools: Fold, Fever, Buckle, Invert, Shear and Afterimage."
+
+[[suite]]
+name = "NXE Design"
+bundle_id = "design-suite"
+plugins = ["parasite"]
+description = "Tools that remake a sound: Parasite."

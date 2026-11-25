@@ -310,6 +310,8 @@ impl Parasite {
         } * level
             * TONE_GAIN;
 
+        // shortcut: Ring and Sync are not oversampled, so a high voice with a wide
+        // Spread folds back; run them 4x like `nonlinear-core` if it is heard.
         let push = FM_INDEX / (TAU * hz) * self.sample_rate * infection;
         let mut output = [0.0; 2];
         for (channel, line) in self.lines.iter_mut().enumerate() {

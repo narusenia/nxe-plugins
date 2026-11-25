@@ -72,6 +72,29 @@ pub fn knob_for<P: Params>(
     apply(ctx, id, &control);
 }
 
+/// A thin slider bound to one parameter (`nxe_egui::design::slider`), for the
+/// Design windows. shortcut: the binding lives here because Parasite is the
+/// only window outside the Kits that needs it; move it to a shared crate when
+/// Singularity comes.
+pub fn slider_for<P: Params>(
+    ui: &mut Ui,
+    ctx: &PluginContext<P>,
+    palette: &Palette,
+    id: u32,
+    name: &str,
+    width: f32,
+) {
+    let control = nxe_egui::design::slider(
+        ui,
+        palette,
+        name,
+        normalized(ctx, id),
+        &ctx.format_param(id),
+        width,
+    );
+    apply(ctx, id, &control);
+}
+
 fn apply<P: Params>(ctx: &PluginContext<P>, id: u32, control: &Control) {
     let gestures = &control.gestures;
     if gestures.begin {
@@ -167,8 +190,9 @@ pub fn window<P: Params>(ui: &mut Ui, ctx: &PluginContext<P>, kit_: &Kit) -> Rec
     )
 }
 
-/// The preset bar: the factory presets, then the user's.
-fn presets<P: Params>(ui: &mut Ui, ctx: &PluginContext<P>, kit_: &Kit) {
+/// The preset bar: the factory presets, then the user's. Every value in
+/// `kit_.knobs` is stored, so a window with more than knobs lists them all.
+pub fn presets<P: Params>(ui: &mut Ui, ctx: &PluginContext<P>, kit_: &Kit) {
     let store = kit_.store();
     let user_id = ui.id().with("user-presets");
     let user: Vec<(String, String)> =

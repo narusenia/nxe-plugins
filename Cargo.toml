@@ -30,6 +30,7 @@ members = [
     "plugins/kit/nonlinear-core",
     "plugins/kit/spectral-core",
     "plugins/parasite/parasite-core",
+    "plugins/parasite/parasite",
     "plugins/kit/kit-ui",
     "plugins/kit/fold",
     "plugins/kit/fever",
