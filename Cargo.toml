@@ -33,6 +33,8 @@ members = [
     "plugins/kit/spectral-core",
     "plugins/parasite/parasite-core",
     "plugins/parasite/parasite",
+    "plugins/meniscus/meniscus",
+    "plugins/prisma/prisma",
     "plugins/kit/kit-ui",
     "plugins/kit/fold",
     "plugins/kit/fever",

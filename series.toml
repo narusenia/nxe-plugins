@@ -36,3 +36,8 @@ plugins = ["fold", "fever", "buckle", "invert", "shear", "afterimage", "dew", "h
 name = "Design"
 summary = "Tools that remake a sound"
 plugins = ["parasite"]
+
+[colour]
+name = "Colour"
+summary = "Tools that add colour to a sound"
+plugins = ["meniscus", "prisma"]

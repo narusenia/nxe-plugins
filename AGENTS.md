@@ -108,13 +108,20 @@ with the code, and fix the document in the same change.
   Invert, Shear, Afterimage — on `nxe-spectral`'s STFT. They report a block of
   latency, as Pumice does
 - `plugins/kit/resonance-core`: the engines behind the Colour Kits — Dew
-  and Halo. Meniscus and Prisma take them over when they come
+  and Halo — and the Colour flagships built on them, Meniscus and Prisma
 - `plugins/kit/particle-core`: the engines behind the Effloresce Kits —
   Glint and Pollen. Effloresce takes them over when it comes
 - `plugins/kit/<name>`: one Kit per plugin (`fold`, `fever`, `buckle`,
   `invert`, `shear`, `afterimage`, `dew`, `halo`, `glint`, `pollen`), on the Kit window with
   `Palette::DESIGN_KIT`, or `Palette::COLOUR_KIT` for the Colour Kits.
   Thin: declarations, presets, and the figure
+- `plugins/meniscus/meniscus`: the Meniscus truce wrapper, the first Colour
+  flagship, on the Colour window (`nxe_egui::colour`, Colour 6: rounded
+  neutral panels, colour only on the notes). Its sound is
+  `resonance_core::meniscus`
+- `plugins/prisma/prisma`: the Prisma truce wrapper, on the same window.
+  **The one effect in the line that takes MIDI** (`midi_input` in
+  `truce.toml`, an `aumf` AU). Its sound is `resonance_core::prisma`
 - `plugins/parasite/parasite-core`: the Parasite DSP — an oscillator that
   follows the input's pitch and feeds on it, four ways (FM, Ring, Sync,
   Voice). Its pitch tracker is `nxe_audio::pitch`. Reports a fixed ~10 ms

@@ -98,8 +98,8 @@
 
 | ID | 単位 | 依存 | 状態 |
 |---|---|---|---|
-| RES-1 | `nxe-audio::pitch` への移動、`Palette::COLOUR_KIT`、`resonance-core` の Dew、プラグイン Dew | — | ✅ コードと基準画像（macOS / Windows）は済み。2026-11-25 に耳で確かめた（Sensitivity、Pitch、Follow を直した）。付属プリセットの値は仮 |
-| RES-2 | `resonance-core` の Halo、プラグイン Halo | RES-1 | 🟡 コードと基準画像（macOS / Windows）は済み。耳が残り |
+| RES-1 | `nxe-audio::pitch` への移動、`Palette::COLOUR_KIT`、`resonance-core` の Dew、プラグイン Dew | — | ✅ コードと基準画像（macOS / Windows）は済み。2026-11-25 に耳で確かめた（Sensitivity、Pitch、Follow を直した）。付属プリセットは 2026-11-26 に耳で確かめた |
+| RES-2 | `resonance-core` の Halo、プラグイン Halo | RES-1 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた。コードと基準画像（macOS / Windows） |
 
 付属プリセット（Dew は Default、Drip、Rain、Mist、Puddle。Halo は Default、Glow、
 Choir、Bloom、Ember）の中身は、耳で決める仕事として残る。

@@ -23,8 +23,7 @@ const RIPPLE_SPEED: f32 = 260.0;
 /// The pitches the figure marks.
 const GUIDES: [(f32, &str); 3] = [(250.0, "250"), (1_000.0, "1k"), (4_000.0, "4k")];
 
-/// Sensitivity, Size, Splash, Wet. A first draft; settling them needs an ear
-/// (`resonance-kit-plan.md`).
+/// Sensitivity, Size, Splash, Wet. Checked by ear on 2026-11-26.
 pub const FACTORY: [Factory; 5] = [
     Factory {
         name: "Default",

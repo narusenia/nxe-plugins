@@ -21,8 +21,7 @@ const PALETTE: Palette = Palette::COLOUR_KIT;
 /// The innermost and outermost ring, as fractions of the figure's half height.
 const RADIUS: (f32, f32) = (0.2, 0.68);
 
-/// Sensitivity, Decay, Shimmer, Tone, Wet. A first draft; settling them needs an ear
-/// (`resonance-kit-plan.md`).
+/// Sensitivity, Decay, Shimmer, Tone, Wet. Checked by ear on 2026-11-26.
 pub const FACTORY: [Factory; 5] = [
     Factory {
         name: "Default",

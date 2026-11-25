@@ -113,6 +113,20 @@ Colour.
 | Glint | Crystal sparks high above every attack, on the note's harmonics (from the next Kit release) |
 | Pollen | The input as fine grains, scattered just behind it and to the sides (from the next Kit release) |
 
+## Colour
+
+Plugins that add colour to a sound: resonance, harmony, a liquid surface.
+
+<p>
+  <img src="plugins/meniscus/meniscus/screenshots/meniscus_macos.png" width="49%" alt="Meniscus">
+  <img src="plugins/prisma/prisma/screenshots/prisma_macos.png" width="49%" alt="Prisma">
+</p>
+
+| Plugin | What it is |
+|---|---|
+| [Meniscus](plugins/meniscus/docs/implementation/meniscus-plan.md) | The input on a liquid surface: every attack knocks the surface's pitch down and it wobbles back, with drops on top (not released yet) |
+| [Prisma](plugins/prisma/docs/implementation/prisma-plan.md) | The input split into the notes you play over MIDI, or a chord: resonators on each note's partials that can ring each other and freeze (not released yet) |
+
 ## Design
 
 Plugins that remake a sound rather than shape it. The first is out; more follow.

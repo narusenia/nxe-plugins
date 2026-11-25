@@ -16,7 +16,7 @@ type Ctx = PluginContext<FeverParams>;
 
 const PALETTE: Palette = Palette::DESIGN_KIT;
 
-/// Fever, Recovery, Mix. A first draft; settling them needs an ear.
+/// Fever, Recovery, Mix. Checked by ear on 2026-11-26.
 pub const FACTORY: [Factory; 4] = [
     Factory {
         name: "Default",

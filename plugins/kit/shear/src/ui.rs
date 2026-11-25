@@ -31,7 +31,7 @@ const CEILING_DB: f32 = -12.0;
 /// The fan's lines, low to high.
 const TEETH: usize = 28;
 
-/// Shear, Length, Mix. A first draft; settling them needs an ear.
+/// Shear, Length, Mix. Checked by ear on 2026-11-26.
 pub const FACTORY: [Factory; 4] = [
     Factory {
         name: "Default",

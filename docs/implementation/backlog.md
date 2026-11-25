@@ -79,17 +79,28 @@ V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実
 
 | ID | 単位 | 依存 | 状態 |
 |---|---|---|---|
-| KIT-1 | `Palette::DESIGN_KIT`、`kit-ui`、`nonlinear-core`、Fold | — | 🟡 コード（#36）と基準画像（macOS / Windows、#38）は済み。付属プリセットと既定値を耳で決めることが残り |
-| KIT-2 | Fever | KIT-1 | 🟡 同上 |
-| KIT-3 | Buckle | KIT-1 | 🟡 同上 |
+| KIT-1 | `Palette::DESIGN_KIT`、`kit-ui`、`nonlinear-core`、Fold | — | ✅ 付属プリセットは 2026-11-26 に耳で確かめた。コード（#36）と基準画像（macOS / Windows、#38） |
+| KIT-2 | Fever | KIT-1 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた |
+| KIT-3 | Buckle | KIT-1 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた |
 | KIT-4 | 最初の beta（`kit-<YYYY.MM>-beta.N`） | KIT-1〜3 | ✅ `kit-2026.11-beta.1`（2026-11-25、1cdbb9a）。Spectral Kit の 3 本も同じ版に乗った |
-| KIT-5 | `nxe-spectral` の切り出し、`spectral-core`、Invert（[`spectral-kit-plan.md`](../../plugins/kit/docs/implementation/spectral-kit-plan.md)） | KIT-1 | 🟡 コード（#37）と基準画像（#38）は済み。耳が残り |
-| KIT-6 | Shear | KIT-5 | 🟡 同上 |
-| KIT-7 | Afterimage | KIT-5 | 🟡 同上 |
-| RES-1 | `nxe-audio::pitch`、`Palette::COLOUR_KIT`、`resonance-core`、Dew（[`resonance-kit-plan.md`](../../plugins/kit/docs/implementation/resonance-kit-plan.md)） | — | ✅ コードと基準画像（macOS / Windows）は済み。2026-11-25 に耳で確かめた（Sensitivity、Pitch、Follow を直した）。付属プリセットの値は仮 |
-| RES-2 | Halo | RES-1 | 🟡 コードと基準画像（macOS / Windows）は済み。耳が残り |
-| PRT-1 | `nxe-audio::onset`、`particle-core`、Glint（[`particle-kit-plan.md`](../../plugins/kit/docs/implementation/particle-kit-plan.md)） | — | 🟡 コードと基準画像（macOS / Windows）は済み。耳が残り |
+| KIT-5 | `nxe-spectral` の切り出し、`spectral-core`、Invert（[`spectral-kit-plan.md`](../../plugins/kit/docs/implementation/spectral-kit-plan.md)） | KIT-1 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた。コード（#37）と基準画像（#38） |
+| KIT-6 | Shear | KIT-5 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた |
+| KIT-7 | Afterimage | KIT-5 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた |
+| RES-1 | `nxe-audio::pitch`、`Palette::COLOUR_KIT`、`resonance-core`、Dew（[`resonance-kit-plan.md`](../../plugins/kit/docs/implementation/resonance-kit-plan.md)） | — | ✅ コードと基準画像（macOS / Windows）は済み。2026-11-25 に耳で確かめた（Sensitivity、Pitch、Follow を直した）。付属プリセットは 2026-11-26 に耳で確かめた |
+| RES-2 | Halo | RES-1 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた。コードと基準画像（macOS / Windows） |
+| PRT-1 | `nxe-audio::onset`、`particle-core`、Glint（[`particle-kit-plan.md`](../../plugins/kit/docs/implementation/particle-kit-plan.md)） | — | ✅ 付属プリセットは 2026-11-26 に耳で確かめた。コードと基準画像（macOS / Windows） |
 | PRT-2 | Pollen | PRT-1 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた。コードと基準画像（macOS / Windows） |
+
+### Colour — [`meniscus-plan.md`](../../plugins/meniscus/docs/implementation/meniscus-plan.md)、[`prisma-plan.md`](../../plugins/prisma/docs/implementation/prisma-plan.md)
+
+| ID | 単位 | 依存 | 状態 |
+|---|---|---|---|
+| MEN-1 | `resonance_core::meniscus`（水面、打ち、Drops） | RES-1 | ✅ 試験 9 本 |
+| MEN-2 | `nxe_egui::colour`（Colour 6 の枠、`Palette::COLOUR`、音名の色） | — | ✅ |
+| MEN-3 | Meniscus のプラグイン | MEN-1, MEN-2 | 🟡 コードと基準画像（macOS / Windows）は済み。耳が残り |
+| PRI-1 | `resonance_core::prisma`（音、倍音、Coupling、Freeze） | RES-2 | ✅ 試験 10 本 |
+| PRI-2 | Prisma のプラグイン（MIDI を受ける、図はプリズム） | PRI-1, MEN-2 | 🟡 コードと基準画像（macOS / Windows）は済み。MIDI を送って耳で確かめることが残り |
+| COL-1 | 最初の beta（`colour-<YYYY.MM>-beta.N`） | MEN-3, PRI-2 | ⬜ |
 
 ### Design — [`parasite-plan.md`](../../plugins/parasite/docs/implementation/parasite-plan.md)
 

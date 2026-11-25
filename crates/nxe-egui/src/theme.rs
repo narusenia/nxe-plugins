@@ -21,7 +21,7 @@ pub struct Token {
 }
 
 impl Token {
-    const fn rgb(red: u8, green: u8, blue: u8) -> Self {
+    pub(crate) const fn rgb(red: u8, green: u8, blue: u8) -> Self {
         Self {
             red,
             green,
@@ -264,6 +264,15 @@ impl Palette {
         Token::rgb(0xA8, 0xF0, 0xF2),
         Token::rgb(0x5C, 0xE1, 0xE6),
         Token::rgb(0x1E, 0x7F, 0x84),
+    );
+
+    /// The Colour flagships (`design-system.md`, Colour 6): **no hue at all**.
+    /// The controls are ink on grey; colour is left for the notes
+    /// (`crate::colour::note`). Not in [`Palette::ALL`].
+    pub const COLOUR: Self = Self::ramp(
+        Token::rgb(0xFF, 0xFF, 0xFF),
+        Token::rgb(0xED, 0xED, 0xED),
+        Token::rgb(0x73, 0x73, 0x73),
     );
 
     /// Every palette with the name of the plugin that wears it. For the gallery
