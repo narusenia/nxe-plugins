@@ -1,0 +1,13 @@
+[package]
+name = "particle-core"
+# Shared by the Effloresce Kits (Glint, then Pollen) and by Effloresce when it
+# comes, so it versions on its own.
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The particle engines behind the Effloresce Kits, independent of any plugin host"
+
+# No host API and no UI toolkit (`.agents/rules/rust.md`).
+[dependencies]
+nxe-audio.workspace = true

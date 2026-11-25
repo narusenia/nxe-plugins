@@ -30,7 +30,7 @@ plugins = [
 [kit]
 name = "Kit"
 summary = "Small sound-design tools, a few knobs each"
-plugins = ["fold", "fever", "buckle", "invert", "shear", "afterimage", "dew", "halo"]
+plugins = ["fold", "fever", "buckle", "invert", "shear", "afterimage", "dew", "halo", "glint"]
 
 [design]
 name = "Design"

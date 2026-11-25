@@ -60,7 +60,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test --no-fail-fast -p doubler -p sparkleur -p velour -p air -p diorama -p pumice -p peek-level -p peek-vu -p peek-stereo -p peek-spectrum -p peek-spectrogram -p peek-loudness -p peek-scope -p peek -p fold -p fever -p buckle -p invert -p shear -p afterimage -p dew -p halo -p parasite window_matches_its_screenshot
+      - run: cargo test --no-fail-fast -p doubler -p sparkleur -p velour -p air -p diorama -p pumice -p peek-level -p peek-vu -p peek-stereo -p peek-spectrum -p peek-spectrogram -p peek-loudness -p peek-scope -p peek -p fold -p fever -p buckle -p invert -p shear -p afterimage -p dew -p halo -p glint -p parasite window_matches_its_screenshot
       - name: Upload the rendered windows
         if: failure()
         uses: actions/upload-artifact@v4
