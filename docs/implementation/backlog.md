@@ -83,6 +83,7 @@ V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実
 | KIT-2 | Fever | KIT-1 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた |
 | KIT-3 | Buckle | KIT-1 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた |
 | KIT-4 | 最初の beta（`kit-<YYYY.MM>-beta.N`） | KIT-1〜3 | ✅ `kit-2026.11-beta.1`（2026-11-25、1cdbb9a）。Spectral Kit の 3 本も同じ版に乗った |
+<<<<<<< HEAD
 | KIT-5 | `nxe-spectral` の切り出し、`spectral-core`、Invert（[`spectral-kit-plan.md`](../../plugins/kit/docs/implementation/spectral-kit-plan.md)） | KIT-1 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた。コード（#37）と基準画像（#38） |
 | KIT-6 | Shear | KIT-5 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた |
 | KIT-7 | Afterimage | KIT-5 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた |
@@ -101,6 +102,15 @@ V2-3 は V2-1 の**コード**に依存していて、V2-1 に残っている実
 | PRI-1 | `resonance_core::prisma`（音、倍音、Coupling、Freeze） | RES-2 | ✅ 試験 10 本 |
 | PRI-2 | Prisma のプラグイン（MIDI を受ける、図はプリズム） | PRI-1, MEN-2 | 🟡 コードと macOS の基準画像は済み。Windows の基準画像と、MIDI を送って耳で確かめることが残り |
 | COL-1 | 最初の beta（`colour-<YYYY.MM>-beta.N`） | MEN-3, PRI-2 | ⬜ |
+=======
+| KIT-5 | `nxe-spectral` の切り出し、`spectral-core`、Invert（[`spectral-kit-plan.md`](../../plugins/kit/docs/implementation/spectral-kit-plan.md)） | KIT-1 | 🟡 コード（#37）と基準画像（#38）は済み。耳が残り |
+| KIT-6 | Shear | KIT-5 | 🟡 同上 |
+| KIT-7 | Afterimage | KIT-5 | 🟡 同上 |
+| RES-1 | `nxe-audio::pitch`、`Palette::COLOUR_KIT`、`resonance-core`、Dew（[`resonance-kit-plan.md`](../../plugins/kit/docs/implementation/resonance-kit-plan.md)） | — | ✅ コードと基準画像（macOS / Windows）は済み。2026-11-25 に耳で確かめた（Sensitivity、Pitch、Follow を直した）。付属プリセットの値は仮 |
+| RES-2 | Halo | RES-1 | 🟡 コードと基準画像（macOS / Windows）は済み。耳が残り |
+| PRT-1 | `nxe-audio::onset`、`particle-core`、Glint（[`particle-kit-plan.md`](../../plugins/kit/docs/implementation/particle-kit-plan.md)） | — | 🟡 コードと基準画像（macOS / Windows）は済み。耳が残り |
+| PRT-2 | Pollen | PRT-1 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた。コードと基準画像（macOS / Windows） |
+>>>>>>> origin/main
 
 ### Design — [`parasite-plan.md`](../../plugins/parasite/docs/implementation/parasite-plan.md)
 

@@ -67,5 +67,9 @@ Default、Haze、Dust、Cloud、Fuzz）の中身は、耳で決める仕事と�
 
 | ID | 単位 | 依存 | 状態 |
 |---|---|---|---|
+<<<<<<< HEAD
 | PRT-1 | `nxe-audio::onset` への移動、`particle-core` の Glint、プラグイン Glint | — | ✅ 付属プリセットは 2026-11-26 に耳で確かめた。コードと基準画像（macOS / Windows） |
+=======
+| PRT-1 | `nxe-audio::onset` への移動、`particle-core` の Glint、プラグイン Glint | — | 🟡 コードと基準画像（macOS / Windows）は済み。耳が残り |
+>>>>>>> origin/main
 | PRT-2 | `particle-core` の Pollen、プラグイン Pollen | PRT-1 | ✅ 付属プリセットは 2026-11-26 に耳で確かめた。コードと基準画像（macOS / Windows） |
