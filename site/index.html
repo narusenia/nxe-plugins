@@ -93,13 +93,16 @@
               element("div", { class: "platform" },
                 element("p", { class: "eyebrow" }, "Windows"),
                 link(entry.windows.installer, "Installer (.exe)"), link(entry.windows.zip, "All (.zip)")),
+              element("div", { class: "platform" },
+                element("p", { class: "eyebrow" }, "Linux"),
+                link(entry.linux.zip, "All (.zip)") || element("span", { class: "tag" }, "from the next release")),
             ),
           );
           const rows = Object.entries(entry.plugins).map(([name, plugin]) =>
             element("tr", {},
               element("td", {}, name),
               element("td", {}, plugin.version),
-              element("td", {}, link(plugin.macos, "macOS"), " ", link(plugin.windows, "Windows"))));
+              element("td", {}, link(plugin.macos, "macOS"), " ", link(plugin.windows, "Windows"), " ", link(plugin.linux, "Linux"))));
           section.append(element("table", {}, element("tbody", {}, ...rows)));
           section.append(element("p", {}, link(entry.page, "Release notes")));
         }

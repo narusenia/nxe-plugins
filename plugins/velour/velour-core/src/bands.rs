@@ -452,7 +452,11 @@ mod tests {
         ] {
             let output = run(band, hz, 3.0, 0.0, nxe_audio::shaper::BIAS_MAX);
             let offset = mean(&output);
-            assert!(offset.abs() < 1e-4, "{band:?} left {offset} of DC");
+            // Without the high-pass the curve leaves about 5e-2. With it,
+            // what is left is the f32 floor of a 30 Hz section at 192 kHz,
+            // which moves with the platform's maths: 3e-5 on macOS, 1.6e-4
+            // on Linux x86_64.
+            assert!(offset.abs() < 1e-3, "{band:?} left {offset} of DC");
         }
     }
 

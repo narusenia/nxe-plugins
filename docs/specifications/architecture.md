@@ -211,7 +211,7 @@ CI（`check.yml` の `validate`）が macOS で同じ 2 行を、`series.toml` �
 `cargo truce package`（universal、CLAP / VST3 / AU v2。stage された bundle を
 使う）、Windows は `cargo truce build`（CLAP / VST3）で
 作り、validate を通してからプラグインごとに zip にする。zip は全部 1 つの
-draft release（`NXE <Series> <version>`）に付く。シリーズ全体のインストーラー（macOS は `.pkg`、Windows は Inno Setup の `.exe`。`truce.toml` の `[[suite]]`）も同じ release に付く。Linux は出さない。
+draft release（`NXE <Series> <version>`）に付く。シリーズ全体のインストーラー（macOS は `.pkg`、Windows は Inno Setup の `.exe`。`truce.toml` の `[[suite]]`）も同じ release に付く。Linux（x86_64、CLAP と VST3）は zip だけで、インストーラーは無い。
 **公開は人がする。** 公開したら `mise run readme:downloads` で README のダウンロード欄を書き直し、main に push する。
 プラグインのバージョンは各 `Cargo.toml` が持ち、リリースノートに並ぶ。
 

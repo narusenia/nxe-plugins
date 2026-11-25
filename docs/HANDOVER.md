@@ -106,4 +106,4 @@ v0 で払った代償のうち、フレームワークを替えても残るも�
 ## まだ決めていないこと
 
 [`implementation/v2-plan.md`](implementation/v2-plan.md) の「まだ決めていない
-こと」が正。Linux は 2.0.0 に入れない（nih-plug の経路と一緒に消した）。
+こと」が正。Linux は 2026-11-26 に戻した（x86_64 の CLAP と VST3、zip だけ）。確かめるのは CI（ビルド、テスト、clap-validator、仮想画面の上の pluginval）だけで、実機の DAW では見ていない。

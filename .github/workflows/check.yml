@@ -70,6 +70,26 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  # **Linux** (x86_64): the build, clippy and the tests, so the third platform
+  # breaks in a pull request rather than in a release. The windows' screenshot
+  # tests are macOS and Windows only; Linux has no baseline of its own.
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the Linux libraries
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -yq --no-install-recommends \
+            pkg-config libx11-dev libx11-xcb-dev libxcb1-dev libxcb-icccm4-dev \
+            libxcb-dri2-0-dev libxcursor-dev libxrandr-dev libxi-dev \
+            libxkbcommon-dev libxkbcommon-x11-dev libgl1-mesa-dev \
+            libasound2-dev libjack-jackd2-dev
+      - uses: jdx/mise-action@v2
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+
   # Which plugins the validate jobs share out: one job per series in
   # `series.toml`, so a new series is validated without touching this file.
   # A plugin in `truce.toml` that no series lists would be validated by none of
