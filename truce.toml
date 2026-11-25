@@ -257,6 +257,17 @@ fourcc = "Glnk"
 description = "Crystal sparks high above every attack"
 vst3_subcategory = "Generator"
 
+# The fourth Colour Kit, the second from Effloresce
+# (`plugins/kit/docs/implementation/particle-kit-plan.md`).
+[[plugin]]
+name = "Pollen"
+bundle_id = "pollen"
+crate = "pollen"
+category = "effect"
+fourcc = "Polk"
+description = "The input as fine grains, scattered just behind it"
+vst3_subcategory = "Delay"
+
 # One installer per series (`release.yml`), beside the zips: a `.pkg` on macOS,
 # an Inno Setup `.exe` on Windows. Each lists the same plugins as its series in
 # `series.toml`. The ids end in `-suite` so they never meet a plugin's
@@ -285,8 +296,8 @@ description = "Meters that never touch the sound: seven single meters and Peek, 
 [[suite]]
 name = "NXE Kit"
 bundle_id = "kit-suite"
-plugins = ["fold", "fever", "buckle", "invert", "shear", "afterimage", "dew", "halo", "glint"]
-description = "Small sound-design tools: Fold, Fever, Buckle, Invert, Shear, Afterimage, Dew, Halo and Glint."
+plugins = ["fold", "fever", "buckle", "invert", "shear", "afterimage", "dew", "halo", "glint", "pollen"]
+description = "Small sound-design tools: Fold, Fever, Buckle, Invert, Shear, Afterimage, Dew, Halo, Glint and Pollen."
 
 [[suite]]
 name = "NXE Design"
