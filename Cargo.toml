@@ -43,6 +43,7 @@ members = [
     "plugins/kit/dew",
     "plugins/kit/halo",
     "plugins/kit/glint",
+    "plugins/kit/pollen",
 ]
 
 [workspace.package]

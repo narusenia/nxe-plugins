@@ -3085,6 +3085,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "pollen"
+version = "1.0.0"
+dependencies = [
+ "clap-sys",
+ "egui",
+ "kit-ui",
+ "nxe-dsp",
+ "nxe-egui",
+ "particle-core",
+ "truce",
+ "truce-au",
+ "truce-clap",
+ "truce-core",
+ "truce-egui",
+ "truce-loader",
+ "truce-params",
+ "truce-standalone",
+ "truce-test",
+ "truce-utils",
+ "truce-vst3",
+]
+
+[[package]]
 name = "polling"
 version = "3.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

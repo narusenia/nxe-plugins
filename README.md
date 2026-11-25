@@ -97,6 +97,7 @@ Colour.
   <img src="plugins/kit/dew/screenshots/dew_macos.png" width="32%" alt="Dew">
   <img src="plugins/kit/halo/screenshots/halo_macos.png" width="32%" alt="Halo">
   <img src="plugins/kit/glint/screenshots/glint_macos.png" width="32%" alt="Glint">
+  <img src="plugins/kit/pollen/screenshots/pollen_macos.png" width="32%" alt="Pollen">
 </p>
 
 | Plugin | What it is |
@@ -110,6 +111,7 @@ Colour.
 | Dew | Water drops on every attack, tuned freely or to the input's harmonics (from the next Kit release) |
 | Halo | A ring of tuned resonance around the input: a chord on a root you set or the input's own pitch (from the next Kit release) |
 | Glint | Crystal sparks high above every attack, on the note's harmonics (from the next Kit release) |
+| Pollen | The input as fine grains, scattered just behind it and to the sides (from the next Kit release) |
 
 ## Design
 
