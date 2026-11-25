@@ -52,6 +52,6 @@
 | MEN-1 | `resonance_core::meniscus`（水面、打ち、Drops） | RES-1 | ✅ 試験 9 本 |
 | MEN-2 | `nxe_egui::colour`（Colour 6 の枠、`Palette::COLOUR`、音名の色、チップ） | — | ✅ |
 | MEN-3 | Meniscus のプラグイン（宣言、窓、付属プリセット） | MEN-1, MEN-2 | 🟡 コードと基準画像（macOS / Windows）は済み。耳が残り |
-| MEN-4 | 最初の beta（`colour-<YYYY.MM>-beta.N`） | MEN-3 | ⬜ |
+| MEN-4 | 最初の beta（`colour-<YYYY.MM>-beta.N`） | MEN-3 | ✅ `colour-2026.11-beta.1`（2026-11-26） |
 
 付属プリセット（Default、Jelly、Bubble、Honey、Mercury）の値は仮。
