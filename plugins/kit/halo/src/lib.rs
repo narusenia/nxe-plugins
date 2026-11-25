@@ -76,6 +76,7 @@ impl PluginLogic for Halo {
                 root: params.root.read(),
                 follow,
                 chord,
+                sensitivity: params.sensitivity.read(),
                 decay: params.decay.read(),
                 shimmer: params.shimmer.read(),
                 tone: params.tone.read(),

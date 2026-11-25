@@ -11,11 +11,18 @@
 //! the upper notes from dark to bright. The resonance is added to the dry
 //! signal, `Mix` of it: at 0 the output is the input, and nothing is delayed.
 //!
-//! Each resonator is a complex one-pole (`y = r·e^{iω}·y + (1 − r)·x`): its
-//! gain at its own pitch is one, so a sung note on the root rings back at the
-//! level it came in, and its pitch can glide without the clicks a biquad's
-//! recomputed coefficients make. The coefficients are refreshed every
-//! [`CONTROL`] samples.
+//! Each resonator is a complex one-pole (`y = r·e^{iω}·y + g·x`), so its
+//! pitch can glide without the clicks a biquad's recomputed coefficients
+//! make. A gain of `g = 1 − r`, unity only at the exact pitch, left a long
+//! resonator deaf to anything but a held note dead on it: a voice a few
+//! cents off came back ~50 dB down. Instead `g` gives a note within
+//! [`CAPTURE`] of the resonator's pitch about unity whatever the Decay, and
+//! falls off beyond it, so the chord still picks its notes. A note dead on
+//! would then ring far louder than it came in, so each resonator's swing is
+//! capped at [`CAP`] times the input's recent peak, which falls as the
+//! resonator does, so the tail rings out untouched. Capping the complex
+//! magnitude keeps a tone a pure tone.
+//! The coefficients are refreshed every [`CONTROL`] samples.
 //!
 //! Allocation-free once built.
 
@@ -49,6 +56,13 @@ const CLEAR: f32 = 0.85;
 /// The root's range, and the figure's span above it (two octaves).
 pub const ROOT_HZ: (f32, f32) = (40.0, 1_000.0);
 pub const SPAN_OCTAVES: f32 = 2.0;
+/// How far off a resonator's pitch, as a fraction of it, a note still rings
+/// it fully, from no Sensitivity to full: a sixth of a semitone to more than a
+/// semitone. Half way is about half a semitone.
+const CAPTURE: (f32, f32) = (0.01, 0.08);
+/// A resonator's swing at most, over the input's recent peak, from no
+/// Sensitivity to full. Half way is twice the input.
+const CAP: (f32, f32) = (1.0, 4.0);
 /// The wet signal's ceiling, softly.
 const CEILING: f32 = 1.5;
 
@@ -76,7 +90,9 @@ pub struct Settings {
     pub root: f32,
     pub follow: bool,
     pub chord: Chord,
-    /// `0..=1` each.
+    /// `0..=1` each. Sensitivity is how readily it rings: how far off the
+    /// chord a note may be, and how loud the ring may grow over the input.
+    pub sensitivity: f32,
     pub decay: f32,
     pub shimmer: f32,
     pub tone: f32,
@@ -110,6 +126,11 @@ pub struct Halo {
     followed: f32,
     glide: f32,
     level_fall: f32,
+    /// The resonators' pole radius, and the input's peak falling with it.
+    r: f32,
+    peak: f32,
+    /// [`CAP`] at the Sensitivity in use.
+    cap: f32,
     pitch: Pitch,
 }
 
@@ -139,6 +160,9 @@ impl Halo {
             followed: 220.0,
             glide: 1.0 - (-(CONTROL as f32) / (GLIDE_MS * 0.001 * sample_rate)).exp(),
             level_fall: (-(CONTROL as f32) / (0.15 * sample_rate)).exp(),
+            r: 0.0,
+            peak: 0.0,
+            cap: CAP.0,
             pitch: Pitch::new(sample_rate),
         }
     }
@@ -156,10 +180,18 @@ impl Halo {
         }
         self.countdown -= 1;
 
+        self.peak = mono.abs().max(self.peak * self.r);
+        let cap = self.cap * self.peak;
         let mut wet = [0.0; 2];
         for voice in &mut self.voices[..self.count] {
-            let re = voice.a * voice.re - voice.b * voice.im + voice.gain * mono;
-            let im = voice.b * voice.re + voice.a * voice.im;
+            let mut re = voice.a * voice.re - voice.b * voice.im + voice.gain * mono;
+            let mut im = voice.b * voice.re + voice.a * voice.im;
+            let swing = re * re + im * im;
+            if swing > cap * cap {
+                let scale = cap / swing.sqrt();
+                re *= scale;
+                im *= scale;
+            }
             voice.re = re;
             voice.im = im;
             let out = re * voice.weight;
@@ -223,6 +255,10 @@ impl Halo {
 
         let t60 = DECAY_S.0 * (DECAY_S.1 / DECAY_S.0).powf(settings.decay.clamp(0.0, 1.0));
         let r = (-6.91 / (t60 * self.sample_rate)).exp();
+        self.r = r;
+        let sensitivity = settings.sensitivity.clamp(0.0, 1.0);
+        let capture = CAPTURE.0 * (CAPTURE.1 / CAPTURE.0).powf(sensitivity);
+        self.cap = CAP.0 * (CAP.1 / CAP.0).powf(sensitivity);
         let tilt = DARK_TILT * (1.0 - settings.tone.clamp(0.0, 1.0));
         let sway = SHIMMER_CENTS * settings.shimmer.clamp(0.0, 1.0) / 1_200.0;
         let nyquist = 0.45 * self.sample_rate;
@@ -233,7 +269,7 @@ impl Halo {
             let omega = TAU * hz.min(nyquist) / self.sample_rate;
             voice.a = r * omega.cos();
             voice.b = r * omega.sin();
-            voice.gain = 1.0 - r;
+            voice.gain = omega * capture;
             voice.weight = if hz < nyquist {
                 norm * ratio.powf(-tilt)
             } else {
@@ -254,6 +290,7 @@ mod tests {
         root: 220.0,
         follow: false,
         chord: Chord::Fifth,
+        sensitivity: 0.5,
         decay: 0.5,
         shimmer: 0.0,
         tone: 0.5,
@@ -322,6 +359,35 @@ mod tests {
         let rms = (energy(&wet[48_000..]) / 48_000.0).sqrt();
         let input = 0.3 / 2f32.sqrt();
         assert!(rms > input * 0.1 && rms < input * 2.0, "{rms} vs {input}");
+    }
+
+    #[test]
+    fn a_note_a_little_off_the_chord_still_rings() {
+        // A third of a semitone flat of the root: a singer, not a sine
+        // generator. With a gain of 1 − r this came back about 50 dB down.
+        let (_, wet) = run(&SETTINGS, 1.0, sine(216.0));
+        let rms = (energy(&wet[24_000..]) / 24_000.0).sqrt();
+        let input = 0.3 / 2f32.sqrt();
+        assert!(rms > input * 0.25, "{rms} vs {input}");
+    }
+
+    #[test]
+    fn sensitivity_rings_a_note_further_off() {
+        let off = |sensitivity| {
+            let settings = Settings {
+                sensitivity,
+                ..SETTINGS
+            };
+            energy(&run(&settings, 1.0, sine(205.0)).1[24_000..])
+        };
+        assert!(off(1.0) > off(0.0) * 4.0, "{} {}", off(1.0), off(0.0));
+    }
+
+    #[test]
+    fn a_click_rings() {
+        let (_, wet) = run(&SETTINGS, 0.5, |i| if i < 48 { 0.5 } else { 0.0 });
+        let rms = (energy(&wet[4_800..9_600]) / 4_800.0).sqrt();
+        assert!(rms > 0.002, "{rms}");
     }
 
     #[test]

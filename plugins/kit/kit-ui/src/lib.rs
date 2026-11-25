@@ -101,14 +101,14 @@ pub fn number_for<P: Params>(
     ctx: &PluginContext<P>,
     palette: &Palette,
     id: u32,
-    width: f32,
+    label: &str,
 ) {
     let control = nxe_egui::number::number(
         ui,
         palette,
+        label,
         normalized(ctx, id),
         &ctx.format_param(id),
-        width,
     );
     apply(ctx, id, &control);
 }

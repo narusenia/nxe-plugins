@@ -3,10 +3,11 @@
 //! the Kit frame in the Colour Kit's aqua.
 
 use crate::params::{Chord, HaloParams, SHOWN, Tuning};
-use egui::{Align2, Rect, Stroke, Ui, UiBuilder, pos2, vec2};
+use egui::{Align, Align2, Layout, Rect, Stroke, Ui, UiBuilder, pos2};
 use kit_ui::{Factory, Kit};
 use nxe_egui::kit;
-use nxe_egui::theme::{FONT_VALUE, Palette, SPACE_2};
+use nxe_egui::segment::HEIGHT;
+use nxe_egui::theme::{FONT_VALUE, Palette, SPACE_2, SPACE_4};
 use resonance_core::halo::{READING, SPAN_OCTAVES, VOICES};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -17,39 +18,37 @@ use truce_egui::EguiEditor;
 type Ctx = PluginContext<HaloParams>;
 
 const PALETTE: Palette = Palette::COLOUR_KIT;
-const CHORD_WIDTH: f32 = 132.0;
-const TUNING_WIDTH: f32 = 104.0;
-const ROOT_WIDTH: f32 = 64.0;
 /// The innermost and outermost ring, as fractions of the figure's half height.
 const RADIUS: (f32, f32) = (0.2, 0.68);
 
-/// Decay, Shimmer, Tone, Mix. A first draft; settling them needs an ear
+/// Sensitivity, Decay, Shimmer, Tone, Wet. A first draft; settling them needs an ear
 /// (`resonance-kit-plan.md`).
 pub const FACTORY: [Factory; 5] = [
     Factory {
         name: "Default",
-        values: &[0.5, 0.3, 0.5, 0.4],
+        values: &[0.5, 0.5, 0.3, 0.5, 0.4],
     },
     Factory {
         name: "Glow",
-        values: &[0.35, 0.15, 0.35, 0.3],
+        values: &[0.4, 0.35, 0.15, 0.35, 0.3],
     },
     Factory {
         name: "Choir",
-        values: &[0.7, 0.5, 0.6, 0.5],
+        values: &[0.6, 0.7, 0.5, 0.6, 0.5],
     },
     Factory {
         name: "Bloom",
-        values: &[0.9, 0.7, 0.75, 0.6],
+        values: &[0.7, 0.9, 0.7, 0.75, 0.6],
     },
     Factory {
         name: "Ember",
-        values: &[0.6, 0.1, 0.1, 0.45],
+        values: &[0.5, 0.6, 0.1, 0.1, 0.45],
     },
 ];
 
-pub fn knob_ids(params: &HaloParams) -> [u32; 4] {
+pub fn knob_ids(params: &HaloParams) -> [u32; 5] {
     [
+        params.sensitivity.id(),
         params.decay.id(),
         params.shimmer.id(),
         params.tone.id(),
@@ -68,7 +67,7 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         return;
     }
     let params = ctx.params();
-    let [decay, shimmer, tone, mix] = knob_ids(params);
+    let [sensitivity, decay, shimmer, tone, mix] = knob_ids(params);
     let figure = kit_ui::window(
         ui,
         ctx,
@@ -79,10 +78,11 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
             plugin_id: "com.nxe.halo",
             palette: &PALETTE,
             knobs: &[
+                (sensitivity, "Sensitivity"),
                 (decay, "Decay"),
                 (shimmer, "Shimmer"),
                 (tone, "Tone"),
-                (mix, "Mix"),
+                (mix, "Wet"),
             ],
             factory: &FACTORY,
         },
@@ -114,44 +114,38 @@ fn view(ui: &mut Ui, ctx: &Ctx) {
         ui.input(|input| input.time) as f32,
     );
 
-    // The chord, Free or Follow, and the root Free uses, in one row.
-    let height = nxe_egui::segment::HEIGHT;
-    let width = CHORD_WIDTH + TUNING_WIDTH + ROOT_WIDTH + 2.0 * SPACE_2;
-    let row = Rect::from_min_size(
-        pos2(
-            figure.right() - width - SPACE_2,
-            figure.bottom() - height - SPACE_2,
-        ),
-        vec2(width, height),
+    // The chord, Free or Follow, and the root Free uses, in one row from the
+    // right.
+    let row = Rect::from_min_max(
+        pos2(figure.left() + SPACE_2, figure.bottom() - HEIGHT - SPACE_2),
+        pos2(figure.right() - SPACE_2, figure.bottom() - SPACE_2),
     );
-    let cell = |left: f32, width: f32| {
-        Rect::from_min_size(pos2(row.left() + left, row.top()), vec2(width, height))
-    };
-    let mut chord_ui = ui.new_child(UiBuilder::new().max_rect(cell(0.0, CHORD_WIDTH)));
-    if let Some(picked) = nxe_egui::segment::segment(
-        &mut chord_ui,
+    let mut row = ui.new_child(
+        UiBuilder::new()
+            .max_rect(row)
+            .layout(Layout::right_to_left(Align::Center)),
+    );
+    row.spacing_mut().item_spacing.x = SPACE_4;
+    kit_ui::number_for(&mut row, ctx, &PALETTE, params.root.id(), "Root");
+    let tuning = params.tuning.index() as usize;
+    if nxe_egui::toggle::toggle(
+        &mut row,
         &PALETTE,
+        "Tuning",
+        Tuning::NAMES[tuning],
+        tuning == Tuning::Follow as usize,
+    ) {
+        kit_ui::set_plain(ctx, params.tuning.id(), (1 - tuning) as f64);
+    }
+    if let Some(picked) = nxe_egui::select::select(
+        &mut row,
+        &PALETTE,
+        "Chord",
         &Chord::NAMES,
         params.chord.index() as usize,
-        CHORD_WIDTH,
     ) {
         kit_ui::set_plain(ctx, params.chord.id(), picked as f64);
     }
-    let mut tuning_ui =
-        ui.new_child(UiBuilder::new().max_rect(cell(CHORD_WIDTH + SPACE_2, TUNING_WIDTH)));
-    if let Some(picked) = nxe_egui::segment::segment(
-        &mut tuning_ui,
-        &PALETTE,
-        &Tuning::NAMES,
-        params.tuning.index() as usize,
-        TUNING_WIDTH,
-    ) {
-        kit_ui::set_plain(ctx, params.tuning.id(), picked as f64);
-    }
-    let mut root_ui = ui.new_child(
-        UiBuilder::new().max_rect(cell(CHORD_WIDTH + TUNING_WIDTH + 2.0 * SPACE_2, ROOT_WIDTH)),
-    );
-    kit_ui::number_for(&mut root_ui, ctx, &PALETTE, params.root.id(), ROOT_WIDTH);
 }
 
 /// The rings, centred a little above the figure's middle so the row of

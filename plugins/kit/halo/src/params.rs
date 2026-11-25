@@ -1,4 +1,4 @@
-//! Decay, Shimmer, Tone, Mix, and the chord, the tuning and the root.
+//! Sensitivity, Decay, Shimmer, Tone, Wet (the field is `mix`), and the chord, the tuning and the root.
 //! **The field names are the parameter ids** (`resonance-kit-plan.md`, the
 //! table): never rename them.
 
@@ -37,6 +37,16 @@ impl Chord {
 #[derive(Params)]
 pub struct HaloParams {
     #[param(
+        name = "Sensitivity",
+        range = "linear(0, 1)",
+        default = 0.5,
+        unit = "%",
+        parse = "percent",
+        smooth = "linear(20)"
+    )]
+    pub sensitivity: FloatParam,
+
+    #[param(
         name = "Decay",
         range = "linear(0, 1)",
         default = 0.5,
@@ -66,8 +76,10 @@ pub struct HaloParams {
     )]
     pub tone: FloatParam,
 
+    /// Shown as Wet: the dry signal is always all there, this is how much of
+    /// the ring is added to it.
     #[param(
-        name = "Mix",
+        name = "Wet",
         range = "linear(0, 1)",
         default = 0.4,
         unit = "%",
