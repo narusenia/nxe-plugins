@@ -5,9 +5,9 @@
 要件は [`../requirements/REQ-PUM.md`](../requirements/REQ-PUM.md)（`REQ-PUM-013`
 と `REQ-PUM-018`）。守るべき規約は
 [`../../../../.agents/rules/ui.md`](../../../../.agents/rules/ui.md)（何を守るか）と
-[`../../../../.agents/rules/vizia.md`](../../../../.agents/rules/vizia.md)
+[`vizia.md`（release/v0）](https://github.com/nxe-plugins/nxe-plugins/blob/release/v0/.agents/rules/vizia.md)
 （このリビジョンが黙って何もしない箇所）。部品は
-[`../../../../crates/nxe-ui/README.md`](../../../../crates/nxe-ui/README.md)。
+[`nxe-ui/README.md`（release/v0）](https://github.com/nxe-plugins/nxe-plugins/blob/release/v0/crates/nxe-ui/README.md)。
 
 **この文書と実装が食い違ったら実装が正。** 同じ変更でこの文書を直す。
 

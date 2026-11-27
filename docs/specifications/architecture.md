@@ -28,7 +28,7 @@ plugins/
 （`docs/implementation/v2-plan.md`）。v0 の共通ウィジェット `nxe-ui`、
 nih-plug との結線 `nxe-plug-ui`、バンドラの xtask と `bundler.toml` は
 その後に消した。v0 の vizia について分かったことは
-`docs/archive/vizia-rules.md` と `docs/archive/vizia-pins.md` に残してある。
+`release/v0` ブランチの `.agents/rules/vizia.md` と `Cargo.toml` に残してある。
 
 **truce-clap は patch を 2 つ当てて使っている**（`patches/truce-clap`、ルートの
 `Cargo.toml` の `[patch.crates-io]`）。1 つ目: 6.3.0 は state / preset の読込で値を
@@ -231,7 +231,7 @@ mise run check              # fmt + clippy + test
 
 | 罠 | 書いてある場所 |
 |---|---|
-| v0 の vizia の罠（相互排他の feature、CSS、レンズ） | `docs/archive/vizia-rules.md`、`docs/archive/vizia-pins.md` |
+| v0 の vizia の罠（相互排他の feature、CSS、レンズ） | `release/v0` ブランチの `.agents/rules/vizia.md` と `Cargo.toml` |
 | CLAP の `latency.changed` は `activate` の中だけ | 上記「クレート構成」の truce-clap の patch |
 | ブロック単位 API を使うと `REQ-DBL-012` が壊れる | `.agents/rules/rust.md` |
 | `cargo clippy \| tail` で終了コードが潰れる | `.agents/rules/rust.md` |

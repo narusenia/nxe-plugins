@@ -3,9 +3,9 @@
 > 最終更新: 2026-08-26
 
 要件は [`../requirements/REQ-SPK.md`](../requirements/REQ-SPK.md)、守るべき規約は
-[`../../../../.agents/rules/vizia.md`](../../../../.agents/rules/vizia.md)、
+[`vizia.md`（release/v0）](https://github.com/nxe-plugins/nxe-plugins/blob/release/v0/.agents/rules/vizia.md)、
 道具立ての使い方は
-[`../../../../crates/nxe-ui/README.md`](../../../../crates/nxe-ui/README.md)。
+[`nxe-ui/README.md`（release/v0）](https://github.com/nxe-plugins/nxe-plugins/blob/release/v0/crates/nxe-ui/README.md)。
 
 > **v2（Sparkleur 2）の窓は作り直した。** 何を決めたかは
 > `docs/implementation/v2-plan.md` の V2-9、寸法は

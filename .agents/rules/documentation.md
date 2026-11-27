@@ -27,11 +27,10 @@ paths:
   descriptions in the roadmap.
 - A completed unit keeps its row and becomes `✅` with its PR number, or its
   commit SHA while work goes straight to `main`. Rows are not deleted.
-- **At a version boundary the whole backlog, roadmap and handover move to
-  `docs/archive/` with `git mv`**, links fixed, and the new version starts
-  fresh files at the same paths. That is the only way a row leaves
-  `backlog.md`, and it keeps every row readable. `docs/archive/README.md`
-  lists what is there.
+- **At a version boundary the whole backlog, roadmap and handover stay on
+  that version's release branch** (`release/v0` for v0.x, under
+  `docs/archive/`), and `main` starts fresh files at the same paths. That is
+  the only way a row leaves `backlog.md`, and every row stays readable there.
 - Do not describe a planned feature as implemented behaviour.
 - Keep `AGENTS.md` short and durable; task-specific plans belong in
   `docs/implementation/` or a plugin's plan.

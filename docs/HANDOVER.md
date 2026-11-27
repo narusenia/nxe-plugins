@@ -8,8 +8,9 @@ Air #21、Diorama #22、Pumice #26）、nih-plug と vizia の側は消した（
 （Nonlinear Kit #36、Spectral Kit #37）。残りは人の手が要るもの（実機で見る、
 耳で既定値とプリセットを決める）。次に作るのは Design の最初のフラッグシップ
 **Parasite**（`series-plan.md` の「順番」3）。v0.x の引き継ぎは
-[`archive/v0-handover.md`](archive/v0-handover.md)、Pumice の v0 期の経緯は
-[`archive/pumice-handover.md`](archive/pumice-handover.md)。
+`release/v0` ブランチの [`docs/archive/v0-handover.md`](https://github.com/nxe-plugins/nxe-plugins/blob/release/v0/docs/archive/v0-handover.md)。
+Pumice の v0 期の経緯は 2026-11-27 に main から消した
+（`git show 9372934:docs/archive/pumice-handover.md` で読める）。
 
 ## いま作っているもの — v2
 

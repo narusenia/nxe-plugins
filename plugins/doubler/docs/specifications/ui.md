@@ -3,7 +3,7 @@
 > 最終更新: 2026-08-25
 
 要件は [`../requirements/REQ-DBL.md`](../requirements/REQ-DBL.md)、守るべき規約は
-[`../../../../.agents/rules/vizia.md`](../../../../.agents/rules/vizia.md)。
+[`vizia.md`（release/v0）](https://github.com/nxe-plugins/nxe-plugins/blob/release/v0/.agents/rules/vizia.md)。
 
 > **v2（Doubler 2）の窓は作り直した。** 形は H4（`docs/specifications/design-system.md`）、
 > 何を決めたかは `docs/implementation/v2-plan.md` の V2-7、コードは

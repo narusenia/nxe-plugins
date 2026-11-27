@@ -10,7 +10,7 @@ paths:
 **What the windows have to look like and how they have to read.** How the
 toolkit behaves is in the widgets' own comments; how to build with them is
 [`crates/nxe-egui/README.md`](../../crates/nxe-egui/README.md). The v0 vizia
-traps are kept in [`docs/archive/vizia-rules.md`](../../docs/archive/vizia-rules.md).
+traps are in [`.agents/rules/vizia.md` on `release/v0`](https://github.com/nxe-plugins/nxe-plugins/blob/release/v0/.agents/rules/vizia.md).
 
 Every rule here was paid for. Where one has a scar, the scar is named.
 

@@ -6,7 +6,7 @@
 もの。**この文書は「どの順でやるか、なぜその順か」を決める**。単位の内容と
 完了条件は各計画書、状態と依存は `backlog.md` が正。
 
-v0.x の順序と根拠は [`../archive/v0-roadmap.md`](../archive/v0-roadmap.md)。
+v0.x の順序と根拠は `release/v0` ブランチの [`docs/archive/v0-roadmap.md`](https://github.com/nxe-plugins/nxe-plugins/blob/release/v0/docs/archive/v0-roadmap.md)。
 そこで立てた「並べる基準」（前提が崩れると後続が無駄になるものを先に、
 パラメータが固まるまで UI に投資しない、配布は中身が固まってから、使う人が
 居ないものは最後）は v2 でもそのまま使う。

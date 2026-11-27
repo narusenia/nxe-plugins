@@ -8,7 +8,7 @@
 - 完了した単位は行を消さず `✅` にして、PR 番号かコミット SHA を入れる
 - **順序の判断は [`roadmap.md`](roadmap.md)**。この表は「何があるか」、
   ロードマップは「どの順でやるか、なぜその順か」
-- v0.x の全単位は [`../archive/v0-backlog.md`](../archive/v0-backlog.md)
+- v0.x の全単位は `release/v0` ブランチの [`docs/archive/v0-backlog.md`](https://github.com/nxe-plugins/nxe-plugins/blob/release/v0/docs/archive/v0-backlog.md)
 
 最終更新: 2026-11-25
 

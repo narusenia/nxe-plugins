@@ -18,8 +18,7 @@
 | **引き継ぎ（今どこで、次に何を知るべきか）** | [HANDOVER.md](HANDOVER.md) |
 | **UI を開くと DAW が重くなる問題**（原因 2 つ、対策、外した仮説、測り方） | [investigations/ui-frame-cost.md](investigations/ui-frame-cost.md) |
 | v2 の窓の描画コスト（途中経過、判定はホストで） | [investigations/v2-frame-cost.md](investigations/v2-frame-cost.md) |
-| **v0.x の引き継ぎ・全単位・順序**（役目を終えた文書） | [archive/](archive/) |
-| **共通 UI コンポーネントの計画**（v0、vizia 版） | [implementation/nxe-ui-plan.md](implementation/nxe-ui-plan.md) |
+| **v0.x の引き継ぎ・全単位・順序**（役目を終えた文書） | `release/v0` ブランチの [docs/archive/](https://github.com/nxe-plugins/nxe-plugins/tree/release/v0/docs/archive) |
 | **共通の解析（レベル・ステレオ像・スペクトラム）の計画** | [implementation/nxe-dsp-plan.md](implementation/nxe-dsp-plan.md) |
 | **ワークスペース骨格と CI の計画** | [implementation/infra-plan.md](implementation/infra-plan.md) |
 | **どの順でやるか、なぜその順か** | [implementation/roadmap.md](implementation/roadmap.md) |
@@ -29,7 +28,7 @@
 | **守るべき規約**（Rust / UI / 文書） | [`../.agents/rules/`](../.agents/rules/) |
 | **コミットとブランチの規約** | [`../.agents/rules/git.md`](../.agents/rules/git.md) |
 | **画面の規則**（グリッド、色、読み値、何を出すか） | [`../.agents/rules/ui.md`](../.agents/rules/ui.md) |
-| **踏んだ罠**（検証の抜け。v0 の vizia は archive） | [`../.agents/rules/rust.md`](../.agents/rules/rust.md) / [`archive/vizia-rules.md`](archive/vizia-rules.md) |
+| **踏んだ罠**（検証の抜け。v0 の vizia は `release/v0` の規則） | [`../.agents/rules/rust.md`](../.agents/rules/rust.md) / [vizia.md（release/v0）](https://github.com/nxe-plugins/nxe-plugins/blob/release/v0/.agents/rules/vizia.md) |
 | **プラグイン固有の要件・仕様・計画** | `plugins/<name>/docs/` |
 
 同じ内容を 2 箇所に書かない。実装と食い違うときは**実装が正**で、気づいた
@@ -76,5 +75,5 @@
 要件として書き直し、構想側はそのまま残す（何を削ったかが後で効く）。
 
 着手の順序とその根拠は（v0 の時点のもの）
-[archive/v0-roadmap.md](archive/v0-roadmap.md) の
+`release/v0` の [docs/archive/v0-roadmap.md](https://github.com/nxe-plugins/nxe-plugins/blob/release/v0/docs/archive/v0-roadmap.md) の
 「Sparkleur の後 — 構想 6 本の順序」。

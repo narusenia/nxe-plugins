@@ -6,7 +6,7 @@
 
 v0.2.0 までの 5 本（Doubler / Velour / Sparkleur / Air / Diorama）を、
 **フレームワークごと載せ替えて**、窓を作り直し、`NXE <name> 2` として
-`2.0.0` から出し直す。v0.x の経緯は [`../archive/`](../archive/)。
+`2.0.0` から出し直す。v0.x の経緯は `release/v0` ブランチの [`docs/archive/`](https://github.com/nxe-plugins/nxe-plugins/tree/release/v0/docs/archive)。
 
 ## 決めたこと
 
