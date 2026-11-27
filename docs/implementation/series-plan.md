@@ -5,10 +5,6 @@
 > 「シリーズと強度」が持つ。ここはラインナップと順番だけを持つ。
 > 元の案（約 80 案、各案の DSP とパラメーター）は
 > [`../../concepts/series-ideas.md`](../../concepts/series-ideas.md)。
-> Articulate・Polish・Pro の 3 シリーズ（2026-11-26 に追加）の元の案は
-> [`articulate-series.md`](../../concepts/articulate-series.md)、
-> [`polish-series.md`](../../concepts/polish-series.md)、
-> [`pro-series.md`](../../concepts/pro-series.md)。
 > 名前の商標、既存製品との重複、DSP が実現できるかはまだ確認していない。
 
 ## シリーズ
@@ -21,20 +17,15 @@
 | **Create** | 音源 | フラッグシップ 3 |
 | **Kit** | フラッグシップの 1 機能を、つまみ 2〜4 個で出す小さなプラグイン | 11 |
 | **Peek** | メーター。音を変えず、見るだけ。1 つの計測を 1 本にしたものと、全部をまとめた Peek（下の「Peek」）。窓は Kit の型を借りる | 7 + まとめ 1 |
-| **Articulate** | 声の質感を深く作る。Basic の声の道具の上位 | フラッグシップ 12 前後（企画段階） |
-| **Polish** | ミックスとマスターの仕上げ。密度・透明感・奥行きなど感覚の目標を直接動かす | フラッグシップ 7 前後（企画段階） |
-| **Pro** | 自分の音を持たない、精密で自由に組める道具。EQ、ダイナミクス、非線形、スペクトル | フラッグシップ 14 前後（企画段階） |
 
 ## 2 つの軸（2026-11-26）
 
 **シリーズは用途で分け、大きさはシリーズをまたぐ別の軸にする。**
 
-- 用途: Basic（声にもミックスにも使える、迷わない実用品）、Articulate（声）、
-  Polish（ミックスとマスター）、Colour（色を足す）、Design（作り変える）、
-  Create（音源）、Peek（見るだけ）、Pro（自分の音を持たない道具）
+- 用途: Basic（声にもミックスにも使える、迷わない実用品）、Colour（色を足す）、
+  Design（作り変える）、Create（音源）、Peek（見るだけ）
 - 大きさ: **Kit**（1 機能、つまみ 2〜4 個）← **フラッグシップ** → **統合版**
-  （Articulate は Portrait、Polish は Finalize、Pro は Nexus、Colour と Design は
-  Mutate / Reform）
+  （Colour と Design は Mutate / Reform）
 - エンジンはシリーズをまたいで共有する。`resonance-core` が Colour の Kit と
   フラッグシップを兼ねているのと同じ形
 
@@ -42,44 +33,12 @@
 ごとに決まり、シリーズが決めるのはリリースのまとまりと窓の型だけ。後から
 変えられないのはプラグイン名と ID なので、先に決めるのは名前の重なり。
 
-### 境界
-
-- **Basic と Articulate・Polish。** Basic は残し、Articulate と Polish はその
-  深掘り版にする。Basic の 1 本とエンジンを共有する上位版は別の名前にする。
-  重なっている案: Velour（Articulate の一覧にあるが、Velour 2 として出荷済み。
-  **同じ名前では出せない**）、Intimate / Perspect と Diorama、Lustre と
-  Sparkleur・Air、Ensemble と Doubler、Relief / Lucent と Pumice
-- **Pro と Design。** Pro は自分の音を持たない（透明で、測れて、元に戻せる）。
-  Design は必ずキャラクターを足す。同じエンジンを 2 つの窓で出す:
-  Transfer と Devour は `nonlinear-core`、Spectrum と Singularity は `nxe-spectral`
-- **Pro と Peek。** 音を変えないもの（Trace、Benchmark）は Peek に移す。
-  補正する Calibrate は Pro に残す
-- **Intimate と Perspect** は同じ距離のエンジンを、声用とミックス用に出したもの
-- **名前の重なり。** Residual は Polish と Pro の両方にある。Nexus は既存の
-  製品名と重なるので改名候補
-
-### 特化型は Kit の候補
-
-3 つの企画の「特化型・追加製品」（合わせて約 65 案）は、別の製品として数えず
-**Kit の候補**にする。Articulate から切り出すものは **Voice Kit**（Marrow、Veil、
-Crisp、Inhale など）、Polish から切り出すものは **Mix Kit**（Headroom、Symbiosis
-など）。今の Meniscus → Dew、Prisma → Halo と同じ形。
-
-Pro の特化型（Gradient、Kernel、Morphology など）は向きが逆で、単体では出さず、
-Nexus のノードか Pro 製品のモードにまとめる。
-
 ### Kit のリリースを家族で分ける
 
-今は Kit の全 10 本で 1 つのリリース（`kit`）。Voice Kit と Mix Kit が加わると
+今は Kit の全 10 本で 1 つのリリース（`kit`）。Kit が増えると
 数十本になり、インストーラーの一覧も長くなる。**15 本を超えたら、`series.toml` を
-家族ごとに分ける**（`kit-nonlinear`、`kit-voice` など）。プラグイン ID は
+家族ごとに分ける**（`kit-nonlinear`、`kit-resonance` など）。プラグイン ID は
 変わらないので、分けても使っている人のセッションは壊れない。
-
-### 窓の型
-
-3 シリーズとも新しい窓の型が要る。特に Pro の操作の 3 段（Essential / Advanced /
-Laboratory）は、今のどの窓とも違う。最初の 1 本を出す前に
-[`design-system.md`](../specifications/design-system.md) に型を決める。
 
 ## フラッグシップと、そこへまとめた案
 
@@ -173,12 +132,3 @@ Peek は 7 本の計測と描画部品がそろってから、それを並べて
 5. **Diffract**。Spectral と Harmonic に、MIDI とサイドチェインを足す。Colour の看板
 6. **Create**（Swarm、次に Iridesce）。音源の基盤（ボイス管理、MIDI）がまだ
    無いので最後
-
-Articulate・Polish・Pro を上のどこに挟むかは、まだ決めていない。今ある部品に
-近いものから始めるなら:
-
-- **Pro Transfer**。`nonlinear-core` とオーバーサンプラがある。企画の推奨順でも先頭
-- **Articulate Core**。`nxe_audio::pitch`（Parasite のピッチ追従）と Sparkleur の
-  倍音生成がある
-- **Polish Density**。ラウドネスマッチが必須で、Peek Loudness の K 特性が使える。
-  Lucent は Pumice の STFT に近い
