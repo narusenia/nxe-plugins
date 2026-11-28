@@ -1094,6 +1094,15 @@ impl<P: Params + ?Sized + 'static> WindowHandler for EguiWindowHandler<P> {
                     use keyboard_types::KeyState;
                     self.modifiers = convert_kb_modifiers(kb.modifiers);
 
+                    // nxe-plugins patch: with no text field focused, hand the
+                    // key back so the host's shortcuts (space, transport,
+                    // musical typing) keep working while the editor is
+                    // focused. baseview passes an `Ignored` key up the
+                    // native responder chain to the host.
+                    if !self.egui_ctx.egui_wants_keyboard_input() {
+                        return EventStatus::Ignored;
+                    }
+
                     // Text input. Suppress Text events when Ctrl/Cmd is
                     // held - otherwise Ctrl+A/Ctrl+C/etc. would also insert
                     // the character into focused text fields, which egui's
